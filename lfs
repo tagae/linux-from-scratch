@@ -1,0 +1,52 @@
+#!/bin/sh
+
+set -o errexit -o nounset
+umask 022
+
+readonly PROJECT_DIR=$(dirname $(realpath "$0"))
+readonly PACKAGE_DIR=$PROJECT_DIR/package
+
+: ${OUTPUT_DIR:=$PROJECT_DIR}
+: ${DOWNLOAD_DIR:=$OUTPUT_DIR/download}
+: ${SOURCE_DIR:=$OUTPUT_DIR/source}
+: ${WORK_DIR:=$OUTPUT_DIR/work}
+: ${TOOL_DIR:=$OUTPUT_DIR/tools}
+: ${INSTALL_DIR:=$OUTPUT_DIR/install}
+: ${ARCHIVE_DIR:=$OUTPUT_DIR/archive}
+: ${IMAGE_DIR:=$OUTPUT_DIR/image}
+
+readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR
+
+. $PROJECT_DIR/lib/base.sh
+. $PROJECT_DIR/lib/package.sh
+. $PROJECT_DIR/lib/tools.sh
+. $PROJECT_DIR/lib/image.sh
+
+case "${1:-help}" in
+    tools)
+        [ $# -eq 2 ] || usage "$1 <PLATFORM>"
+        platform "$2"
+        tools
+        ;;
+
+    install)
+        [ $# -eq 3 ] || usage "$1 <PLATFORM> <PACKAGE>"
+        platform "$2"
+        set -x
+        install "$3"
+        ;;
+
+    image)
+        [ $# -eq 2 ] || [ $# -eq 3 ] || usage "$1 <PLATFORM> [FILE]"
+        platform "$2"
+        image "${3:-$IMAGE_DIR/$2.img}"
+        ;;
+
+    help)
+        echo "Usage: $(basename "$0") (tools|install|image)"
+        if [ $# -eq 1 ]; then exit 0; else exit 1; fi
+        ;;
+
+    *)
+        bail "Unknown command '$1'"
+esac
