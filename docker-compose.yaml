@@ -1,0 +1,13 @@
+# usage: UID=$(id -u) GID=$(id -g) docker compose run --build --rm -ti lfs ./lfs
+
+services:
+  lfs:
+    build: .
+    volumes:
+      - type: bind
+        source: $PWD
+        target: /var/lfs
+    working_dir: /var/lfs
+    #privileged: true
+    restart: no
+    user: $UID:$GID

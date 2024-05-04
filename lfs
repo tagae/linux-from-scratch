@@ -1,0 +1,47 @@
+#!/bin/sh
+
+set -o errexit -o nounset
+umask 022
+cd "$(dirname "$0")"
+
+readonly PROJECT_DIR=$(realpath "$PWD")
+readonly PACKAGE_DIR=$PROJECT_DIR/package
+readonly DOWNLOAD_DIR=$PROJECT_DIR/download
+readonly SOURCE_DIR=$PROJECT_DIR/source
+readonly WORK_DIR=$PROJECT_DIR/work
+readonly TOOL_DIR=$PROJECT_DIR/tools
+readonly SYSROOT_DIR=$PROJECT_DIR/sysroot
+readonly ARCHIVE_DIR=$PROJECT_DIR/archive
+readonly IMAGE_DIR=$PROJECT_DIR/image
+
+. lib/base.sh
+. lib/package.sh
+. lib/tools.sh
+. lib/image.sh
+
+case "${1:-help}" in
+    tools)
+        [ $# -eq 2 ] || usage "$1 <PLATFORM>"
+        tools "$2"
+        ;;
+
+    install)
+        [ $# -eq 3 ] || usage "$1 <PLATFORM> <PACKAGE>"
+        platform "$2"
+        install "$3"
+        ;;
+
+    image)
+        [ $# -eq 2 ] || usage "$1 [FILE]"
+        source lib/image.sh
+        image "${3:-images/$PLATFORM.img}"
+        ;;
+
+    help)
+        echo "Usage: $(basename "$0") (tools|install|image)"
+        if [ $# -eq 1 ]; then exit 0; else exit 1; fi
+        ;;
+
+    *)
+        bail "Unknown command '$1'"
+esac
