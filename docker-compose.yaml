@@ -1,0 +1,32 @@
+# usage: UID=$(id -u) GID=$(id -g) docker compose run --build --rm -ti lfs ./lfs
+
+services:
+  lfs:
+    build:
+      dockerfile: Dockerfile.debian
+    volumes:
+      - type: bind
+        source: $PWD/download
+        target: /var/lfs/download
+      - type: volume
+        source: source
+        target: /var/lfs/source
+      - type: volume
+        source: work
+        target: /var/lfs/work
+      - type: volume
+        source: tools
+        target: /var/lfs/tools
+
+    #  - type: bind
+    #    source: $PWD
+    #    target: /var/lfs
+    working_dir: /var/lfs
+    #privileged: true
+    restart: no
+    #user: $UID:$GID
+
+volumes:
+  source:
+  work:
+  tools:
