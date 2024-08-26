@@ -1,4 +1,4 @@
-FROM alpine:3.19.1
+FROM alpine:3.22.1
 
 RUN apk update
 
@@ -12,9 +12,13 @@ RUN apk add gawk
 RUN apk add python3
 RUN apk add grep
 #RUN apk add make
+RUN apk add flex
+#RUN apk add gmp-dev
+#RUN apk add mpfr-dev
+#RUN apk add mpc1-dev
 
 # Filesystem tools
-#RUN apk add sfdisk
-#RUN apk add btrfs-progs
-#RUN apk add dosfstools
-#RUN apk add multipath-tools
+RUN apk add sfdisk
+RUN apk add multipath-tools
+RUN apk add btrfs-progs
+RUN apk add dosfstools

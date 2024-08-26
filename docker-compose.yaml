@@ -8,6 +8,9 @@ services:
       - type: bind
         source: $PWD/download
         target: /var/lfs/download
+      - type: bind
+        source: $PWD/image
+        target: /var/lfs/image
       - type: volume
         source: source
         target: /var/lfs/source
@@ -17,16 +20,54 @@ services:
       - type: volume
         source: tools
         target: /var/lfs/tools
+      - type: volume
+        source: install
+        target: /var/lfs/install
 
     #  - type: bind
     #    source: $PWD
     #    target: /var/lfs
     working_dir: /var/lfs
     #privileged: true
-    restart: no
     #user: $UID:$GID
+
+  lfs-alpine:
+    build:
+      dockerfile: Dockerfile.alpine
+    volumes:
+      - type: bind
+        source: $PWD/download
+        target: /var/lfs/download
+      - type: bind
+        source: $PWD/image
+        target: /var/lfs/image
+      - type: volume
+        source: source
+        target: /var/lfs/source
+      - type: volume
+        source: work
+        target: /var/lfs/work
+      - type: volume
+        source: tools
+        target: /var/lfs/tools
+      - type: volume
+        source: install
+        target: /var/lfs/install
+      - type: bind
+        source: lib
+        target: /var/lfs/lib
+      - type: bind
+        source: package
+        target: /var/lfs/package
+      - type: bind
+        source: lfs
+        target: /var/lfs/lfs
+
+    working_dir: /var/lfs
+    privileged: true
 
 volumes:
   source:
   work:
   tools:
+  install:

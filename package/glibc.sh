@@ -7,14 +7,6 @@
 : ${headers:=/usr/include}
 : ${shared:=yes}
 
-# --with-libiconv-prefix=/opt/homebrew/opt/libiconv \
-#        libc_cv_forced_unwind=yes \
-#        libc_cv_c_cleanup=yes
-#        --disable-lipquadmath \
-#        --disable-libquadmath-support \
-#        --disable-libitm
-
-
 prepare() {
     # host=target is not a mistake
     $package_source_dir/configure \
@@ -35,8 +27,6 @@ prepare() {
 }
 
 build() {
-    #arm-scratch-linux-gnueabihf-gcc -H -c /dev/null
-    #exit 1
     case $package_component in
         glibc)
             make

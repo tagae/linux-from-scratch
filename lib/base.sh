@@ -18,7 +18,8 @@ usage() {
 }
 
 stage() {
-    printf "\n%s[ %s ]\n" '---' "$1"
+    echo
+    echo "---[ $@ ]"
 }
 
 get() {
@@ -30,8 +31,9 @@ get() {
 }
 
 git_default_branch() {
-    local url="$1"
-    git ls-remote --symref $url HEAD | awk '/^ref:/ {sub("refs/heads/", "", $2); print $2}'
+    local url="$1" branch_file=$(mktemp -t git-default-branch-XXXXXX)
+    git ls-remote --symref $url HEAD > $branch_file
+    awk '/^ref:/ {sub("refs/heads/", "", $2); print $2}' < $branch_file
 }
 
 git_checkout() {
@@ -51,3 +53,9 @@ git_checkout() {
 #     NOW=$(date +%s)
 #     $(( LAST_UPDATE + MAX_AGE < NOW ))
 # }
+
+cleanup() {
+    stage Cleanup
+    unmount_partitions
+    detach_image
+}

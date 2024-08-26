@@ -1,4 +1,4 @@
-: ${package_version:=2.42}
+: ${package_version:=2.44}
 : ${package_source:=https://ftp.gnu.org/gnu/binutils/binutils-$package_version.tar.xz}
 
 : ${prefix:=/usr}
