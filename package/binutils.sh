@@ -5,10 +5,6 @@
 : ${sysroot:=/}
 : ${gprofng:=yes}
 
-#        --with-libiconv-prefix=/opt/homebrew/opt/libiconv \
-#        --disable-lipquadmath \
-#        --disable-libquadmath-support
-
 prepare() {
     $package_source_dir/configure \
         --prefix=$prefix \

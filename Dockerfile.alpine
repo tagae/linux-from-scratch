@@ -2,23 +2,17 @@ FROM alpine:3.22.1
 
 RUN apk update
 
-# Build tools
-RUN apk add build-base
-RUN apk add texinfo
-RUN apk add git
-RUN apk add rsync
-RUN apk add bison
-RUN apk add gawk
-RUN apk add python3
-RUN apk add grep
-#RUN apk add make
-RUN apk add flex
-#RUN apk add gmp-dev
-#RUN apk add mpfr-dev
-#RUN apk add mpc1-dev
+RUN apk add \
+    build-base texinfo git rsync bison gawk python3 grep flex openssl-dev xz meson \
+    sfdisk multipath-tools btrfs-progs dosfstools
 
-# Filesystem tools
-RUN apk add sfdisk
-RUN apk add multipath-tools
-RUN apk add btrfs-progs
-RUN apk add dosfstools
+ARG HOST_UID
+ARG HOST_GID
+RUN delgroup dialout && addgroup -g $HOST_GID lfs && adduser -D -H -u $HOST_UID -G lfs lfs
+
+RUN mkdir -pv /var/lfs/tools /var/lfs/source /var/lfs/work /var/lfs/install
+RUN chown lfs:lfs /var/lfs /var/lfs/tools /var/lfs/source /var/lfs/work /var/lfs/install
+
+WORKDIR /var/lfs
+
+USER lfs

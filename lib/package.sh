@@ -1,25 +1,3 @@
-platform() {
-    readonly PLATFORM=$1
-    [ -f $PROJECT_DIR/lib/platform/"$PLATFORM".sh ] || bail "Unsupported platform '$PLATFORM'"
-
-    export LC_ALL=POSIX
-    export MAKEFLAGS=-j$(nproc)
-    readonly LC_ALL MAKEFLAGS
-
-    if ! [ -x $DOWNLOAD_DIR/config.guess ]; then
-        mkdir -p $DOWNLOAD_DIR
-        wget -O $DOWNLOAD_DIR/config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
-        chmod +x $DOWNLOAD_DIR/config.guess
-    fi
-
-    # https://www.gnu.org/software/automake/manual/html_node/Cross_002dCompilation.html
-    readonly build=$($DOWNLOAD_DIR/config.guess)
-    : ${host:=$build}
-    : ${target:=$build}
-
-    . $PROJECT_DIR/lib/platform/$PLATFORM.sh
-}
-
 install() {
     (
         _source $1
@@ -95,7 +73,6 @@ _source() {
     }
 
     default_fetch() {
-        echo "Fetching ${package_source:-}"
         case ${package_source:-none} in
             https://*.tar.*)
                 get $package_source

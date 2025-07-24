@@ -11,30 +11,23 @@ readonly PACKAGE_DIR=$PROJECT_DIR/package
 . $PROJECT_DIR/lib/tools.sh
 . $PROJECT_DIR/lib/image.sh
 
-CMD_ARGS=$(getopt "d:h" "$@")
+#--[ Command line ]
+
+CMD_ARGS=$(getopt "p:d:h" "$@")
 [ $? -eq 0 ] || bail "Could not parse options"
 
 eval set -- "$CMD_ARGS"
 
 while [ $# -gt 0 ]; do
     case "${1:-}" in
+        -p)
+            [ $? -eq 0 ] || bail "Invalid platform: $2"
+            PLATFORM="$2"
+            shift 2
+            ;;
         -d)
-            dest=
             [ $? -eq 0 ] || bail "Invalid destination: $2"
-            if [ -d "$2" ]; then
-                package_install_dir=$(realpath "$2")
-            elif [ -f "$2" ]; then
-                IMAGE="$2" image
-                package_install_dir=$ROOT_DIR
-            elif [ -b "$2" ]; then
-                DEVICE="$2" device
-            elif [[ "$2" == *.img ]]; then
-                IMAGE="$2" image
-                package_install_dir=$ROOT_DIR
-            else
-                mkdir -pv "$2"
-                package_install_dir=$(realpath $2)
-            fi
+            DESTINATION="$2"
             shift 2
             ;;
         -h)
@@ -51,6 +44,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+#--[ Project ]
+
 : ${OUTPUT_DIR:=$PROJECT_DIR}
 : ${DOWNLOAD_DIR:=$OUTPUT_DIR/download}
 : ${SOURCE_DIR:=$OUTPUT_DIR/source}
@@ -60,39 +55,89 @@ done
 : ${ARCHIVE_DIR:=$OUTPUT_DIR/archive}
 : ${IMAGE_DIR:=$OUTPUT_DIR/image}
 
-# Freeze config
 readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR
+
+#--[ Compilation ]
+
+export LC_ALL=POSIX
+export MAKEFLAGS=-j$(nproc)
+
+readonly LC_ALL MAKEFLAGS
+
+if ! [ -x $DOWNLOAD_DIR/config.guess ]; then
+    mkdir -p $DOWNLOAD_DIR
+    wget -O $DOWNLOAD_DIR/config.guess \
+         'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
+    chmod +x $DOWNLOAD_DIR/config.guess
+fi
+
+# https://www.gnu.org/software/automake/manual/html_node/Cross_002dCompilation.html
+readonly build=$($DOWNLOAD_DIR/config.guess)
+: ${host:=$build}
+: ${target:=$build}
+
+PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$PATH
+
+#--[ Target platform ]
+
+[ -n "${PLATFORM:-}" ] || bail "No platform specified"
+[ -f $PROJECT_DIR/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
+
+readonly PLATFORM
+
+. $PROJECT_DIR/lib/platform/$PLATFORM.sh
+
+#-- [ Installation ]
+
+#readonly ROOT_VOLUME=$(date +%Y-%m-%d-%H-%M-%S)
+readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
 trap cleanup EXIT
 
+#--[ Command ]
+
 case "${1:-help}" in
     tools)
-        [ $# -eq 2 ] || usage "$1 <PLATFORM>"
-        platform "$2"
+        [ $# -eq 1 ] || usage "$1"
         tools
         ;;
 
-    base)
-        [ $# -eq 2 ] || usage "$1 <PLATFORM>"
-        platform "$2"
-        package_install_dir=$INSTALL_DIR
-        install system-files
-        install linux
-        ;;
-
     install)
-        [ $# -ge 3 ] || usage "$1 <PLATFORM> <PACKAGE>..."
-        platform "$2"
-        shift 2
+        [ $# -ge 2 ] || usage "$1 <PACKAGE>..."
+        shift
+
+        if [ -z "${DESTINATION:-}" ]; then
+            true
+        elif [ -d "$DESTINATION" ]; then
+            package_install_dir=$(realpath "$DESTINATION")
+        elif [ -f "$DESTINATION" ]; then
+            IMAGE="$DESTINATION" image
+            package_install_dir=$ROOT_DIR
+        elif [ -b "$DESTINATION" ]; then
+            DEVICE="$DESTINATION" device
+            package_install_dir=$ROOT_DIR
+        elif [[ "$DESTINATION" == *.img ]]; then
+            IMAGE="$DESTINATION" image
+            package_install_dir=$ROOT_DIR
+        else
+            mkdir -pv "$DESTINATION"
+            package_install_dir=$(realpath "$DESTINATION")
+        fi
+
         for pkg in "$@"; do
             install "$pkg"
         done
         ;;
 
-    image)
-        [ $# -eq 2 ] || [ $# -eq 3 ] || usage "$1 <PLATFORM> [FILE]"
-        platform "$2"
-        image "${3:-$IMAGE_DIR/$2.img}"
+    emu)
+        [ $# -le 2 ] || usage "$1 [IMAGE]"
+        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}" image
+        qemu-system-arm \
+            -nodefaults -no-user-config \
+            -M raspi0 -serial stdio \
+            -kernel $INSTALL_DIR/boot/vmlinux-6.12.38-pi0+ \
+            -append "$(cat $INSTALL_DIR/boot/cmdline.txt)" \
+            -hda
         ;;
 
     help)

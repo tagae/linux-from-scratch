@@ -1,6 +1,6 @@
 # https://sourceware.org/glibc/manual/latest/html_node/Configuring-and-compiling.html
 
-: ${package_version:=2.39}
+: ${package_version:=2.41}
 : ${package_source:=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar.xz}
 
 : ${prefix:=/usr}

@@ -1,6 +1,5 @@
 image() {
     readonly IMAGE
-    readonly ROOT_VOLUME=$(date +%Y-%m-%d-%H-%M-%S)
     stage image
     create_image
     attach_image
@@ -63,8 +62,8 @@ create_filesystems() {
 mount_partitions() {
     BASE_DIR=$(mktemp -dt lfs-XXXXXX)
     mount -v $BASE_DEVICE $BASE_DIR
-    mkdir -p $BASE_DIR/system
-    ROOT_DIR=$BASE_DIR/system/$ROOT_VOLUME
+    mkdir -p $BASE_DIR/root
+    ROOT_DIR=$BASE_DIR/root/$ROOT_VOLUME
     btrfs subvolume create $ROOT_DIR
 
     BOOT_DIR=$ROOT_DIR/boot

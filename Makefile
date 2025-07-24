@@ -1,4 +1,4 @@
-.PHONY: default check clean distclean pristine
+.PHONY: default check clean distclean pristine tools base
 
 OS_NAME := $(shell uname -s)
 
@@ -8,11 +8,11 @@ else
 	.DEFAULT_GOAL := tools
 endif
 
-alpine-sh:
-	docker compose run --rm --build -ti lfs-alpine sh
-
 tools:
-	./lfs tools pi0
+	./lfs tools
+
+base:
+	./lfs install system-files linux boot#cmdline
 
 clean:
 	git clean -dxf work
@@ -25,6 +25,15 @@ distclean: clean
 pristine:
 	rm -rf source/linux-*
 	git clean -dxf
+
+docker-sh:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose run --rm --build alpine
+
+docker-clean:
+	docker volume rm -f linux-from-scratch_tools linux-from-scratch_work linux-from-scratch_install
+
+docker-distclean: docker-clean
+	docker volume rm -f linux-from-scratch_source
 
 image/%.img:
 	./lfs image $*
