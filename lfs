@@ -64,18 +64,6 @@ export MAKEFLAGS=-j$(nproc)
 
 readonly LC_ALL MAKEFLAGS
 
-if ! [ -x $DOWNLOAD_DIR/config.guess ]; then
-    mkdir -p $DOWNLOAD_DIR
-    wget -O $DOWNLOAD_DIR/config.guess \
-         'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
-    chmod +x $DOWNLOAD_DIR/config.guess
-fi
-
-# https://www.gnu.org/software/automake/manual/html_node/Cross_002dCompilation.html
-readonly build=$($DOWNLOAD_DIR/config.guess)
-: ${host:=$build}
-: ${target:=$build}
-
 PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$PATH
 
 #--[ Target platform ]

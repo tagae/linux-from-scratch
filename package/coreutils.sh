@@ -4,6 +4,10 @@
 : ${prefix:=/usr}
 
 prepare() {
+    : ${build:=$($package_source_dir/build-aux/config.guess)}
+    : ${host:=$build}
+    : ${target:=$host}
+
     $package_source_dir/configure \
         --prefix=$prefix \
         --host=$host \

@@ -6,6 +6,10 @@
 : ${gprofng:=yes}
 
 prepare() {
+    : ${build:=$($package_source_dir/config.guess)}
+    : ${host:=$build}
+    : ${target:=$host}
+
     $package_source_dir/configure \
         --prefix=$prefix \
         --host=$host \

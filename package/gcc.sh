@@ -29,6 +29,10 @@ fetch() {
 }
 
 prepare() {
+    : ${build:=$($package_source_dir/config.guess)}
+    : ${host:=$build}
+    : ${target:=$host}
+
     case $package_component in
         libstdc++)
             $package_source_dir/libstdc++-v3/configure \

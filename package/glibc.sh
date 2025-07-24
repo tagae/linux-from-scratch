@@ -8,6 +8,10 @@
 : ${shared:=yes}
 
 prepare() {
+    : ${build:=$($package_source_dir/scripts/config.guess)}
+    : ${host:=$build}
+    : ${target:=$host}
+
     # host=target is not a mistake
     $package_source_dir/configure \
         --prefix=$prefix \
