@@ -26,8 +26,8 @@ pristine:
 	rm -rf source/linux-*
 	git clean -dxf
 
-docker-sh:
-	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose run --rm --build alpine
+alpine-sh:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose run --build --rm alpine
 
 docker-clean:
 	docker volume rm -f linux-from-scratch_tools linux-from-scratch_work linux-from-scratch_install

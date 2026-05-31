@@ -22,7 +22,8 @@ prepare() {
         --with-default-hash-style=gnu \
         --enable-gprofng=$gprofng \
         --disable-multilib \
-        --disable-nls
+        --disable-nls \
+        --disable-werror
 }
 
 build() {

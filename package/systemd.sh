@@ -6,24 +6,26 @@
 
 prepare() {
     cat > meson.ini <<EOF
-[binaries]
-c = '$target-gcc'
-cpp = '$target-g++'
-ar = '$target-ar'
-strip = '$target-strip'
-pkgconfig = 'pkg-config'
-llvm-config = ''
-
 [host_machine]
 system = 'linux'
 cpu_family = '$ARCH'
 cpu = '$tune'
 endian = 'little'
 
-[paths]
+[binaries]
+c = '$target-gcc'
+cpp = '$target-g++'
+ar = '$target-ar'
+strip = '$target-strip'
+pkg-config = 'pkg-config'
+
+[built-in options]
 prefix = '$prefix'
 sys_root = '$sysroot'
 EOF
+
+    export PKG_CONFIG_PATH=$package_install_dir/usr/lib/pkgconfig
+    export PKG_CONFIG_SYSROOT_DIR=$package_install_dir
 
     meson setup $package_source_dir \
           --cross-file meson.ini \

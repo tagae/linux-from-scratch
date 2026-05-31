@@ -40,40 +40,8 @@ services:
         source: lfs
         target: /var/lfs/lfs
 
-  busybox:
-    image: busybox:1.37.0
-    volumes:
-      - type: bind
-        source: $PWD/download
-        target: /var/lfs/download
-      - type: bind
-        source: $PWD/image
-        target: /var/lfs/image
-      - type: volume
-        source: source
-        target: /var/lfs/source
-      - type: volume
-        source: work
-        target: /var/lfs/work
-      - type: volume
-        source: tools
-        target: /var/lfs/tools
-      - type: volume
-        source: install
-        target: /var/lfs/install
-      - type: bind
-        source: lib
-        target: /var/lfs/lib
-      - type: bind
-        source: package
-        target: /var/lfs/package
-      - type: bind
-        source: lfs
-        target: /var/lfs/lfs
-    privileged: true
-
 volumes:
-  tools:
   source:
   work:
+  tools:
   install:

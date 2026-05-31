@@ -57,15 +57,6 @@ done
 
 readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR
 
-#--[ Compilation ]
-
-export LC_ALL=POSIX
-export MAKEFLAGS=-j$(nproc)
-
-readonly LC_ALL MAKEFLAGS
-
-PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$PATH
-
 #--[ Target platform ]
 
 [ -n "${PLATFORM:-}" ] || bail "No platform specified"
@@ -74,6 +65,15 @@ PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$PATH
 readonly PLATFORM
 
 . $PROJECT_DIR/lib/platform/$PLATFORM.sh
+
+#--[ Compilation ]
+
+export LC_ALL=POSIX
+export MAKEFLAGS=-j$(nproc)
+
+readonly LC_ALL MAKEFLAGS
+
+PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$PATH
 
 #-- [ Installation ]
 
