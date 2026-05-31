@@ -47,6 +47,12 @@ install() {
                 INSTALL_MOD_PATH=$package_install_dir \
                 install dtbs_install modules_install
             ;;
+        cmdline)
+            echo > $package_install_dir/boot/cmdline.txt \
+                 console=serial0,115200 \
+                 root=LABEL=base rootfstype=btrfs rootflags=subvol=system/$ROOT_VOLUME \
+                 rootwait
+            ;;
         *)
             default_install
             ;;

@@ -1,15 +1,18 @@
-.PHONY: default clean distclean pristine
+.PHONY: default check clean distclean pristine tools base
 
 OS_NAME := $(shell uname -s)
 
 ifeq ($(OS_NAME), Darwin)
-	.DEFAULT_GOAL := default-macos
+	.DEFAULT_GOAL := tools
 else
-	.DEFAULT_GOAL := default
+	.DEFAULT_GOAL := tools
 endif
 
-default:
-	./lfs tools pi0
+tools:
+	./lfs tools
+
+base:
+	./lfs install system-files linux boot#cmdline
 
 clean:
 	git clean -dxf work
@@ -23,11 +26,20 @@ pristine:
 	rm -rf source/linux-*
 	git clean -dxf
 
+alpine-sh:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose run --build --rm alpine
+
+docker-clean:
+	docker volume rm -f linux-from-scratch_tools linux-from-scratch_work linux-from-scratch_install
+
+docker-distclean: docker-clean
+	docker volume rm -f linux-from-scratch_source
+
 image/%.img:
 	./lfs image $*
 
 # glibc must be built in a case-sensitive filesystem
-default-macos:
+all-macos:
 	test -f lfs.sparseimage || hdiutil create -size 8g -fs 'Case-sensitive APFS' -type SPARSE -volname LFS lfs
 	open lfs.sparseimage
 	sleep 2
