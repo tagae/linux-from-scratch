@@ -1,5 +1,8 @@
+.DS_Store
+/.idea/
 /archive/
 /download/
+/image/
 /source/
 /sysroot/
 /tools/

@@ -1,13 +1,23 @@
-# usage: UID=$(id -u) GID=$(id -g) docker compose run --build --rm -ti lfs ./lfs
-
 services:
-  lfs:
+  alpine:
     build:
-      dockerfile: Dockerfile.debian
+      dockerfile: Dockerfile.alpine
+      args:
+        HOST_UID: $HOST_UID
+        HOST_GID: $HOST_GID
+    stdin_open: true
+    tty: true
+    privileged: true
+    environment:
+      PLATFORM:
+      DESTINATION:
     volumes:
       - type: bind
         source: $PWD/download
         target: /var/lfs/download
+      - type: bind
+        source: $PWD/image
+        target: /var/lfs/image
       - type: volume
         source: source
         target: /var/lfs/source
@@ -17,16 +27,21 @@ services:
       - type: volume
         source: tools
         target: /var/lfs/tools
-
-    #  - type: bind
-    #    source: $PWD
-    #    target: /var/lfs
-    working_dir: /var/lfs
-    #privileged: true
-    restart: no
-    #user: $UID:$GID
+      - type: volume
+        source: install
+        target: /var/lfs/install
+      - type: bind
+        source: lib
+        target: /var/lfs/lib
+      - type: bind
+        source: package
+        target: /var/lfs/package
+      - type: bind
+        source: lfs
+        target: /var/lfs/lfs
 
 volumes:
   source:
   work:
   tools:
+  install:

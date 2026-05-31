@@ -1,25 +1,3 @@
-platform() {
-    readonly PLATFORM=$1
-    [ -f lib/platform/"$PLATFORM".sh ] || bail "Unsupported platform '$PLATFORM'"
-
-    export LC_ALL=POSIX
-    export MAKEFLAGS=-j$(nproc)
-    readonly LC_ALL MAKEFLAGS
-
-    if ! [ -x $DOWNLOAD_DIR/config.guess ]; then
-        mkdir -p $DOWNLOAD_DIR
-        wget -O $DOWNLOAD_DIR/config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
-        chmod +x $DOWNLOAD_DIR/config.guess
-    fi
-
-    # https://www.gnu.org/software/automake/manual/html_node/Cross_002dCompilation.html
-    readonly build=$($DOWNLOAD_DIR/config.guess)
-    : ${host:=$build}
-    : ${target:=$build}
-
-    . lib/platform/$PLATFORM.sh
-}
-
 install() {
     (
         _source $1
@@ -37,6 +15,7 @@ archive() {
 }
 
 unarchive() {
+    echo "Unarchiving $1 on $INSTALL_DIR..."
     tar xf $1 -C $INSTALL_DIR
 }
 
@@ -51,22 +30,20 @@ _source() {
 
     _once() {
         local step=$1
-        if [ -f .$step-$package_component ]; then
+        if [ -f $package_build_dir/.$step-$package_component ]; then
             echo "$step (done)"
         else
-            $step
-            touch .$step-$package_component
+            $step && touch $package_build_dir/.$step-$package_component
         fi
     }
 
     _install() {
-        mkdir -p $package_build_dir
+        mkdir -p $package_build_dir $package_install_dir
         cd $package_build_dir
-
-        _once fetch
-        _once prepare
-        _once build
-        _once install
+        ( _once fetch; )
+        ( _once prepare; )
+        ( _once build; )
+        ( _once install; )
     }
 
     _archive() {
@@ -96,12 +73,15 @@ _source() {
     }
 
     default_fetch() {
-        case $package_source in
+        case ${package_source:-none} in
+            https://*.tar.*)
+                get $package_source
+                ;;
             https://github.com*)
                 git_checkout $package_source $package_branch $package_source_dir
                 ;;
-            https://*.tar.*)
-                get $package_source
+            none)
+                echo "$package_product: nothing to fetch"
                 ;;
             *)
                 die 1 "Unsupported package source: $package_source"
@@ -118,18 +98,22 @@ _source() {
     }
 
     default_install() {
+        # If a package exists, it is because there is something to install.
         bail "Unknown package product '$package_product'"
     }
 
     default_archive() {
         ! [ -f $package_archive ] || return 0
         mkdir -p $(dirname $package_archive)
+        echo "Expanding $package_archive..."
         tar cjf $ARCHIVE_DIR/$PLATFORM/$package_archive -C $package_install_dir .
     }
 
     . $PACKAGE_DIR/$package_name.sh
 
-    case $package_source in
+    case ${package_source:-none} in
+        https://*.tar.*)
+            ;;
         https://github.com*)
             if [ -z "${package_branch:-}" ]; then
                 package_branch_file=$WORK_DIR/.$package_name-branch
@@ -141,12 +125,15 @@ _source() {
             fi
             : ${package_version:=$package_branch}
             ;;
+        none)
+            ;;
     esac
 
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
+    : ${package_files_dir:=$PACKAGE_DIR/$package_name}
     : ${package_source_dir:=$SOURCE_DIR/$package_name-$package_version}
     : ${package_work_dir:=$WORK_DIR/$package_release}
-    : ${package_build_dir:=$package_work_dir/build}
+    : ${package_build_dir:=$package_work_dir/build/$package_component}
     : ${package_install_dir:=$package_work_dir/install/$package_component}
     if [ "$package_name" = "$package_component" ]; then
         : ${package_product:=$package_name}

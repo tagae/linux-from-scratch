@@ -1,15 +1,15 @@
-: ${package_version:=2.42}
+: ${package_version:=2.44}
 : ${package_source:=https://ftp.gnu.org/gnu/binutils/binutils-$package_version.tar.xz}
 
 : ${prefix:=/usr}
 : ${sysroot:=/}
 : ${gprofng:=yes}
 
-#        --with-libiconv-prefix=/opt/homebrew/opt/libiconv \
-#        --disable-lipquadmath \
-#        --disable-libquadmath-support
-
 prepare() {
+    : ${build:=$($package_source_dir/config.guess)}
+    : ${host:=$build}
+    : ${target:=$host}
+
     $package_source_dir/configure \
         --prefix=$prefix \
         --host=$host \
@@ -22,7 +22,8 @@ prepare() {
         --with-default-hash-style=gnu \
         --enable-gprofng=$gprofng \
         --disable-multilib \
-        --disable-nls
+        --disable-nls \
+        --disable-werror
 }
 
 build() {

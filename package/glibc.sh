@@ -1,21 +1,17 @@
 # https://sourceware.org/glibc/manual/latest/html_node/Configuring-and-compiling.html
 
-: ${package_version:=2.39}
+: ${package_version:=2.41}
 : ${package_source:=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar.xz}
 
 : ${prefix:=/usr}
 : ${headers:=/usr/include}
 : ${shared:=yes}
 
-# --with-libiconv-prefix=/opt/homebrew/opt/libiconv \
-#        libc_cv_forced_unwind=yes \
-#        libc_cv_c_cleanup=yes
-#        --disable-lipquadmath \
-#        --disable-libquadmath-support \
-#        --disable-libitm
-
-
 prepare() {
+    : ${build:=$($package_source_dir/scripts/config.guess)}
+    : ${host:=$build}
+    : ${target:=$host}
+
     # host=target is not a mistake
     $package_source_dir/configure \
         --prefix=$prefix \
@@ -35,8 +31,6 @@ prepare() {
 }
 
 build() {
-    #arm-scratch-linux-gnueabihf-gcc -H -c /dev/null
-    #exit 1
     case $package_component in
         glibc)
             make
