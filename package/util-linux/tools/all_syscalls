@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+SED="$1"; shift; OUTPUT="$1"; shift
+printf '#include <sys/syscall.h>\n' | \
+    "$@" -MD -MF "$OUTPUT.deps" -dM -E - | \
+    "$SED" -n -e 's/^#define __NR_\([^ ]*\).*$/UL_SYSCALL("\1", __NR_\1)/p' | \
+    sort > "$OUTPUT"

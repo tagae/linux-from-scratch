@@ -4,14 +4,28 @@
 : ${prefix:=/usr}
 
 prepare() {
-    cd $package_source_dir
-    make ARCH=$ARCH CROSS_COMPILE=$target- defconfig
-    sed -i 's|.*CONFIG_STATIC.*|CONFIG_STATIC=y|' .config
-    make ARCH=$ARCH CROSS_COMPILE=$target- CFLAGS="-I$TOOL_DIR/usr/include"
+    make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- defconfig
+    # Answer all new Kconfig prompts with defaults first
+    yes "" | make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- oldconfig
+    # Then apply our overrides so they are not overridden by oldconfig defaults
+    sed -i \
+        -e 's|^# CONFIG_STATIC is not set$|CONFIG_STATIC=y|' \
+        -e 's|^CONFIG_STATIC=.*$|CONFIG_STATIC=y|' \
+        -e 's|^CONFIG_TC=y|# CONFIG_TC is not set|' \
+        -e 's|^CONFIG_SHA1_HWACCEL=y|# CONFIG_SHA1_HWACCEL is not set|' \
+        -e 's|^CONFIG_SHA256_HWACCEL=y|# CONFIG_SHA256_HWACCEL is not set|' \
+        $package_source_dir/.config
+    make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- silentoldconfig </dev/null
 }
 
 build() {
-    cd $package_source_dir
-    set -x
-    make ARCH=$ARCH CROSS_COMPILE=$target- CONFIG_PREFIX=$LFS/usr install
+    yes "" | make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target-
+}
+
+install() {
+    make -C $package_source_dir \
+        ARCH=$ARCH \
+        CROSS_COMPILE=$target- \
+        CONFIG_PREFIX=$package_install_dir \
+        install
 }

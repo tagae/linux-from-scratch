@@ -75,12 +75,15 @@ readonly LC_ALL MAKEFLAGS
 
 PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$PATH
 
-#-- [ Installation ]
+#--[ Installation ]
 
-#readonly ROOT_VOLUME=$(date +%Y-%m-%d-%H-%M-%S)
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
 trap cleanup EXIT
+
+#--[ System library ]
+
+. $PROJECT_DIR/lib/system.sh
 
 #--[ Command ]
 
@@ -88,6 +91,11 @@ case "${1:-help}" in
     tools)
         [ $# -eq 1 ] || usage "$1"
         tools
+        ;;
+
+    system)
+        [ $# -eq 1 ] || usage "$1"
+        system
         ;;
 
     install)
@@ -104,7 +112,7 @@ case "${1:-help}" in
         elif [ -b "$DESTINATION" ]; then
             DEVICE="$DESTINATION" device
             package_install_dir=$ROOT_DIR
-        elif [[ "$DESTINATION" == *.img ]]; then
+        elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
             IMAGE="$DESTINATION" image
             package_install_dir=$ROOT_DIR
         else
@@ -117,19 +125,54 @@ case "${1:-help}" in
         done
         ;;
 
-    emu)
+    image)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
-        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}" image
-        qemu-system-arm \
-            -nodefaults -no-user-config \
-            -M raspi0 -serial stdio \
-            -kernel $INSTALL_DIR/boot/vmlinux-6.12.38-pi0+ \
-            -append "$(cat $INSTALL_DIR/boot/cmdline.txt)" \
-            -hda
+        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
+        image
+        populate_image
+        ;;
+
+    qemu)
+        [ $# -le 2 ] || usage "$1 [IMAGE]"
+        _image="${2:-$IMAGE_DIR/$PLATFORM.img}"
+
+        if [ ! -f "$_image" ]; then
+            IMAGE="$_image" image
+            populate_image
+            unmount_all
+        fi
+
+        _kernel="$INSTALL_DIR/boot/kernel.img"
+        [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system' first)"
+
+        _dtb="${DTB:+$INSTALL_DIR/boot/$DTB}"
+        if [ -f "$INSTALL_DIR/boot/cmdline.txt" ]; then
+            _append="$(cat $INSTALL_DIR/boot/cmdline.txt)"
+        elif [ "$PLATFORM" = virt ]; then
+            _append="console=hvc0 root=/dev/vda1 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait"
+        else
+            _append="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
+        fi
+
+        set -- -M $QEMU_MACHINE -nodefaults -no-user-config ${QEMU_FLAGS:-} -no-reboot -kernel "$_kernel"
+        [ -n "$_dtb" ] && [ -f "$_dtb" ] && set -- "$@" -dtb "$_dtb"
+        set -- "$@" -drive "file=$_image,format=raw,if=${QEMU_DISK_IF:-sd}" -append "$_append"
+        exec $QEMU "$@"
         ;;
 
     help)
-        echo "Usage: $(basename "$0") (tools|install|image)"
+        echo "Usage: $(basename "$0") [-p PLATFORM] (tools|system|install|image|qemu)"
+        echo ""
+        echo "Commands:"
+        echo "  tools            Build cross-compilation toolchain"
+        echo "  system           Build all final system packages"
+        echo "  install <PKG>... Install one or more packages"
+        echo "  image [FILE]     Create bootable disk image"
+        echo "  qemu [FILE]      Boot image in QEMU (creates image if needed)"
+        echo ""
+        echo "Options:"
+        echo "  -p PLATFORM      Target platform (pi0, pi4, pi5)"
+        echo "  -d DESTINATION   Install destination (dir, device, or .img file)"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
         ;;
 

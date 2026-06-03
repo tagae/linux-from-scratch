@@ -1,5 +1,0 @@
-# file         mount        type     options             dump  fsck
-# system       point                                           order
-
-/dev/vda1       /            <fff>    defaults            1     1
-#/dev/<yyy>     swap         swap     pri=1               0     0
