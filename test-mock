@@ -1,0 +1,44 @@
+#!/usr/bin/expect -f
+# Validate the test-virt expect logic against mock-login (no QEMU needed).
+
+set timeout 10
+
+spawn ./mock-login
+
+expect {
+    "login:" { }
+    timeout   { puts "\nFAIL: timed out waiting for login prompt"; exit 1 }
+    eof       { puts "\nFAIL: process exited before login prompt"; exit 1 }
+}
+
+send "root\r"
+
+expect {
+    "Password:" {
+        send "root\r"
+        expect {
+            -re {[#$] $} { }
+            timeout { puts "\nFAIL: timed out after password"; exit 1 }
+            eof     { puts "\nFAIL: process exited after password"; exit 1 }
+        }
+    }
+    -re {[#$] $} { }
+    timeout { puts "\nFAIL: timed out after username"; exit 1 }
+    eof     { puts "\nFAIL: process exited after username"; exit 1 }
+}
+
+send "poweroff\r"
+
+expect {
+    eof     { }
+    timeout { puts "\nFAIL: timed out waiting for process to exit after poweroff"; exit 1 }
+}
+
+lassign [wait] _ _ _ exit_code
+if {$exit_code == 0} {
+    puts "PASS: login prompt, root login, poweroff all work correctly"
+    exit 0
+} else {
+    puts "FAIL: process exited with code $exit_code"
+    exit 1
+}

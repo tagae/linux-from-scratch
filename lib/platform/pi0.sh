@@ -9,4 +9,9 @@ readonly abi=aapcs-linux
 readonly fpu=vfpv2
 readonly float=hard
 
-readonly kernel=kernel7
+readonly kernel=kernel
+readonly defconfig=bcmrpi_defconfig
+readonly DTB=bcm2835-rpi-zero.dtb
+
+readonly QEMU=qemu-system-arm
+readonly QEMU_MACHINE=raspi0

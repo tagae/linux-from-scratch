@@ -1,6 +1,6 @@
-* `lfs` is the frontend command
-* `lib` contains the LFS commands implementation
-* `package` contains definitions for software bundles that can be installed on the LFS system
+* `lfs` is the frontend command.
+* `lib` contains the LFS command implementations.
+* `package` contains definitions for software bundles that can be installed on the LFS system.
 
 
 Pointers

@@ -1,8 +1,8 @@
 # https://gcc.gnu.org/install/build.html
 
-: ${package_version:=14.2.0}
+: ${package_version:=16.1.0}
 : ${package_source:=https://ftp.gnu.org/gnu/gcc/gcc-$package_version/gcc-$package_version.tar.xz}
-: ${glibc_version:=2.41}
+: ${glibc_version:=2.43}
 
 : ${sysroot:=/}
 : ${prefix:=/usr}
@@ -42,7 +42,7 @@ prepare() {
                 --disable-multilib \
                 --disable-nls \
                 --disable-libstdcxx-pch \
-                --with-gxx-include-dir=$(dirname $TOOL_DIR)/tools/$target/include/c++/$package_version
+                --with-gxx-include-dir=$TOOL_DIR/$target/include/c++/$package_version
             ;;
         *)
             # https://gcc.gnu.org/install/configure.html
@@ -50,13 +50,14 @@ prepare() {
                 --prefix=$prefix \
                 --host=$host \
                 --target=$target \
-                --with-arch=$arch \
-                --with-float=$float \
-                --with-fpu=$fpu \
-                --with-tune=$tune \
-                --with-abi=$abi \
+                ${arch:+--with-arch=$arch} \
+                ${float:+--with-float=$float} \
+                ${fpu:+--with-fpu=$fpu} \
+                ${tune:+--with-tune=$tune} \
+                ${abi:+--with-abi=$abi} \
                 --with-glibc-version=$glibc_version \
                 --with-sysroot=$sysroot \
+                ${build_sysroot:+--with-build-sysroot=$build_sysroot} \
                 --with-newlib=$newlib \
                 --with-headers=$headers \
                 --enable-default-pie \
@@ -83,6 +84,7 @@ build() {
             ;;
         *)
             make all-gcc all-target-libgcc
+            if [ "${libatomic:-yes}" != no ]; then make all-target-libatomic; fi
             ;;
     esac
 }
@@ -94,6 +96,7 @@ install() {
             ;;
         *)
             make install-gcc install-target-libgcc DESTDIR=$package_install_dir
+            if [ "${libatomic:-yes}" != no ]; then make install-target-libatomic DESTDIR=$package_install_dir; fi
             ;;
     esac
 }

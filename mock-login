@@ -1,0 +1,30 @@
+#!/bin/sh
+# Simulate a minimal login prompt for testing test-virt expect logic.
+# Accepts root/root, shows a shell prompt, exits 0 on poweroff.
+
+printf "linux login: "
+read username
+if [ "$username" != "root" ]; then
+    echo "Login incorrect"
+    exit 1
+fi
+
+printf "Password: "
+stty -echo 2>/dev/null
+read password
+stty echo 2>/dev/null
+echo
+
+if [ "$password" != "root" ]; then
+    echo "Login incorrect"
+    exit 1
+fi
+
+while true; do
+    printf "# "
+    read cmd
+    case "$cmd" in
+        poweroff) exit 0 ;;
+        *) echo "$cmd: command not found" ;;
+    esac
+done

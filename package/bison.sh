@@ -2,18 +2,15 @@
 : ${package_source:=https://ftp.gnu.org/gnu/bison/bison-$package_version.tar.xz}
 
 : ${prefix:=/usr}
-: ${sysroot:=/}
 
 prepare() {
+    : ${build:=$($package_source_dir/build-aux/config.guess)}
+    : ${host:=$build}
+
     $package_source_dir/configure \
         --prefix=$prefix \
         --host=$host \
-        --target=$target \
-        --with-sysroot=$sysroot \
-        --with-arch=$arch \
-        --with-float=$float \
-        --with-fpu=$fpu \
-        --with-tune=$tune \
+        --build=$build \
         --disable-nls
 }
 

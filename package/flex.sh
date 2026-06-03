@@ -2,13 +2,15 @@
 : ${package_source:=https://github.com/westes/flex/releases/download/v$package_version/flex-$package_version.tar.gz}
 
 : ${prefix:=/usr}
-: ${sysroot:=/}
 
 prepare() {
+    : ${build:=$($package_source_dir/build-aux/config.guess)}
+    : ${host:=$build}
+
     $package_source_dir/configure \
         --prefix=$prefix \
         --host=$host \
-        --target=$target \
+        --build=$build \
         --disable-static
 }
 
