@@ -1,0 +1,12 @@
+[Unit]
+Description=Boot Partition
+ConditionPathExists=/dev/disk/by-label/BOOT
+
+[Mount]
+What=LABEL=BOOT
+Where=/boot
+Type=vfat
+Options=defaults
+
+[Install]
+WantedBy=local-fs.target

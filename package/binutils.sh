@@ -1,4 +1,4 @@
-: ${package_version:=2.44}
+: ${package_version:=2.46.0}
 : ${package_source:=https://ftp.gnu.org/gnu/binutils/binutils-$package_version.tar.xz}
 
 : ${prefix:=/usr}
@@ -15,10 +15,10 @@ prepare() {
         --host=$host \
         --target=$target \
         --with-sysroot=$sysroot \
-        --with-arch=$arch \
-        --with-float=$float \
-        --with-fpu=$fpu \
-        --with-tune=$tune \
+        ${arch:+--with-arch=$arch} \
+        ${float:+--with-float=$float} \
+        ${fpu:+--with-fpu=$fpu} \
+        ${tune:+--with-tune=$tune} \
         --with-default-hash-style=gnu \
         --enable-gprofng=$gprofng \
         --disable-multilib \

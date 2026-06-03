@@ -1,6 +1,6 @@
 # https://sourceware.org/glibc/manual/latest/html_node/Configuring-and-compiling.html
 
-: ${package_version:=2.41}
+: ${package_version:=2.43}
 : ${package_source:=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar.xz}
 
 : ${prefix:=/usr}
@@ -10,20 +10,21 @@
 prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}
     : ${host:=$build}
-    : ${target:=$host}
 
-    # host=target is not a mistake
+    # --host is where glibc will run (the target machine)
+    # --build is the machine doing the compilation
     $package_source_dir/configure \
         --prefix=$prefix \
+        --libdir=$prefix/lib \
         --build=$build \
         --host=$target \
         --target=$target \
-        --with-arch=$arch \
-        --with-float=$float \
-        --with-fpu=$fpu \
-        --with-tune=$tune \
+        ${arch:+--with-arch=$arch} \
+        ${float:+--with-float=$float} \
+        ${fpu:+--with-fpu=$fpu} \
+        ${tune:+--with-tune=$tune} \
         --with-headers=$headers \
-        --enable-kernel=6.1.5 \
+        --enable-kernel=6.1.0 \
         --enable-shared=$shared \
         --disable-multilib \
         --disable-profile \
@@ -45,6 +46,8 @@ install() {
     case $package_component in
         headers)
             make install-headers DESTDIR=$package_install_dir
+            # glibc headers_install doesn't install this one
+            touch $package_install_dir/$prefix/include/gnu/stubs.h
             ;;
         glibc)
             make install DESTDIR=$package_install_dir

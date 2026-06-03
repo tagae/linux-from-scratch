@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./lfs -p * qemu)",
+      "Bash(./lfs qemu *)",
+      "Bash(docker compose *)",
+      "Bash(docker cp *)",
+      "Bash(docker exec *)",
+      "Bash(docker info *)",
+      "Bash(docker rm *)",
+      "Bash(docker run *)",
+      "Bash(docker stop *)",
+      "Bash(docker volume *)",
+      "Bash(grep *)",
+      "Bash(make PLATFORM=* *)",
+      "Bash(make docker-distclean *)",
+      "Bash(qemu-system-arm --version)",
+      "WebFetch(domain:www.linuxfromscratch.org)"
+    ]
+  }
+}

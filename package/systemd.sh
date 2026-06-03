@@ -1,4 +1,4 @@
-: ${package_version:=257.6}
+: ${package_version:=260.2}
 : ${package_source:=https://github.com/systemd/systemd/archive/v$package_version/systemd-$package_version.tar.gz}
 
 : ${prefix:=/usr}
@@ -24,8 +24,8 @@ prefix = '$prefix'
 sys_root = '$sysroot'
 EOF
 
-    export PKG_CONFIG_PATH=$package_install_dir/usr/lib/pkgconfig
-    export PKG_CONFIG_SYSROOT_DIR=$package_install_dir
+    export PKG_CONFIG_PATH=$sysroot/usr/lib/pkgconfig
+    export PKG_CONFIG_SYSROOT_DIR=$sysroot
 
     meson setup $package_source_dir \
           --cross-file meson.ini \
@@ -46,5 +46,16 @@ EOF
           -D nobody-group=nogroup \
           -D sysupdate=disabled \
           -D ukify=disabled \
+          -D openssl=disabled \
+          -D tpm2=disabled \
+          -D p11kit=disabled \
           -D docdir=/usr/share/doc/systemd-$package_version
+}
+
+build() {
+    ninja
+}
+
+install() {
+    DESTDIR=$package_install_dir ninja install
 }
