@@ -1,13 +1,32 @@
-name: Default
+name: Build and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  build:
+  virt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Build pi0 tools
-      run: docker compose run --build --rm lfs ./lfs tools pi0
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost /opt/hostedtoolcache
+          df -h
+
+      - name: Build toolchain
+        run: |
+          HOST_UID=$(id -u) HOST_GID=$(id -g) PLATFORM=virt \
+            docker compose run --build -T --rm alpine ./lfs -p virt tools
+
+      - name: Build system
+        run: |
+          PLATFORM=virt docker compose run -T --rm alpine ./lfs -p virt system
+
+      - name: Install test dependencies
+        run: sudo apt-get install -y qemu-system-arm expect
+
+      - name: Test
+        run: make PLATFORM=virt test
