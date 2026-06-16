@@ -7,8 +7,9 @@ readonly PROJECT_DIR=$(dirname $(realpath "$0"))
 readonly PACKAGE_DIR=$PROJECT_DIR/package
 
 . $PROJECT_DIR/lib/base.sh
-. $PROJECT_DIR/lib/package.sh
+. $PROJECT_DIR/lib/install.sh
 . $PROJECT_DIR/lib/tools.sh
+. $PROJECT_DIR/lib/system.sh
 . $PROJECT_DIR/lib/image.sh
 
 #--[ Command line ]
@@ -81,48 +82,22 @@ readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
 trap cleanup EXIT
 
-#--[ System library ]
-
-. $PROJECT_DIR/lib/system.sh
-
 #--[ Command ]
 
 case "${1:-help}" in
     tools)
-        [ $# -eq 1 ] || usage "$1"
-        tools
+        shift
+        tools "$@"
         ;;
 
     system)
-        [ $# -eq 1 ] || usage "$1"
-        system
+        shift
+        system "$@"
         ;;
 
     install)
-        [ $# -ge 2 ] || usage "$1 <PACKAGE>..."
         shift
-
-        if [ -z "${DESTINATION:-}" ]; then
-            true
-        elif [ -d "$DESTINATION" ]; then
-            package_install_dir=$(realpath "$DESTINATION")
-        elif [ -f "$DESTINATION" ]; then
-            IMAGE="$DESTINATION" image
-            package_install_dir=$ROOT_DIR
-        elif [ -b "$DESTINATION" ]; then
-            DEVICE="$DESTINATION" device
-            package_install_dir=$ROOT_DIR
-        elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
-            IMAGE="$DESTINATION" image
-            package_install_dir=$ROOT_DIR
-        else
-            mkdir -pv "$DESTINATION"
-            package_install_dir=$(realpath "$DESTINATION")
-        fi
-
-        for pkg in "$@"; do
-            install "$pkg"
-        done
+        install "$@"
         ;;
 
     image)

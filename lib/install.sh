@@ -1,9 +1,37 @@
 install() {
-    (
-        _source $1
-        stage "$package_product"
-        _install
-    )
+    case "${1:-help}" in
+        help)
+            echo "Usage: $(basename "$0") install <PACKAGE>..."
+            echo ""
+            if [ $# -eq 1 ]; then exit 0; else exit 1; fi
+            ;;
+    esac
+
+    if [ -z "${DESTINATION:-}" ]; then
+        true
+    elif [ -d "$DESTINATION" ]; then
+        package_install_dir=$(realpath "$DESTINATION")
+    elif [ -f "$DESTINATION" ]; then
+        IMAGE="$DESTINATION" image
+        package_install_dir=$ROOT_DIR
+    elif [ -b "$DESTINATION" ]; then
+        DEVICE="$DESTINATION" device
+        package_install_dir=$ROOT_DIR
+    elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
+        IMAGE="$DESTINATION" image
+        package_install_dir=$ROOT_DIR
+    else
+        mkdir -pv "$DESTINATION"
+        package_install_dir=$(realpath "$DESTINATION")
+    fi
+
+    for pkg in "$@"; do
+        (
+            _source "$pkg"
+            stage "$package_product"
+            _install
+        )
+    done
 }
 
 archive() {

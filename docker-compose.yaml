@@ -5,18 +5,23 @@ services:
       args:
         HOST_UID: $HOST_UID
         HOST_GID: $HOST_GID
-    stdin_open: true
-    tty: true
-    privileged: true
     environment:
-      PLATFORM: ${PLATFORM:-pi0}
-      DESTINATION:
-    volumes:
-      - type: volume
-        source: download
+      PLATFORM:
+    volumes: &volumes
+      - type: bind
+        source: lfs
+        target: /var/lfs/lfs
+      - type: bind
+        source: lib
+        target: /var/lfs/lib
+      - type: bind
+        source: package
+        target: /var/lfs/package
+      - type: bind
+        source: $PWD/download
         target: /var/lfs/download
-      - type: volume
-        source: image
+      - type: bind
+        source: $PWD/image
         target: /var/lfs/image
       - type: volume
         source: source
@@ -25,15 +30,29 @@ services:
         source: work
         target: /var/lfs/work
       - type: volume
-        source: tools
-        target: /var/lfs/tools
-      - type: volume
         source: install
         target: /var/lfs/install
+      - type: volume
+        source: tools
+        target: /var/lfs/tools
+
+  busybox:
+    build:
+      dockerfile: Dockerfile.busybox
+      args:
+        HOST_UID: $HOST_UID
+        HOST_GID: $HOST_GID
+    stdin_open: true
+    tty: true
+    privileged: true
+    environment:
+      PLATFORM:
+      IMAGE_SIZE:
+      DESTINATION:
+    volumes: *volumes
+
 volumes:
-  download:
-  image:
   source:
   work:
-  tools:
   install:
+  tools:

@@ -1,27 +1,44 @@
 tools() {
-    # Cross-binutils: runs on host, produces code for target
+    case "${1:-help}" in
+        bootstrap)
+            tools_bootstrap
+            ;;
+        build)
+            tools_build
+            ;;
+        help)
+            echo "Usage: $(basename "$0") tools <COMMAND>"
+            echo ""
+            echo "Commands:"
+            echo "  bootstrap        Bootstrap the cross-compilation toolchain"
+            echo "  build            Build cross-compilation toolchain"
+            echo ""
+            if [ $# -eq 1 ]; then exit 0; else exit 1; fi
+            ;;
+        *)
+            bail "Unknown command '$1'"
+            ;;
+    esac
+}
+
+tools_bootstrap() {
+    # Target the tools directory by default.
+    package_install_dir=$TOOL_DIR
+
     prefix=$TOOL_DIR sysroot=$INSTALL_DIR package_install_dir=/ gprofng=no install binutils
 
-    # GCC pass 1: minimal compiler (newlib, no shared libs) for building glibc headers
+    # GCC pass 1: minimal compiler for building glibc headers.
     package_variant=pass1 \
         prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
         newlib=yes headers=no shared=no \
         threads=no libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no \
         install gcc
 
-    # Linux kernel headers (for glibc to reference; /usr appended by linux.sh)
-    package_install_dir=$TOOL_DIR install linux#headers
+    # Linux kernel headers (for glibc to reference).
+    install linux#headers
 
-    # Glibc: cross-compiled C library, installed into tools sysroot
-    MAKE=make \
-        package_install_dir=$TOOL_DIR \
-        headers=$TOOL_DIR/usr/include \
-        shared=yes \
-        install glibc
-
-    # On aarch64 without --libdir, glibc installs startup objects to usr/lib64.
-    # Create usr/lib → lib64 so the cross-compiler's sysroot search path resolves them.
-    [ -e $TOOL_DIR/usr/lib ] || ln -s lib64 $TOOL_DIR/usr/lib
+    # GNU C library.
+    headers=$TOOL_DIR/usr/include shared=yes install glibc
 
     # Sanity check: verify cross-compiler produces correct dynamic linker reference.
     # --sysroot=$TOOL_DIR: works whether gcc pass1 or the final gcc is in $TOOL_DIR/bin.
@@ -32,20 +49,21 @@ tools() {
     grep ld-linux a.txt
     rm -f a.out a.txt
 
-    # libstdc++: C++ standard library for the target
-    package_install_dir=$TOOL_DIR install gcc#libstdc++
-    rm -fv \
-       $TOOL_DIR/usr/lib/libstdc++.la \
-       $TOOL_DIR/usr/lib/libstdc++exp.la \
-       $TOOL_DIR/usr/lib/libstdc++fs.la \
-       $TOOL_DIR/usr/lib/libsupc++.la
+    # C++ standard library for the target.
+    install gcc#libstdc++
 
     # GCC final: full cross-compiler, sysroot points to final install dir
     # so that packages built in the system phase link against the final glibc.
     # build_sysroot=$TOOL_DIR directs GCC's own build (fixincludes, libgcc) to
     # the tools sysroot where glibc already lives.
+    #prefix=$TOOL_DIR sysroot=$INSTALL_DIR build_sysroot=$TOOL_DIR package_install_dir=/ install gcc
     prefix=$TOOL_DIR sysroot=$INSTALL_DIR build_sysroot=$TOOL_DIR package_install_dir=/ install gcc
 
-    # Coreutils for the toolchain (provides basic utilities during system build)
-    package_install_dir=$TOOL_DIR install coreutils
+}
+
+tools_build() {
+    package_install_dir=$TOOL_DIR
+
+    # Coreutils for the toolchain.
+    install coreutils
 }

@@ -8,7 +8,6 @@
 : ${prefix:=/usr}
 : ${newlib:=no}
 : ${headers:=$sysroot/usr/include}
-: ${build_time_sysroot:=$sysroot}
 : ${build_sysroot:=$sysroot}
 : ${shared:=yes}
 : ${threads:=yes}
@@ -84,7 +83,9 @@ build() {
             ;;
         *)
             make all-gcc all-target-libgcc
-            if [ "${libatomic:-yes}" != no ]; then make all-target-libatomic; fi
+            if [ "${libatomic:-yes}" != no ]; then
+                make all-target-libatomic
+            fi
             ;;
     esac
 }
@@ -96,7 +97,9 @@ install() {
             ;;
         *)
             make install-gcc install-target-libgcc DESTDIR=$package_install_dir
-            if [ "${libatomic:-yes}" != no ]; then make install-target-libatomic DESTDIR=$package_install_dir; fi
+            if [ "${libatomic:-yes}" != no ]; then
+                make install-target-libatomic DESTDIR=$package_install_dir
+            fi
             ;;
     esac
 }
