@@ -10,7 +10,7 @@ services:
     privileged: true
     environment:
       PLATFORM:
-    volumes: &lfs-volumes
+    volumes:
       - type: bind
         source: lfs
         target: /var/lfs/lfs
@@ -48,9 +48,6 @@ services:
     tty: true
     stdin_open: true
     privileged: true
-    environment:
-      PLATFORM:
-    volumes: *lfs-volumes
 
 volumes:
   source:

@@ -56,9 +56,7 @@ tools_bootstrap() {
     # so that packages built in the system phase link against the final glibc.
     # build_sysroot=$TOOL_DIR directs GCC's own build (fixincludes, libgcc) to
     # the tools sysroot where glibc already lives.
-    #prefix=$TOOL_DIR sysroot=$INSTALL_DIR build_sysroot=$TOOL_DIR package_install_dir=/ install gcc
     prefix=$TOOL_DIR sysroot=$INSTALL_DIR build_sysroot=$TOOL_DIR package_install_dir=/ install gcc
-
 }
 
 tools_build() {
