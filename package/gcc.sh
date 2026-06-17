@@ -17,6 +17,7 @@
 : ${libssp:=yes}
 : ${libvtv:=yes}
 : ${libstdcxx:=yes}
+: ${libsanitizer:=yes}
 : ${languages:=c,c++}
 
 fetch() {
@@ -30,7 +31,7 @@ fetch() {
 prepare() {
     : ${build:=$($package_source_dir/config.guess)}
     : ${host:=$build}
-    : ${target:=$host}
+    [ -n "${target:-}" ] || target=$host
 
     case $package_component in
         libstdc++)
@@ -41,7 +42,7 @@ prepare() {
                 --disable-multilib \
                 --disable-nls \
                 --disable-libstdcxx-pch \
-                --with-gxx-include-dir=$TOOL_DIR/$target/include/c++/$package_version
+                --with-gxx-include-dir=/usr/include/c++/$package_version
             ;;
         *)
             # https://gcc.gnu.org/install/configure.html
@@ -58,7 +59,7 @@ prepare() {
                 --with-sysroot=$sysroot \
                 ${build_sysroot:+--with-build-sysroot=$build_sysroot} \
                 --with-newlib=$newlib \
-                --with-headers=$headers \
+                $([ "$host" != "$target" ] && echo "--with-headers=$headers") \
                 --enable-default-pie \
                 --enable-default-ssp \
                 --disable-nls \
@@ -71,6 +72,7 @@ prepare() {
                 --enable-libssp=$libssp \
                 --enable-libvtv=$libvtv \
                 --enable-libstdcxx=$libstdcxx \
+                --enable-libsanitizer=$libsanitizer \
                 --enable-languages=$languages
             ;;
     esac

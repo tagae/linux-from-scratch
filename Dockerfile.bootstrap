@@ -5,7 +5,7 @@ RUN delgroup dialout # conflicts with macOS
 RUN apk update
 
 # Tools bootstrap.
-RUN apk add build-base rsync bison gawk python3 grep
+RUN apk add build-base rsync bison gawk python3 grep file patchelf
 
 # RUN apk add build-base linux-headers texinfo git flex openssl-dev xz
 # RUN apk add sfdisk multipath-tools btrfs-progs dosfstools

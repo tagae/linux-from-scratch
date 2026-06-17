@@ -8,7 +8,7 @@
 prepare() {
     : ${build:=$($package_source_dir/config.guess)}
     : ${host:=$build}
-    : ${target:=$host}
+    [ -n "${target:-}" ] || target=$host
 
     $package_source_dir/configure \
         --prefix=$prefix \

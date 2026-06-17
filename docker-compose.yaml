@@ -42,12 +42,37 @@ services:
   scratch:
     build:
       dockerfile: Dockerfile.scratch
-      args:
-        HOST_UID: $HOST_UID
-        HOST_GID: $HOST_GID
     tty: true
     stdin_open: true
     privileged: true
+    environment:
+      PLATFORM:
+      LFS_PHASE: scratch
+    volumes:
+      - type: bind
+        source: lfs
+        target: /var/lfs/lfs
+      - type: bind
+        source: lib
+        target: /var/lfs/lib
+      - type: bind
+        source: package
+        target: /var/lfs/package
+      - type: bind
+        source: $PWD/download
+        target: /var/lfs/download
+      - type: volume
+        source: source
+        target: /var/lfs/source
+      - type: volume
+        source: work
+        target: /var/lfs/work
+      - type: volume
+        source: install
+        target: /var/lfs/install
+      - type: volume
+        source: tools
+        target: /var/lfs/tools
 
 volumes:
   source:

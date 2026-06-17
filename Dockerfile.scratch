@@ -1,6 +1,17 @@
+# Builder stage: create the only non-toolchain files the scratch container needs.
+# /bin/sh and /usr/bin/env are dangling symlinks at build time; they resolve once
+# the tools volume is mounted at /var/lfs/tools at runtime.
+FROM alpine:3.23.4 AS symlinks
+RUN mkdir -p /out/bin /out/usr/bin && \
+    ln -s /var/lfs/tools/usr/bin/bash /out/bin/sh && \
+    ln -s /var/lfs/tools/usr/bin/env  /out/usr/bin/env
+
 FROM scratch
+COPY --from=symlinks /out/ /
 
-ARG HOST_UID
-ARG HOST_GID
+ENV PATH=/var/lfs/tools/usr/bin:/var/lfs/tools/cross/bin
+ENV LC_ALL=POSIX
+ENV HOME=/root
+ENV TERM=xterm
 
-USER lfs
+WORKDIR /var/lfs
