@@ -1,3 +1,5 @@
+# Kernel module loading.
+
 : ${package_version:=34.2}
 : ${package_source:=https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-$package_version.tar.xz}
 
