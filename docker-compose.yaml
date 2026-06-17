@@ -1,13 +1,16 @@
 services:
-  alpine:
+  bootstrap:
     build:
-      dockerfile: Dockerfile.alpine
+      dockerfile: Dockerfile.bootstrap
       args:
         HOST_UID: $HOST_UID
         HOST_GID: $HOST_GID
+    tty: true
+    stdin_open: true
+    privileged: true
     environment:
       PLATFORM:
-    volumes: &volumes
+    volumes: &lfs-volumes
       - type: bind
         source: lfs
         target: /var/lfs/lfs
@@ -36,20 +39,18 @@ services:
         source: tools
         target: /var/lfs/tools
 
-  busybox:
+  scratch:
     build:
-      dockerfile: Dockerfile.busybox
+      dockerfile: Dockerfile.scratch
       args:
         HOST_UID: $HOST_UID
         HOST_GID: $HOST_GID
-    stdin_open: true
     tty: true
+    stdin_open: true
     privileged: true
     environment:
       PLATFORM:
-      IMAGE_SIZE:
-      DESTINATION:
-    volumes: *volumes
+    volumes: *lfs-volumes
 
 volumes:
   source:

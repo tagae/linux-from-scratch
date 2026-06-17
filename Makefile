@@ -1,4 +1,4 @@
-.PHONY: tools system clean docker-clean docker-distclean pristine extract qemu test
+.PHONY: tools docker-clean docker-distclean pristine
 
 .DEFAULT_GOAL := .env
 
@@ -10,32 +10,8 @@ PLATFORM ?= virt
 	echo HOST_GID=$$(id -g) >> $@
 
 tools:
-	docker compose run --build --rm alpine ./lfs tools bootstrap
-	docker compose run --build --rm busybox ./lfs tools build
-
-system:
-	docker compose run --build --rm alpine ./lfs system
-
-image/$(PLATFORM).img:
-	PLATFORM=$(PLATFORM) ./lfs image image/$(PLATFORM).img
-
-extract:
-	@set -e; \
-	CNAME=$$(docker run -d \
-		-v linux-from-scratch_install:/install \
-		-v linux-from-scratch_image:/image \
-		alpine sleep 10); \
-	trap "docker rm -f $$CNAME >/dev/null" EXIT; \
-	mkdir -p install image; \
-	rm -rf install/boot; \
-	docker cp $$CNAME:/install/boot install/; \
-	docker cp $$CNAME:/image/$(PLATFORM).img image/
-
-qemu:
-	PLATFORM=$(PLATFORM) ./lfs qemu
-
-test: extract
-	./test-virt
+	docker compose run --build --rm bootstrap ./lfs tools bootstrap
+	docker compose run --build --rm scratch ./lfs tools build
 
 pristine:
 	git clean -dxf
