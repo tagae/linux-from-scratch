@@ -12,8 +12,8 @@ prepare() {
         --host=$host \
         --build=$build \
         --without-bash-malloc \
-        --with-installed-readline \
-        --with-curses
+        --with-curses \
+        --disable-nls
 }
 
 build() {
@@ -22,5 +22,5 @@ build() {
 
 install() {
     make install DESTDIR=$package_install_dir
-    ln -sfv bash $package_install_dir/$prefix/bin/sh
+    ln -sfv bash $package_install_dir$prefix/bin/sh
 }

@@ -5,11 +5,11 @@ install() {
 
     # Create the real directory tree under /usr
     mkdir -pv \
-        usr/bin usr/sbin usr/lib usr/lib64 \
-        usr/include usr/share \
-        boot dev etc \
-        proc root run sys tmp \
-        var/log var/tmp
+          usr/bin usr/sbin usr/lib usr/lib64 \
+          usr/include usr/share \
+          boot dev etc \
+          proc root run sys tmp \
+          var/log var/tmp
 
     # Compatibility symlinks (merged-usr layout: /bin, /sbin, /lib -> usr/*)
     # These must be created BEFORE any package installs to /bin, /sbin, /lib
@@ -34,8 +34,8 @@ install() {
 
     # Mask units that cannot work or are not needed in this minimal build
     mkdir -pv \
-        etc/systemd/system \
-        etc/systemd/system-generators
+          etc/systemd/system \
+          etc/systemd/system-generators
 
     # systemd-logind requires PAM (built without it); mask socket too
     ln -sfv /dev/null etc/systemd/system/systemd-logind.service
@@ -73,7 +73,7 @@ install() {
     # Drop the IP firewall rules from journald — they require BPF/cgroup which we omit
     mkdir -pv etc/systemd/system/systemd-journald.service.d
     printf '[Service]\nIPAddressDeny=\nIPAddressAllow=\n' \
-        > etc/systemd/system/systemd-journald.service.d/no-ip-firewall.conf
+           > etc/systemd/system/systemd-journald.service.d/no-ip-firewall.conf
 
     # Preset file: instruct the first-boot preset to DISABLE all masked units
     # instead of trying to enable them (which would log "Failed to preset" errors)

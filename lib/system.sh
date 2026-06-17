@@ -1,35 +1,33 @@
 _sys() {
-    host=$target \
     prefix=/usr \
     sysroot=$INSTALL_DIR \
-    package_install_dir=$INSTALL_DIR \
     package_variant=final \
     install "$@"
 }
 
 system() {
-    # Kernel headers
-    package_install_dir=$INSTALL_DIR \
-    package_variant=final \
-        install linux#headers
+    case "${1:-help}" in
+        help)
+            echo "Usage: $(basename "$0") system"
+            echo ""
+            if [ $# -eq 1 ]; then exit 0; else exit 1; fi
+            ;;
+        *)
+            bail "Unknown command '$1'"
+            ;;
+    esac
 
-    # Basic directory structure and static /etc files
-    _sys system-files
+    host=$target
+    package_install_dir=$INSTALL_DIR
 
-    # C library — must come before anything that links dynamically
-    host=$target \
-    prefix=/usr \
-    sysroot=$INSTALL_DIR \
-    headers=$INSTALL_DIR/usr/include \
-    package_install_dir=$INSTALL_DIR \
-    package_variant=final \
-        install glibc
-
+    exit 0
+    install system-files
+    install linux#headers
+    headers=$INSTALL_DIR/usr/include install glibc
     # Capabilities — hard systemd dependency
-    _sys libcap
-
+    install libcap
     # Kernel module loading — hard systemd dependency
-    _sys kmod
+    install kmod
 
     # GCC runtime libraries — cross-compiler sysroot is $INSTALL_DIR but the
     # target libs land in $TOOL_DIR/$target/lib or lib64 (arch-dependent).
@@ -54,8 +52,8 @@ system() {
         ln -sfv libstdc++.so.$major $INSTALL_DIR/usr/lib/libstdc++.so
     done
 
-    # Shell and core utilities — statically linked, no further deps
-    _sys busybox
+    # Shell and core utilities.
+    install busybox
 
     # Core userspace utilities (agetty, mount, login, …)
     _sys util-linux

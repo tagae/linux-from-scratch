@@ -14,10 +14,12 @@ prepare() {
         --with-shared \
         --without-debug \
         --without-normal \
-        --with-cxx-shared \
+        --without-cxx \
+        --without-ada \
         --enable-pc-files \
         --with-pkg-config-libdir=/usr/lib/pkgconfig \
-        --enable-widec
+        --enable-widec \
+        --disable-stripping
 }
 
 build() {

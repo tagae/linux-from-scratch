@@ -1,0 +1,26 @@
+FROM alpine:3.23.4
+
+RUN delgroup dialout # conflicts with macOS
+
+RUN apk update
+
+# Tools bootstrap.
+RUN apk add build-base rsync bison gawk python3 grep file patchelf
+
+# RUN apk add build-base linux-headers texinfo git flex openssl-dev xz
+# RUN apk add sfdisk multipath-tools btrfs-progs dosfstools
+# RUN apk add ncurses ncurses-dev meson gperf ninja py3-jinja2
+# RUN apk add coreutils util-linux findutils
+# RUN apk add ripgrep wget pkgconf bzip2 sudo
+# RUN echo 'lfs ALL=(root) NOPASSWD: /sbin/losetup,/usr/sbin/kpartx,/sbin/sfdisk,/sbin/mkfs.btrfs,/sbin/mkfs.fat,/bin/mount,/bin/umount,/sbin/btrfs,/usr/bin/fallocate,/bin/cp,/bin/mkdir,/bin/tar' > /etc/sudoers.d/lfs
+# RUN chmod 440 /etc/sudoers.d/lfs
+
+ARG HOST_UID
+ARG HOST_GID
+RUN addgroup -g $HOST_GID lfs && adduser -D -H -u $HOST_UID -G lfs lfs
+
+RUN mkdir -pv              /var/lfs/download /var/lfs/image /var/lfs/install /var/lfs/lib /var/lfs/package /var/lfs/source /var/lfs/tools /var/lfs/work
+RUN chown lfs:lfs /var/lfs /var/lfs/download /var/lfs/image /var/lfs/install /var/lfs/lib /var/lfs/package /var/lfs/source /var/lfs/tools /var/lfs/work
+
+USER lfs
+WORKDIR /var/lfs
