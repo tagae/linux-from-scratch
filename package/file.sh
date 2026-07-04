@@ -1,4 +1,4 @@
-: ${package_version:=5.47}
+: ${package_version:=5.48}
 : ${package_source:=https://astron.com/pub/file/file-$package_version.tar.gz}
 
 : ${prefix:=/usr}

@@ -23,18 +23,12 @@ services:
       - type: bind
         source: $PWD/download
         target: /var/lfs/download
-      - type: bind
-        source: $PWD/image
-        target: /var/lfs/image
       - type: volume
         source: source
         target: /var/lfs/source
       - type: volume
         source: work
         target: /var/lfs/work
-      - type: volume
-        source: install
-        target: /var/lfs/install
       - type: volume
         source: tools
         target: /var/lfs/tools

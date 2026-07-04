@@ -60,7 +60,7 @@ readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE
 
 #--[ Target platform ]
 
-[ -n "${PLATFORM:-}" ] || bail "No platform specified"
+: ${PLATFORM:=virt}
 [ -f $PROJECT_DIR/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
 
 readonly PLATFORM
@@ -82,6 +82,8 @@ if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
 else
     PATH=$TOOL_DIR/cross/bin:$PATH
 fi
+
+readonly PATH
 export PATH
 
 #--[ Installation ]

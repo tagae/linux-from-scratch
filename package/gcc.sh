@@ -9,7 +9,9 @@
 : ${newlib:=no}
 : ${headers:=$sysroot/usr/include}
 : ${build_sysroot:=$sysroot}
+: ${nls:=no}
 : ${shared:=yes}
+: ${multilib:=no}
 : ${threads:=yes}
 : ${libatomic:=yes}
 : ${libgomp:=yes}
@@ -17,7 +19,7 @@
 : ${libssp:=yes}
 : ${libvtv:=yes}
 : ${libstdcxx:=yes}
-: ${libsanitizer:=yes}
+: ${fixincludes:=yes}
 : ${languages:=c,c++}
 
 fetch() {
@@ -31,7 +33,7 @@ fetch() {
 prepare() {
     : ${build:=$($package_source_dir/config.guess)}
     : ${host:=$build}
-    [ -n "${target:-}" ] || target=$host
+    : ${target:=$host}
 
     case $package_component in
         libstdc++)
@@ -39,8 +41,8 @@ prepare() {
                 --host=$target \
                 --build=$build \
                 --prefix=$prefix \
-                --disable-multilib \
-                --disable-nls \
+                --enable-multilib=$multilib \
+                --enable-nls=$nls \
                 --disable-libstdcxx-pch \
                 --with-gxx-include-dir=/usr/include/c++/$package_version
             ;;
@@ -59,12 +61,13 @@ prepare() {
                 --with-sysroot=$sysroot \
                 ${build_sysroot:+--with-build-sysroot=$build_sysroot} \
                 --with-newlib=$newlib \
-                $([ "$host" != "$target" ] && echo "--with-headers=$headers") \
+                --with-headers=$headers \
                 --enable-default-pie \
                 --enable-default-ssp \
-                --disable-nls \
+                --enable-fixincludes=$fixincludes \
+                --enable-nls=$nls \
                 --enable-shared=$shared \
-                --disable-multilib \
+                --enable-multilib=$multilib \
                 --enable-threads=$threads \
                 --enable-libatomic=$libatomic \
                 --enable-libgomp=$libgomp \
@@ -72,7 +75,6 @@ prepare() {
                 --enable-libssp=$libssp \
                 --enable-libvtv=$libvtv \
                 --enable-libstdcxx=$libstdcxx \
-                --enable-libsanitizer=$libsanitizer \
                 --enable-languages=$languages
             ;;
     esac
