@@ -2,6 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/make/make-$package_version.tar.gz}
 
 : ${prefix:=/usr}
+: ${nls:=no}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,7 +12,7 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --disable-nls
+        --enable-nls=$nls
 }
 
 build() {

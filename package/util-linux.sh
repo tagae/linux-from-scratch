@@ -1,4 +1,4 @@
-: ${package_version:=2.42.1}
+: ${package_version:=2.42.2}
 : ${package_source:=https://www.kernel.org/pub/linux/utils/util-linux/v2.42/util-linux-$package_version.tar.xz}
 
 : ${prefix:=/usr}
@@ -6,11 +6,6 @@
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
     : ${host:=$build}
-
-    # tools/all_errnos and all_syscalls use #!/bin/bash; replace with /bin/sh versions
-    cp $package_files_dir/tools/all_errnos $package_source_dir/tools/all_errnos
-    cp $package_files_dir/tools/all_syscalls $package_source_dir/tools/all_syscalls
-    chmod +x $package_source_dir/tools/all_errnos $package_source_dir/tools/all_syscalls
 
     $package_source_dir/configure \
         --prefix=$prefix \

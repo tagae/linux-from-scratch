@@ -10,6 +10,7 @@
 : ${multilib:=no}
 : ${profile:=no}
 : ${nscd:=no}
+: ${werror:=no}
 
 prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}

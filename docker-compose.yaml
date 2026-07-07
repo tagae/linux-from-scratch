@@ -1,7 +1,7 @@
 services:
   bootstrap:
     build:
-      dockerfile: Dockerfile.bootstrap
+      dockerfile: Dockerfile.bootstrap-debian
       args:
         HOST_UID: $HOST_UID
         HOST_GID: $HOST_GID

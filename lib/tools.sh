@@ -38,6 +38,17 @@ tools_bootstrap() {
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
+    # GCC pass1 (--with-newlib) generates a minimal limits.h that defines
+    # MB_LEN_MAX=1 and lacks #include_next, so glibc's PATH_MAX, _POSIX_ARG_MAX,
+    # etc. are unreachable for cross-compiled packages.  Chain to glibc's limits.h:
+    # define _GCC_LIMITS_H_ first so glibc's own #include_next guard does not loop.
+#     _gcc_lib=$(dirname $($TOOL_DIR/cross/bin/$target-gcc -print-libgcc-file-name))
+#     sed -i 's/^#define MB_LEN_MAX 1$/#define MB_LEN_MAX 16/' \
+#         $_gcc_lib/include/limits.h
+#     sed -i "/^#endif.*_LIMITS_H___/{i\\#define _GCC_LIMITS_H_
+# i\\#include_next <limits.h>
+# }" $_gcc_lib/include/limits.h
+
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
     package_install_dir=$TOOL_DIR install gcc#libstdc++
 
@@ -46,24 +57,26 @@ tools_bootstrap() {
     (
         host=$target
         prefix=$TOOL_DIR/cross
+        nls=no
 
         install m4
         install ncurses#tic
         install ncurses
-        # install bash
-        # install coreutils
-        # install diffutils
-        # install file
-        # install findutils
-        # install gawk
-        # install grep
-        # install gzip
-        # install make
-        # install patch
-        # install sed
-        # install tar
-        # install xz
-        # install util-linux # Provides getopt, needed by ./lfs to parse args in phase 2.
+        install bash
+        install_program=hostname no_install_program=kill,uptime install coreutils
+        install diffutils
+        install file#native
+        install file
+        localstatedir=$TOOL_DIR/var/lib/locate install findutils
+        install gawk
+        install grep
+        install gzip
+        install make
+        install patch
+        install sed
+        install tar
+        install xz
+        install util-linux # Provides getopt, needed by ./lfs to parse args in phase 2.
     )
 
     exit 0

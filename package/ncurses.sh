@@ -49,11 +49,6 @@ install() {
             ;;
         *)
             make install DESTDIR=$package_install_dir cross_compiling=yes
-            # for lib in ncurses form panel menu; do
-            #     ln -sfv lib${lib}w.so $package_install_dir/$prefix/lib/lib${lib}.so
-            #     ln -sfv ${lib}w.pc $package_install_dir/$prefix/lib/pkgconfig/${lib}.pc
-            # done
-            # ln -sfv libncursesw.so $package_install_dir/$prefix/lib/libcurses.so
             ;;
     esac
 }
