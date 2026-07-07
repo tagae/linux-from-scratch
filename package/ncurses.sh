@@ -7,31 +7,53 @@ prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
     : ${host:=$build}
 
-    $package_source_dir/configure \
-        --prefix=$prefix \
-        --host=$host \
-        --build=$build \
-        --with-shared \
-        --without-debug \
-        --without-normal \
-        --without-cxx \
-        --without-ada \
-        --enable-pc-files \
-        --with-pkg-config-libdir=/usr/lib/pkgconfig \
-        --enable-widec \
-        --disable-stripping
+    case $package_component in
+        tic)
+            $package_source_dir/configure \
+                --prefix=$prefix
+            ;;
+        *)
+            $package_source_dir/configure \
+                --prefix=$prefix \
+                --host=$host \
+                --build=$build \
+                --with-shared \
+                --without-debug \
+                --without-normal \
+                --without-cxx \
+                --without-ada \
+                --enable-pc-files \
+                --with-pkg-config-libdir=/usr/lib/pkgconfig \
+                --enable-widec \
+                --disable-stripping
+            ;;
+    esac
 }
 
 build() {
-    make
+    case $package_component in
+        tic)
+            make -C include
+            make -C progs tic
+            ;;
+        *)
+            make
+            ;;
+    esac
 }
 
 install() {
-    make install DESTDIR=$package_install_dir
-
-    for lib in ncurses form panel menu; do
-        ln -sfv lib${lib}w.so $package_install_dir/$prefix/lib/lib${lib}.so
-        ln -sfv ${lib}w.pc $package_install_dir/$prefix/lib/pkgconfig/${lib}.pc
-    done
-    ln -sfv libncursesw.so $package_install_dir/$prefix/lib/libcurses.so
+    case $package_component in
+        tic)
+            env install progs/tic $prefix/bin
+            ;;
+        *)
+            make install DESTDIR=$package_install_dir cross_compiling=yes
+            # for lib in ncurses form panel menu; do
+            #     ln -sfv lib${lib}w.so $package_install_dir/$prefix/lib/lib${lib}.so
+            #     ln -sfv ${lib}w.pc $package_install_dir/$prefix/lib/pkgconfig/${lib}.pc
+            # done
+            # ln -sfv libncursesw.so $package_install_dir/$prefix/lib/libcurses.so
+            ;;
+    esac
 }

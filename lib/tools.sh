@@ -45,10 +45,11 @@ tools_bootstrap() {
 
     (
         host=$target
-        package_install_dir=$TOOL_DIR
+        prefix=$TOOL_DIR/cross
 
         install m4
-        # install ncurses
+        install ncurses#tic
+        install ncurses
         # install bash
         # install coreutils
         # install diffutils

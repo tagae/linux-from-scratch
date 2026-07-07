@@ -15,11 +15,9 @@ case $PLATFORM in
         : ${defconfig:=bcm2712_defconfig}
         ;;
     virt)
-        #: ${package_version:=7.1.2}
-        #package_major_version="${package_version%%.*}"
-        #: ${package_source:=https://www.kernel.org/pub/linux/kernel/v$package_major_version.x/linux-$package_version.tar.xz}
-        : ${package_version:=6.18.y}
-        : ${package_source:=https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/snapshot/linux-6.18.y.tar.gz}
+        : ${package_version:=7.1.2}
+        package_major_version="${package_version%%.*}"
+        : ${package_source:=https://www.kernel.org/pub/linux/kernel/v$package_major_version.x/linux-$package_version.tar.xz}
         ;;
     *)
         : ${package_source:=$torvalds_kernel_source}

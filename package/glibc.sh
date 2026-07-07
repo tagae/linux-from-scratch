@@ -28,6 +28,7 @@ prepare() {
         ${fpu:+--with-fpu=$fpu} \
         ${tune:+--with-tune=$tune} \
         --with-headers=$headers \
+        --enable-werror=$werror \
         --enable-kernel=$kernel \
         --enable-shared=$shared \
         --enable-multilib=$multilib \
