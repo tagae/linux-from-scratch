@@ -3,8 +3,8 @@
 
 : ${prefix:=/usr}
 : ${bash_malloc:=no}
-: ${curses:=no}
-: ${nls:=no}
+: ${curses:=yes}
+: ${nls:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}

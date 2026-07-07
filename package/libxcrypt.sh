@@ -2,6 +2,9 @@
 : ${package_source:=https://github.com/besser82/libxcrypt/releases/download/v$package_version/libxcrypt-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${hashes:=strong,glibc}
+: ${obsolete_api:=yes}
+: ${failure_tokens:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,10 +14,10 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --enable-hashes=strong,glibc \
-        --enable-obsolete-api=no \
+        --enable-hashes=$hashes \
+        --enable-obsolete-api=$obsolete_api \
         --disable-static \
-        --disable-failure-tokens
+        --enable-failure-tokens=$failure_tokens
 }
 
 build() {

@@ -2,7 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/sed/sed-$package_version.tar.xz}
 
 : ${prefix:=/usr}
-: ${nls:=no}
+: ${nls:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}

@@ -15,13 +15,14 @@ tools_bootstrap() {
 
     # Binutils pass 1: cross-assembler/linker.
     package_variant=pass1 \
-        prefix=$TOOL_DIR/cross sysroot=$TOOL_DIR package_install_dir=/ \
-        gprofng=no install binutils
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
+        gprofng=no nls=no install binutils
 
     # GCC pass 1: minimal C cross-compiler to build glibc.
     package_variant=pass1 \
-        prefix=$TOOL_DIR/cross sysroot=$TOOL_DIR package_install_dir=/ \
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
         newlib=yes headers=no shared=no fixincludes=no \
+        nls=no libsanitizer=no \
         threads=no libatomic=no libgomp=no libquadmath=no libssp=no \
         libvtv=no libstdcxx=no \
         install gcc
@@ -34,35 +35,24 @@ tools_bootstrap() {
         package_install_dir=$TOOL_DIR install glibc
 
     # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | $TOOL_DIR/cross/bin/$target-gcc --sysroot=$TOOL_DIR -xc -
+    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc --sysroot=$TOOL_DIR -xc -
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
-    # GCC pass1 (--with-newlib) generates a minimal limits.h that defines
-    # MB_LEN_MAX=1 and lacks #include_next, so glibc's PATH_MAX, _POSIX_ARG_MAX,
-    # etc. are unreachable for cross-compiled packages.  Chain to glibc's limits.h:
-    # define _GCC_LIMITS_H_ first so glibc's own #include_next guard does not loop.
-#     _gcc_lib=$(dirname $($TOOL_DIR/cross/bin/$target-gcc -print-libgcc-file-name))
-#     sed -i 's/^#define MB_LEN_MAX 1$/#define MB_LEN_MAX 16/' \
-#         $_gcc_lib/include/limits.h
-#     sed -i "/^#endif.*_LIMITS_H___/{i\\#define _GCC_LIMITS_H_
-# i\\#include_next <limits.h>
-# }" $_gcc_lib/include/limits.h
-
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
-    package_install_dir=$TOOL_DIR install gcc#libstdc++
+    nls=no prefix=$TOOL_DIR package_install_dir=$TOOL_DIR install gcc#libstdc++
 
     # --- Temporary tools (glibc-linked, relocatable) ---------------
 
     (
         host=$target
-        prefix=$TOOL_DIR/cross
+        prefix=$TOOL_DIR
         nls=no
 
         install m4
         install ncurses#tic
-        install ncurses
-        install bash
+        normal=no cxx=no stripping=no install ncurses
+        curses=no install bash
         install_program=hostname no_install_program=kill,uptime install coreutils
         install diffutils
         install file#native
@@ -76,21 +66,22 @@ tools_bootstrap() {
         install sed
         install tar
         install xz
-        install util-linux # Provides getopt, needed by ./lfs to parse args in phase 2.
+        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
+            liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
+            makeinstall_chown=no install util-linux
     )
-
-    exit 0
 
     # Binutils pass 2: native (glibc-linked) linker/assembler.
     package_variant=pass2 \
         host=$target prefix=/usr sysroot=$TOOL_DIR \
-        package_install_dir=$TOOL_DIR gprofng=no install binutils
+        package_install_dir=$TOOL_DIR gprofng=no nls=no install binutils
 
     # GCC pass 2: native compiler for the target (glibc-linked, Canadian cross).
-    host=$target \
-        prefix=/usr sysroot=$TOOL_DIR \
+    package_variant=pass2 \
+        host=$target prefix=/usr sysroot=$TOOL_DIR \
         package_install_dir=$TOOL_DIR \
-        libsanitizer=no \
+        nls=no fixincludes=no \
+        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
         install gcc
 }
 

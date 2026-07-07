@@ -2,7 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/make/make-$package_version.tar.gz}
 
 : ${prefix:=/usr}
-: ${nls:=no}
+: ${nls:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}

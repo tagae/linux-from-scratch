@@ -7,10 +7,11 @@
 : ${sysroot:=/}
 : ${prefix:=/usr}
 : ${newlib:=no}
-: ${headers:=$sysroot/usr/include}
+: ${headers:=}
 : ${build_sysroot:=$sysroot}
-: ${nls:=no}
+: ${nls:=yes}
 : ${shared:=yes}
+: ${libsanitizer:=yes}
 : ${multilib:=no}
 : ${threads:=yes}
 : ${libatomic:=yes}
@@ -44,7 +45,7 @@ prepare() {
                 --enable-multilib=$multilib \
                 --enable-nls=$nls \
                 --disable-libstdcxx-pch \
-                --with-gxx-include-dir=/usr/include/c++/$package_version
+                --with-gxx-include-dir=/$target/include/c++/$package_version
             ;;
         *)
             # https://gcc.gnu.org/install/configure.html
@@ -61,7 +62,7 @@ prepare() {
                 --with-sysroot=$sysroot \
                 ${build_sysroot:+--with-build-sysroot=$build_sysroot} \
                 --with-newlib=$newlib \
-                --with-headers=$headers \
+                ${headers:+--with-headers=$headers} \
                 --enable-default-pie \
                 --enable-default-ssp \
                 --enable-fixincludes=$fixincludes \
@@ -75,6 +76,7 @@ prepare() {
                 --enable-libssp=$libssp \
                 --enable-libvtv=$libvtv \
                 --enable-libstdcxx=$libstdcxx \
+                --enable-libsanitizer=$libsanitizer \
                 --enable-languages=$languages
             ;;
     esac
@@ -103,6 +105,12 @@ install() {
             make install-gcc install-target-libgcc DESTDIR=$package_install_dir
             if [ "${libatomic:-yes}" != no ]; then
                 make install-target-libatomic DESTDIR=$package_install_dir
+            fi
+            if [ "${newlib:-no}" = yes ]; then
+                cat $package_source_dir/gcc/limitx.h \
+                    $package_source_dir/gcc/glimits.h \
+                    $package_source_dir/gcc/limity.h \
+                    > $($target-gcc -print-file-name=include)/limits.h
             fi
             ;;
     esac

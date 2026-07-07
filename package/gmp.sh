@@ -2,6 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/gmp/gmp-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${cxx:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,7 +12,7 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --enable-cxx \
+        --enable-cxx=$cxx \
         --disable-static \
         --docdir=/usr/share/doc/gmp-$package_version
 }

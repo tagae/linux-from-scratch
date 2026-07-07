@@ -5,7 +5,7 @@
 : ${sysroot:=/}
 : ${gprofng:=yes}
 : ${multilib:=no}
-: ${nls:=no}
+: ${nls:=yes}
 : ${werror:=no}
 
 prepare() {

@@ -2,6 +2,15 @@
 : ${package_source:=https://invisible-island.net/archives/ncurses/ncurses-$package_version.tar.gz}
 
 : ${prefix:=/usr}
+: ${shared:=yes}
+: ${debug:=no}
+: ${normal:=yes}
+: ${cxx:=yes}
+: ${ada:=no}
+: ${pc_files:=yes}
+: ${pkg_config_libdir:=/usr/lib/pkgconfig}
+: ${widec:=yes}
+: ${stripping:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -17,15 +26,15 @@ prepare() {
                 --prefix=$prefix \
                 --host=$host \
                 --build=$build \
-                --with-shared \
-                --without-debug \
-                --without-normal \
-                --without-cxx \
-                --without-ada \
-                --enable-pc-files \
-                --with-pkg-config-libdir=/usr/lib/pkgconfig \
-                --enable-widec \
-                --disable-stripping
+                --with-shared=$shared \
+                --with-debug=$debug \
+                --with-normal=$normal \
+                --with-cxx=$cxx \
+                --with-ada=$ada \
+                --enable-pc-files=$pc_files \
+                --with-pkg-config-libdir=$pkg_config_libdir \
+                --enable-widec=$widec \
+                --enable-stripping=$stripping
             ;;
     esac
 }

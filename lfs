@@ -78,9 +78,9 @@ readonly LC_ALL MAKEFLAGS
 # first — once glibc-linked binaries are installed there they shadow host tools
 # and fail (wrong ELF interpreter). Scratch phase: toolchain only, no host PATH.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/cross/bin
+    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/bin
 else
-    PATH=$TOOL_DIR/cross/bin:$PATH
+    PATH=$TOOL_DIR/bin:$PATH
 fi
 
 readonly PATH
