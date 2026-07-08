@@ -6,7 +6,10 @@
 : ${gprofng:=yes}
 : ${multilib:=no}
 : ${nls:=yes}
-: ${werror:=no}
+: ${werror:=yes}
+: ${werror:=yes}
+: ${new_dtags:=no}
+: ${default_hash_style=gnu}
 
 prepare() {
     : ${build:=$($package_source_dir/config.guess)}
@@ -26,8 +29,8 @@ prepare() {
         --enable-nls=$nls \
         --enable-gprofng=$gprofng \
         --enable-werror=$werror \
-        --enable-new-dtags \
-        --with-default-hash-style=gnu
+        --enable-new-dtags=$new_dtags \
+        --with-default-hash-style=$default_hash_style
 }
 
 build() {

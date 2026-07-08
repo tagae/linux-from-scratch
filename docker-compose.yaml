@@ -41,7 +41,6 @@ services:
     privileged: true
     environment:
       PLATFORM:
-      LFS_PHASE: scratch
     volumes:
       - type: bind
         source: lfs

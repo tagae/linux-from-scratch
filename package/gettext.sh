@@ -12,6 +12,7 @@ prepare() {
         --host=$host \
         --build=$build \
         --disable-static \
+        --disable-shared \
         --docdir=/usr/share/doc/gettext-$package_version
 }
 

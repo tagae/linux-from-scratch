@@ -16,13 +16,13 @@ tools_bootstrap() {
     # Binutils pass 1: cross-assembler/linker.
     package_variant=pass1 \
         prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
-        gprofng=no nls=no install binutils
+        nls=no gprofng=no werror=no new_dtags=yes install binutils
 
     # GCC pass 1: minimal C cross-compiler to build glibc.
     package_variant=pass1 \
         prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
-        newlib=yes headers=no shared=no fixincludes=no \
-        nls=no libsanitizer=no \
+        newlib=yes headers=no fixincludes=no \
+        nls=no shared=no libsanitizer=no \
         threads=no libatomic=no libgomp=no libquadmath=no libssp=no \
         libvtv=no libstdcxx=no \
         install gcc
@@ -49,7 +49,7 @@ tools_bootstrap() {
         prefix=$TOOL_DIR
         nls=no
 
-        install m4
+        werror=no install m4
         install ncurses#tic
         normal=no cxx=no stripping=no install ncurses
         curses=no install bash
@@ -74,7 +74,7 @@ tools_bootstrap() {
     # Binutils pass 2: native (glibc-linked) linker/assembler.
     package_variant=pass2 \
         host=$target prefix=/usr sysroot=$TOOL_DIR \
-        package_install_dir=$TOOL_DIR gprofng=no nls=no install binutils
+        package_install_dir=$TOOL_DIR gprofng=no nls=no werror=no install binutils
 
     # GCC pass 2: native compiler for the target (glibc-linked, Canadian cross).
     package_variant=pass2 \
@@ -86,7 +86,14 @@ tools_bootstrap() {
 }
 
 tools_build() {
+    (
+        host=$target
+        prefix=$TOOL_DIR
+        nls=no
+
+        install gettext
+    )
     # Runs in the scratch container (or bare host) using only the toolchain.
     # Phase 2: native builds that dogfood the bootstrapped toolchain.
-    host=$target prefix=/usr package_install_dir=$TOOL_DIR install coreutils
+    #host=$target prefix=/usr package_install_dir=$TOOL_DIR install coreutils
 }

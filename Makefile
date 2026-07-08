@@ -7,7 +7,10 @@
 	echo HOST_GID=$$(id -g) >> $@
 
 tools:
+	# Chapter 5: Compiling a Cross-Toolchain
+	# Chapter 6: Cross Compiling Temporary Tools
 	docker compose run --build --rm bootstrap ./lfs tools bootstrap
+	# Chapter 7: Building Additional Temporary Tools
 	docker compose run --build --rm scratch ./lfs tools build
 
 docker-clean:

@@ -88,10 +88,17 @@ build() {
             make
             ;;
         *)
-            make all-gcc all-target-libgcc
-            if [ "${libatomic:-yes}" != no ]; then
-                make all-target-libatomic
-            fi
+            case ${package_variant:-} in
+                pass1)
+                    make all-gcc all-target-libgcc
+                    if [ "${libatomic:-yes}" != no ]; then
+                        make all-target-libatomic
+                    fi
+                    ;;
+                *)
+                    make
+                    ;;
+            esac
             ;;
     esac
 }
@@ -102,16 +109,21 @@ install() {
             make install DESTDIR=$package_install_dir
             ;;
         *)
-            make install-gcc install-target-libgcc DESTDIR=$package_install_dir
-            if [ "${libatomic:-yes}" != no ]; then
-                make install-target-libatomic DESTDIR=$package_install_dir
-            fi
-            if [ "${newlib:-no}" = yes ]; then
-                cat $package_source_dir/gcc/limitx.h \
-                    $package_source_dir/gcc/glimits.h \
-                    $package_source_dir/gcc/limity.h \
-                    > $($target-gcc -print-file-name=include)/limits.h
-            fi
+            case ${package_variant:-} in
+                pass1)
+                    make install-gcc install-target-libgcc DESTDIR=$package_install_dir
+                    if [ "${libatomic:-yes}" != no ]; then
+                        make install-target-libatomic DESTDIR=$package_install_dir
+                    fi
+                    cat $package_source_dir/gcc/limitx.h \
+                        $package_source_dir/gcc/glimits.h \
+                        $package_source_dir/gcc/limity.h \
+                        > $($target-gcc -print-file-name=include)/limits.h
+                    ;;
+                *)
+                    make install DESTDIR=$package_install_dir
+                    ;;
+            esac
             ;;
     esac
 }

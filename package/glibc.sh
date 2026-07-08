@@ -3,7 +3,7 @@
 : ${package_version:=2.43}
 : ${package_source:=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar.xz}
 
-: ${kernel:=6.1.0}
+: ${kernel:=5.10}
 : ${prefix:=/usr}
 : ${headers:=/usr/include}
 : ${shared:=yes}
@@ -34,7 +34,8 @@ prepare() {
         --enable-shared=$shared \
         --enable-multilib=$multilib \
         --enable-profile=$profile \
-        --enable-nscd=$nscd
+        --enable-nscd=$nscd \
+        libc_cv_slibdir=$prefix/lib
 }
 
 build() {
@@ -52,8 +53,6 @@ install() {
     case $package_component in
         headers)
             make install-headers DESTDIR=$package_install_dir
-            # glibc headers_install doesn't install this one
-            touch $package_install_dir/$prefix/include/gnu/stubs.h
             ;;
         glibc)
             make install DESTDIR=$package_install_dir
