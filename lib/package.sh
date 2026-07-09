@@ -34,6 +34,20 @@ install() {
     done
 }
 
+version() {
+    (
+        _source $1
+        echo $package_version
+    )
+}
+
+fetch() {
+    (
+        _source $1
+        fetch
+    )
+}
+
 archive() {
     (
         _source $1
@@ -49,12 +63,12 @@ unarchive() {
 
 # This function executes in the subshell that evaluates package scripts.
 # Hence, whatever it defines will be available only in the subshell.
-# Functions with a leading underscore denote private API that packages shouldn't inovke.
+# Functions with a leading underscore denote private API that packages shouldn't invoke.
 _source() {
     : ${package_name:=${1%#*}}
     : ${package_component=${1#*#}}
 
-    [ -f $PACKAGE_DIR/$package_name.sh ] || die 1 "Unknown package '$package_name'"
+    [ -f $PACKAGE_DIR/$package_name.sh ] || bail "Unknown package '$package_name'"
 
     _once() {
         local step=$1
@@ -105,14 +119,14 @@ _source() {
             https://*.tar.*)
                 get $package_source
                 ;;
-            https://github.com*)
+            https://github.com*|https://git.*)
                 git_checkout $package_source $package_branch $package_source_dir
                 ;;
             none)
                 echo "$package_product: nothing to fetch"
                 ;;
             *)
-                die 1 "Unsupported package source: $package_source"
+                bail "Unsupported package source: $package_source"
                 ;;
         esac
     }
@@ -142,7 +156,7 @@ _source() {
     case ${package_source:-none} in
         https://*.tar.*)
             ;;
-        https://github.com*)
+        https://github.com*|https://git.*)
             if [ -z "${package_branch:-}" ]; then
                 package_branch_file=$WORK_DIR/.$package_name-branch
                 if ! [ -s $package_branch_file ]; then

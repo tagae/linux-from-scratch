@@ -2,6 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/diffutils/diffutils-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${nls:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -14,8 +15,8 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --disable-nls \
-        --cache-file=config.cache
+        --enable-nls=$nls \
+        gl_cv_func_strcasecmp_works=yes
 }
 
 build() {

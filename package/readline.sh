@@ -2,6 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/readline/readline-$package_version.tar.gz}
 
 : ${prefix:=/usr}
+: ${curses:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,7 +12,7 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --with-curses \
+        --with-curses=$curses \
         --disable-static
 }
 

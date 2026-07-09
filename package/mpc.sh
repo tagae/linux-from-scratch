@@ -1,5 +1,5 @@
 : ${package_version:=1.4.1}
-: ${package_source:=https://ftp.gnu.org/gnu/mpc/mpc-$package_version.tar.gz}
+: ${package_source:=https://ftpmirror.gnu.org/mpc/mpc-$package_version.tar.xz}
 
 : ${prefix:=/usr}
 

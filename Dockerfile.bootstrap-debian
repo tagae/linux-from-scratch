@@ -1,0 +1,35 @@
+FROM debian:stable-slim
+
+RUN groupdel dialout # conflicts with macOS
+
+RUN apt update
+RUN apt install -y build-essential curl wget rsync gawk bison python3
+
+ARG HOST_UID
+ARG HOST_GID
+RUN groupadd --gid $HOST_GID lfs
+RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /var/lfs --no-create-home lfs
+
+RUN mkdir -pv \
+    /var/lfs/download \
+    /var/lfs/image \
+    /var/lfs/install \
+    /var/lfs/lib \
+    /var/lfs/package \
+    /var/lfs/source \
+    /var/lfs/tools \
+    /var/lfs/work
+
+RUN chown lfs:lfs \
+    /var/lfs \
+    /var/lfs/download \
+    /var/lfs/image \
+    /var/lfs/install \
+    /var/lfs/lib \
+    /var/lfs/package \
+    /var/lfs/source \
+    /var/lfs/tools \
+    /var/lfs/work
+
+USER lfs
+WORKDIR /var/lfs

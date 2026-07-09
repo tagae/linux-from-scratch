@@ -2,6 +2,8 @@
 : ${package_source:=https://ftp.gnu.org/gnu/coreutils/coreutils-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${install_program:=}
+: ${no_install_program:=}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,7 +13,8 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --enable-no-install-program=kill,uptime
+        --enable-install-program=$install_program \
+        --enable-no-install-program=$no_install_program
 }
 
 build() {

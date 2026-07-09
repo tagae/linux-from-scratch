@@ -7,7 +7,7 @@ readonly PROJECT_DIR=$(dirname $(realpath "$0"))
 readonly PACKAGE_DIR=$PROJECT_DIR/package
 
 . $PROJECT_DIR/lib/base.sh
-. $PROJECT_DIR/lib/install.sh
+. $PROJECT_DIR/lib/package.sh
 . $PROJECT_DIR/lib/tools.sh
 . $PROJECT_DIR/lib/system.sh
 . $PROJECT_DIR/lib/image.sh
@@ -60,7 +60,7 @@ readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE
 
 #--[ Target platform ]
 
-[ -n "${PLATFORM:-}" ] || bail "No platform specified"
+: ${PLATFORM:=virt}
 [ -f $PROJECT_DIR/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
 
 readonly PLATFORM
@@ -78,10 +78,12 @@ readonly LC_ALL MAKEFLAGS
 # first — once glibc-linked binaries are installed there they shadow host tools
 # and fail (wrong ELF interpreter). Scratch phase: toolchain only, no host PATH.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/cross/bin
+    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/bin
 else
-    PATH=$TOOL_DIR/cross/bin:$PATH
+    PATH=$TOOL_DIR/bin:$PATH
 fi
+
+readonly PATH
 export PATH
 
 #--[ Installation ]
