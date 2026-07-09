@@ -11,21 +11,24 @@ tools() {
 }
 
 tools_bootstrap() {
-    # --- Cross toolchain (throwaway) ------------------
+    # --- Cross Toolchain Pass 1 (throwaway) ------------------
 
-    # Binutils pass 1: cross-assembler/linker.
-    package_variant=pass1 \
-        prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
-        nls=no gprofng=no werror=no new_dtags=yes install binutils
+    # Cross-assembler and linker.
+    package_variant=pass1 package_install_dir=/ \
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR \
+        nls=no gprofng=no werror=no new_dtags=yes default_hash_style=gnu \
+        install binutils
 
-    # GCC pass 1: minimal C cross-compiler to build glibc.
-    package_variant=pass1 \
-        prefix=$TOOL_DIR sysroot=$TOOL_DIR package_install_dir=/ \
+    # Minimal C cross-compiler to build glibc.
+    package_variant=pass1 package_install_dir=/ \
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR \
         newlib=yes headers=no fixincludes=no \
         nls=no shared=no libsanitizer=no \
         threads=no libatomic=no libgomp=no libquadmath=no libssp=no \
         libvtv=no libstdcxx=no \
         install gcc
+
+    exit 0
 
     # Linux kernel headers to build glibc.
     package_install_dir=$TOOL_DIR install linux#headers

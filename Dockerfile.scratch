@@ -1,9 +1,9 @@
+# Linux From Scratch
 FROM scratch
 
 ENV PATH=/var/lfs/tools/bin:/var/lfs/tools/usr/bin
 ENV LC_ALL=POSIX
-ENV HOME=/root
-ENV TERM=xterm
+ENV HOME=/var/lfs
 
-USER lfs
-WORKDIR /var/lfs
+#USER lfs
+CMD /var/lfs/tools/bin/bash
