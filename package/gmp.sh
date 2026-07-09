@@ -1,5 +1,5 @@
 : ${package_version:=6.3.0}
-: ${package_source:=https://ftp.gnu.org/gnu/gmp/gmp-$package_version.tar.xz}
+: ${package_source:=https://ftpmirror.gnu.org/gmp/gmp-$package_version.tar.xz}
 
 : ${prefix:=/usr}
 : ${cxx:=yes}

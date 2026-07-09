@@ -1,5 +1,5 @@
 : ${package_version:=4.2.2}
-: ${package_source:=https://ftp.gnu.org/gnu/mpfr/mpfr-$package_version.tar.xz}
+: ${package_source:=https://ftpmirror.gnu.org/mpfr/mpfr-$package_version.tar.xz}
 
 : ${prefix:=/usr}
 : ${thread_safe:=yes}

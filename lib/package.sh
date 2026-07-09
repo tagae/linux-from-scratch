@@ -34,6 +34,20 @@ install() {
     done
 }
 
+version() {
+    (
+        _source $1
+        echo $package_version
+    )
+}
+
+fetch() {
+    (
+        _source $1
+        fetch
+    )
+}
+
 archive() {
     (
         _source $1
@@ -49,7 +63,7 @@ unarchive() {
 
 # This function executes in the subshell that evaluates package scripts.
 # Hence, whatever it defines will be available only in the subshell.
-# Functions with a leading underscore denote private API that packages shouldn't inovke.
+# Functions with a leading underscore denote private API that packages shouldn't invoke.
 _source() {
     : ${package_name:=${1%#*}}
     : ${package_component=${1#*#}}

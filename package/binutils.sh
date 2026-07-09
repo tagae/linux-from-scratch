@@ -1,15 +1,15 @@
 : ${package_version:=2.46.1}
-: ${package_source:=https://ftp.gnu.org/gnu/binutils/binutils-$package_version.tar.xz}
+: ${package_source:=https://ftpmirror.gnu.org/binutils/binutils-$package_version.tar.xz}
 
 prepare() {
     $package_source_dir/configure \
-        ${prefix:+--prefix=$prefix} \
         ${host:+--host=$host} \
         ${target:+--target=$target} \
         ${arch:+--with-arch=$arch} \
         ${float:+--with-float=$float} \
         ${fpu:+--with-fpu=$fpu} \
         ${tune:+--with-tune=$tune} \
+        ${prefix:+--prefix=$prefix} \
         ${sysroot:+--with-sysroot=$sysroot} \
         ${nls:+--enable-nls=$nls} \
         ${gprofng:+--enable-gprofng=$gprofng} \

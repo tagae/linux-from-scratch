@@ -21,11 +21,14 @@ tools_bootstrap() {
 
     # Minimal C cross-compiler to build glibc.
     package_variant=pass1 package_install_dir=/ \
-        prefix=$TOOL_DIR sysroot=$TOOL_DIR \
-        newlib=yes headers=no fixincludes=no \
-        nls=no shared=no libsanitizer=no \
-        threads=no libatomic=no libgomp=no libquadmath=no libssp=no \
-        libvtv=no libstdcxx=no \
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR build_sysroot=$TOOL_DIR \
+        glibc_version=$(version glibc) \
+        newlib=yes headers=no \
+        default_pie=yes default_ssp=yes \
+        fixincludes=no \
+        nls=no shared=no multilib=no threads=no \
+        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no\
+        languages=c,c++ \
         install gcc
 
     exit 0
@@ -43,7 +46,7 @@ tools_bootstrap() {
     rm -f a.out
 
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
-    nls=no prefix=$TOOL_DIR package_install_dir=$TOOL_DIR install gcc#libstdc++
+    nls=no multilib=no prefix=$TOOL_DIR package_install_dir=$TOOL_DIR install gcc#libstdc++
 
     # --- Temporary tools (glibc-linked, relocatable) ---------------
 
@@ -81,8 +84,10 @@ tools_bootstrap() {
 
     # GCC pass 2: native compiler for the target (glibc-linked, Canadian cross).
     package_variant=pass2 \
-        host=$target prefix=/usr sysroot=$TOOL_DIR \
+        host=$target prefix=/usr sysroot=$TOOL_DIR build_sysroot=$TOOL_DIR \
         package_install_dir=$TOOL_DIR \
+        glibc_version=2.43 languages=c,c++ multilib=no \
+        shared=yes threads=yes libstdcxx=yes \
         nls=no fixincludes=no \
         libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
         install gcc
