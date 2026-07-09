@@ -1,7 +1,0 @@
-#!/bin/sh
-set -e
-SED="$1"; shift; OUTPUT="$1"; shift
-printf '#include <sys/errno.h>\n' | \
-    "$@" -MD -MF "$OUTPUT.deps" -dM -E - | \
-    "$SED" -n -e 's/^[[:space:]]*#define[[:space:]]*E\([^ ]*\).*$/UL_ERRNO("E\1", E\1)/p' | \
-    sort > "$OUTPUT"

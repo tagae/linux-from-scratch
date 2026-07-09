@@ -1,41 +1,56 @@
-: ${package_version:=2.42.1}
+: ${package_version:=2.42.2}
 : ${package_source:=https://www.kernel.org/pub/linux/utils/util-linux/v2.42/util-linux-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${bindir:=/usr/bin}
+: ${libdir:=/usr/lib}
+: ${sbindir:=/usr/sbin}
+: ${chfn_chsh:=yes}
+: ${login:=yes}
+: ${nologin:=yes}
+: ${su:=yes}
+: ${setpriv:=yes}
+: ${runuser:=yes}
+: ${pylibmount:=no}
+: ${static:=no}
+: ${liblastlog2:=yes}
+: ${python:=no}
+: ${systemd:=no}
+: ${systemdsystemunitdir:=no}
+: ${ncurses:=yes}
+: ${ncursesw:=yes}
+: ${tinfo:=yes}
+: ${wall:=yes}
+: ${makeinstall_chown:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
     : ${host:=$build}
 
-    # tools/all_errnos and all_syscalls use #!/bin/bash; replace with /bin/sh versions
-    cp $package_files_dir/tools/all_errnos $package_source_dir/tools/all_errnos
-    cp $package_files_dir/tools/all_syscalls $package_source_dir/tools/all_syscalls
-    chmod +x $package_source_dir/tools/all_errnos $package_source_dir/tools/all_syscalls
-
     $package_source_dir/configure \
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --bindir=/usr/bin \
-        --libdir=/usr/lib \
-        --sbindir=/usr/sbin \
-        --disable-chfn-chsh \
-        --disable-login \
-        --disable-nologin \
-        --disable-su \
-        --disable-setpriv \
-        --disable-runuser \
-        --disable-pylibmount \
-        --disable-static \
-        --disable-liblastlog2 \
-        --without-python \
-        --without-systemd \
-        --without-systemdsystemunitdir \
-        --without-ncurses \
-        --without-ncursesw \
-        --without-tinfo \
-        --disable-wall \
-        --disable-makeinstall-chown \
+        --bindir=$bindir \
+        --libdir=$libdir \
+        --sbindir=$sbindir \
+        --enable-chfn-chsh=$chfn_chsh \
+        --enable-login=$login \
+        --enable-nologin=$nologin \
+        --enable-su=$su \
+        --enable-setpriv=$setpriv \
+        --enable-runuser=$runuser \
+        --enable-pylibmount=$pylibmount \
+        --enable-static=$static \
+        --enable-liblastlog2=$liblastlog2 \
+        --with-python=$python \
+        --with-systemd=$systemd \
+        --with-systemdsystemunitdir=$systemdsystemunitdir \
+        --with-ncurses=$ncurses \
+        --with-ncursesw=$ncursesw \
+        --with-tinfo=$tinfo \
+        --enable-wall=$wall \
+        --enable-makeinstall-chown=$makeinstall_chown \
         --docdir=/usr/share/doc/util-linux-$package_version
 }
 

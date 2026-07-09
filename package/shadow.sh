@@ -2,6 +2,15 @@
 : ${package_source:=https://github.com/shadow-maint/shadow/releases/download/$package_version/shadow-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${bcrypt:=yes}
+: ${ycrypt:=yes}
+: ${libbsd:=no}
+: ${audit:=no}
+: ${selinux:=no}
+: ${acl:=no}
+: ${attr:=no}
+: ${skey:=no}
+: ${tcpwrappers:=no}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -13,15 +22,15 @@ prepare() {
         --build=$build \
         --sysconfdir=/etc \
         --disable-static \
-        --with-bcrypt \
-        --with-ycrypt \
-        --without-libbsd \
-        --without-audit \
-        --without-selinux \
-        --without-acl \
-        --without-attr \
-        --without-skey \
-        --without-tcpwrappers
+        --with-bcrypt=$bcrypt \
+        --with-ycrypt=$ycrypt \
+        --with-libbsd=$libbsd \
+        --with-audit=$audit \
+        --with-selinux=$selinux \
+        --with-acl=$acl \
+        --with-attr=$attr \
+        --with-skey=$skey \
+        --with-tcpwrappers=$tcpwrappers
 }
 
 build() {

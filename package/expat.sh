@@ -2,6 +2,7 @@
 : ${package_source:=https://prdownloads.sourceforge.net/expat/expat-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${xmlwf:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -12,7 +13,7 @@ prepare() {
         --host=$host \
         --build=$build \
         --disable-static \
-        --without-xmlwf
+        --with-xmlwf=$xmlwf
 }
 
 build() {

@@ -2,6 +2,9 @@
 : ${package_source:=https://ftp.gnu.org/gnu/bash/bash-$package_version.tar.gz}
 
 : ${prefix:=/usr}
+: ${bash_malloc:=no}
+: ${curses:=yes}
+: ${nls:=yes}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,9 +14,9 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --without-bash-malloc \
-        --with-curses \
-        --disable-nls
+        --with-bash-malloc=$bash_malloc \
+        --with-curses=$curses \
+        --enable-nls=$nls
 }
 
 build() {
@@ -22,5 +25,5 @@ build() {
 
 install() {
     make install DESTDIR=$package_install_dir
-    ln -sfv bash $package_install_dir$prefix/bin/sh
+    ln -sv bash $package_install_dir$prefix/bin/sh
 }

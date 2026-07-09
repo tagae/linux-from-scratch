@@ -2,6 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/findutils/findutils-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${localstatedir:=/var/lib/locate}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,7 +12,7 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --localstatedir=/var/lib/locate
+        --localstatedir=$localstatedir
 }
 
 build() {

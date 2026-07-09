@@ -10,61 +10,30 @@ tools() {
     esac
 }
 
-_ch6() {
-    host=$target prefix=/usr package_install_dir=$TOOL_DIR install "$@"
-}
-
-# Install a GCC specs file so every binary the compiler produces is
-# relocatable to $TOOL_DIR (absolute interpreter path + rpath).
-_install_specs() {
-    # Write a GCC specs file so produced binaries use the toolchain's ld.so.
-    # *link_dynamic_linker: is not a real GCC spec; use *link: + instead.
-    # Appending -dynamic-linker overrides the built-in default (last flag wins in ld).
-    local gcc=$1 libdir ldso
-    libdir=$(dirname $($gcc -print-libgcc-file-name))
-    ldso=$(ls $TOOL_DIR/lib/ld-linux*.so.* 2>/dev/null | head -1)
-    [ -n "$ldso" ] || bail "Cannot find ld-linux*.so in $TOOL_DIR/lib"
-    printf '*link:\n+ -dynamic-linker %s -rpath %s -rpath %s\n\n' \
-        "$ldso" "$TOOL_DIR/lib" "$TOOL_DIR/usr/lib" > "$libdir/specs"
-}
-
 tools_bootstrap() {
-    # --- Skeleton: merged-usr layout + minimal /etc ---------------------------
-    mkdir -p $TOOL_DIR/usr/bin $TOOL_DIR/usr/lib $TOOL_DIR/usr/include \
-             $TOOL_DIR/usr/sbin $TOOL_DIR/usr/share $TOOL_DIR/etc \
-             $TOOL_DIR/root $TOOL_DIR/tmp
-    ln -sfv usr/bin  $TOOL_DIR/bin
-    ln -sfv usr/sbin $TOOL_DIR/sbin
-    ln -sfv usr/lib  $TOOL_DIR/lib
-    ln -sfv usr/lib  $TOOL_DIR/lib64
+    # --- Cross Toolchain Pass 1 (throwaway) ------------------
 
-    printf 'root:x:0:0:root:/root:/bin/sh\n'        > $TOOL_DIR/etc/passwd
-    printf 'root:x:0:\nbin:x:1:\nutmp:x:13:\n'      > $TOOL_DIR/etc/group
-    printf 'passwd: files\ngroup: files\nhosts: files dns\n' \
-                                                     > $TOOL_DIR/etc/nsswitch.conf
+    # Cross-assembler and linker.
+    package_variant=pass1 package_install_dir=/ \
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR \
+        nls=no gprofng=no werror=no new_dtags=yes default_hash_style=gnu \
+        install binutils
 
-    # --- Chapter 5: cross-toolchain (musl-linked, throwaway) ------------------
-
-    # Binutils pass 1: cross-assembler/linker.
-    prefix=$TOOL_DIR/cross sysroot=$TOOL_DIR package_install_dir=/ \
-        gprofng=no install binutils
-
-    # GCC pass 1: minimal C cross-compiler for building glibc.
-    package_variant=pass1 \
-        prefix=$TOOL_DIR/cross sysroot=$TOOL_DIR package_install_dir=/ \
-        newlib=yes headers=no shared=no \
-        threads=no libatomic=no libgomp=no libquadmath=no libssp=no \
-        libvtv=no libstdcxx=no libsanitizer=no \
+    # Minimal C cross-compiler to build glibc.
+    package_variant=pass1 package_install_dir=/ \
+        prefix=$TOOL_DIR sysroot=$TOOL_DIR build_sysroot=$TOOL_DIR \
+        glibc_version=$(version glibc) \
+        newlib=yes headers=no \
+        default_pie=yes default_ssp=yes \
+        fixincludes=no \
+        nls=no shared=no multilib=no threads=no \
+        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no\
+        languages=c,c++ \
         install gcc
 
-    # Plain-name symlinks for assembler/linker tools used by the cross-compiler.
-    # Do NOT symlink gcc/cc: that would shadow Alpine's native CC_FOR_BUILD
-    # and cause build-side programs to be compiled with the cross-compiler.
-    for _t in ar as ld nm objcopy objdump ranlib readelf strip; do
-        ln -sfv $target-$_t $TOOL_DIR/cross/bin/$_t
-    done
+    exit 0
 
-    # Linux kernel headers (glibc needs them).
+    # Linux kernel headers to build glibc.
     package_install_dir=$TOOL_DIR install linux#headers
 
     # GNU C library: the glibc that all toolchain binaries will link against.
@@ -72,97 +41,67 @@ tools_bootstrap() {
         package_install_dir=$TOOL_DIR install glibc
 
     # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | \
-        $TOOL_DIR/cross/bin/$target-gcc --sysroot=$TOOL_DIR \
-        -fno-link-libatomic -xc -
+    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc --sysroot=$TOOL_DIR -xc -
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
-    # Fix GCC pass1's newlib-configured internal limits.h:
-    # 1. MB_LEN_MAX was baked as 1 (newlib); glibc requires 16.
-    # 2. The file has no #include_next, so glibc POSIX extensions
-    #    (_POSIX_ARG_MAX, PATH_MAX, …) are never visible.
-    #    Chain to glibc's limits.h via #include_next, but first define
-    #    _GCC_LIMITS_H_ so glibc's own #include_next guard does not fire.
-    _gcc_lib=$(dirname $($TOOL_DIR/cross/bin/$target-gcc -print-libgcc-file-name))
-    sed -i \
-        -e 's/^#define MB_LEN_MAX 1$/#define MB_LEN_MAX 16/' \
-        -e '/^#endif.*_LIMITS_H___/{i\#define _GCC_LIMITS_H_\
-#include_next <limits.h>
-}' \
-        $_gcc_lib/include/limits.h
-
-    # Install the specs file so all subsequent cross-compiled binaries are
-    # relocatable to $TOOL_DIR (absolute interpreter + rpath).
-    _install_specs $TOOL_DIR/cross/bin/$target-gcc
-
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
-    package_install_dir=$TOOL_DIR install gcc#libstdc++
+    nls=no multilib=no prefix=$TOOL_DIR package_install_dir=$TOOL_DIR install gcc#libstdc++
 
-    # GCC pass1 (prefix=TOOL_DIR/cross) looks for C++ headers at
-    # cross/$target/include/c++/VERSION; symlink to where libstdc++ installed them.
-    _gcc_ver=$($TOOL_DIR/cross/bin/$target-gcc -dumpversion)
-    mkdir -p $TOOL_DIR/cross/$target/include/c++
-    rm -f $TOOL_DIR/cross/$target/include/c++/$_gcc_ver 2>/dev/null || true
-    ln -sf $TOOL_DIR/usr/include/c++/$_gcc_ver \
-           $TOOL_DIR/cross/$target/include/c++/$_gcc_ver
+    # --- Temporary tools (glibc-linked, relocatable) ---------------
 
-    # --- Chapter 6: temporary tools (glibc-linked, relocatable) ---------------
+    (
+        host=$target
+        prefix=$TOOL_DIR
+        nls=no
 
-    _ch6 m4
-    _ch6 ncurses
-    _ch6 bash
-    _ch6 coreutils
-    _ch6 diffutils
-    _ch6 file
-    _ch6 findutils
-    _ch6 gawk
-    _ch6 grep
-    _ch6 gzip
-    _ch6 make
-    _ch6 patch
-    _ch6 sed
-    _ch6 tar
-    _ch6 xz
+        werror=no install m4
+        install ncurses#tic
+        normal=no cxx=no stripping=no install ncurses
+        curses=no install bash
+        install_program=hostname no_install_program=kill,uptime install coreutils
+        install diffutils
+        install file#native
+        install file
+        localstatedir=$TOOL_DIR/var/lib/locate install findutils
+        install gawk
+        install grep
+        install gzip
+        install make
+        install patch
+        install sed
+        install tar
+        install xz
+        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
+            liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
+            makeinstall_chown=no install util-linux
+    )
 
     # Binutils pass 2: native (glibc-linked) linker/assembler.
-    # Use package_variant=pass2 to get a separate work dir from pass1.
     package_variant=pass2 \
         host=$target prefix=/usr sysroot=$TOOL_DIR \
-        package_install_dir=$TOOL_DIR gprofng=no install binutils
+        package_install_dir=$TOOL_DIR gprofng=no nls=no werror=no install binutils
 
     # GCC pass 2: native compiler for the target (glibc-linked, Canadian cross).
-    # No build_sysroot: let build-side generator tools use Alpine's musl headers
-    # so they link against musl (not glibc), avoiding __isoc23_strtoul mismatches.
-    host=$target \
-        prefix=/usr sysroot=$TOOL_DIR \
+    package_variant=pass2 \
+        host=$target prefix=/usr sysroot=$TOOL_DIR build_sysroot=$TOOL_DIR \
         package_install_dir=$TOOL_DIR \
-        libsanitizer=no \
+        glibc_version=2.43 languages=c,c++ multilib=no \
+        shared=yes threads=yes libstdcxx=yes \
+        nls=no fixincludes=no \
+        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
         install gcc
-    # Ensure plain gcc/cc exist (Canadian cross may only install $target-gcc).
-    [ -f $TOOL_DIR/usr/bin/gcc ] || ln -sfv $target-gcc $TOOL_DIR/usr/bin/gcc
-    [ -f $TOOL_DIR/usr/bin/cc  ] || ln -sfv gcc          $TOOL_DIR/usr/bin/cc
-    _install_specs $TOOL_DIR/usr/bin/$target-gcc
-
-    # util-linux: provides getopt, needed by ./lfs to parse args in phase 2.
-    _ch6 util-linux
-
-    # Patch every glibc-linked ELF in the toolchain to use the toolchain's ld.so.
-    # The specs fix makes new builds correct; this fixes binaries already built with
-    # the wrong (system-default) interpreter path.
-    stage "Patching toolchain ELF interpreters"
-    _ldso=$(ls $TOOL_DIR/lib/ld-linux*.so.* | head -1)
-    find $TOOL_DIR -type f ! -type l | while read _f; do
-        readelf -l "$_f" 2>/dev/null | grep -q 'ld-linux' || continue
-        patchelf --set-interpreter "$_ldso" \
-                 --set-rpath "$TOOL_DIR/lib:$TOOL_DIR/usr/lib" \
-                 "$_f" 2>/dev/null || true
-    done
 }
 
 tools_build() {
+    (
+        host=$target
+        prefix=$TOOL_DIR
+        nls=no
+
+        install gettext
+    )
     # Runs in the scratch container (or bare host) using only the toolchain.
     # Phase 2: native builds that dogfood the bootstrapped toolchain.
-    # Proof of self-sufficiency: compile coreutils natively.
-    host=$target prefix=/usr package_install_dir=$TOOL_DIR install coreutils
+    #host=$target prefix=/usr package_install_dir=$TOOL_DIR install coreutils
 }

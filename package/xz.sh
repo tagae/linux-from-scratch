@@ -2,6 +2,7 @@
 : ${package_source:=https://github.com/tukaani-project/xz/releases/download/v$package_version/xz-$package_version.tar.xz}
 
 : ${prefix:=/usr}
+: ${static:=no}
 
 prepare() {
     : ${build:=$($package_source_dir/build-aux/config.guess)}
@@ -11,7 +12,7 @@ prepare() {
         --prefix=$prefix \
         --host=$host \
         --build=$build \
-        --disable-static \
+        --enable-static=$static \
         --docdir=/usr/share/doc/xz-$package_version
 }
 
