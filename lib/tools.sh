@@ -31,14 +31,15 @@ tools_bootstrap() {
         languages=c,c++ \
         install gcc
 
-    exit 0
-
     # Linux kernel headers to build glibc.
     package_install_dir=$TOOL_DIR install linux#headers
 
     # GNU C library: the glibc that all toolchain binaries will link against.
-    prefix=/usr headers=$TOOL_DIR/usr/include \
-        package_install_dir=$TOOL_DIR install glibc
+    package_install_dir=$TOOL_DIR \
+        prefix=/usr headers=$TOOL_DIR/usr/include \
+        install glibc
+
+    exit 0
 
     # Verify the cross-compiler references our glibc dynamic linker.
     echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc --sysroot=$TOOL_DIR -xc -

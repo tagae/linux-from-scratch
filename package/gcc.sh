@@ -5,8 +5,14 @@
 
 fetch() {
     default_fetch
-    mpfr_version=$(version mpfr)
-    ln -s $SOURCE_DIR/mpfr-$mpfr_version source/gcc-$package_version/mpfr
+    local dependency
+    for dependency in mpfr gmp mpc; do
+        sh $PROJECT_DIR/lfs fetch $dependency
+        dependency_version=$(sh $PROJECT_DIR/lfs version $dependency)
+        ln -sfnv \
+           $SOURCE_DIR/$dependency-$dependency_version \
+           $SOURCE_DIR/gcc-$package_version/$dependency
+    done
 }
 
 prepare() {
@@ -57,24 +63,7 @@ prepare() {
 }
 
 build() {
-    case $package_component in
-        libstdc++)
-            make
-            ;;
-        *)
-            case ${package_variant:-} in
-                pass1)
-                    make all-gcc all-target-libgcc
-                    if [ "${libatomic:-yes}" != no ]; then
-                        make all-target-libatomic
-                    fi
-                    ;;
-                *)
-                    make
-                    ;;
-            esac
-            ;;
-    esac
+    make
 }
 
 install() {
@@ -83,19 +72,13 @@ install() {
             make install DESTDIR=$package_install_dir
             ;;
         *)
+            make install DESTDIR=$package_install_dir
             case ${package_variant:-} in
                 pass1)
-                    make install-gcc install-target-libgcc DESTDIR=$package_install_dir
-                    if [ "${libatomic:-yes}" != no ]; then
-                        make install-target-libatomic DESTDIR=$package_install_dir
-                    fi
                     cat $package_source_dir/gcc/limitx.h \
                         $package_source_dir/gcc/glimits.h \
                         $package_source_dir/gcc/limity.h \
                         > $($target-gcc -print-file-name=include)/limits.h
-                    ;;
-                *)
-                    make install DESTDIR=$package_install_dir
                     ;;
             esac
             ;;
