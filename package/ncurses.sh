@@ -15,11 +15,8 @@ prepare() {
                 ${shared:+--with-shared=$shared} \
                 ${debug:+--with-debug=$debug} \
                 ${normal:+--with-normal=$normal} \
-                ${cxx:+--with-cxx=$cxx} \
+                ${cxx_shared:+--with-cxx-shared=$cxx_shared} \
                 ${ada:+--with-ada=$ada} \
-                ${pc_files:+--enable-pc-files=$pc_files} \
-                ${pkg_config_libdir:+--with-pkg-config-libdir=$pkg_config_libdir} \
-                ${widec:+--enable-widec=$widec} \
                 ${stripping:+--enable-stripping=$stripping}
             ;;
     esac

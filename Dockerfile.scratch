@@ -5,5 +5,5 @@ ENV PATH=/var/lfs/tools/bin:/var/lfs/tools/usr/bin
 ENV LC_ALL=POSIX
 ENV HOME=/var/lfs
 
-#USER lfs
+USER lfs
 CMD /var/lfs/tools/bin/bash

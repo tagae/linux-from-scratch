@@ -35,8 +35,8 @@ tools_bootstrap() {
     package_install_dir=$TOOL_DIR install linux#headers
 
     # GNU C library: the glibc that all toolchain binaries will link against.
-    package_install_dir=$TOOL_DIR \
-        prefix=/usr \
+    package_install_dir=/ \
+        prefix=$TOOL_DIR \
         nscd=no kernel=5.10 werror=no \
         install glibc
 
@@ -45,11 +45,9 @@ tools_bootstrap() {
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
-    exit 0
-
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
-    package_install_dir=$TOOL_DIR \
-        prefix=/usr \
+    package_install_dir=/ \
+        prefix=$TOOL_DIR \
         multilib=no nls=no libstdcxx_pch=no \
         install gcc#libstdc++
 
@@ -57,33 +55,32 @@ tools_bootstrap() {
 
     (
         host=$target
+        package_install_dir=/
         prefix=$TOOL_DIR
         nls=no
 
-        install m4
-        install ncurses#tic
-                exit 0
-        normal=no cxx=no stripping=no install ncurses
-        curses=no install bash
-        install_program=hostname no_install_program=kill,uptime install coreutils
-        install diffutils
-        install file#native
-        install file
-        localstatedir=$TOOL_DIR/var/lib/locate install findutils
-        install gawk
-        install grep
-        install gzip
-        install make
-        install patch
-        install sed
-        install tar
-        install xz
-        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
-            liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
-            makeinstall_chown=no install util-linux
+        #install m4
+        # shared=no install ncurses#tic
+        # shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
+        # exit 1
+        # curses=no install bash
+        #     install_program=hostname no_install_program=kill,uptime install coreutils
+        # install diffutils
+        # install file#native
+        # install file
+        # localstatedir=$TOOL_DIR/var/lib/locate install findutils
+        # install gawk
+        # install grep
+        # install gzip
+        # install make
+        # install patch
+        # install sed
+        # install tar
+        # install xz
+        # chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
+        #     liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
+        #     makeinstall_chown=no install util-linux
     )
-
-    exit 0
 
     # Binutils pass 2: native (glibc-linked) linker/assembler.
     package_variant=pass2 \
