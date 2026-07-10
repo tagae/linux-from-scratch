@@ -32,6 +32,14 @@ get() {
     [ -d $SOURCE_DIR/${archive%%.tar.*} ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
 }
 
+apply_patch() {
+    local url=$1
+    local file=${url##*/}
+    mkdir -p $DOWNLOAD_DIR
+    [ -f $DOWNLOAD_DIR/$file ] || wget --no-check-certificate -P $DOWNLOAD_DIR $url
+    patch -d $package_source_dir -Np1 -i $DOWNLOAD_DIR/$file
+}
+
 git_default_branch() {
     local url="$1" branch_file=$(mktemp -t git-default-branch-XXXXXX)
     git ls-remote --symref $url HEAD > $branch_file

@@ -7,8 +7,12 @@ prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}
     : ${host:=$build}
 
-    # Ensure that the ldconfig and sln utilities are installed into /usr/sbin.
-    echo "rootsbindir=/usr/sbin" > configparms
+    apply_patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
+    apply_patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
+
+    # Ensure that the ldconfig and sln utilities are installed alongside the
+    # rest of this glibc, rather than glibc's default rootsbindir=/sbin.
+    echo "rootsbindir=${prefix:-/usr}/sbin" > configparms
 
     # --host is where glibc will run (the target machine)
     # --build is the machine doing the compilation
