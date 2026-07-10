@@ -3,22 +3,16 @@
 
 package_source_dir=$SOURCE_DIR/Python-$package_version
 
-: ${prefix:=/usr}
-: ${sysroot:=/}
-
 prepare() {
-    : ${build:=$(uname -m)-pc-linux-gnu}
-    : ${host:=$build}
-
     # Cross-compiling Python requires a native Python build for host utilities
     $package_source_dir/configure \
-        --prefix=$prefix \
-        --build=$build \
-        --host=$host \
+        ${host:+--host=$host} \
+        ${build:+--build=$build} \
+        ${prefix:+--prefix=$prefix} \
         --enable-shared \
         --with-system-expat \
         --without-static-libpython \
-        --with-sysroot=$sysroot \
+        ${sysroot:+--with-sysroot=$sysroot} \
         ac_cv_file__dev_ptmx=yes \
         ac_cv_file__dev_ptc=no
 }

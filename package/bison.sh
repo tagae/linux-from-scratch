@@ -1,18 +1,12 @@
 : ${package_version:=3.8.2}
 : ${package_source:=https://ftp.gnu.org/gnu/bison/bison-$package_version.tar.xz}
 
-: ${prefix:=/usr}
-: ${nls:=yes}
-
 prepare() {
-    : ${build:=$($package_source_dir/build-aux/config.guess)}
-    : ${host:=$build}
-
     $package_source_dir/configure \
-        --prefix=$prefix \
-        --host=$host \
-        --build=$build \
-        --enable-nls=$nls
+        ${host:+--host=$host} \
+        ${build:+--build=$build} \
+        ${prefix:+--prefix=$prefix} \
+        ${nls:+--enable-nls=$nls}
 }
 
 build() {

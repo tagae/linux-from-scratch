@@ -1,5 +1,5 @@
 : ${package_version:=1.4.21}
-: ${package_source:=https://ftp.gnu.org/gnu/m4/m4-$package_version.tar.xz}
+: ${package_source:=https://ftpmirror.gnu.org/m4/m4-$package_version.tar.xz}
 
 prepare() {
     $package_source_dir/configure \

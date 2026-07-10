@@ -45,6 +45,8 @@ tools_bootstrap() {
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
+    exit 0
+
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
     package_install_dir=$TOOL_DIR \
         prefix=/usr \
@@ -59,10 +61,8 @@ tools_bootstrap() {
         nls=no
 
         install m4
-        exit 0
-
-
         install ncurses#tic
+                exit 0
         normal=no cxx=no stripping=no install ncurses
         curses=no install bash
         install_program=hostname no_install_program=kill,uptime install coreutils
@@ -82,6 +82,8 @@ tools_bootstrap() {
             liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
             makeinstall_chown=no install util-linux
     )
+
+    exit 0
 
     # Binutils pass 2: native (glibc-linked) linker/assembler.
     package_variant=pass2 \

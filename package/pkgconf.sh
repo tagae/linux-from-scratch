@@ -1,16 +1,11 @@
 : ${package_version:=2.5.1}
 : ${package_source:=https://distfiles.ariadne.space/pkgconf/pkgconf-$package_version.tar.xz}
 
-: ${prefix:=/usr}
-
 prepare() {
-    : ${build:=$($package_source_dir/build-aux/config.guess)}
-    : ${host:=$build}
-
     $package_source_dir/configure \
-        --prefix=$prefix \
-        --host=$host \
-        --build=$build \
+        ${host:+--host=$host} \
+        ${build:+--build=$build} \
+        ${prefix:+--prefix=$prefix} \
         --disable-static \
         --docdir=/usr/share/doc/pkgconf-$package_version
 }
