@@ -24,7 +24,7 @@ prepare() {
                 ${prefix:+--prefix=$prefix} \
                 ${multilib:+--enable-multilib=$multilib} \
                 ${nls:+--enable-nls=$nls} \
-                --disable-libstdcxx-pch \
+                ${libstdcxx_pch:+--enable-libstdcxx-pch=$libstdcxx_pch} \
                 --with-gxx-include-dir=/$target/include/c++/$package_version
             ;;
         *)

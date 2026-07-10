@@ -36,18 +36,20 @@ tools_bootstrap() {
 
     # GNU C library: the glibc that all toolchain binaries will link against.
     package_install_dir=$TOOL_DIR \
-        prefix=/usr headers=$TOOL_DIR/usr/include \
+        prefix=/usr \
+        nscd=no kernel=5.10 werror=no \
         install glibc
 
-    exit 0
-
     # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc --sysroot=$TOOL_DIR -xc -
+    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
     # C++ standard library (cross-compiled into TOOL_DIR/usr).
-    nls=no multilib=no prefix=$TOOL_DIR package_install_dir=$TOOL_DIR install gcc#libstdc++
+    package_install_dir=$TOOL_DIR \
+        prefix=/usr \
+        multilib=no nls=no libstdcxx_pch=no \
+        install gcc#libstdc++
 
     # --- Temporary tools (glibc-linked, relocatable) ---------------
 
@@ -56,7 +58,10 @@ tools_bootstrap() {
         prefix=$TOOL_DIR
         nls=no
 
-        werror=no install m4
+        install m4
+        exit 0
+
+
         install ncurses#tic
         normal=no cxx=no stripping=no install ncurses
         curses=no install bash
