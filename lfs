@@ -61,13 +61,18 @@ export MAKEFLAGS=-j$(nproc)
 
 readonly LC_ALL MAKEFLAGS
 
-# Bootstrap phase: cross-compiler bin + host tools. Do NOT put toolchain usr/bin
-# first — once glibc-linked binaries are installed there they shadow host tools
-# and fail (wrong ELF interpreter). Scratch phase: toolchain only, no host PATH.
+# Bootstrap phase: cross-compiler bin + host tools + toolchain usr/bin
+# LAST. Do NOT put toolchain usr/bin first — once glibc-linked binaries are
+# installed there they shadow host tools and fail (wrong ELF interpreter).
+# It still needs to be on PATH somewhere, though: build-time tools that
+# only the toolchain itself provides (e.g. pkgconf, needed by wget's own
+# configure) aren't on the host at all, so they're only found as a
+# fallback after host tools are checked first.
+# Scratch phase: toolchain only, no host PATH.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
     PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/bin
 else
-    PATH=$TOOL_DIR/bin:$PATH
+    PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin
 fi
 
 readonly PATH
