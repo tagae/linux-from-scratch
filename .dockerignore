@@ -4,4 +4,7 @@
 /install/
 /source/
 /tools/
-/work/
+# Dockerfile.scratch needs our own already-built bash out of here as
+# /bin/sh; everything else in this (large) tree stays out of build context.
+/work/**
+!/work/scratch-init/sh

@@ -56,7 +56,7 @@ tools_bootstrap() {
     # the ELF's leading segment, which it does incorrectly for larger
     # binaries (marks the split-off segment non-executable, crashing
     # anything whose .plt/.init ends up there).
-    tools_set_rtld_ldflags
+    _tools_set_rtld_ldflags
 
     # C++ standard library (cross-compiled into TOOL_DIR/usr, same reasoning as glibc above).
     package_install_dir=$TOOL_DIR \
@@ -111,13 +111,13 @@ tools_bootstrap() {
     package_variant=pass2 \
         host=$target prefix=/usr sysroot=$TOOL_DIR build_sysroot=$TOOL_DIR \
         package_install_dir=$TOOL_DIR \
-        glibc_version=2.43 languages=c,c++ multilib=no \
+        glibc_version=$(version glibc) languages=c,c++ multilib=no \
         shared=yes threads=yes libstdcxx=yes \
         nls=no fixincludes=no \
         libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
         install gcc
 
-    tools_relocate
+    _tools_relocate
 
     # TOOL_DIR is a named volume, invisible to `docker build`; stage our
     # own already-built bash where Dockerfile.scratch's COPY can reach it.
@@ -125,11 +125,31 @@ tools_bootstrap() {
     cp $TOOL_DIR/usr/bin/bash $SCRATCH_INIT_DIR/sh
 }
 
+tools_build() {
+    # No tools_relocate call here: it shells out to patchelf, which only
+    # exists in the bootstrap container. Everything built in this phase
+    # already gets a correct interpreter/rpath at link time from
+    # tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
+    tools_set_rtld_ldflags
+
+    # The scratch image has no /tmp (see Dockerfile.scratch); TMPDIR points
+    # here instead, but nothing else creates it.
+    mkdir -p "${TMPDIR:-/tmp}"
+
+    (
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
+        nls=no
+
+        install gettext
+    )
+}
+
 # Every remaining binary this session builds is host=$target and should
 # already carry a correct, TOOL_DIR-relative interpreter/rpath (see the
 # call site in tools_bootstrap). This just exports the LDFLAGS that make
 # that happen, so tools_build can use the same fix for `install gettext`.
-tools_set_rtld_ldflags() {
+_tools_set_rtld_ldflags() {
     local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
     export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
@@ -147,7 +167,7 @@ tools_set_rtld_ldflags() {
 # in the bootstrap container, and is linked against the host's own glibc —
 # relocating it would break it for no benefit, since it's not part of the
 # self-contained toolchain the `scratch` image runs.
-tools_relocate() {
+_tools_relocate() {
     stage "Relocating toolchain binaries under $TOOL_DIR/usr"
 
     local ld_so=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
@@ -179,24 +199,4 @@ tools_relocate() {
         || bail "Dynamic linker(s) were themselves relocated — this breaks them: $corrupted"
 
     return 0
-}
-
-tools_build() {
-    # No tools_relocate call here: it shells out to patchelf, which only
-    # exists in the bootstrap container. Everything built in this phase
-    # already gets a correct interpreter/rpath at link time from
-    # tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
-    tools_set_rtld_ldflags
-
-    # The scratch image has no /tmp (see Dockerfile.scratch); TMPDIR points
-    # here instead, but nothing else creates it.
-    mkdir -p "${TMPDIR:-/tmp}"
-
-    (
-        package_install_dir=$TOOL_DIR
-        prefix=/usr
-        nls=no
-
-        install gettext
-    )
 }

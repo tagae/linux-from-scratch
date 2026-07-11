@@ -58,7 +58,7 @@ done
 # Small bind-mounted staging area for the one file Dockerfile.scratch
 # needs at build time (see tools_bootstrap). TOOL_DIR itself is a named
 # volume, which `docker build` can't see at all.
-: ${SCRATCH_INIT_DIR:=$OUTPUT_DIR/scratch-init}
+: ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
 
 readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
 

@@ -6,25 +6,25 @@ ARG HOST_GID
 
 # /bin/sh must exist as a real path for #!/bin/sh scripts (like ./lfs) to
 # exec. TOOL_DIR is a named volume, invisible to `docker build`, so this
-# comes from scratch-init instead — a tiny staging copy of our own
+# comes from work/scratch-init instead — a tiny staging copy of our own
 # already-built bash that tools_bootstrap places there (see lib/tools.sh).
 # Invoked via a #!/bin/sh shebang, bash's argv[0] is "/bin/sh", which puts
 # it in POSIX-compatible mode automatically.
-COPY scratch-init/sh /bin/sh
+COPY work/scratch-init/sh /bin/sh
 
-ENV PATH=/var/lfs/tools/usr/bin
+ENV PATH=/mnt/lfs/tools/usr/bin
 ENV LC_ALL=POSIX
-ENV HOME=/var/lfs
+ENV HOME=/mnt/lfs
 # There is no /tmp in this image (nothing exists but what's mounted or
 # copied in above) and nothing here can create one at build time. Point
 # TMPDIR at an already-writable, already-existing directory in one of the
 # mounted volumes instead of fabricating a new top-level path.
-ENV TMPDIR=/var/lfs/work/tmp
+ENV TMPDIR=/mnt/lfs/work/tmp
 
 # No /etc/passwd exists in this image (there is nothing but the mounted
 # tools volume), so USER must be numeric — a name would require a passwd
 # lookup. Match the bootstrap container's lfs user so file ownership on
 # the shared volumes lines up.
 USER $HOST_UID:$HOST_GID
-WORKDIR /var/lfs
-CMD ["/var/lfs/tools/usr/bin/bash"]
+WORKDIR /mnt/lfs
+CMD ["/mnt/lfs/tools/usr/bin/bash"]

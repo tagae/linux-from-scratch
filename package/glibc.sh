@@ -7,8 +7,8 @@ prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}
     : ${host:=$build}
 
-    apply_patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
-    apply_patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
+    patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
+    patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
 
     # Ensure that the ldconfig and sln utilities are installed alongside the
     # rest of this glibc, rather than glibc's default rootsbindir=/sbin.
