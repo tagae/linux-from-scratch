@@ -1,4 +1,4 @@
-: ${package_version:=0.0.1}
+: ${package_version:=0.1.0}
 
 install() {
     cd $package_install_dir

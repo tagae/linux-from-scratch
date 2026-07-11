@@ -1,6 +1,7 @@
 .PHONY: tools docker-clean docker-distclean pristine
 
-.DEFAULT_GOAL := tools
+system: tools
+	docker compose run --rm scratch ./lfs system build
 
 tools: .env
 	# Chapter 5: Compiling a Cross-Toolchain
@@ -13,8 +14,9 @@ tools: .env
 	echo HOST_UID=$$(id -u) >> $@
 	echo HOST_GID=$$(id -g) >> $@
 
-docker-clean:
+clean:
 	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install
 
-docker-distclean: docker-clean
-	docker volume rm -f linux-from-scratch_tools
+distclean:
+	docker compose down -v
+	rm -r work/
