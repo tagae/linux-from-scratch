@@ -138,6 +138,10 @@ bootstrap_tools() {
     # own already-built bash where Dockerfile.scratch's COPY can reach it.
     mkdir -p $SCRATCH_INIT_DIR
     cp -v $TOOL_DIR/usr/bin/bash $SCRATCH_INIT_DIR/sh
+
+    # Empty placeholder Dockerfile.scratch's COPY --chown uses to seed the
+    # install volume's ownership — see the comment there.
+    mkdir -p $SCRATCH_INIT_DIR/empty
 }
 
 build_tools() {

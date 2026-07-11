@@ -19,7 +19,6 @@ tools: .env
 
 reinstall:
 	docker volume rm -f linux-from-scratch_install
-	docker compose run --rm bootstrap true
 	docker compose run --rm scratch find work -name '.install-*' -delete
 	docker compose run --rm scratch ./lfs system build
 

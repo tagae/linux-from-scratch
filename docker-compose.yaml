@@ -1,7 +1,7 @@
 services:
   bootstrap:
     build:
-      dockerfile: Dockerfile.bootstrap-debian
+      dockerfile: Dockerfile.bootstrap
       args:
         HOST_UID: $HOST_UID
         HOST_GID: $HOST_GID
@@ -39,15 +39,6 @@ services:
       - type: bind
         source: $PWD/work/scratch-init
         target: /mnt/lfs/work/scratch-init
-      # bootstrap never writes here itself, but its presence matters: this
-      # is what makes Docker initialize the (root-owned by default) install
-      # volume with the correct lfs ownership the first time it's used —
-      # Dockerfile.scratch (FROM scratch) has no chown mechanism at all, so
-      # if scratch is the first to touch this mount, it stays root-owned
-      # and the non-root scratch container can't fix that itself.
-      - type: volume
-        source: install
-        target: /mnt/lfs/install
 
   scratch:
     build:
@@ -88,6 +79,11 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
+      # Docker seeds a freshly created named volume with whatever content
+      # (and ownership) already exists at that path in the image. Dockerfile
+      # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly
+      # into its own layer via COPY --chown, so this mount only needs to
+      # exist here — no other service needs to touch it first.
       - type: volume
         source: install
         target: /mnt/lfs/install
