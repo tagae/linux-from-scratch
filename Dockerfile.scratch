@@ -5,13 +5,12 @@ ARG HOST_UID
 ARG HOST_GID
 
 # /bin/sh must exist as a real path for #!/bin/sh scripts (like ./lfs) to
-# exec. It has to be a real file, not a symlink into the tools bind mount:
-# COPY resolves symlink targets at build time, and the mount isn't
-# populated until a container actually runs. Bash (built by us, from the
-# bootstrap run that already populated ./tools) works fine as /bin/sh —
-# invoked via a #!/bin/sh shebang its argv[0] is "/bin/sh", which puts it
-# in POSIX-compatible mode automatically.
-COPY tools/usr/bin/bash /bin/sh
+# exec. TOOL_DIR is a named volume, invisible to `docker build`, so this
+# comes from scratch-init instead — a tiny staging copy of our own
+# already-built bash that tools_bootstrap places there (see lib/tools.sh).
+# Invoked via a #!/bin/sh shebang, bash's argv[0] is "/bin/sh", which puts
+# it in POSIX-compatible mode automatically.
+COPY scratch-init/sh /bin/sh
 
 ENV PATH=/var/lfs/tools/usr/bin
 ENV LC_ALL=POSIX

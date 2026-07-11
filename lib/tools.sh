@@ -118,6 +118,11 @@ tools_bootstrap() {
         install gcc
 
     tools_relocate
+
+    # TOOL_DIR is a named volume, invisible to `docker build`; stage our
+    # own already-built bash where Dockerfile.scratch's COPY can reach it.
+    mkdir -p $SCRATCH_INIT_DIR
+    cp $TOOL_DIR/usr/bin/bash $SCRATCH_INIT_DIR/sh
 }
 
 # Every remaining binary this session builds is host=$target and should
