@@ -13,7 +13,6 @@ build_system() {
     host=$target
     package_install_dir=$INSTALL_DIR
     prefix=/usr
-    #sysroot=$INSTALL_DIR
 
     install system-files
 
@@ -22,7 +21,7 @@ build_system() {
     # into TOOL_DIR rather than INSTALL_DIR — the shipped image should
     # have no header files at all, and this way they never need stripping
     # back out.
-    package_install_dir=$TOOL_DIR install linux#headers
+    #package_install_dir=$TOOL_DIR install linux#headers
 
     # glibc's own build invokes bison (e.g. for intl/plural.y) as an
     # external tool. bison was built with --prefix=/usr (landing under

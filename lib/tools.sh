@@ -165,9 +165,6 @@ build_tools() {
     readonly nls=no
 
     install gettext
-    # Needed to build glibc itself in the later `system build` step (also
-    # self-hosted, no host PATH fallback): its configure hard-requires
-    # bison and python.
     install bison
     install python
 }

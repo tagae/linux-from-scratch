@@ -14,8 +14,14 @@ tools: .env
 	echo HOST_UID=$$(id -u) >> $@
 	echo HOST_GID=$$(id -g) >> $@
 	echo LFS_RELEASE=r13.0-143-systemd >> $@
-	echo DISTRIB_CODENAME=$$USER
-	echo VERSION_CODENAME=$$USER
+	echo DISTRIB_CODENAME=$$(id -un) >> $@
+	echo VERSION_CODENAME=$$(id -un) >> $@
+
+reinstall:
+	docker volume rm -f linux-from-scratch_install
+	docker compose run --rm bootstrap true
+	docker compose run --rm scratch find work -name '.install-*' -delete
+	docker compose run --rm scratch ./lfs system build
 
 clean:
 	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install

@@ -103,7 +103,7 @@ EOF
 
     cat > etc/lsb-release <<EOF
 DISTRIB_ID="Linux From Scratch"
-DISTRIB_RELEASE="${DISTRIB_RELEASE:-local}"
+DISTRIB_RELEASE="${LFS_RELEASE:-local}"
 DISTRIB_CODENAME="${DISTRIB_CODENAME:-local}"
 DISTRIB_DESCRIPTION="Linux From Scratch"
 EOF
