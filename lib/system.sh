@@ -37,9 +37,9 @@ build_system() {
 
     # Capabilities — hard systemd dependency
     install libcap
+
     # Kernel module loading — hard systemd dependency
     install kmod
-
     # Shell and core utilities.
     install busybox
 
@@ -50,7 +50,7 @@ build_system() {
     install systemd
 
     # Kernel image, DTBs and modules
-    package_install_dir=$INSTALL_DIR install linux
+    install linux
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only
     if [ -n "${DTB:-}" ]; then
