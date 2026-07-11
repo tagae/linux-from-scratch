@@ -1,40 +1,23 @@
 : ${package_version:=6.6}
-: ${package_source:=https://invisible-island.net/archives/ncurses/ncurses-$package_version.tar.gz}
-
-: ${prefix:=/usr}
-: ${shared:=yes}
-: ${debug:=no}
-: ${normal:=yes}
-: ${cxx:=yes}
-: ${ada:=no}
-: ${pc_files:=yes}
-: ${pkg_config_libdir:=/usr/lib/pkgconfig}
-: ${widec:=yes}
-: ${stripping:=yes}
+: ${package_source:=https://ftpmirror.gnu.org/ncurses/ncurses-$package_version.tar.gz}
 
 prepare() {
-    : ${build:=$($package_source_dir/build-aux/config.guess)}
-    : ${host:=$build}
-
     case $package_component in
         tic)
             $package_source_dir/configure \
-                --prefix=$prefix
+                ${prefix:+--prefix=$prefix}
             ;;
         *)
             $package_source_dir/configure \
-                --prefix=$prefix \
-                --host=$host \
-                --build=$build \
-                --with-shared=$shared \
-                --with-debug=$debug \
-                --with-normal=$normal \
-                --with-cxx=$cxx \
-                --with-ada=$ada \
-                --enable-pc-files=$pc_files \
-                --with-pkg-config-libdir=$pkg_config_libdir \
-                --enable-widec=$widec \
-                --enable-stripping=$stripping
+                ${host:+--host=$host} \
+                ${build:+--build=$build} \
+                ${prefix:+--prefix=$prefix} \
+                ${shared:+--with-shared=$shared} \
+                ${debug:+--with-debug=$debug} \
+                ${normal:+--with-normal=$normal} \
+                ${cxx_shared:+--with-cxx-shared=$cxx_shared} \
+                ${ada:+--with-ada=$ada} \
+                ${stripping:+--enable-stripping=$stripping}
             ;;
     esac
 }

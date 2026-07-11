@@ -1,19 +1,13 @@
 : ${package_version:=4.2.2}
 : ${package_source:=https://ftpmirror.gnu.org/mpfr/mpfr-$package_version.tar.xz}
 
-: ${prefix:=/usr}
-: ${thread_safe:=yes}
-
 prepare() {
-    : ${build:=$($package_source_dir/build-aux/config.guess)}
-    : ${host:=$build}
-
     $package_source_dir/configure \
-        --prefix=$prefix \
-        --host=$host \
-        --build=$build \
+        ${host:+--host=$host} \
+        ${build:+--build=$build} \
+        ${prefix:+--prefix=$prefix} \
         --disable-static \
-        --enable-thread-safe=$thread_safe \
+        ${thread_safe:+--enable-thread-safe=$thread_safe} \
         --docdir=/usr/share/doc/mpfr-$package_version
 }
 

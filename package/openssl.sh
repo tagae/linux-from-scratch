@@ -1,13 +1,7 @@
 : ${package_version:=4.0.0}
 : ${package_source:=https://openssl.org/source/openssl-$package_version.tar.gz}
 
-: ${prefix:=/usr}
-
 prepare() {
-    : ${build:=$(uname -m)-pc-linux-gnu}
-    : ${host:=$build}
-    : ${target:=$host}
-
     case $ARCH in
         arm)   _ssl_target=linux-armv4 ;;
         arm64) _ssl_target=linux-aarch64 ;;
@@ -16,7 +10,7 @@ prepare() {
 
     $package_source_dir/Configure \
         $_ssl_target \
-        --prefix=$prefix \
+        ${prefix:+--prefix=$prefix} \
         --openssldir=/etc/ssl \
         --libdir=lib \
         shared \

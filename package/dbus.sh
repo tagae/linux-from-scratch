@@ -1,16 +1,11 @@
 : ${package_version:=1.16.2}
 : ${package_source:=https://dbus.freedesktop.org/releases/dbus/dbus-$package_version.tar.xz}
 
-: ${prefix:=/usr}
-
 prepare() {
-    : ${build:=$($package_source_dir/build-aux/config.guess)}
-    : ${host:=$build}
-
     $package_source_dir/configure \
-        --prefix=$prefix \
-        --host=$host \
-        --build=$build \
+        ${host:+--host=$host} \
+        ${build:+--build=$build} \
+        ${prefix:+--prefix=$prefix} \
         --sysconfdir=/etc \
         --localstatedir=/var \
         --runstatedir=/run \

@@ -1,13 +1,7 @@
 : ${package_version:=1.0.8}
 : ${package_source:=https://sourceware.org/pub/bzip2/bzip2-$package_version.tar.gz}
 
-: ${prefix:=/usr}
-
 prepare() {
-    : ${build:=$(uname -m)-pc-linux-gnu}
-    : ${host:=$build}
-    : ${target:=$host}
-
     sed -i 's|/usr/local|$(PREFIX)|g' $package_source_dir/Makefile
 }
 

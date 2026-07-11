@@ -125,7 +125,6 @@ unmount_partitions() {
 }
 
 cleanup() {
-    stage Cleanup
     unmount_partitions
     detach_image
 }

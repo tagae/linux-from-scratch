@@ -1,15 +1,9 @@
 : ${package_version:=1.3.2}
 : ${package_source:=https://zlib.net/zlib-$package_version.tar.xz}
 
-: ${prefix:=/usr}
-
 prepare() {
-    : ${build:=$(uname -m)-pc-linux-gnu}
-    : ${host:=$build}
-    : ${target:=$host}
-
     CC=$target-gcc AR=$target-ar RANLIB=$target-ranlib \
-        $package_source_dir/configure --prefix=$prefix
+        $package_source_dir/configure ${prefix:+--prefix=$prefix}
 }
 
 build() {

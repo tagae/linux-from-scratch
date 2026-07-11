@@ -1,8 +1,6 @@
 : ${package_version:=1.37.0}
 : ${package_source:=https://busybox.net/downloads/busybox-$package_version.tar.bz2}
 
-: ${prefix:=/usr}
-
 prepare() {
     make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- defconfig
     # Answer all new Kconfig prompts with defaults first

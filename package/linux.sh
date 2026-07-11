@@ -14,13 +14,10 @@ case $PLATFORM in
         : ${package_source:=$raspberrypi_kernel_source}
         : ${defconfig:=bcm2712_defconfig}
         ;;
-    virt)
-        : ${package_version:=7.1.2}
-        package_major_version="${package_version%%.*}"
-        : ${package_source:=https://www.kernel.org/pub/linux/kernel/v$package_major_version.x/linux-$package_version.tar.xz}
-        ;;
     *)
-        : ${package_source:=$torvalds_kernel_source}
+        : ${package_version:=7.1.2}
+        local package_major_version="${package_version%%.*}"
+        : ${package_source:=https://www.kernel.org/pub/linux/kernel/v$package_major_version.x/linux-$package_version.tar.xz}
         ;;
 esac
 
@@ -29,14 +26,16 @@ prepare() {
         linux)
             case $PLATFORM in
                 virt)
+                    local machine=$(uname -m)
                     cat $package_files_dir/base.config \
                         $package_files_dir/virt.config \
+                        $package_files_dir/$machine.config \
+                        $package_files_dir/systemd.config \
                         > $package_source_dir/combined.config
                     _make KCONFIG_ALLCONFIG=$package_source_dir/combined.config allnoconfig
                     ;;
                 *)
                     _make $defconfig
-                    cat $package_files_dir/pi.config >> $package_source_dir/.config
                     ;;
             esac
             ${MACHINE:+_set_kernel_config DEFAULT_HOSTNAME "$MACHINE"}
@@ -51,6 +50,9 @@ prepare() {
 
 build() {
     case $package_component in
+        headers)
+            _make headers
+            ;;
         linux)
             case $ARCH in
                 arm)   _make zImage modules ${DTB:+dtbs} ;;
