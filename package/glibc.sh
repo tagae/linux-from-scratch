@@ -7,8 +7,8 @@ prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}
     : ${host:=$build}
 
-    patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
-    patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
+    apply_patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
+    apply_patch https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
 
     # Ensure that the ldconfig and sln utilities are installed alongside the
     # rest of this glibc, rather than glibc's default rootsbindir=/sbin.
@@ -53,7 +53,25 @@ install() {
             make install-headers DESTDIR=$package_install_dir
             ;;
         glibc)
-            make install DESTDIR=$package_install_dir
+            # LINGUAS= skips installing translated message catalogs
+            # (po/Makefile's own documented override), which also means
+            # msgfmt is never invoked, sidestepping its iconv/gconv
+            # dependency entirely. Safe to override on the command line:
+            # "LINGUAS" isn't a name any other subdir's Makefile reuses.
+            make install DESTDIR=$package_install_dir LINGUAS=
+
+            # No i18n needed for a minimal Busybox/systemd target: drop
+            # locale/charmap source data and the loadable gconv charset
+            # modules after the fact, rather than fighting to suppress
+            # their install — glibc's own Makefiles reuse plain variable
+            # names like "charmaps" for unrelated purposes in other
+            # subdirs (iconvdata's own charmap-relative build path, for
+            # one), so a command-line override aimed at localedata ends up
+            # clobbering those too. Basic ASCII/UTF-8 conversions are
+            # handled by libc's built-in fast path with no module files at
+            # all; only legacy/exotic charsets need what's being removed.
+            rm -rf $package_install_dir${prefix:-/usr}/share/i18n
+            rm -rf $package_install_dir${prefix:-/usr}/lib/gconv
             ;;
         *)
             default_install

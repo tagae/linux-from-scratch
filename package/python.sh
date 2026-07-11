@@ -1,4 +1,4 @@
-: ${package_version:=3.14.5}
+: ${package_version:=3.14.6}
 : ${package_source:=https://www.python.org/ftp/python/$package_version/Python-$package_version.tar.xz}
 
 package_source_dir=$SOURCE_DIR/Python-$package_version
@@ -10,7 +10,7 @@ prepare() {
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
         --enable-shared \
-        --with-system-expat \
+        ${system_expat:+--with-system-expat} \
         --without-static-libpython \
         ${sysroot:+--with-sysroot=$sysroot} \
         ac_cv_file__dev_ptmx=yes \
