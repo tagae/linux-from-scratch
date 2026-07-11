@@ -3,12 +3,12 @@ FROM alpine:3.23.4
 RUN delgroup dialout # conflicts with macOS
 
 RUN apk update
-RUN apk add build-base git rsync bison gawk python3 # grep file patchelf
+RUN apk add build-base git rsync bison gawk python3 patchelf # grep file
 
 ARG HOST_UID
 ARG HOST_GID
 RUN addgroup -g $HOST_GID lfs
-RUN adduser -D -H -u $HOST_UID -G lfs lfs
+RUN adduser -D -h /var/lfs -u $HOST_UID -G lfs lfs
 
 RUN mkdir -pv \
     /var/lfs/download \

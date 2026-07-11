@@ -7,13 +7,11 @@ ARG HOST_GID
 # /bin/sh must exist as a real path for #!/bin/sh scripts (like ./lfs) to
 # exec. It has to be a real file, not a symlink into the tools bind mount:
 # COPY resolves symlink targets at build time, and the mount isn't
-# populated until a container actually runs. Busybox (built by us, from
-# the bootstrap run that already populated ./tools — see the `install
-# busybox` call in tools_bootstrap) is statically linked, so it has no
-# runtime dependency on our glibc at all, and dispatches to its "ash"
-# applet when invoked as "sh" (it picks the applet by argv[0]'s basename,
-# which a #!/bin/sh shebang sets to "/bin/sh").
-COPY tools/usr/bin/busybox /bin/sh
+# populated until a container actually runs. Bash (built by us, from the
+# bootstrap run that already populated ./tools) works fine as /bin/sh —
+# invoked via a #!/bin/sh shebang its argv[0] is "/bin/sh", which puts it
+# in POSIX-compatible mode automatically.
+COPY tools/usr/bin/bash /bin/sh
 
 ENV PATH=/var/lfs/tools/usr/bin
 ENV LC_ALL=POSIX

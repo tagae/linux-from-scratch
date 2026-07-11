@@ -81,12 +81,6 @@ tools_bootstrap() {
         nls=no
 
         install m4
-
-        # Statically-linked (see package/busybox.sh's CONFIG_STATIC=y), so
-        # it has no runtime dependency on our glibc at all — used as
-        # /bin/sh in Dockerfile.scratch, where nothing else can provide one.
-        package_install_dir=$TOOL_DIR/usr install busybox
-
         package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
         shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
         curses=no install bash

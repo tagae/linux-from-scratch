@@ -17,5 +17,5 @@ build() {
 
 install() {
     make install DESTDIR=$package_install_dir
-    ln -sv bash $package_install_dir$prefix/bin/sh
+    ln -sfv bash $package_install_dir$prefix/bin/sh
 }

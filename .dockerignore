@@ -3,9 +3,8 @@
 /image/
 /install/
 /source/
-# Dockerfile.scratch needs our own already-built (static) busybox out of
-# here as /bin/sh; everything else in this (large) tree stays out of the
-# build context.
+# Dockerfile.scratch needs our own already-built bash out of here as
+# /bin/sh; everything else in this (large) tree stays out of build context.
 /tools/**
-!/tools/usr/bin/busybox
+!/tools/usr/bin/bash
 /work/
