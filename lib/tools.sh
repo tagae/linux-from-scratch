@@ -49,6 +49,15 @@ tools_bootstrap() {
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
+    # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
+    # every remaining binary at link time, rather than patchelf-ing it in
+    # after the fact — patchelf can safely add an rpath, but growing an
+    # already-linked PT_INTERP to a much longer string forces it to split
+    # the ELF's leading segment, which it does incorrectly for larger
+    # binaries (marks the split-off segment non-executable, crashing
+    # anything whose .plt/.init ends up there).
+    tools_set_rtld_ldflags
+
     # C++ standard library (cross-compiled into TOOL_DIR/usr, same reasoning as glibc above).
     package_install_dir=$TOOL_DIR \
         prefix=/usr \
@@ -72,6 +81,12 @@ tools_bootstrap() {
         nls=no
 
         install m4
+
+        # Statically-linked (see package/busybox.sh's CONFIG_STATIC=y), so
+        # it has no runtime dependency on our glibc at all — used as
+        # /bin/sh in Dockerfile.scratch, where nothing else can provide one.
+        package_install_dir=$TOOL_DIR/usr install busybox
+
         package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
         shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
         curses=no install bash
@@ -111,13 +126,22 @@ tools_bootstrap() {
     tools_relocate
 }
 
-# Everything under TOOL_DIR/usr (glibc, libstdc++, temp tools, pass2
-# binutils/gcc) was built against our own glibc but still carries the
-# bootstrap container's default dynamic linker path, since --sysroot only
-# affects compile-time search, not the interpreter string baked into the
-# ELF. That's invisible here (same architecture as the host), but breaks
-# once TOOL_DIR is mounted into the `scratch` image, which has nothing else
-# in it. Repoint every ELF at our own dynamic linker and libraries.
+# Every remaining binary this session builds is host=$target and should
+# already carry a correct, TOOL_DIR-relative interpreter/rpath (see the
+# call site in tools_bootstrap). This just exports the LDFLAGS that make
+# that happen, so tools_build can use the same fix for `install gettext`.
+tools_set_rtld_ldflags() {
+    local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
+    [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
+    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
+}
+
+# Safety net for anything under TOOL_DIR/usr that didn't pick up
+# tools_set_rtld_ldflags at link time (e.g. it was built before that call,
+# or its build system drops LDFLAGS) and so still has the bootstrap
+# container's default rpath. Only ever adds an rpath — never touches
+# PT_INTERP after the fact, since growing it is what corrupts segment
+# layout (see tools_set_rtld_ldflags).
 #
 # TOOL_DIR/bin (pass1 binutils/gcc) is deliberately excluded: it's a
 # throwaway, host-native toolchain used only to bootstrap glibc/pass2 here
@@ -131,32 +155,44 @@ tools_relocate() {
     [ -n "$ld_so" ] || bail "Cannot find dynamic linker to relocate against"
     local lib_dir=$(dirname $ld_so)
 
-    # The dynamic linker itself is excluded by name pattern directly in find
-    # (rather than compared against $ld_so per file) since it's self-
-    # referential (its own .interp points at itself) and patchelf reliably
-    # corrupts that; every other binary's PT_INTERP is what makes it findable.
-    # glibc installs it under two names — the soname in usr/lib, and a
-    # usr/bin/ld.so convenience copy — both need excluding.
+    # Excluded by name pattern directly in find: the dynamic linker itself
+    # (both the soname in usr/lib and the usr/bin/ld.so convenience copy)
+    # is self-referential and patchelf reliably corrupts it.
+    # The `|| true` on each loop matters under `set -o errexit -o nounset`:
+    # without it, the EOF-triggered nonzero return from the final `read`
+    # aborts the whole script right there, silently (no error, no bail) —
+    # even though a `while read` condition's exit status is normally
+    # exempt from errexit.
     find $TOOL_DIR/usr \( -type f -perm -u+x -o -name '*.so' -o -name '*.so.*' \) \
         -not -name 'ld-linux-*.so.*' -not -name 'ld.so' -print |
     while IFS= read -r f; do
         [ "$(head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 7f454c46 ] || continue
         readelf -d "$f" 2>/dev/null | grep -q 'Dynamic section' || continue
-        readelf -l "$f" 2>/dev/null | grep -q ' INTERP ' \
-            && patchelf --set-interpreter $ld_so "$f"
         patchelf --set-rpath $lib_dir "$f"
-    done
+    done || true
 
-    find $TOOL_DIR/usr \( -name 'ld-linux-*.so.*' -o -name 'ld.so' \) |
-    while IFS= read -r f; do
-        readelf -d "$f" 2>/dev/null | grep -q RUNPATH \
-            && bail "Dynamic linker $f was itself relocated — this breaks it"
-    done
+    # bail runs in this (non-subshell) context, not inside a `while read`
+    # piped from find, so its exit actually stops the script — calling it
+    # from inside such a subshell only exits that subshell.
+    local corrupted=$(find $TOOL_DIR/usr \( -name 'ld-linux-*.so.*' -o -name 'ld.so' \) \
+        -exec sh -c 'readelf -d "$1" 2>/dev/null | grep -q RUNPATH && echo "$1"' _ {} \;)
+    [ -z "$corrupted" ] \
+        || bail "Dynamic linker(s) were themselves relocated — this breaks them: $corrupted"
 
     return 0
 }
 
 tools_build() {
+    # No tools_relocate call here: it shells out to patchelf, which only
+    # exists in the bootstrap container. Everything built in this phase
+    # already gets a correct interpreter/rpath at link time from
+    # tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
+    tools_set_rtld_ldflags
+
+    # The scratch image has no /tmp (see Dockerfile.scratch); TMPDIR points
+    # here instead, but nothing else creates it.
+    mkdir -p "${TMPDIR:-/tmp}"
+
     (
         package_install_dir=$TOOL_DIR
         prefix=/usr
@@ -164,6 +200,4 @@ tools_build() {
 
         install gettext
     )
-
-    tools_relocate
 }

@@ -1,9 +1,33 @@
 # Linux From Scratch
 FROM scratch
 
+ARG HOST_UID
+ARG HOST_GID
+
+# /bin/sh must exist as a real path for #!/bin/sh scripts (like ./lfs) to
+# exec. It has to be a real file, not a symlink into the tools bind mount:
+# COPY resolves symlink targets at build time, and the mount isn't
+# populated until a container actually runs. Busybox (built by us, from
+# the bootstrap run that already populated ./tools — see the `install
+# busybox` call in tools_bootstrap) is statically linked, so it has no
+# runtime dependency on our glibc at all, and dispatches to its "ash"
+# applet when invoked as "sh" (it picks the applet by argv[0]'s basename,
+# which a #!/bin/sh shebang sets to "/bin/sh").
+COPY tools/usr/bin/busybox /bin/sh
+
 ENV PATH=/var/lfs/tools/usr/bin
 ENV LC_ALL=POSIX
 ENV HOME=/var/lfs
+# There is no /tmp in this image (nothing exists but what's mounted or
+# copied in above) and nothing here can create one at build time. Point
+# TMPDIR at an already-writable, already-existing directory in one of the
+# mounted volumes instead of fabricating a new top-level path.
+ENV TMPDIR=/var/lfs/work/tmp
 
-USER lfs
+# No /etc/passwd exists in this image (there is nothing but the mounted
+# tools volume), so USER must be numeric — a name would require a passwd
+# lookup. Match the bootstrap container's lfs user so file ownership on
+# the shared volumes lines up.
+USER $HOST_UID:$HOST_GID
+WORKDIR /var/lfs
 CMD ["/var/lfs/tools/usr/bin/bash"]

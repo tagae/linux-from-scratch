@@ -29,8 +29,11 @@ services:
       - type: volume
         source: work
         target: /var/lfs/work
-      - type: volume
-        source: tools
+      # Bind mount, not a named volume: Dockerfile.scratch needs to COPY
+      # our own already-built bash from here at image build time, and a
+      # named volume isn't visible to `docker build` at all.
+      - type: bind
+        source: $PWD/tools
         target: /var/lfs/tools
       - type: volume
         source: install
@@ -39,6 +42,9 @@ services:
   scratch:
     build:
       dockerfile: Dockerfile.scratch
+      args:
+        HOST_UID: $HOST_UID
+        HOST_GID: $HOST_GID
     tty: true
     stdin_open: true
     privileged: true
@@ -49,5 +55,4 @@ services:
 volumes:
   source:
   work:
-  tools:
   install:

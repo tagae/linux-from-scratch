@@ -1,12 +1,12 @@
 .PHONY: tools docker-clean docker-distclean pristine
 
-.DEFAULT_GOAL := .env
+.DEFAULT_GOAL := tools
 
 .env:
 	echo HOST_UID=$$(id -u) >> $@
 	echo HOST_GID=$$(id -g) >> $@
 
-tools:
+tools: .env
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 6: Cross Compiling Temporary Tools
 	docker compose run --build --rm bootstrap ./lfs tools bootstrap
