@@ -18,17 +18,26 @@ usage() {
 }
 
 stage() {
-    echo
-    echo "---[ $@ ]"
+    if [ -t 1 ]; then
+        echo
+        echo "---[ $@ ]"
+    fi
 }
 
 get() {
     local url=$1
     local archive=${url##*/}
     mkdir -p $SOURCE_DIR
-    set -x
-    [ -f $DOWNLOAD_DIR/$archive ] || wget --no-check-certificate -P $DOWNLOAD_DIR $url
+    [ -f $DOWNLOAD_DIR/$archive ] || wget -P $DOWNLOAD_DIR $url
     [ -d $SOURCE_DIR/${archive%%.tar.*} ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
+}
+
+patch() {
+    local url=$1
+    local file=${url##*/}
+    mkdir -p $DOWNLOAD_DIR
+    [ -f $DOWNLOAD_DIR/$file ] || wget -P $DOWNLOAD_DIR $url
+    patch -d $package_source_dir -Np1 -i $DOWNLOAD_DIR/$file
 }
 
 git_default_branch() {
@@ -44,10 +53,4 @@ git_checkout() {
     ! [ -d $dest/.git ] || return 0
     mkdir -p $(dirname $dest)
     git clone --branch $branch --depth 1 $url $dest
-}
-
-cleanup() {
-    stage Cleanup
-    unmount_partitions
-    detach_image
 }

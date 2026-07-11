@@ -31,33 +31,58 @@ tools_bootstrap() {
         languages=c,c++ \
         install gcc
 
-    exit 0
-
     # Linux kernel headers to build glibc.
     package_install_dir=$TOOL_DIR install linux#headers
 
     # GNU C library: the glibc that all toolchain binaries will link against.
-    prefix=/usr headers=$TOOL_DIR/usr/include \
-        package_install_dir=$TOOL_DIR install glibc
+    # Lives under TOOL_DIR/usr (like real LFS's $LFS/usr), not TOOL_DIR itself:
+    # its own absolute self-references (e.g. the libc.so linker script) are
+    # prefix-relative, and get sysroot-prefixed by TOOL_DIR again at link time.
+    # If prefix were TOOL_DIR too, that would double up the path.
+    package_install_dir=$TOOL_DIR \
+        prefix=/usr \
+        nscd=no kernel=5.10 werror=no \
+        install glibc
 
     # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc --sysroot=$TOOL_DIR -xc -
+    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
-    # C++ standard library (cross-compiled into TOOL_DIR/usr).
-    nls=no multilib=no prefix=$TOOL_DIR package_install_dir=$TOOL_DIR install gcc#libstdc++
+    # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
+    # every remaining binary at link time, rather than patchelf-ing it in
+    # after the fact — patchelf can safely add an rpath, but growing an
+    # already-linked PT_INTERP to a much longer string forces it to split
+    # the ELF's leading segment, which it does incorrectly for larger
+    # binaries (marks the split-off segment non-executable, crashing
+    # anything whose .plt/.init ends up there).
+    _tools_set_rtld_ldflags
+
+    # C++ standard library (cross-compiled into TOOL_DIR/usr, same reasoning as glibc above).
+    package_install_dir=$TOOL_DIR \
+        prefix=/usr \
+        multilib=no nls=no libstdcxx_pch=no \
+        install gcc#libstdc++
 
     # --- Temporary tools (glibc-linked, relocatable) ---------------
 
     (
+        # --build must be explicit: with only --host given, autoconf sets
+        # cross_compiling=maybe and falls back to actually running a test
+        # binary. Since target and build are the same architecture here,
+        # that test binary runs "successfully" against the host's own libc,
+        # so cross_compiling is wrongly resolved to "no" — and packages then
+        # try to run their (incompatible, newer-glibc) freshly built binaries
+        # directly, e.g. coreutils' man-page generation via help2man.
+        build=$(cc -dumpmachine)
         host=$target
-        prefix=$TOOL_DIR
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
         nls=no
 
-        werror=no install m4
-        install ncurses#tic
-        normal=no cxx=no stripping=no install ncurses
+        install m4
+        package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
+        shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
         curses=no install bash
         install_program=hostname no_install_program=kill,uptime install coreutils
         install diffutils
@@ -72,9 +97,6 @@ tools_bootstrap() {
         install sed
         install tar
         install xz
-        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
-            liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
-            makeinstall_chown=no install util-linux
     )
 
     # Binutils pass 2: native (glibc-linked) linker/assembler.
@@ -86,22 +108,92 @@ tools_bootstrap() {
     package_variant=pass2 \
         host=$target prefix=/usr sysroot=$TOOL_DIR build_sysroot=$TOOL_DIR \
         package_install_dir=$TOOL_DIR \
-        glibc_version=2.43 languages=c,c++ multilib=no \
+        glibc_version=$(version glibc) languages=c,c++ multilib=no \
         shared=yes threads=yes libstdcxx=yes \
         nls=no fixincludes=no \
         libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
         install gcc
+
+    _tools_relocate
+
+    # TOOL_DIR is a named volume, invisible to `docker build`; stage our
+    # own already-built bash where Dockerfile.scratch's COPY can reach it.
+    mkdir -p $SCRATCH_INIT_DIR
+    cp $TOOL_DIR/usr/bin/bash $SCRATCH_INIT_DIR/sh
 }
 
 tools_build() {
+    # No _tools_relocate call here: it shells out to patchelf, which only
+    # exists in the bootstrap container. Everything built in this phase
+    # already gets a correct interpreter/rpath at link time from
+    # _tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
+    _tools_set_rtld_ldflags
+
+    # The scratch image has no /tmp (see Dockerfile.scratch); TMPDIR points
+    # here instead, but nothing else creates it.
+    mkdir -p "${TMPDIR:-/tmp}"
+
     (
-        host=$target
-        prefix=$TOOL_DIR
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
         nls=no
 
         install gettext
     )
-    # Runs in the scratch container (or bare host) using only the toolchain.
-    # Phase 2: native builds that dogfood the bootstrapped toolchain.
-    #host=$target prefix=/usr package_install_dir=$TOOL_DIR install coreutils
+}
+
+# Every remaining binary this session builds is host=$target and should
+# already carry a correct, TOOL_DIR-relative interpreter/rpath (see the
+# call site in tools_bootstrap). This just exports the LDFLAGS that make
+# that happen, so tools_build can use the same fix for `install gettext`.
+_tools_set_rtld_ldflags() {
+    local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
+    [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
+    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
+}
+
+# Safety net for anything under TOOL_DIR/usr that didn't pick up
+# tools_set_rtld_ldflags at link time (e.g. it was built before that call,
+# or its build system drops LDFLAGS) and so still has the bootstrap
+# container's default rpath. Only ever adds an rpath — never touches
+# PT_INTERP after the fact, since growing it is what corrupts segment
+# layout (see tools_set_rtld_ldflags).
+#
+# TOOL_DIR/bin (pass1 binutils/gcc) is deliberately excluded: it's a
+# throwaway, host-native toolchain used only to bootstrap glibc/pass2 here
+# in the bootstrap container, and is linked against the host's own glibc —
+# relocating it would break it for no benefit, since it's not part of the
+# self-contained toolchain the `scratch` image runs.
+_tools_relocate() {
+    stage "Relocating toolchain binaries under $TOOL_DIR/usr"
+
+    local ld_so=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
+    [ -n "$ld_so" ] || bail "Cannot find dynamic linker to relocate against"
+    local lib_dir=$(dirname $ld_so)
+
+    # Excluded by name pattern directly in find: the dynamic linker itself
+    # (both the soname in usr/lib and the usr/bin/ld.so convenience copy)
+    # is self-referential and patchelf reliably corrupts it.
+    # The `|| true` on each loop matters under `set -o errexit -o nounset`:
+    # without it, the EOF-triggered nonzero return from the final `read`
+    # aborts the whole script right there, silently (no error, no bail) —
+    # even though a `while read` condition's exit status is normally
+    # exempt from errexit.
+    find $TOOL_DIR/usr \( -type f -perm -u+x -o -name '*.so' -o -name '*.so.*' \) \
+        -not -name 'ld-linux-*.so.*' -not -name 'ld.so' -print |
+    while IFS= read -r f; do
+        [ "$(head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 7f454c46 ] || continue
+        readelf -d "$f" 2>/dev/null | grep -q 'Dynamic section' || continue
+        patchelf --set-rpath $lib_dir "$f"
+    done || true
+
+    # bail runs in this (non-subshell) context, not inside a `while read`
+    # piped from find, so its exit actually stops the script — calling it
+    # from inside such a subshell only exits that subshell.
+    local corrupted=$(find $TOOL_DIR/usr \( -name 'ld-linux-*.so.*' -o -name 'ld.so' \) \
+        -exec sh -c 'readelf -d "$1" 2>/dev/null | grep -q RUNPATH && echo "$1"' _ {} \;)
+    [ -z "$corrupted" ] \
+        || bail "Dynamic linker(s) were themselves relocated — this breaks them: $corrupted"
+
+    return 0
 }

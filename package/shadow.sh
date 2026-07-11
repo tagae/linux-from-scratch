@@ -1,36 +1,22 @@
 : ${package_version:=4.19.4}
 : ${package_source:=https://github.com/shadow-maint/shadow/releases/download/$package_version/shadow-$package_version.tar.xz}
 
-: ${prefix:=/usr}
-: ${bcrypt:=yes}
-: ${ycrypt:=yes}
-: ${libbsd:=no}
-: ${audit:=no}
-: ${selinux:=no}
-: ${acl:=no}
-: ${attr:=no}
-: ${skey:=no}
-: ${tcpwrappers:=no}
-
 prepare() {
-    : ${build:=$($package_source_dir/build-aux/config.guess)}
-    : ${host:=$build}
-
     $package_source_dir/configure \
-        --prefix=$prefix \
-        --host=$host \
-        --build=$build \
+        ${host:+--host=$host} \
+        ${build:+--build=$build} \
+        ${prefix:+--prefix=$prefix} \
         --sysconfdir=/etc \
         --disable-static \
-        --with-bcrypt=$bcrypt \
-        --with-ycrypt=$ycrypt \
-        --with-libbsd=$libbsd \
-        --with-audit=$audit \
-        --with-selinux=$selinux \
-        --with-acl=$acl \
-        --with-attr=$attr \
-        --with-skey=$skey \
-        --with-tcpwrappers=$tcpwrappers
+        ${bcrypt:+--with-bcrypt=$bcrypt} \
+        ${ycrypt:+--with-ycrypt=$ycrypt} \
+        ${libbsd:+--with-libbsd=$libbsd} \
+        ${audit:+--with-audit=$audit} \
+        ${selinux:+--with-selinux=$selinux} \
+        ${acl:+--with-acl=$acl} \
+        ${attr:+--with-attr=$attr} \
+        ${skey:+--with-skey=$skey} \
+        ${tcpwrappers:+--with-tcpwrappers=$tcpwrappers}
 }
 
 build() {

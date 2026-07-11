@@ -1,20 +1,11 @@
 : ${package_version:=5.48}
 : ${package_source:=https://astron.com/pub/file/file-$package_version.tar.gz}
 
-: ${prefix:=/usr}
-: ${bzlib:=no}
-: ${xzlib:=no}
-: ${zlib:=no}
-: ${libseccomp:=no}
-
 prepare() {
-    : ${build:=$($package_source_dir/config.guess)}
-    : ${host:=$build}
-
     case $package_component in
         native)
             $package_source_dir/configure \
-                --prefix=$prefix \
+                ${prefix:+--prefix=$prefix} \
                 --disable-bzlib \
                 --disable-libseccomp \
                 --disable-xzlib \
@@ -22,13 +13,13 @@ prepare() {
             ;;
         *)
             $package_source_dir/configure \
-                --prefix=$prefix \
-                --host=$host \
-                --build=$build \
-                --enable-bzlib=$bzlib \
-                --enable-xzlib=$xzlib \
-                --enable-zlip=$zlib \
-                --enable-libseccomp=$libseccomp
+                ${host:+--host=$host} \
+                ${build:+--build=$build} \
+                ${prefix:+--prefix=$prefix} \
+                ${bzlib:+--enable-bzlib=$bzlib} \
+                ${xzlib:+--enable-xzlib=$xzlib} \
+                ${zlib:+--enable-zlip=$zlib} \
+                ${libseccomp:+--enable-libseccomp=$libseccomp}
             ;;
     esac
 }

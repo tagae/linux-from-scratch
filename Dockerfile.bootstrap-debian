@@ -3,33 +3,33 @@ FROM debian:stable-slim
 RUN groupdel dialout # conflicts with macOS
 
 RUN apt update
-RUN apt install -y build-essential curl wget rsync gawk bison python3
+RUN apt install -y build-essential curl wget rsync gawk bison python3 patchelf
 
 ARG HOST_UID
 ARG HOST_GID
 RUN groupadd --gid $HOST_GID lfs
-RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /var/lfs --no-create-home lfs
+RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --no-create-home lfs
 
 RUN mkdir -pv \
-    /var/lfs/download \
-    /var/lfs/image \
-    /var/lfs/install \
-    /var/lfs/lib \
-    /var/lfs/package \
-    /var/lfs/source \
-    /var/lfs/tools \
-    /var/lfs/work
+    /mnt/lfs/download \
+    /mnt/lfs/image \
+    /mnt/lfs/install \
+    /mnt/lfs/lib \
+    /mnt/lfs/package \
+    /mnt/lfs/source \
+    /mnt/lfs/tools \
+    /mnt/lfs/work
 
 RUN chown lfs:lfs \
-    /var/lfs \
-    /var/lfs/download \
-    /var/lfs/image \
-    /var/lfs/install \
-    /var/lfs/lib \
-    /var/lfs/package \
-    /var/lfs/source \
-    /var/lfs/tools \
-    /var/lfs/work
+    /mnt/lfs \
+    /mnt/lfs/download \
+    /mnt/lfs/image \
+    /mnt/lfs/install \
+    /mnt/lfs/lib \
+    /mnt/lfs/package \
+    /mnt/lfs/source \
+    /mnt/lfs/tools \
+    /mnt/lfs/work
 
 USER lfs
-WORKDIR /var/lfs
+WORKDIR /mnt/lfs

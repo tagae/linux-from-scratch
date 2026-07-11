@@ -1,9 +1,6 @@
 : ${package_version:=260.2}
 : ${package_source:=https://github.com/systemd/systemd/archive/v$package_version/systemd-$package_version.tar.gz}
 
-: ${prefix:=/usr}
-: ${sysroot:=/}
-
 prepare() {
     cat > meson.ini <<EOF
 [host_machine]
@@ -29,7 +26,7 @@ EOF
 
     meson setup $package_source_dir \
           --cross-file meson.ini \
-          --prefix=$prefix \
+          ${prefix:+--prefix=$prefix} \
           --buildtype=release \
           -D default-dnssec=no \
           -D firstboot=false \

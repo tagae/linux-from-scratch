@@ -13,32 +13,42 @@ services:
     volumes: &volumes;
       - type: bind
         source: lfs
-        target: /var/lfs/lfs
+        target: /mnt/lfs/lfs
       - type: bind
         source: lib
-        target: /var/lfs/lib
+        target: /mnt/lfs/lib
       - type: bind
         source: package
-        target: /var/lfs/package
+        target: /mnt/lfs/package
       - type: bind
         source: $PWD/download
-        target: /var/lfs/download
+        target: /mnt/lfs/download
       - type: volume
         source: source
-        target: /var/lfs/source
+        target: /mnt/lfs/source
       - type: volume
         source: work
-        target: /var/lfs/work
+        target: /mnt/lfs/work
       - type: volume
         source: tools
-        target: /var/lfs/tools
+        target: /mnt/lfs/tools
+      # Bind mount: Dockerfile.scratch needs to COPY our own already-built
+      # bash out of here at image build time. TOOL_DIR itself stays a named
+      # volume (not visible to `docker build` at all); tools_bootstrap
+      # stages just this one file here instead.
+      - type: bind
+        source: $PWD/work/scratch-init
+        target: /mnt/lfs/work/scratch-init
       - type: volume
         source: install
-        target: /var/lfs/install
+        target: /mnt/lfs/install
 
   scratch:
     build:
       dockerfile: Dockerfile.scratch
+      args:
+        HOST_UID: $HOST_UID
+        HOST_GID: $HOST_GID
     tty: true
     stdin_open: true
     privileged: true
