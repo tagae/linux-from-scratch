@@ -13,6 +13,9 @@ tools: .env
 .env:
 	echo HOST_UID=$$(id -u) >> $@
 	echo HOST_GID=$$(id -g) >> $@
+	echo LFS_RELEASE=r13.0-143-systemd >> $@
+	echo DISTRIB_CODENAME=$$USER
+	echo VERSION_CODENAME=$$USER
 
 clean:
 	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install

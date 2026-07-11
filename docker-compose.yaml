@@ -60,7 +60,12 @@ services:
     privileged: true
     environment:
       PLATFORM:
+      LFS_RELEASE:
       LFS_PHASE: scratch
+      VERSION_CODENAME:
+      DISTRIB_CODENAME:
+      DISTRIB_RELEASE:
+      RELEASE_TYPE:
     volumes:
       - type: bind
         source: lfs

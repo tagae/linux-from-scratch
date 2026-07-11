@@ -100,4 +100,25 @@ EOF
     if [ "${PLATFORM:-}" = virt ]; then
         printf 'disable boot.mount\n' >> etc/systemd/system-preset/80-lfs.preset
     fi
+
+    cat > etc/lsb-release << "EOF"
+DISTRIB_ID="Linux From Scratch"
+DISTRIB_RELEASE="${DISTRIB_RELEASE:-local}"
+DISTRIB_CODENAME="${DISTRIB_CODENAME:-$USER}"
+DISTRIB_DESCRIPTION="Linux From Scratch"
+EOF
+
+    cat > etc/os-release << "EOF"
+NAME="Linux From Scratch"
+VERSION="${LFS_RELEASE:-local}"
+ID=lfs
+PRETTY_NAME="Linux From Scratch${LFS_RELEASE:+ $LFS_RELEASE}"
+VERSION_CODENAME="${VERSION_CODENAME:-$USER}"
+HOME_URL="https://www.linuxfromscratch.org/lfs/"
+RELEASE_TYPE="${RELEASE_TYPE:-development}"
+EOF
+
+    if [ -n "$LFS_RELEASE" ]; then
+        echo "$LFS_RELEASE" > /etc/lfs-release
+    fi
 }

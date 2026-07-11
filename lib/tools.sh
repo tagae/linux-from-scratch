@@ -102,13 +102,14 @@ bootstrap_tools() {
     install gzip
     install make
     install patch
+    install sed
+    install tar
+    install xz
+
     # Needed by the kernel's own `make headers_install` — it shells out to
     # rsync to copy sanitized headers, and the scratch phase has no host
     # PATH fallback to borrow one from.
     install rsync
-    install sed
-    install tar
-    install xz
 
     # wget (and its openssl/zlib deps), so the self-hosted scratch/system
     # phases can fetch their own package sources over HTTPS — bootstrap
