@@ -14,36 +14,19 @@ readonly PACKAGE_DIR=$PROJECT_DIR/package
 
 #--[ Command line ]
 
-CMD_ARGS=$(getopt "p:d:h" "$@")
-[ $? -eq 0 ] || bail "Could not parse options"
-
-eval set -- "$CMD_ARGS"
-
-while [ $# -gt 0 ]; do
-    case "${1:-}" in
-        -p)
-            [ $? -eq 0 ] || bail "Invalid platform: $2"
-            PLATFORM="$2"
-            shift 2
-            ;;
-        -d)
-            [ $? -eq 0 ] || bail "Invalid destination: $2"
-            DESTINATION="$2"
-            shift 2
-            ;;
-        -h)
-            eval set -- help
-            shift
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            bail "BUG"
-            ;;
+# getopts is a shell builtin (POSIX, no external binary) — unlike getopt(1),
+# which used to require util-linux just to be present in the self-hosted
+# scratch-phase toolchain (no host PATH fallback there).
+while getopts ":p:d:h" opt; do
+    case "$opt" in
+        p) PLATFORM="$OPTARG" ;;
+        d) DESTINATION="$OPTARG" ;;
+        h) set -- help; break ;;
+        :) bail "Option -$OPTARG requires an argument" ;;
+        \?) bail "Could not parse options" ;;
     esac
 done
+[ "${1:-}" = help ] || shift $((OPTIND - 1))
 
 #--[ Project ]
 

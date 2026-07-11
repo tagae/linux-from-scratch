@@ -97,9 +97,6 @@ tools_bootstrap() {
         install sed
         install tar
         install xz
-        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
-            liblastlog2=no ncurses=no ncursesw=no tinfo=no wall=no \
-            makeinstall_chown=no install util-linux
     )
 
     # Binutils pass 2: native (glibc-linked) linker/assembler.
@@ -126,11 +123,11 @@ tools_bootstrap() {
 }
 
 tools_build() {
-    # No tools_relocate call here: it shells out to patchelf, which only
+    # No _tools_relocate call here: it shells out to patchelf, which only
     # exists in the bootstrap container. Everything built in this phase
     # already gets a correct interpreter/rpath at link time from
-    # tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
-    tools_set_rtld_ldflags
+    # _tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
+    _tools_set_rtld_ldflags
 
     # The scratch image has no /tmp (see Dockerfile.scratch); TMPDIR points
     # here instead, but nothing else creates it.
