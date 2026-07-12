@@ -1,14 +1,9 @@
-.PHONY: tools docker-clean docker-distclean pristine
+.PHONY: \
+	tools system \
+	reinstall-tools reinstall-system \
+	clean distclean
 
-system: tools
-	docker compose run --rm scratch ./lfs system build
-
-tools: .env
-	# Chapter 5: Compiling a Cross-Toolchain
-	# Chapter 6: Cross Compiling Temporary Tools
-	docker compose run --build --rm bootstrap ./lfs tools bootstrap
-	# Chapter 7: Building Additional Temporary Tools
-	docker compose run --build --rm scratch ./lfs tools build
+.DEFAULT_GOAL := system
 
 .env:
 	echo HOST_UID=$$(id -u) >> $@
@@ -17,10 +12,27 @@ tools: .env
 	echo DISTRIB_CODENAME=$$(id -un) >> $@
 	echo VERSION_CODENAME=$$(id -un) >> $@
 
-reinstall:
-	docker volume rm -f linux-from-scratch_install
-	docker compose run --rm scratch find work -name '.install-*' -delete
+tools: .env
+	# Chapter 5: Compiling a Cross-Toolchain
+	# Chapter 6: Cross Compiling Temporary Tools
+	docker compose run --build --rm bootstrap ./lfs tools bootstrap
+	# Chapter 7: Building Additional Temporary Tools
+	docker compose run --build --rm scratch ./lfs tools build
+
+system: tools
+	# Chapter 8: Installing Basic System Software
+	# Chapter 9: System Configuration
 	docker compose run --rm scratch ./lfs system build
+
+reinstall-tools:
+	docker compose run --rm scratch find work -name '.install-*' -delete
+	docker volume rm -f linux-from-scratch_tools
+	make tools
+
+reinstall-system:
+	docker compose run --rm scratch find work -name '.install-*' -delete
+	docker volume rm -f linux-from-scratch_install
+	make system
 
 clean:
 	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install

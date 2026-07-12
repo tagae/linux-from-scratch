@@ -9,10 +9,6 @@ bail() {
     die 1 "$@"
 }
 
-todo() {
-    bail 'Not implemented yet'
-}
-
 usage() {
     bail "Usage: $(basename "$0") $@"
 }
@@ -32,14 +28,6 @@ get() {
     [ -d $SOURCE_DIR/${archive%%.tar.*} ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
 }
 
-apply_patch() {
-    local url=$1
-    local file=${url##*/}
-    mkdir -p $DOWNLOAD_DIR
-    [ -f $DOWNLOAD_DIR/$file ] || wget --no-check-certificate -P $DOWNLOAD_DIR $url
-    patch -d $package_source_dir -Np1 -i $DOWNLOAD_DIR/$file
-}
-
 git_default_branch() {
     local url="$1" branch_file=$(mktemp -t git-default-branch-XXXXXX)
     git ls-remote --symref $url HEAD > $branch_file
@@ -47,9 +35,7 @@ git_default_branch() {
 }
 
 git_checkout() {
-    local url="$1"
-    local branch="$2"
-    local dest="$3"
+    local url="$1" branch="$2" dest="$3"
     ! [ -d $dest/.git ] || return 0
     mkdir -p $(dirname $dest)
     git clone --branch $branch --depth 1 $url $dest

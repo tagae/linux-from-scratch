@@ -1,5 +1,6 @@
 : ${package_version:=2.42.2}
-: ${package_source:=https://www.kernel.org/pub/linux/utils/util-linux/v2.42/util-linux-$package_version.tar.xz}
+: ${package_series:=${package_version%.*}} # major.minor version
+: ${package_source:=https://www.kernel.org/pub/linux/utils/util-linux/v$package_series/util-linux-$package_version.tar.xz}
 
 prepare() {
     $package_source_dir/configure \

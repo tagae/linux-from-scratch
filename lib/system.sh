@@ -33,21 +33,36 @@ build_system() {
 
     headers=$TOOL_DIR/usr/include install glibc
 
-    exit 0
-
     # Capabilities — hard systemd dependency
     install libcap
 
     # Kernel module loading — hard systemd dependency
-    install kmod
+    manpages=no install kmod
+
     # Shell and core utilities.
     install busybox
 
-    # Core userspace utilities (agetty, mount, login, …)
-    install util-linux
+    # Core userspace utilities (agetty, mount, login, …). Busybox already
+    # provides chfn/chsh/login/nologin/su, and there's no Python/systemd
+    # integration wanted in this minimal build. bindir/sbindir/libdir must
+    # be explicit: configure's own default for libdir is the legacy
+    # split-usr /lib, but system-files' merged-usr layout makes /lib and
+    # /usr/lib the same directory via symlink — its post-install hook that
+    # moves "essential" libs into /lib then fails, since source and
+    # destination are identical. makeinstall_chown=no skips `chown
+    # root:root` on mount for setuid, which fails outright here anyway —
+    # there's no /etc/passwd for "root" to resolve against.
+    bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib \
+    chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
+    pylibmount=no static=no liblastlog2=no python=no systemd=no wall=no \
+    makeinstall_chown=no \
+        install util-linux
 
-    # Init system
-    install systemd
+    # Init system. sysroot points meson/pkg-config at what we've installed
+    # into INSTALL_DIR so far (libcap, util-linux's libmount/libblkid, …).
+    sysroot=$INSTALL_DIR install systemd
+
+    exit 0
 
     # Kernel image, DTBs and modules
     install linux
