@@ -146,11 +146,6 @@ install() {
         ln -sfv /dev/null etc/systemd/system/boot.mount
     fi
 
-    # Drop the IP firewall rules from journald — they require BPF/cgroup which we omit
-    mkdir -pv etc/systemd/system/systemd-journald.service.d
-    printf '[Service]\nIPAddressDeny=\nIPAddressAllow=\n' \
-           > etc/systemd/system/systemd-journald.service.d/no-ip-firewall.conf
-
     # Preset file: instruct the first-boot preset to DISABLE all masked units
     # instead of trying to enable them (which would log "Failed to preset" errors)
     mkdir -pv etc/systemd/system-preset
