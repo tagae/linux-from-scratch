@@ -166,6 +166,13 @@ build_tools() {
     # build msgfmt without iconv support at all.
     export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
 
+    # pkgconf's own compiled-in default search path is the literal
+    # /usr/lib/pkgconfig — same story as GCONV_PATH above. This is a
+    # separate `./lfs tools build` invocation from tools_bootstrap, which
+    # sets the same export for its own process; it doesn't carry over.
+    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+
+    readonly package_variant=tools
     readonly package_install_dir=$TOOL_DIR
     readonly prefix=/usr
     readonly nls=no
@@ -206,6 +213,44 @@ build_tools() {
     # Needed by the kernel's own PERLASM steps (e.g. lib/crypto/arm64/
     # sha256-core.S) when building linux for the system phase.
     install perl
+
+    # libblkid (for btrfs-progs below) plus fallocate/losetup/sfdisk/mount
+    # /umount/mountpoint, needed by `image build` — genuinely build-host-
+    # native here (unlike reusing INSTALL_DIR's own copies, which would be
+    # target-native and break on any platform whose target architecture
+    # isn't the build host's, e.g. pi0). package_variant=tools (set above)
+    # already keeps this build's work dir/markers separate from
+    # build_system()'s own `install util-linux` (which targets INSTALL_DIR,
+    # no variant set).
+    #
+    # --disable-all-programs defaults *everything* (including libraries)
+    # to disabled, only overridable by explicitly naming what to re-enable.
+    # bindir/sbindir: TOOL_DIR has no merged-usr symlinks (that's an
+    # INSTALL_DIR/system-files thing), so without these the programs would
+    # land under plain bin/sbin, which isn't on PATH here.
+    # makeinstall_chown=no: same as build_system()'s own util-linux call —
+    # `chown root:root` on mount for setuid fails outright, no /etc/passwd
+    # for "root" to resolve against.
+    all_programs=no libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin \
+    makeinstall_chown=no \
+    libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes \
+    mount=yes fdisks=yes losetup=yes fallocate=yes mountpoint=yes \
+        install util-linux
+
+    # mkfs.btrfs and the btrfs CLI, needed by `image build` to format and
+    # populate the root filesystem — never shipped, build/test-time only.
+    install btrfs-progs
+
+    # kpartx, needed by `image build` to expose the loop device's
+    # partitions: losetup -P's own kernel-level partition scanning doesn't
+    # reliably create the /dev/loopNpM device nodes inside a container (no
+    # working udev/devtmpfs auto-population there), so we fall back to
+    # kpartx's explicit device-mapper nodes instead. It only needs
+    # libdevmapper, so build that (via lvm2, its own required dependency
+    # is libaio) rather than the rest of LVM2's tools/daemon.
+    install libaio
+    install lvm2
+    install kpartx
 }
 
 # Every remaining binary this session builds is host=$target and should

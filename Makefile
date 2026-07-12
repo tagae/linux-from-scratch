@@ -25,7 +25,10 @@ system:
 	docker compose run --rm scratch ./lfs system build
 
 image:
-	docker compose run --rm scratch ./lfs image build
+	# losetup/mount/mkfs/etc. need real root, not just a privileged
+	# container — the scratch image has no sudo (no setuid mechanism, no
+	# /etc/passwd), so run this one as root directly instead.
+	docker compose run --rm --user 0:0 scratch ./lfs image build
 
 all: tools system image
 

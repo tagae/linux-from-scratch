@@ -67,9 +67,9 @@ readonly LC_ALL MAKEFLAGS
 # fallback after host tools are checked first.
 # Scratch phase: toolchain only, no host PATH.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/bin
+    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin:$TOOL_DIR/bin
 else
-    PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin
+    PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 fi
 
 readonly PATH
@@ -118,14 +118,8 @@ case "${1:-help}" in
         [ $# -le 2 ] || usage "$1 [IMAGE]"
         IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
 
-        if [ ! -f "$IMAGE" ]; then
-            image
-            populate_image
-            unmount_all
-        fi
-
         _kernel="$INSTALL_DIR/boot/kernel.img"
-        [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system' first)"
+        [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
 
         _dtb="${DTB:+$INSTALL_DIR/boot/$DTB}"
         if [ -f "$INSTALL_DIR/boot/cmdline.txt" ]; then
