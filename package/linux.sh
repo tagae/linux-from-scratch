@@ -102,7 +102,16 @@ install() {
 }
 
 _make() {
-    make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- "$@"
+    # cross_arch defaults to $ARCH (the platform's real target architecture
+    # — every existing caller keeps working unchanged), but the build-host-
+    # native toolchain's own kernel headers (needed to build a glibc that
+    # runs *in the scratch container*, as opposed to the per-platform
+    # target sysroot's headers) need the build host's own architecture
+    # instead — genuinely different from $ARCH for pi0 (32-bit ARM) on an
+    # aarch64 build host. $ARCH itself is globally readonly and can't be
+    # reassigned even via a prefix assignment, hence this separate var.
+    : ${cross_arch:=$ARCH}
+    make -C $package_source_dir ARCH=$cross_arch CROSS_COMPILE=$target- "$@"
 }
 
 _set_kernel_config() {

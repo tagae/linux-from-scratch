@@ -16,22 +16,33 @@ fetch() {
 }
 
 prepare() {
+    # cross_target defaults to $target (the platform's real cross target —
+    # every existing caller keeps working unchanged), but callers building
+    # a build-host-native toolchain (used by build_tools()/Ch6 tools to
+    # actually execute in the scratch container, as opposed to the
+    # per-platform cross-compiler) explicitly pass cross_target="" to omit
+    # --target/--host/--with-gxx-include-dir entirely. $target itself is
+    # globally readonly and can't be reassigned even via a prefix
+    # assignment, hence this separate var.
+    : ${cross_target=$target}
+
     case $package_component in
         libstdc++)
             $package_source_dir/libstdc++-v3/configure \
-                ${target:+--host=$target} \
+                ${cross_target:+--host=$cross_target} \
+                ${cross_target:+--target=$cross_target} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
                 ${multilib:+--enable-multilib=$multilib} \
                 ${nls:+--enable-nls=$nls} \
                 ${libstdcxx_pch:+--enable-libstdcxx-pch=$libstdcxx_pch} \
-                --with-gxx-include-dir=/$target/include/c++/$package_version
+                ${cross_target:+--with-gxx-include-dir=/$cross_target/include/c++/$package_version}
             ;;
         *)
             # https://gcc.gnu.org/install/configure.html
             $package_source_dir/configure \
                 ${host:+--host=$host} \
-                ${target:+--target=$target} \
+                ${cross_target:+--target=$cross_target} \
                 ${arch:+--with-arch=$arch} \
                 ${float:+--with-float=$float} \
                 ${fpu:+--with-fpu=$fpu} \
@@ -57,7 +68,8 @@ prepare() {
                 ${libvtv:+--enable-libvtv=$libvtv} \
                 ${libstdcxx:+--enable-libstdcxx=$libstdcxx} \
                 ${libsanitizer:+--enable-libsanitizer=$libsanitizer} \
-                ${languages:+--enable-languages=$languages}
+                ${languages:+--enable-languages=$languages} \
+                ${bootstrap:+--enable-bootstrap=$bootstrap}
             ;;
     esac
 }

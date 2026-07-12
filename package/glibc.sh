@@ -5,7 +5,17 @@
 
 prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}
-    : ${host:=$build}
+
+    # cross_target defaults to $target (the platform's real cross target —
+    # every existing caller keeps working unchanged), but callers building
+    # a build-host-native glibc (the runtime library TOOL_DIR's own tools
+    # need to execute in the scratch container, as opposed to the
+    # per-platform target sysroot glibc) explicitly pass cross_target="" to
+    # omit --host/--target entirely (native build, host=build via the
+    # $build computed above). $target itself is globally readonly and
+    # can't be reassigned even via a prefix assignment, hence this
+    # separate var.
+    : ${cross_target=$target}
 
     patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
     patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
@@ -18,8 +28,8 @@ prepare() {
     # --build is the machine doing the compilation
     $package_source_dir/configure \
         ${build:+--build=$build} \
-        ${target:+--host=$target} \
-        ${target:+--target=$target} \
+        ${cross_target:+--host=$cross_target} \
+        ${cross_target:+--target=$cross_target} \
         ${arch:+--with-arch=$arch} \
         ${float:+--with-float=$float} \
         ${fpu:+--with-fpu=$fpu} \

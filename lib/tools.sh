@@ -15,13 +15,31 @@ bootstrap_tools() {
     readonly nls=no
     readonly multilib=no
 
+    # Kernel headers use this project's own $ARCH naming (arm64/arm/...),
+    # not uname -m's — same mapping virt.sh already uses to pick $ARCH for
+    # the (usually aarch64) build host, needed below for the native
+    # toolchain's own headers (see package/linux.sh's cross_arch). Also
+    # builds native_target below, the build host's own triple in the same
+    # $ARCH-$vendor-linux-gnu[eabihf] shape platform files use for $target.
+    case "$(uname -m)" in
+        aarch64|arm64) readonly native_arch=arm64; readonly native_target=aarch64-native-linux-gnu ;;
+        armv6l|armv7l) readonly native_arch=arm;   readonly native_target=arm-native-linux-gnueabihf ;;
+        x86_64)        readonly native_arch=x86;   readonly native_target=x86_64-native-linux-gnu ;;
+        *) bail "Unsupported native architecture $(uname -m)" ;;
+    esac
+
     # --- Cross Toolchain Pass 1 (throwaway) ------------------
+    # Builds the per-target sysroot glibc below. Linked against the
+    # bootstrap container's own (Debian) glibc — a throwaway tool that
+    # only ever runs here, never copied into the scratch image, so it
+    # needs no relocation. package_variant carries $target so pi0's pass1
+    # and virt/pi4/pi5's pass1 (which share one $target) don't collide.
     (
-        readonly package_variant=pass1
+        readonly package_variant=pass1-$target
         readonly package_install_dir=/
         readonly prefix=$TOOL_DIR
-        readonly sysroot=$TOOL_DIR
-        readonly build_sysroot=$TOOL_DIR
+        readonly sysroot=$TOOL_DIR/$target
+        readonly build_sysroot=$TOOL_DIR/$target
 
         # Cross-assembler and linker.
         gprofng=no werror=no new_dtags=yes default_hash_style=gnu install binutils
@@ -37,102 +55,249 @@ bootstrap_tools() {
         install gcc
     )
 
-    readonly package_variant=tools
+    # --- Native runtime toolchain (build-host arch, shared by every
+    # target platform — built once, ever, regardless of how many
+    # platforms are bootstrapped afterward) --------------------------
+    #
+    # TOOL_DIR/usr must be executable *in the scratch container itself*:
+    # the temporary tools below, build_tools()'s own output, and pass1-
+    # native's/pass2's own cross-compiler executables (further down) all
+    # run there. For virt/pi4/pi5 this happens to be the same architecture
+    # as the platform's own $target (aarch64) — but pi0 (32-bit ARM)
+    # genuinely isn't, so this can't be tied to $target at all.
+    # cross_target="" (see package/glibc.sh's, gcc.sh's, binutils.sh's
+    # prepare()) omits --host/--target entirely, producing a plain native
+    # build via this container's own (Debian) system compiler — found on
+    # PATH ahead of anything TOOL_DIR provides (see the PATH comment in
+    # ../lfs).
+    (
+        readonly package_variant=tools
+        readonly cross_target=
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
 
-    package_install_dir=$TOOL_DIR
-    prefix=/usr
+        cross_arch=$native_arch install linux#headers
+        nscd=no kernel=5.10 werror=no install glibc
+    )
 
-    # Linux kernel headers to build glibc.
-    install linux#headers
+    _tools_fix_native_ldscripts
 
-    # GNU C library: the glibc that all toolchain binaries will link against.
-    # Lives under TOOL_DIR/usr (like real LFS's $LFS/usr), not TOOL_DIR itself:
-    # its own absolute self-references (e.g. the libc.so linker script) are
-    # prefix-relative, and get sysroot-prefixed by TOOL_DIR again at link time.
-    # If prefix were TOOL_DIR too, that would double up the path.
-    nscd=no kernel=5.10 werror=no install glibc
+    # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
+    # every remaining native binary at link time, rather than patchelf-ing
+    # it in after the fact — patchelf can safely add an rpath, but growing
+    # an already-linked PT_INTERP to a much longer string forces it to
+    # split the ELF's leading segment, which it does incorrectly for
+    # larger binaries (marks the split-off segment non-executable,
+    # crashing anything whose .plt/.init ends up there — confirmed
+    # empirically: patchelf --set-rpath alone, patched in after the fact
+    # on pass1-native's own gcc driver below, corrupted it into crashing
+    # with a bare SIGBUS on `-qversion`). Exported here in the outer
+    # (non-subshell) scope, *before* pass1-native builds below, so it
+    # picks up the correct rpath at link time instead — every native
+    # build below inherits this export; a subshell's own export can't
+    # propagate back out or sideways.
+    _tools_set_rtld_ldflags
+
+    # --- Cross Toolchain Pass 1, native (throwaway) ------------------
+    # This is NOT a pass-1-style (newlib, no libc) build, despite the
+    # name — it mirrors PASS 2 below instead (real libc, shared=yes,
+    # libstdcxx=yes), just targeting the build host's own triple instead
+    # of $target. Real pass 1 is newlib-based specifically because no
+    # target glibc exists yet when it builds (it's what bootstraps that
+    # glibc in the first place) — that constraint doesn't apply here: the
+    # native glibc above already exists by the time this builds, so this
+    # can (and must) be a genuine, fully-capable compiler from the start,
+    # sysroot-linked against it — a newlib-based one, tried first, cannot
+    # link a normal hosted C++ program at all (confirmed empirically: its
+    # own separately-built libstdc++ hit "Link tests are not allowed
+    # after GCC_NO_EXECUTABLES" downstream, since a no-libc compiler
+    # genuinely can't satisfy basic hosted-program symbol references,
+    # regardless of how the build/host/target triples are set).
+    #
+    # Building it this way (libstdcxx=yes) also sidesteps the original
+    # reason this exists at all: gcc's own build process always compiles
+    # libgcc/libstdc++ using the *just-built* stage-1 compiler (that's
+    # true regardless of --disable-bootstrap, which only controls whether
+    # gcc rebuilds *itself* multiple times) — so this libstdc++ is built
+    # by a genuinely matching-version (16.1.0) compiler automatically,
+    # with no separate standalone libstdc++ step or CC/CXX override
+    # needed at all. Debian's system g++ (14.2.0) only ever compiles
+    # gcc's own driver/cc1/cc1plus sources here — not gcc 16.1.0's own
+    # <atomic>, which is what made it fail as a *matching-version*
+    # compiler stand-in earlier ("'constexpr' constructor does not have
+    # empty body").
+    #
+    # Same install layout as real pass 1 above (package_install_dir=/,
+    # prefix=$TOOL_DIR, landing directly in TOOL_DIR/bin) rather than the
+    # DESTDIR-staged TOOL_DIR/usr convention everything else here uses —
+    # confirmed empirically that prefix=/usr (an already-populated, real
+    # path in this bootstrap container) makes some of gcc's own build-time
+    # link-tests behave inconsistently, unlike prefix=$TOOL_DIR (nothing
+    # pre-existing there to confuse a test link against). Unlike real
+    # pass 1 (genuinely throwaway, never runs outside this container),
+    # this DOES need to be executable from the scratch container too —
+    # built *after* the native glibc + _tools_set_rtld_ldflags above, so
+    # (unlike everything else here) it picks up the correct rpath at link
+    # time rather than needing it patched in after the fact.
+    (
+        readonly package_variant=pass1-$native_target
+        readonly package_install_dir=/
+        readonly prefix=$TOOL_DIR
+        readonly cross_target=$native_target
+        readonly sysroot=$TOOL_DIR
+        readonly build_sysroot=$TOOL_DIR
+
+        gprofng=no werror=no install binutils
+
+        glibc_version=$(version glibc) languages=c,c++ \
+        shared=yes threads=yes libstdcxx=yes \
+        fixincludes=no \
+        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
+        install gcc
+    )
+
+    # Bare "gcc"/"cc"/"as"/"ld"/etc: what the temporary tools further down,
+    # build_tools(), and every hand-rolled-Makefile package elsewhere
+    # (btrfs-progs, kpartx, libaio, ...) that hardcodes a bare CC=gcc
+    # actually compile with. Without this, nothing in the (otherwise
+    # completely empty) scratch container could compile anything at all.
+    #
+    # Symlinked to pass1-native's own $native_target-prefixed tools
+    # (already a genuine, fully-capable, working compiler, built above)
+    # rather than building a whole second, separately-named "native"
+    # gcc/binutils from scratch — a plain native build (host=build=target,
+    # all the same string, no --host/--target override at all) makes
+    # gcc's own top-level configure auto-select a multi-stage bootstrap
+    # build instead of the single, already-sufficient compile above. This
+    # is simpler and just as correct: anything that would have configured
+    # a genuinely native gcc anyway just gets its bare names for free.
+    for _tool in gcc cc g++ c++ cpp gcov gcov-tool gcc-ar gcc-nm gcc-ranlib \
+                 as ld ld.bfd ar nm objcopy objdump ranlib strip \
+                 addr2line readelf size strings; do
+        [ -x "$TOOL_DIR/bin/$native_target-$_tool" ] || continue
+        ln -sfv "$TOOL_DIR/bin/$native_target-$_tool" "$TOOL_DIR/usr/bin/$_tool"
+    done
+    unset _tool
+
+    # --- Temporary tools (glibc-linked, native, relocatable) --------
+    #
+    # The scratch container's own userspace (bash as /bin/sh, coreutils,
+    # sed, tar, ...) — build-host-native by definition, same reasoning as
+    # the native toolchain above. Built here rather than in build_tools()
+    # because Dockerfile.scratch needs bash already staged in
+    # SCRATCH_INIT_DIR before build_tools() can even run (it executes
+    # inside the scratch container, which needs a working /bin/sh first).
+    (
+        readonly package_variant=tools
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
+
+        # pkgconf's own compiled-in default search path is the literal
+        # /usr/lib/pkgconfig (from its own --prefix=/usr at build time — it
+        # has no notion of TOOL_DIR as a DESTDIR), so left alone it looks
+        # in this container's real /usr instead of TOOL_DIR/usr. Needed by
+        # e.g. wget's configure to find openssl.
+        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+
+        # .pc files installed here (e.g. zlib.pc) also have includedir/
+        # libdir=/usr/include, /usr/lib (same --prefix=/usr, DESTDIR-blind
+        # story as above) — pkgconf treats those as "already on the
+        # compiler's default search path" and silently drops -I/-L for
+        # them. True in the *scratch* container (TOOL_DIR/usr is bind-
+        # mounted onto /usr there), but not here in *bootstrap*, where bare
+        # "gcc" still resolves to this container's own Debian gcc (see the
+        # PATH comment in ./lfs) and genuinely can't see TOOL_DIR/usr
+        # without an explicit flag. Force pkgconf to always emit them.
+        export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+        export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+
+        # Every install below is build-host-native: m4/ncurses/bash/etc.
+        # don't reference $target at all (they'll correctly auto-detect
+        # native since $host is never set here), but zlib/openssl/bzip2
+        # hardcode $target-prefixed tool names directly, so they need the
+        # cross_target override explicitly (see those package files).
+        readonly cross_target=
+
+        install m4
+        package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
+        shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
+        curses=no install bash
+        install_program=hostname no_install_program=kill,uptime install coreutils
+        install diffutils
+        install file#native
+        install file
+        localstatedir=$TOOL_DIR/var/lib/locate install findutils
+        install gawk
+        install grep
+        install gzip
+        install make
+        install patch
+        install sed
+        install tar
+        install xz
+        # tar shells out to this to decompress .tar.bz2 sources (e.g. busybox).
+        install bzip2
+
+        # Needed by the kernel's own `make headers_install` — it shells out
+        # to rsync to copy sanitized headers, and the scratch phase has no
+        # host PATH fallback to borrow one from.
+        install rsync
+
+        # wget (and its openssl/zlib deps), so the self-hosted scratch/system
+        # phases can fetch their own package sources over HTTPS — bootstrap
+        # stays minimal and never pre-fetches anything on their behalf.
+        install zlib
+        cross_arch=$native_arch install openssl
+        install pkgconf
+        install wget
+    )
+
+    # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
+    # share one since they all use the same target triplet) ----------
+    # Never executed — only ever linked/read against by pass2 below — so
+    # deliberately does NOT inherit the native LDFLAGS set above: glibc's
+    # own build has its own internal linking conventions for the dynamic
+    # linker it's building, and the native rpath override would just be
+    # foreign noise at best.
+    (
+        readonly package_variant=$target
+        package_install_dir=$TOOL_DIR/$target
+        prefix=/usr
+        unset LDFLAGS
+
+        install linux#headers
+        nscd=no kernel=5.10 werror=no install glibc
+    )
+
+    # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
+    # Genuine cross-compiler: no --host, only --target=$target (the
+    # default cross_target in gcc.sh/binutils.sh), so binaries are
+    # $target-prefixed (e.g. aarch64-scratch-linux-gnu-gcc) and execute on
+    # the build host (this scratch container, via the native glibc/
+    # libstdc++ above — inherited LDFLAGS bakes that in) while emitting
+    # $target code. --with-sysroot bakes in the per-target sysroot above,
+    # so $target-gcc alone finds the right target glibc/headers with no
+    # extra flags at build_system() time.
+    (
+        readonly package_variant=$target
+        readonly package_install_dir=/
+        readonly prefix=$TOOL_DIR
+        readonly sysroot=$TOOL_DIR/$target
+        readonly build_sysroot=$TOOL_DIR/$target
+
+        gprofng=no werror=no install binutils
+
+        glibc_version=$(version glibc) languages=c,c++ \
+        shared=yes threads=yes libstdcxx=yes \
+        fixincludes=no \
+        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
+        install gcc
+    )
 
     # Verify the cross-compiler references our glibc dynamic linker.
     echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
-
-    # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
-    # every remaining binary at link time, rather than patchelf-ing it in
-    # after the fact — patchelf can safely add an rpath, but growing an
-    # already-linked PT_INTERP to a much longer string forces it to split
-    # the ELF's leading segment, which it does incorrectly for larger
-    # binaries (marks the split-off segment non-executable, crashing
-    # anything whose .plt/.init ends up there).
-    _tools_set_rtld_ldflags
-
-    # C++ standard library (cross-compiled into TOOL_DIR/usr, same reasoning as glibc above).
-    libstdcxx_pch=no install gcc#libstdc++
-
-    # --- Temporary tools (glibc-linked, relocatable) ---------------
-
-    # --build must be explicit: with only --host given, autoconf sets
-    # cross_compiling=maybe and falls back to actually running a test
-    # binary. Since target and build are the same architecture here,
-    # that test binary runs "successfully" against the host's own libc,
-    # so cross_compiling is wrongly resolved to "no" — and packages then
-    # try to run their (incompatible, newer-glibc) freshly built binaries
-    # directly, e.g. coreutils' man-page generation via help2man.
-    readonly build=$(cc -dumpmachine)
-    readonly host=$target
-
-    # pkgconf's own compiled-in default search path is the literal
-    # /usr/lib/pkgconfig (from its own --prefix=/usr at build time — it has
-    # no notion of TOOL_DIR as a DESTDIR), so left alone it looks in this
-    # container's real /usr instead of TOOL_DIR/usr. Needed by e.g. wget's
-    # configure to find openssl.
-    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
-
-    install m4
-    package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
-    shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
-    curses=no install bash
-    install_program=hostname no_install_program=kill,uptime install coreutils
-    install diffutils
-    install file#native
-    install file
-    localstatedir=$TOOL_DIR/var/lib/locate install findutils
-    install gawk
-    install grep
-    install gzip
-    install make
-    install patch
-    install sed
-    install tar
-    install xz
-    # tar shells out to this to decompress .tar.bz2 sources (e.g. busybox).
-    install bzip2
-
-    # Needed by the kernel's own `make headers_install` — it shells out to
-    # rsync to copy sanitized headers, and the scratch phase has no host
-    # PATH fallback to borrow one from.
-    install rsync
-
-    # wget (and its openssl/zlib deps), so the self-hosted scratch/system
-    # phases can fetch their own package sources over HTTPS — bootstrap
-    # stays minimal and never pre-fetches anything on their behalf.
-    install zlib
-    install openssl
-    install pkgconf
-    install wget
-
-    readonly sysroot=$TOOL_DIR
-    readonly build_sysroot=$TOOL_DIR
-
-    # Binutils pass 2: native (glibc-linked) linker/assembler.
-    gprofng=no werror=no install binutils
-
-    # GCC pass 2: native compiler for the target (glibc-linked, Canadian cross).
-    glibc_version=$(version glibc) languages=c,c++ \
-    shared=yes threads=yes libstdcxx=yes \
-    fixincludes=no \
-    libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
-    install gcc
 
     _tools_relocate
 
@@ -273,16 +438,50 @@ build_tools() {
     install kpartx
 }
 
-# Every remaining binary this session builds is host=$target and should
-# already carry a correct, TOOL_DIR-relative interpreter/rpath (see the
-# call site in tools_bootstrap). This just exports the LDFLAGS that make
-# that happen, so tools_build can use the same fix for `install gettext`.
+# glibc's own install generates a couple of tiny GNU ld scripts (not real
+# shared objects) for libraries that ship both a shared and a static part
+# (libc.so, libm.so), e.g.:
+#   GROUP ( /usr/lib/libc.so.6 /usr/lib/libc_nonshared.a AS_NEEDED (...) )
+# Its internal references are bare, root-relative paths — correct only
+# where /usr/lib is bind-mounted to TOOL_DIR (the scratch container), not
+# in *bootstrap*, where /usr/lib is Debian's own multiarch tree and ld
+# fails outright ("cannot find /usr/lib/libc.so.6"). Rewriting them to
+# TOOL_DIR-absolute paths makes them correct in both containers alike
+# (TOOL_DIR itself is the same real path in each), without having to ban
+# every future -L$TOOL_DIR/usr/lib (e.g. from pkg-config .pc Libs: lines —
+# see PKG_CONFIG_ALLOW_SYSTEM_LIBS above) just to dodge this.
+_tools_fix_native_ldscripts() {
+    local f
+    for f in $TOOL_DIR/usr/lib/*.so $TOOL_DIR/usr/lib64/*.so; do
+        [ -f "$f" ] || continue
+        head -c11 "$f" | grep -q '^/\* GNU ld' || continue
+        sed -i "s|/usr/lib/lib|$TOOL_DIR/usr/lib/lib|g" "$f"
+    done
+}
+
+# Every native binary from here on (the temporary tools, build_tools()'s
+# own output, and the cross-compilers' own executables) should carry a
+# correct, TOOL_DIR-relative interpreter/rpath pointing at the native
+# glibc/libstdc++ under TOOL_DIR/usr — see the call site in
+# bootstrap_tools(). This just exports the LDFLAGS that make that happen,
+# so build_tools() can use the same fix for `install gettext`.
 _tools_set_rtld_ldflags() {
     local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
     # usr/lib64 too: gcc's own build puts libstdc++ there by default on this
     # target regardless of multilib=no, unlike every other TOOL_DIR package
     # (glibc included), which all land under plain usr/lib.
+    #
+    # Deliberately no -L$TOOL_DIR/usr/lib[64] here (tried it, reverted):
+    # inside the *bootstrap* container specifically, that makes ld find
+    # TOOL_DIR's own libc.so — a linker script whose internal references
+    # are bare, root-relative paths (/usr/lib/libc.so.6), correct only
+    # where /usr/lib is bind-mounted to TOOL_DIR (the scratch container),
+    # not here, where /usr/lib is Debian's own multiarch tree. Broke even
+    # bare "gcc"'s own build-time sanity check ("cannot find /usr/lib/
+    # libc.so.6") for anything compiled inside the bootstrap container
+    # with this exported. -rpath alone doesn't have this problem (it's
+    # just a runtime hint, not a link-time search path).
     export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld) -Wl,-rpath,$TOOL_DIR/usr/lib64"
 }
 
@@ -293,11 +492,15 @@ _tools_set_rtld_ldflags() {
 # PT_INTERP after the fact, since growing it is what corrupts segment
 # layout (see tools_set_rtld_ldflags).
 #
-# TOOL_DIR/bin (pass1 binutils/gcc) is deliberately excluded: it's a
-# throwaway, host-native toolchain used only to bootstrap glibc/pass2 here
-# in the bootstrap container, and is linked against the host's own glibc —
-# relocating it would break it for no benefit, since it's not part of the
-# self-contained toolchain the `scratch` image runs.
+# TOOL_DIR/bin isn't scanned at all (only TOOL_DIR/usr is): pass1's
+# binutils/gcc there are a throwaway toolchain used only to bootstrap the
+# per-target sysroot glibc in the bootstrap container, linked against the
+# host's own (Debian) glibc — relocating them would break them for no
+# benefit, since they're not part of the self-contained toolchain the
+# `scratch` image runs. Pass2's binutils/gcc also land in TOOL_DIR/bin,
+# but need no relocation either: they're built after _tools_set_rtld_
+# ldflags is already active, so they get the correct rpath baked in at
+# link time already.
 _tools_relocate() {
     stage "Relocating toolchain binaries under $TOOL_DIR/usr"
 

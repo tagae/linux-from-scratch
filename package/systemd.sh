@@ -40,13 +40,17 @@ prefix = '$prefix'
 # standard system dirs, hence after -isystem), and tell pkg-config that
 # $sysroot/usr/include is a system dir (below) so it drops the redundant bare
 # -I. The override then sits ahead of every real header, as systemd intends.
-# INSTALL_DIR is needed for libcap/libkmod's own headers; TOOL_DIR for kernel
-# headers — a build-time dependency only, glibc doesn't ship them and
-# INSTALL_DIR deliberately has none (see tools_bootstrap).
-c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/usr/include']
+# INSTALL_DIR is needed for libcap/libkmod's own headers; TOOL_DIR/$target
+# (the per-target sysroot, matching this cross-compiler's own --target —
+# NOT TOOL_DIR/usr, which holds the build-host-native toolchain's own
+# headers instead, a different architecture entirely on e.g. pi0) for the
+# kernel headers — a build-time dependency only, glibc doesn't ship them
+# and INSTALL_DIR deliberately has none (see tools_bootstrap).
+c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/$target/usr/include']
 # Some deps systemd links by full path (e.g. libfdisk.so, via libshared-fdisk)
 # rather than as "-L$sysroot/usr/lib -lfdisk", so no -L reaches those links —
-# and gcc's sysroot is TOOL_DIR, not INSTALL_DIR. ld then can't find that lib's
+# and gcc's own baked-in sysroot is TOOL_DIR/$target, not INSTALL_DIR. ld
+# then can't find that lib's
 # own NEEDED siblings (libblkid.so.1, libuuid.so.1) to resolve their versioned
 # symbols, and --no-undefined turns that into a link error. -rpath-link points
 # ld's indirect-dependency search at INSTALL_DIR without affecting -l lookup.

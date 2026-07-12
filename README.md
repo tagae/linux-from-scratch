@@ -36,10 +36,24 @@ Build the complete system:
 make system
 ```
 
+Build the disk image:
+
+```shell
+make image
+```
+
+For a platform other than the default (`virt`), set `PLATFORM` for all three steps:
+
+```shell
+PLATFORM=pi0 make tools system image
+```
+
+The cross-compilation toolchain lives in a single shared volume: building one platform never
+rebuilds or discards another's, so switching between `PLATFORM=pi0` and `PLATFORM=pi4` (for
+example) only ever adds to it.
+
 Emulation
 ---------
-
-Each emulation target will create the needed image automatically.
 
 Boot a `virt` machine in QEMU:
 
@@ -47,13 +61,13 @@ Boot a `virt` machine in QEMU:
 make qemu
 ```
 
-Boot a Raspberry Pi Zero machine in QEMU:
+Boot a Raspberry Pi Zero machine in QEMU (after `PLATFORM=pi0 make tools system image`):
 
 ```shell
 make qemu-raspi0
 ```
 
-Boot a Raspberry Pi 4 Model B machine in QEMU:
+Boot a Raspberry Pi 4 Model B machine in QEMU (after `PLATFORM=pi4 make tools system image`):
 
 ```shell
 make qemu-raspi4b
