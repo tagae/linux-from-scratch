@@ -1,5 +1,6 @@
 .PHONY: \
-	tools system all \
+	all tools system image \
+	qemu test \
 	reinstall-tools reinstall-system \
 	clean distclean
 
@@ -24,7 +25,19 @@ system:
 	# Chapter 9: System Configuration
 	docker compose run --rm scratch ./lfs system build
 
-all: tools system
+image:
+	# losetup/mount/mkfs/etc. need real root, not just a privileged
+	# container — the scratch image has no sudo (no setuid mechanism, no
+	# /etc/passwd), so run this one as root directly instead.
+	docker compose run --rm --user 0:0 scratch ./lfs image build
+
+qemu:
+	./lfs qemu
+
+test:
+	./test-virt
+
+all: tools system image
 
 reinstall-tools:
 	docker compose run --rm scratch find work -name '.install-*' -delete
@@ -42,3 +55,4 @@ clean:
 distclean:
 	docker compose down -v
 	rm -rf work/
+	rm image/*

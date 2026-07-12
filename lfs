@@ -44,6 +44,7 @@ readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE
 #--[ Target platform ]
 
 : ${PLATFORM:=virt}
+
 [ -f $PROJECT_DIR/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
 
 readonly PLATFORM
@@ -53,7 +54,10 @@ readonly PLATFORM
 #--[ Compilation ]
 
 export LC_ALL=POSIX
-export MAKEFLAGS=-j$(nproc)
+# nproc is Linux-only (the usual case, inside the bootstrap/scratch
+# containers); qemu runs directly on the host instead (see the `qemu`
+# command below), where macOS has no nproc but does have sysctl.
+export MAKEFLAGS=-j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
 readonly LC_ALL MAKEFLAGS
 
@@ -66,9 +70,9 @@ readonly LC_ALL MAKEFLAGS
 # fallback after host tools are checked first.
 # Scratch phase: toolchain only, no host PATH.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/bin
+    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin:$TOOL_DIR/bin
 else
-    PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin
+    PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 fi
 
 readonly PATH
@@ -78,7 +82,7 @@ export PATH
 
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
-trap cleanup EXIT
+trap image_cleanup EXIT
 
 #--[ Command ]
 
@@ -109,38 +113,20 @@ case "${1:-help}" in
         ;;
 
     image)
-        [ $# -le 2 ] || usage "$1 [IMAGE]"
-        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
-        image
-        populate_image
+        shift
+        image "$@"
         ;;
 
     qemu)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
-        _image="${2:-$IMAGE_DIR/$PLATFORM.img}"
-
-        if [ ! -f "$_image" ]; then
-            IMAGE="$_image" image
-            populate_image
-            unmount_all
-        fi
-
-        _kernel="$INSTALL_DIR/boot/kernel.img"
-        [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system' first)"
-
-        _dtb="${DTB:+$INSTALL_DIR/boot/$DTB}"
-        if [ -f "$INSTALL_DIR/boot/cmdline.txt" ]; then
-            _append="$(cat $INSTALL_DIR/boot/cmdline.txt)"
-        elif [ "$PLATFORM" = virt ]; then
-            _append="console=hvc0 root=/dev/vda1 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait"
-        else
-            _append="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
-        fi
-
-        set -- -M $QEMU_MACHINE -nodefaults -no-user-config ${QEMU_FLAGS:-} -no-reboot -kernel "$_kernel"
-        [ -n "$_dtb" ] && [ -f "$_dtb" ] && set -- "$@" -dtb "$_dtb"
-        set -- "$@" -drive "file=$_image,format=raw,if=${QEMU_DISK_IF:-sd}" -append "$_append"
-        exec $QEMU "$@"
+        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
+        _kernel="$WORK_DIR/boot/kernel.img"
+        [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
+        exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
+            -no-reboot \
+            -kernel "$_kernel" \
+            -append "${QEMU_APPEND:-} rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait" \
+            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}"
         ;;
 
     help)

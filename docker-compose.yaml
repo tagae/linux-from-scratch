@@ -76,6 +76,13 @@ services:
       - type: volume
         source: work
         target: /mnt/lfs/work
+      # Bind mount, nested inside the `work` volume mount above: `./lfs qemu`
+      # runs directly on the host (not in a container), so the kernel needs
+      # to land somewhere the host can actually see — named volumes aren't
+      # visible outside Docker at all.
+      - type: bind
+        source: $PWD/work/boot
+        target: /mnt/lfs/work/boot
       - type: volume
         source: tools
         target: /mnt/lfs/tools
@@ -120,6 +127,12 @@ services:
       - type: volume
         source: install
         target: /mnt/lfs/install
+      # Bind mount, not a named volume: the built image needs to land
+      # somewhere reachable outside the container (e.g. for QEMU), and
+      # named volumes aren't visible on the host at all.
+      - type: bind
+        source: $PWD/image
+        target: /mnt/lfs/image
 
 volumes:
   source:
