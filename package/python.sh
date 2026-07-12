@@ -4,15 +4,22 @@
 package_source_dir=$SOURCE_DIR/Python-$package_version
 
 prepare() {
-    # Cross-compiling Python requires a native Python build for host utilities
+    # Cross-compiling Python requires a native Python build for host utilities.
+    # --with-openssl points at a nonexistent dir on purpose: we don't need
+    # Python's own SSL support here (wget handles HTTPS fetching, not
+    # Python), and our openssl is too new for it anyway — Python 3.14's
+    # _ssl.c references TLSv1_method, which OpenSSL 4.0 dropped. Pointing
+    # at a missing dir makes configure's optional _ssl module detection
+    # fail gracefully rather than build-then-fail-to-import.
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
+        ${sysroot:+--with-sysroot=$sysroot} \
         --enable-shared \
         ${system_expat:+--with-system-expat} \
         --without-static-libpython \
-        ${sysroot:+--with-sysroot=$sysroot} \
+        --with-openssl=${openssl:-/nonexistent} \
         ac_cv_file__dev_ptmx=yes \
         ac_cv_file__dev_ptc=no
 }

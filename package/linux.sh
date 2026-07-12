@@ -26,10 +26,9 @@ prepare() {
         linux)
             case $PLATFORM in
                 virt)
-                    local machine=$(uname -m)
                     cat $package_files_dir/base.config \
                         $package_files_dir/virt.config \
-                        $package_files_dir/$machine.config \
+                        $package_files_dir/$ARCH.config \
                         $package_files_dir/systemd.config \
                         > $package_source_dir/combined.config
                     _make KCONFIG_ALLCONFIG=$package_source_dir/combined.config allnoconfig

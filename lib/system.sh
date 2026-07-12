@@ -55,8 +55,6 @@ build_system() {
     # into INSTALL_DIR so far (libcap, util-linux's libmount/libblkid, …).
     sysroot=$INSTALL_DIR install systemd
 
-    exit 0
-
     # Kernel image, DTBs and modules
     install linux
 

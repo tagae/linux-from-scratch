@@ -191,6 +191,16 @@ build_tools() {
     # meson above.
     install markupsafe
     install jinja2
+
+    # Needed by the kernel's own Kconfig tooling (lexer.lex.c generation)
+    # and kernel/bounds.s's timeconst.h generation, when building linux for
+    # the system phase.
+    install flex
+    install bc
+
+    # Needed by the kernel's own PERLASM steps (e.g. lib/crypto/arm64/
+    # sha256-core.S) when building linux for the system phase.
+    install perl
 }
 
 # Every remaining binary this session builds is host=$target and should
