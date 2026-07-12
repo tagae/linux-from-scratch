@@ -71,6 +71,13 @@ install() {
             _make INSTALL_HDR_PATH=$package_install_dir/usr headers_install
             ;;
         linux)
+            # modules_install runs depmod (module.dep/modules.alias/etc —
+            # without them modprobe/systemd can't resolve a module by name
+            # even though the .ko file is right there on disk) as a matter
+            # of course, via scripts/depmod.sh, *if* it can find a depmod on
+            # PATH — tools_build builds one into TOOL_DIR for exactly this
+            # (build-host-native: depmod only reads the target's .ko files,
+            # it doesn't need to run on the target itself).
             _make \
                 INSTALL_DTBS_PATH=$package_install_dir/boot \
                 INSTALL_MOD_PATH=$package_install_dir \

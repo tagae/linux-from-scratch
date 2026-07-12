@@ -214,6 +214,18 @@ build_tools() {
     # sha256-core.S) when building linux for the system phase.
     install perl
 
+    # depmod: the kernel's own `make modules_install` (linux.sh, system
+    # phase) runs it automatically via scripts/depmod.sh whenever one is
+    # found on PATH, to index the modules it just installed (modules.dep/
+    # modules.alias/etc — without them modprobe/systemd can't resolve a
+    # module by name even though the .ko file is right there on disk).
+    # Genuinely build-host-native here, same reasoning as libblkid/btrfs-
+    # progs/kpartx below: depmod only ever *reads* the target's .ko files
+    # to build the index, it doesn't need to run on the target itself, and
+    # INSTALL_DIR's own kmod is target-native (built with host=$target in
+    # build_system()) so it can't run here.
+    manpages=no install kmod
+
     # libblkid (for btrfs-progs below) plus fallocate/losetup/sfdisk/mount
     # /umount/mountpoint, needed by `image build` — genuinely build-host-
     # native here (unlike reusing INSTALL_DIR's own copies, which would be

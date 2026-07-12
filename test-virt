@@ -1,34 +1,11 @@
 #!/usr/bin/expect -f
 # Boot the virt image in QEMU, log in as root, and poweroff.
 # Exits 0 on success, 1 on any failure.
-# Usage: ./test-virt [kernel] [image]
+# Usage: ./test-virt
 
 set timeout 120
-set kernel [lindex $argv 0]
-set image  [lindex $argv 1]
 
-if {$kernel eq ""} { set kernel "install/boot/kernel.img" }
-if {$image  eq ""} { set image  "image/virt.img" }
-
-set append "console=hvc0 root=/dev/vda1 rootfstype=btrfs rootflags=subvol=root/1 rw rootwait"
-
-spawn qemu-system-aarch64 \
-    -nodefaults \
-    -no-user-config \
-    -machine virt \
-    -cpu cortex-a72 \
-    -smp 1 \
-    -m 512 \
-    -nographic \
-    -no-reboot \
-    -kernel $kernel \
-    -append $append \
-    -device virtio-rng \
-    -drive file=$image,format=raw,if=virtio \
-    -device virtio-serial \
-    -chardev stdio,signal=off,mux=on,id=char0 \
-    -device virtconsole,chardev=char0,id=console0 \
-    -mon chardev=char0,mode=readline
+spawn ./lfs qemu
 
 expect {
     "login:" { }

@@ -1,5 +1,6 @@
 .PHONY: \
-	tools system image all \
+	all tools system image \
+	qemu test \
 	reinstall-tools reinstall-system \
 	clean distclean
 
@@ -32,6 +33,9 @@ image:
 
 qemu:
 	./lfs qemu
+
+test:
+	./test-virt
 
 all: tools system image
 
