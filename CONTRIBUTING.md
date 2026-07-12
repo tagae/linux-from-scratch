@@ -1,16 +1,12 @@
+Project structure
+-----------------
+
 * `lfs` is the frontend command.
 * `lib` contains the LFS command implementations.
 * `package` contains definitions for software bundles that can be installed on the LFS system.
 
-
 Pointers
 --------
-
-### Systemd
-
-https://www.linuxfromscratch.org/lfs/view/stable-systemd/
-
-### Raspberry Pi
 
 https://www.raspberrypi.com/documentation/computers/processors.html
 http://www.dettus.net/detLFS/
@@ -26,12 +22,3 @@ There is no `set -o pipefail` like in Bash.
 
 Code that deals with such failures becomes arcane.
 So such failures are not gracefully handled.
-
-Compilation on macOS
---------------------
-
-To work in a case-sensitive filesystem (is this needed?):
-
-    hdiutil create -size 8g -fs 'Case-sensitive APFS' -type SPARSE -volname LFS lfs
-    open lfs.sparseimage
-    cd /Volumes/LFS
