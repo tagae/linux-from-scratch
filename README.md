@@ -44,7 +44,7 @@ Each emulation target will create the needed image automatically.
 Boot a `virt` machine in QEMU:
 
 ```shell
-make qemu-virt
+make qemu
 ```
 
 Boot a Raspberry Pi Zero machine in QEMU:
