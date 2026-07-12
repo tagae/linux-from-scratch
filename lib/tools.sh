@@ -231,8 +231,16 @@ build_tools() {
     # makeinstall_chown=no: same as build_system()'s own util-linux call —
     # `chown root:root` on mount for setuid fails outright, no /etc/passwd
     # for "root" to resolve against.
+    # makeinstall_setuid=no: without also disabling this, `make install`
+    # still chmod u+s's mount/umount despite the chown above being skipped —
+    # leaving them setuid to the *build* UID (not root). Executing a
+    # setuid-to-non-root binary as real root then drops the effective UID
+    # to that owner, so mount(2) genuinely runs unprivileged and fails with
+    # "must be superuser" (confirmed via the file's owner/mode: mount was
+    # -rwsr-xr-x owned by the build UID, not 0). We always invoke these
+    # tools as genuine root already, so setuid serves no purpose here.
     all_programs=no libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin \
-    makeinstall_chown=no \
+    makeinstall_chown=no makeinstall_setuid=no \
     libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes \
     mount=yes fdisks=yes losetup=yes fallocate=yes mountpoint=yes \
         install util-linux

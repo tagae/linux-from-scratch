@@ -48,3 +48,4 @@ clean:
 distclean:
 	docker compose down -v
 	rm -rf work/
+	rm image/*

@@ -45,10 +45,14 @@ build_system() {
     # destination are identical. makeinstall_chown=no skips `chown
     # root:root` on mount for setuid, which fails outright here anyway —
     # there's no /etc/passwd for "root" to resolve against.
+    # makeinstall_setuid=no: without also disabling this, `make install`
+    # still chmod u+s's mount/umount despite the chown above being
+    # skipped — leaving them setuid to the *build* UID, not root, which
+    # is actively wrong (and leaves mount unusable for anyone but root).
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib \
     chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
     pylibmount=no static=no liblastlog2=no python=no systemd=no wall=no \
-    makeinstall_chown=no \
+    makeinstall_chown=no makeinstall_setuid=no \
     install util-linux
 
     # Init system; sysroot points meson/pkg-config at what we've installed

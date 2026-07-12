@@ -13,6 +13,7 @@ prepare() {
         ${libblkid:+--enable-libblkid=$libblkid} \
         ${libuuid:+--enable-libuuid=$libuuid} \
         ${libmount:+--enable-libmount=$libmount} \
+        ${libmount_mountfd_support:+--enable-libmount-mountfd-support=$libmount_mountfd_support} \
         ${libfdisk:+--enable-libfdisk=$libfdisk} \
         ${libsmartcols:+--enable-libsmartcols=$libsmartcols} \
         ${mount:+--enable-mount=$mount} \
@@ -37,6 +38,7 @@ prepare() {
         ${tinfo:+--with-tinfo=$tinfo} \
         ${wall:+--enable-wall=$wall} \
         ${makeinstall_chown:+--enable-makeinstall-chown=$makeinstall_chown} \
+        ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid} \
         --docdir=/usr/share/doc/util-linux-$package_version
 }
 

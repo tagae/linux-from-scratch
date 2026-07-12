@@ -120,6 +120,12 @@ services:
       - type: volume
         source: install
         target: /mnt/lfs/install
+      # Bind mount, not a named volume: the built image needs to land
+      # somewhere reachable outside the container (e.g. for QEMU), and
+      # named volumes aren't visible on the host at all.
+      - type: bind
+        source: $PWD/image
+        target: /mnt/lfs/image
 
 volumes:
   source:
