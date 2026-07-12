@@ -172,7 +172,12 @@ build_tools() {
 
     install gettext
     install bison
-    install python
+    # optimizations=no: --enable-optimizations (PGO) fails at the profiling
+    # run here (libpython3.14.so's gcov instrumentation doesn't resolve
+    # __gcov_indirect_call under our _tools_set_rtld_ldflags-injected
+    # LDFLAGS) — moot anyway, since Python is only build-time tooling here
+    # and never actually runs as the shipped system's own interpreter.
+    optimizations=no install python
 
     # Needed to build systemd itself in the later `system build` step. Real
     # LFS builds these inside its chroot as ordinary chapter 8 packages
@@ -248,6 +253,12 @@ _tools_relocate() {
     while IFS= read -r f; do
         [ "$(head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 7f454c46 ] || continue
         readelf -d "$f" 2>/dev/null | grep -q 'Dynamic section' || continue
+        # This tree also holds files build_tools() installed in a later,
+        # separate invocation (TOOL_DIR is one persistent volume) — some of
+        # those are deliberately read-only by their own package's
+        # convention (e.g. perl's XS .so modules), which patchelf can't
+        # open for writing otherwise.
+        chmod -f u+w "$f"
         patchelf --set-rpath $lib_dir "$f"
     done || true
 

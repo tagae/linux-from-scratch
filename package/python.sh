@@ -4,24 +4,27 @@
 package_source_dir=$SOURCE_DIR/Python-$package_version
 
 prepare() {
+    : ${shared:=yes}
+    : ${optimizations:=yes}
+    : ${static_libpython:=no}
+
+    # Same patch the LFS book applies for this exact package/version — the
+    # OpenSSL 4.0 part fixes what --with-openssl=/nonexistent used to just
+    # sidestep (Python 3.14's _ssl.c referenced TLSv1_method, which OpenSSL
+    # 4.0 dropped); it also carries a few unrelated upstream CVE fixes
+    # bundled into the same "consolidated_fixes" patch.
+    patch_source https://www.linuxfromscratch.org/patches/lfs/development/Python-$package_version-consolidated_fixes-1.patch
+
     # Cross-compiling Python requires a native Python build for host utilities.
-    # --with-openssl points at a nonexistent dir on purpose: we don't need
-    # Python's own SSL support here (wget handles HTTPS fetching, not
-    # Python), and our openssl is too new for it anyway — Python 3.14's
-    # _ssl.c references TLSv1_method, which OpenSSL 4.0 dropped. Pointing
-    # at a missing dir makes configure's optional _ssl module detection
-    # fail gracefully rather than build-then-fail-to-import.
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
         ${sysroot:+--with-sysroot=$sysroot} \
-        --enable-shared \
+        ${shared:+--enable-shared=$shared} \
         ${system_expat:+--with-system-expat} \
-        --without-static-libpython \
-        --with-openssl=${openssl:-/nonexistent} \
-        ac_cv_file__dev_ptmx=yes \
-        ac_cv_file__dev_ptc=no
+        ${static_libpython:+--with-static-libpython=$static_libpython} \
+        ${optimizations:+--enable-optimizations=$optimizations}
 }
 
 build() {
