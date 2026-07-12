@@ -67,4 +67,16 @@ build_system() {
         install boot#cmdline
         install boot#config
     fi
+
+    # `./lfs qemu` runs directly on the host, not in a container — INSTALL_DIR
+    # is a Docker volume the host can't see at all. WORK_DIR/boot is bind-
+    # mounted to the host (see docker-compose.yaml) specifically so the
+    # kernel (and DTB, for Pi platforms tested under QEMU) end up somewhere
+    # the host-side `qemu` command can actually read.
+    mkdir -p $WORK_DIR/boot
+    cp -v $INSTALL_DIR/boot/kernel.img $WORK_DIR/boot/
+    if [ -n "${DTB:-}" ]; then
+        mkdir -p $WORK_DIR/boot/$(dirname $DTB)
+        cp -v $INSTALL_DIR/boot/$DTB $WORK_DIR/boot/$DTB
+    fi
 }

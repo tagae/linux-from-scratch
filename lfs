@@ -54,7 +54,10 @@ readonly PLATFORM
 #--[ Compilation ]
 
 export LC_ALL=POSIX
-export MAKEFLAGS=-j$(nproc)
+# nproc is Linux-only (the usual case, inside the bootstrap/scratch
+# containers); qemu runs directly on the host instead (see the `qemu`
+# command below), where macOS has no nproc but does have sysctl.
+export MAKEFLAGS=-j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
 readonly LC_ALL MAKEFLAGS
 
@@ -117,23 +120,13 @@ case "${1:-help}" in
     qemu)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
         IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
-
-        _kernel="$INSTALL_DIR/boot/kernel.img"
+        _kernel="$WORK_DIR/boot/kernel.img"
         [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
-
-        _dtb="${DTB:+$INSTALL_DIR/boot/$DTB}"
-        if [ -f "$INSTALL_DIR/boot/cmdline.txt" ]; then
-            _append="$(cat $INSTALL_DIR/boot/cmdline.txt)"
-        elif [ "$PLATFORM" = virt ]; then
-            _append="console=hvc0 root=/dev/vda1 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait"
-        else
-            _append="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
-        fi
-
-        set -- -M $QEMU_MACHINE -nodefaults -no-user-config ${QEMU_FLAGS:-} -no-reboot -kernel "$_kernel"
-        [ -n "$_dtb" ] && [ -f "$_dtb" ] && set -- "$@" -dtb "$_dtb"
-        set -- "$@" -drive "file=$_image,format=raw,if=${QEMU_DISK_IF:-sd}" -append "$_append"
-        exec $QEMU "$@"
+        exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
+            -no-reboot \
+            -kernel "$_kernel" \
+            -append "${QEMU_APPEND:-} rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait" \
+            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}"
         ;;
 
     help)

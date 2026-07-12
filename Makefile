@@ -30,6 +30,9 @@ image:
 	# /etc/passwd), so run this one as root directly instead.
 	docker compose run --rm --user 0:0 scratch ./lfs image build
 
+qemu:
+	./lfs qemu
+
 all: tools system image
 
 reinstall-tools:
