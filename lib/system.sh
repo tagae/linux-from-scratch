@@ -16,13 +16,6 @@ build_system() {
 
     install system-files
 
-    # Kernel headers glibc builds its syscall wrappers against. These are
-    # only a build-time dependency (glibc doesn't ship them), so install
-    # into TOOL_DIR rather than INSTALL_DIR — the shipped image should
-    # have no header files at all, and this way they never need stripping
-    # back out.
-    #package_install_dir=$TOOL_DIR install linux#headers
-
     # glibc's own build invokes bison (e.g. for intl/plural.y) as an
     # external tool. bison was built with --prefix=/usr (landing under
     # TOOL_DIR via DESTDIR), but its own compiled-in default pkgdatadir is
@@ -33,10 +26,10 @@ build_system() {
 
     headers=$TOOL_DIR/usr/include install glibc
 
-    # Capabilities — hard systemd dependency
+    # Capabilities.
     install libcap
 
-    # Kernel module loading — hard systemd dependency
+    # Kernel module loading.
     manpages=no install kmod
 
     # Shell and core utilities.
@@ -56,9 +49,9 @@ build_system() {
     chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
     pylibmount=no static=no liblastlog2=no python=no systemd=no wall=no \
     makeinstall_chown=no \
-        install util-linux
+    install util-linux
 
-    # Init system. sysroot points meson/pkg-config at what we've installed
+    # Init system; sysroot points meson/pkg-config at what we've installed
     # into INSTALL_DIR so far (libcap, util-linux's libmount/libblkid, …).
     sysroot=$INSTALL_DIR install systemd
 
@@ -69,10 +62,7 @@ build_system() {
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only
     if [ -n "${DTB:-}" ]; then
-        package_install_dir=$INSTALL_DIR \
-            install boot#cmdline
-
-        package_install_dir=$INSTALL_DIR \
-            install boot#config
+        install boot#cmdline
+        install boot#config
     fi
 }

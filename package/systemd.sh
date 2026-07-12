@@ -10,42 +10,6 @@ prepare() {
         *)     local meson_cpu_family=$ARCH ;;
     esac
 
-    # systemd's own src/include/override/ ships a whole family of headers
-    # with #if !HAVE_XXX fallbacks for things newer than our glibc/kernel
-    # headers (sched.h's TASK_COMM_LEN, sys/stat.h's fchmodat2, etc.) —
-    # each does #include_next to chain to the real header, meant to sit
-    # ahead of it via -isystem. But pkg-config rewrites .pc Cflags like
-    # "-I/usr/include" through PKG_CONFIG_SYSROOT_DIR into
-    # "-I$sysroot/usr/include" (needed so headers for packages actually
-    # installed under INSTALL_DIR, like libcap, can be found) — and gcc
-    # always searches every -I path before any -isystem path regardless of
-    # command-line order, so that sysroot path wins over the override for
-    # plain names like <sched.h>. Adding the override directory itself as
-    # an ordinary -I doesn't help either: meson appends cross-file c_args
-    # after dependency-injected -I flags, so it still loses that ordering
-    # race. -include sidesteps the whole problem: it's textually
-    # equivalent to inserting this at the very top of every translation
-    # unit, before any #include resolution happens at all.
-    # No #include here at all, not even <sys/types.h> for mode_t: -include
-    # forces this in before config.h even runs, which is what fixes the
-    # ordering problem above — but it means any header pulled in this
-    # early gets its content locked in by include guards before config.h's
-    # own feature-test macros (_FILE_OFFSET_BITS=64, etc.) take effect,
-    # breaking later, unrelated types (struct dirent64, O_LARGEFILE, …).
-    # mode_t is an unsigned int on every glibc/Linux target regardless.
-    cat > $package_build_dir/compat.h <<'COMPATEOF'
-#ifndef TASK_COMM_LEN
-#define TASK_COMM_LEN 16
-#endif
-#ifndef PF_KTHREAD
-#define PF_KTHREAD 0x00200000
-#endif
-#ifndef HAVE_CLONE
-#define HAVE_CLONE 1
-#endif
-extern int fchmodat2(int dirfd, const char *pathname, unsigned int mode, int flags);
-COMPATEOF
-
     cat > meson.ini <<EOF
 [host_machine]
 system = 'linux'
@@ -62,11 +26,24 @@ pkg-config = 'pkg-config'
 
 [built-in options]
 prefix = '$prefix'
-# Kernel headers are a build-time dependency only — glibc doesn't ship
-# them, and INSTALL_DIR deliberately has none, so they only exist under
-# TOOL_DIR (see tools_bootstrap). See compat.h above for TASK_COMM_LEN/
-# fchmodat2.
-c_args = ['-I$TOOL_DIR/usr/include', '-include', '$package_build_dir/compat.h']
+# systemd ships override headers (src/include/override/) supplying symbols
+# missing from userspace headers — TASK_COMM_LEN, PF_KTHREAD, fchmodat2, … —
+# each #include_next-ing the real header. Its meson wires them in with
+# -isystem, which gcc searches after every -I but before the standard system
+# dirs. So the override only wins as long as no plain -I carries a competing
+# <sched.h>/<sys/stat.h>. Two would here: pkg-config rewrites libcap/libkmod's
+# "-I/usr/include" into "-I$sysroot/usr/include" (which also holds glibc's
+# headers), and TOOL_DIR/usr/include (for the kernel headers) holds glibc's
+# too — either shadows the override, hiding the symbols above.
+#
+# So expose both dirs at lowest priority via -idirafter (searched after the
+# standard system dirs, hence after -isystem), and tell pkg-config that
+# $sysroot/usr/include is a system dir (below) so it drops the redundant bare
+# -I. The override then sits ahead of every real header, as systemd intends.
+# INSTALL_DIR is needed for libcap/libkmod's own headers; TOOL_DIR for kernel
+# headers — a build-time dependency only, glibc doesn't ship them and
+# INSTALL_DIR deliberately has none (see tools_bootstrap).
+c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/usr/include']
 
 [properties]
 sys_root = '$sysroot'
@@ -74,6 +51,10 @@ EOF
 
     export PKG_CONFIG_PATH=$sysroot/usr/lib/pkgconfig
     export PKG_CONFIG_SYSROOT_DIR=$sysroot
+    # Makes pkg-config drop the bare "-I$sysroot/usr/include" it would emit
+    # for libcap/libkmod (its harmless per-library subdir -Is stay); the
+    # -idirafter in c_args covers those headers without shadowing the override.
+    export PKG_CONFIG_SYSTEM_INCLUDE_PATH=$sysroot/usr/include
 
     meson setup $package_source_dir \
           --cross-file meson.ini \

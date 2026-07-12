@@ -1,9 +1,9 @@
 .PHONY: \
-	tools system \
+	tools system all \
 	reinstall-tools reinstall-system \
 	clean distclean
 
-.DEFAULT_GOAL := system
+.DEFAULT_GOAL := all
 
 .env:
 	echo HOST_UID=$$(id -u) >> $@
@@ -19,10 +19,12 @@ tools: .env
 	# Chapter 7: Building Additional Temporary Tools
 	docker compose run --build --rm scratch ./lfs tools build
 
-system: tools
+system:
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
 	docker compose run --rm scratch ./lfs system build
+
+all: tools system
 
 reinstall-tools:
 	docker compose run --rm scratch find work -name '.install-*' -delete
