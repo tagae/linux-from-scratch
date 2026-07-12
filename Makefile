@@ -41,4 +41,4 @@ clean:
 
 distclean:
 	docker compose down -v
-	rm -r work/
+	rm -rf work/

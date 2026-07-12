@@ -44,6 +44,13 @@ prefix = '$prefix'
 # headers — a build-time dependency only, glibc doesn't ship them and
 # INSTALL_DIR deliberately has none (see tools_bootstrap).
 c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/usr/include']
+# Some deps systemd links by full path (e.g. libfdisk.so, via libshared-fdisk)
+# rather than as "-L$sysroot/usr/lib -lfdisk", so no -L reaches those links —
+# and gcc's sysroot is TOOL_DIR, not INSTALL_DIR. ld then can't find that lib's
+# own NEEDED siblings (libblkid.so.1, libuuid.so.1) to resolve their versioned
+# symbols, and --no-undefined turns that into a link error. -rpath-link points
+# ld's indirect-dependency search at INSTALL_DIR without affecting -l lookup.
+c_link_args = ['-Wl,-rpath-link,$sysroot/usr/lib']
 
 [properties]
 sys_root = '$sysroot'
