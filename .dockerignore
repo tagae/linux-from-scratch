@@ -1,12 +1,5 @@
-/archive/
 /download/
 /image/
-/install/
-/source/
-/tools/
-# Dockerfile.scratch needs our own already-built bash out of here as
-# /bin/sh, plus an empty placeholder dir for its install-volume COPY
-# --chown; everything else in this (large) tree stays out of build context.
 /work/**
 !/work/scratch-init/sh
 !/work/scratch-init/empty
