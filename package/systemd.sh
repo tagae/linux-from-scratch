@@ -63,6 +63,15 @@ EOF
     # -idirafter in c_args covers those headers without shadowing the override.
     export PKG_CONFIG_SYSTEM_INCLUDE_PATH=$sysroot/usr/include
 
+    # xinitrcdir below: the only thing that ever touches /etc/X11 is an
+    # xinit script to set up the systemd user session on X login,
+    # meaningless with no X11 packages built at all here. It's
+    # unconditionally installed whenever install-sysconfdir is enabled
+    # (which we want — that flag also gates several genuinely useful empty
+    # dirs, like /etc/systemd/system and /etc/systemd/network), so
+    # redirecting this one file into the (already-created) doc dir is the
+    # only way to avoid inventing /etc/X11 for a script nothing will ever
+    # source.
     meson setup $package_source_dir \
           --cross-file meson.ini \
           ${prefix:+--prefix=$prefix} \
@@ -85,7 +94,8 @@ EOF
           -D openssl=disabled \
           -D tpm2=disabled \
           -D p11kit=disabled \
-          -D docdir=/usr/share/doc/systemd-$package_version
+          -D docdir=/usr/share/doc/systemd-$package_version \
+          -D xinitrcdir=/usr/share/doc/systemd-$package_version
 }
 
 build() {

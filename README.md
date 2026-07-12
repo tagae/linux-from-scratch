@@ -1,10 +1,11 @@
 Linux From Scratch
 ==================
 
-Automated build of [LFS with systemd](https://www.linuxfromscratch.org/lfs/view/systemd/).
+Build [Linux From Scratch with systemd](https://www.linuxfromscratch.org/lfs/view/systemd/),
+and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
-Built images contain a minimal systemd/Busybox Linux system that boots cleanly and is accessible
-through the serial console.
+Built images contain a minimal Linux system that boots cleanly and is accessible through the serial
+console.
 
 
 Supported Platforms
@@ -12,7 +13,7 @@ Supported Platforms
 
 | Platform | Hardware                     | Architecture  |
 |----------|------------------------------|---------------|
-| `virt`   | QEMU arm64 virtual machine   | ARMv8 (arm64) |
+| `virt`   | QEMU virtual machine         | host          |
 | `pi0`    | Raspberry Pi Zero            | ARMv6 (arm)   |
 | `pi4`    | Raspberry Pi 4               | ARMv8 (arm64) |
 | `pi5`    | Raspberry Pi 5               | ARMv8 (arm64) |

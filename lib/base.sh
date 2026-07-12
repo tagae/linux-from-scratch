@@ -23,9 +23,13 @@ stage() {
 get() {
     local url=$1
     local archive=${url##*/}
+    # .tgz is a common alternate spelling of .tar.gz with no ".tar."
+    # substring to strip via the usual pattern.
+    local extracted=${archive%%.tar.*}
+    [ "$extracted" != "$archive" ] || extracted=${archive%.tgz}
     mkdir -p $SOURCE_DIR
     [ -f $DOWNLOAD_DIR/$archive ] || wget --no-check-certificate -P $DOWNLOAD_DIR $url
-    [ -d $SOURCE_DIR/${archive%%.tar.*} ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
+    [ -d $SOURCE_DIR/$extracted ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
 }
 
 git_default_branch() {

@@ -116,7 +116,7 @@ _source() {
 
     default_fetch() {
         case ${package_source:-none} in
-            https://*.tar.*)
+            https://*.tar.*|https://*.tgz)
                 get $package_source
                 ;;
             https://github.com*|https://git.*)
@@ -162,7 +162,7 @@ _source() {
     . $PACKAGE_DIR/$package_name.sh
 
     case ${package_source:-none} in
-        https://*.tar.*)
+        https://*.tar.*|https://*.tgz)
             ;;
         https://github.com*|https://git.*)
             if [ -z "${package_branch:-}" ]; then
