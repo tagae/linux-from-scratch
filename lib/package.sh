@@ -151,6 +151,14 @@ _source() {
         tar cjf $ARCHIVE_DIR/$PLATFORM/$package_archive -C $package_install_dir .
     }
 
+    patch_source() {
+        local url=$1
+        local file=${url##*/}
+        mkdir -p $DOWNLOAD_DIR
+        [ -f $DOWNLOAD_DIR/$file ] || wget --no-check-certificate -P $DOWNLOAD_DIR $url
+        patch -d $package_source_dir -Np1 -i $DOWNLOAD_DIR/$file
+    }
+
     . $PACKAGE_DIR/$package_name.sh
 
     case ${package_source:-none} in

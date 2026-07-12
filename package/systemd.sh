@@ -2,11 +2,19 @@
 : ${package_source:=https://github.com/systemd/systemd/archive/v$package_version/systemd-$package_version.tar.gz}
 
 prepare() {
+    # meson's cpu_family values are its own fixed vocabulary, not this
+    # project's $ARCH (e.g. "arm64" here means meson's "aarch64").
+    case $ARCH in
+        arm64) local meson_cpu_family=aarch64 ;;
+        arm)   local meson_cpu_family=arm ;;
+        *)     local meson_cpu_family=$ARCH ;;
+    esac
+
     cat > meson.ini <<EOF
 [host_machine]
 system = 'linux'
-cpu_family = '$ARCH'
-cpu = '$tune'
+cpu_family = '$meson_cpu_family'
+cpu = '${arch:-$meson_cpu_family}'
 endian = 'little'
 
 [binaries]
@@ -18,11 +26,42 @@ pkg-config = 'pkg-config'
 
 [built-in options]
 prefix = '$prefix'
+# systemd ships override headers (src/include/override/) supplying symbols
+# missing from userspace headers — TASK_COMM_LEN, PF_KTHREAD, fchmodat2, … —
+# each #include_next-ing the real header. Its meson wires them in with
+# -isystem, which gcc searches after every -I but before the standard system
+# dirs. So the override only wins as long as no plain -I carries a competing
+# <sched.h>/<sys/stat.h>. Two would here: pkg-config rewrites libcap/libkmod's
+# "-I/usr/include" into "-I$sysroot/usr/include" (which also holds glibc's
+# headers), and TOOL_DIR/usr/include (for the kernel headers) holds glibc's
+# too — either shadows the override, hiding the symbols above.
+#
+# So expose both dirs at lowest priority via -idirafter (searched after the
+# standard system dirs, hence after -isystem), and tell pkg-config that
+# $sysroot/usr/include is a system dir (below) so it drops the redundant bare
+# -I. The override then sits ahead of every real header, as systemd intends.
+# INSTALL_DIR is needed for libcap/libkmod's own headers; TOOL_DIR for kernel
+# headers — a build-time dependency only, glibc doesn't ship them and
+# INSTALL_DIR deliberately has none (see tools_bootstrap).
+c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/usr/include']
+# Some deps systemd links by full path (e.g. libfdisk.so, via libshared-fdisk)
+# rather than as "-L$sysroot/usr/lib -lfdisk", so no -L reaches those links —
+# and gcc's sysroot is TOOL_DIR, not INSTALL_DIR. ld then can't find that lib's
+# own NEEDED siblings (libblkid.so.1, libuuid.so.1) to resolve their versioned
+# symbols, and --no-undefined turns that into a link error. -rpath-link points
+# ld's indirect-dependency search at INSTALL_DIR without affecting -l lookup.
+c_link_args = ['-Wl,-rpath-link,$sysroot/usr/lib']
+
+[properties]
 sys_root = '$sysroot'
 EOF
 
     export PKG_CONFIG_PATH=$sysroot/usr/lib/pkgconfig
     export PKG_CONFIG_SYSROOT_DIR=$sysroot
+    # Makes pkg-config drop the bare "-I$sysroot/usr/include" it would emit
+    # for libcap/libkmod (its harmless per-library subdir -Is stay); the
+    # -idirafter in c_args covers those headers without shadowing the override.
+    export PKG_CONFIG_SYSTEM_INCLUDE_PATH=$sysroot/usr/include
 
     meson setup $package_source_dir \
           --cross-file meson.ini \

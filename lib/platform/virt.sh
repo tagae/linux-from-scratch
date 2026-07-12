@@ -1,17 +1,14 @@
-readonly ARCH=arm64
+case "$(uname -m)" in
+    arm64|aarch64) # Varies according to OS.
+        readonly ARCH=arm64
+        readonly target=aarch64-${vendor:-scratch}-linux-gnu
+        readonly QEMU=qemu-system-aarch64
+        ;;
+    *) bail "Unsupported virt architecture" ;;
+esac
 
-readonly target=aarch64-${vendor:-scratch}-linux-gnu
-
-# https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html
-readonly arch=armv8-a
-readonly tune=
-readonly abi=lp64
-readonly fpu=
-readonly float=
-
-readonly QEMU=qemu-system-aarch64
 readonly QEMU_MACHINE=virt
-readonly QEMU_FLAGS="-cpu cortex-a72 -smp 1 -m 512 \
+readonly QEMU_FLAGS="-cpu host -smp 1 -m 512 \
     -nographic \
     -device virtio-rng \
     -device virtio-serial \

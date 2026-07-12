@@ -14,9 +14,6 @@ readonly PACKAGE_DIR=$PROJECT_DIR/package
 
 #--[ Command line ]
 
-# getopts is a shell builtin (POSIX, no external binary) — unlike getopt(1),
-# which used to require util-linux just to be present in the self-hosted
-# scratch-phase toolchain (no host PATH fallback there).
 while getopts ":p:d:h" opt; do
     case "$opt" in
         p) PLATFORM="$OPTARG" ;;
@@ -38,9 +35,8 @@ done
 : ${INSTALL_DIR:=$OUTPUT_DIR/install}
 : ${ARCHIVE_DIR:=$OUTPUT_DIR/archive}
 : ${IMAGE_DIR:=$OUTPUT_DIR/image}
-# Small bind-mounted staging area for the one file Dockerfile.scratch
-# needs at build time (see tools_bootstrap). TOOL_DIR itself is a named
-# volume, which `docker build` can't see at all.
+
+# Small bind-mounted staging area for the few files Dockerfile.scratch needs at build time.
 : ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
 
 readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
