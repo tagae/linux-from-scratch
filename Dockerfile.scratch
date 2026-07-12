@@ -4,13 +4,19 @@ FROM scratch
 ARG HOST_UID
 ARG HOST_GID
 
-# /bin/sh must exist as a real path for #!/bin/sh scripts (like ./lfs) to
-# exec. TOOL_DIR is a named volume, invisible to `docker build`, so this
-# comes from work/scratch-init instead — a tiny staging copy of our own
-# already-built bash that tools_bootstrap places there (see lib/tools.sh).
-# Invoked via a #!/bin/sh shebang, bash's argv[0] is "/bin/sh", which puts
-# it in POSIX-compatible mode automatically.
+# The install volume is only ever mounted here, never in the bootstrap
+# image — Docker seeds a freshly created named volume from whatever content
+# (and ownership) already exists at that path in the image, so baking this
+# empty, pre-owned directory into the layer is enough; no chown binary or
+# root user is needed inside this `FROM scratch` image at all.
+COPY --chown=$HOST_UID:$HOST_GID work/scratch-init/empty/ /mnt/lfs/install/
+
+# Enable execution of #!/bin/sh scripts.
+# Invoking Bash as `sh` puts it in POSIX-compatible mode automatically.
 COPY work/scratch-init/sh /bin/sh
+
+# Some scripts hardcode a #!/bin/bash shebang.
+COPY work/scratch-init/sh /bin/bash
 
 ENV PATH=/mnt/lfs/tools/usr/bin
 ENV LC_ALL=POSIX

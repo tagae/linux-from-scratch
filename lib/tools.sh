@@ -105,6 +105,8 @@ bootstrap_tools() {
     install sed
     install tar
     install xz
+    # tar shells out to this to decompress .tar.bz2 sources (e.g. busybox).
+    install bzip2
 
     # Needed by the kernel's own `make headers_install` — it shells out to
     # rsync to copy sanitized headers, and the scratch phase has no host
@@ -138,6 +140,10 @@ bootstrap_tools() {
     # own already-built bash where Dockerfile.scratch's COPY can reach it.
     mkdir -p $SCRATCH_INIT_DIR
     cp -v $TOOL_DIR/usr/bin/bash $SCRATCH_INIT_DIR/sh
+
+    # Empty placeholder Dockerfile.scratch's COPY --chown uses to seed the
+    # install volume's ownership — see the comment there.
+    mkdir -p $SCRATCH_INIT_DIR/empty
 }
 
 build_tools() {
@@ -166,7 +172,40 @@ build_tools() {
 
     install gettext
     install bison
-    install python
+    # optimizations=no: --enable-optimizations (PGO) fails at the profiling
+    # run here (libpython3.14.so's gcov instrumentation doesn't resolve
+    # __gcov_indirect_call under our _tools_set_rtld_ldflags-injected
+    # LDFLAGS) — moot anyway, since Python is only build-time tooling here
+    # and never actually runs as the shipped system's own interpreter.
+    optimizations=no install python
+
+    # Needed to build systemd itself in the later `system build` step. Real
+    # LFS builds these inside its chroot as ordinary chapter 8 packages
+    # (alongside systemd, using its own chroot's Python) since it doesn't
+    # strip build-only tooling back out of the final system; this project
+    # does, so they get the same build-time-only treatment as bison/gettext
+    # /python above instead of landing in INSTALL_DIR.
+    install ninja
+    install meson
+    install gperf
+
+    # systemd's meson.build itself requires python3's jinja2 module (used
+    # to generate some templated files at build time). Our python3 has no
+    # ssl module (no openssl support configured in), so pip can't fetch
+    # from PyPI — these are pure Python, so just place them directly like
+    # meson above.
+    install markupsafe
+    install jinja2
+
+    # Needed by the kernel's own Kconfig tooling (lexer.lex.c generation)
+    # and kernel/bounds.s's timeconst.h generation, when building linux for
+    # the system phase.
+    install flex
+    install bc
+
+    # Needed by the kernel's own PERLASM steps (e.g. lib/crypto/arm64/
+    # sha256-core.S) when building linux for the system phase.
+    install perl
 }
 
 # Every remaining binary this session builds is host=$target and should
@@ -176,7 +215,10 @@ build_tools() {
 _tools_set_rtld_ldflags() {
     local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
-    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
+    # usr/lib64 too: gcc's own build puts libstdc++ there by default on this
+    # target regardless of multilib=no, unlike every other TOOL_DIR package
+    # (glibc included), which all land under plain usr/lib.
+    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld) -Wl,-rpath,$TOOL_DIR/usr/lib64"
 }
 
 # Safety net for anything under TOOL_DIR/usr that didn't pick up
@@ -211,6 +253,12 @@ _tools_relocate() {
     while IFS= read -r f; do
         [ "$(head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 7f454c46 ] || continue
         readelf -d "$f" 2>/dev/null | grep -q 'Dynamic section' || continue
+        # This tree also holds files build_tools() installed in a later,
+        # separate invocation (TOOL_DIR is one persistent volume) — some of
+        # those are deliberately read-only by their own package's
+        # convention (e.g. perl's XS .so modules), which patchelf can't
+        # open for writing otherwise.
+        chmod -f u+w "$f"
         patchelf --set-rpath $lib_dir "$f"
     done || true
 

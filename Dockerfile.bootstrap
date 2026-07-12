@@ -1,19 +1,18 @@
-FROM alpine:3.23.4
+FROM debian:stable-slim
 
-RUN delgroup dialout # conflicts with macOS
+RUN groupdel dialout # conflicts with macOS
 
-RUN apk update
-RUN apk add build-base git rsync bison gawk python3 patchelf # grep file
+RUN apt update
+RUN apt install -y build-essential curl wget rsync gawk bison python3 patchelf
 
 ARG HOST_UID
 ARG HOST_GID
-RUN addgroup -g $HOST_GID lfs
-RUN adduser -D -h /mnt/lfs -u $HOST_UID -G lfs lfs
+RUN groupadd --gid $HOST_GID lfs
+RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --no-create-home lfs
 
 RUN mkdir -pv \
     /mnt/lfs/download \
     /mnt/lfs/image \
-    /mnt/lfs/install \
     /mnt/lfs/lib \
     /mnt/lfs/package \
     /mnt/lfs/source \
@@ -24,7 +23,6 @@ RUN chown lfs:lfs \
     /mnt/lfs \
     /mnt/lfs/download \
     /mnt/lfs/image \
-    /mnt/lfs/install \
     /mnt/lfs/lib \
     /mnt/lfs/package \
     /mnt/lfs/source \

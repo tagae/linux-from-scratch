@@ -1,7 +1,7 @@
 services:
   bootstrap:
     build:
-      dockerfile: Dockerfile.bootstrap-debian
+      dockerfile: Dockerfile.bootstrap
       args:
         HOST_UID: $HOST_UID
         HOST_GID: $HOST_GID
@@ -39,15 +39,6 @@ services:
       - type: bind
         source: $PWD/work/scratch-init
         target: /mnt/lfs/work/scratch-init
-      # bootstrap never writes here itself, but its presence matters: this
-      # is what makes Docker initialize the (root-owned by default) install
-      # volume with the correct lfs ownership the first time it's used —
-      # Dockerfile.scratch (FROM scratch) has no chown mechanism at all, so
-      # if scratch is the first to touch this mount, it stays root-owned
-      # and the non-root scratch container can't fix that itself.
-      - type: volume
-        source: install
-        target: /mnt/lfs/install
 
   scratch:
     build:
@@ -88,6 +79,44 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
+      # Binaries linked for INSTALL_DIR correctly get /lib/ld-linux-*.so.*
+      # baked in as their interpreter (right for eventual deployment, since
+      # system-files sets up /lib -> usr/lib there). But some package
+      # builds also compile and immediately run a native codegen helper as
+      # part of the build itself (e.g. libcap's _makenames), which needs
+      # that same /lib path to resolve right now, in this container, where
+      # / is otherwise empty. Mounting the same tools volume's usr/lib a
+      # second and third time at /lib and /usr/lib (read-only: nothing
+      # should ever write here) makes that resolve without needing a
+      # symlink baked into the image at build time — which isn't possible
+      # anyway, since nothing in this `FROM scratch` image can execute
+      # until TOOL_DIR (a named volume) is actually mounted.
+      - type: volume
+        source: tools
+        target: /lib
+        read_only: true
+        volume:
+          subpath: usr/lib
+      - type: volume
+        source: tools
+        target: /usr/lib
+        read_only: true
+        volume:
+          subpath: usr/lib
+      # Same story for scripts with a #!/usr/bin/env-style shebang (a very
+      # common convention, e.g. meson.py) — /usr/bin/env needs to resolve
+      # to a real, executable file right now, same as /lib above.
+      - type: volume
+        source: tools
+        target: /usr/bin
+        read_only: true
+        volume:
+          subpath: usr/bin
+      # Docker seeds a freshly created named volume with whatever content
+      # (and ownership) already exists at that path in the image. Dockerfile
+      # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly
+      # into its own layer via COPY --chown, so this mount only needs to
+      # exist here — no other service needs to touch it first.
       - type: volume
         source: install
         target: /mnt/lfs/install
