@@ -1,5 +1,5 @@
 .PHONY: \
-	tools system all \
+	tools system image all \
 	reinstall-tools reinstall-system \
 	clean distclean
 
@@ -24,7 +24,10 @@ system:
 	# Chapter 9: System Configuration
 	docker compose run --rm scratch ./lfs system build
 
-all: tools system
+image:
+	docker compose run --rm scratch ./lfs image build
+
+all: tools system image
 
 reinstall-tools:
 	docker compose run --rm scratch find work -name '.install-*' -delete

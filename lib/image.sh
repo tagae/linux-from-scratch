@@ -1,9 +1,25 @@
 image() {
-    readonly IMAGE
+    case "${1:-help}" in
+        build)
+            shift
+            build_image "$@"
+            ;;
+        help)
+            echo "Usage: $(basename "$0") image <subcommand>"
+            if [ $# -eq 1 ]; then exit 0; else exit 1; fi
+            ;;
+        *) bail "Unknown command '$1'" ;;
+    esac
+}
+
+build_image() {
+    [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE]"
+    readonly IMAGE="${1:-$IMAGE_DIR/$PLATFORM.img}"
     stage image
     create_image
     attach_image
     device
+    populate_image
 }
 
 create_image() {
@@ -124,7 +140,7 @@ unmount_partitions() {
     fi
 }
 
-cleanup() {
+image_cleanup() {
     unmount_partitions
     detach_image
 }

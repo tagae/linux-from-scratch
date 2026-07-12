@@ -44,6 +44,7 @@ readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE
 #--[ Target platform ]
 
 : ${PLATFORM:=virt}
+
 [ -f $PROJECT_DIR/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
 
 readonly PLATFORM
@@ -78,7 +79,7 @@ export PATH
 
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
-trap cleanup EXIT
+trap image_cleanup EXIT
 
 #--[ Command ]
 
@@ -109,18 +110,16 @@ case "${1:-help}" in
         ;;
 
     image)
-        [ $# -le 2 ] || usage "$1 [IMAGE]"
-        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
-        image
-        populate_image
+        shift
+        image "$@"
         ;;
 
     qemu)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
-        _image="${2:-$IMAGE_DIR/$PLATFORM.img}"
+        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
 
-        if [ ! -f "$_image" ]; then
-            IMAGE="$_image" image
+        if [ ! -f "$IMAGE" ]; then
+            image
             populate_image
             unmount_all
         fi
