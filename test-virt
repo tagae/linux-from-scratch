@@ -5,6 +5,15 @@
 
 set timeout 120
 
+# Don't mirror the spawned process's raw output to our controlling
+# terminal. The guest (systemd's console-size probing, bash on login) sends
+# escape queries like cursor-position/window-size requests over the serial
+# console; with logging on, those reach the real terminal, which answers
+# them — but by the time the reply arrives the guest/qemu are already gone,
+# so it's left sitting as garbage input at the next shell prompt. Pattern
+# matching below still sees the full raw stream regardless of log_user.
+log_user 0
+
 spawn ./lfs qemu
 
 expect {
