@@ -104,4 +104,71 @@ build() {
 
 install() {
     DESTDIR=$package_install_dir ninja install
+
+    cd $package_install_dir
+    cp -rv $package_files_dir/* .
+
+    # Mask units that cannot work or are not needed in this minimal build
+    mkdir -pv \
+          etc/systemd/system \
+          etc/systemd/system-generators
+
+    # systemd-logind requires PAM (built without it); mask socket too
+    ln -sfv /dev/null etc/systemd/system/systemd-logind.service
+    ln -sfv /dev/null etc/systemd/system/systemd-logind-varlink.socket
+
+    # systemd-gpt-auto-generator fails on btrfs /dev/root pseudo-device
+    ln -sfv /dev/null etc/systemd/system-generators/systemd-gpt-auto-generator
+
+    # Network services — not needed for minimal serial-console boot
+    ln -sfv /dev/null etc/systemd/system/systemd-resolved.service
+    ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
+    ln -sfv /dev/null etc/systemd/system/systemd-networkd-wait-online.service
+
+    # Optional filesystem mounts and automounts — not needed for minimal boot
+    ln -sfv /dev/null etc/systemd/system/tmp.mount
+    ln -sfv /dev/null etc/systemd/system/dev-mqueue.mount
+    ln -sfv /dev/null etc/systemd/system/sys-kernel-debug.mount
+    ln -sfv /dev/null etc/systemd/system/sys-kernel-config.mount
+    ln -sfv /dev/null etc/systemd/system/proc-sys-fs-binfmt_misc.mount
+    ln -sfv /dev/null etc/systemd/system/proc-sys-fs-binfmt_misc.automount
+
+    # Sockets whose backing services are masked above
+    ln -sfv /dev/null etc/systemd/system/systemd-networkd.socket
+    ln -sfv /dev/null etc/systemd/system/systemd-networkd-varlink.socket
+    ln -sfv /dev/null etc/systemd/system/systemd-networkd-varlink-metrics.socket
+    ln -sfv /dev/null etc/systemd/system/systemd-networkd-resolve-hook.socket
+    ln -sfv /dev/null etc/systemd/system/systemd-resolved-varlink.socket
+    ln -sfv /dev/null etc/systemd/system/systemd-resolved-monitor.socket
+
+    # On virt, there is no BOOT partition — mask boot.mount to avoid a 90 s device timeout
+    if [ "${PLATFORM:-}" = virt ]; then
+        ln -sfv /dev/null etc/systemd/system/boot.mount
+    fi
+
+    # Preset file: instruct the first-boot preset to DISABLE all masked units
+    # instead of trying to enable them (which would log "Failed to preset" errors)
+    mkdir -pv etc/systemd/system-preset
+    cat > etc/systemd/system-preset/80-lfs.preset << 'EOF'
+disable systemd-logind.service
+disable systemd-logind-varlink.socket
+disable systemd-resolved.service
+disable systemd-resolved-varlink.socket
+disable systemd-resolved-monitor.socket
+disable systemd-networkd.service
+disable systemd-networkd.socket
+disable systemd-networkd-varlink.socket
+disable systemd-networkd-varlink-metrics.socket
+disable systemd-networkd-resolve-hook.socket
+disable systemd-networkd-wait-online.service
+disable tmp.mount
+disable dev-mqueue.mount
+disable sys-kernel-debug.mount
+disable sys-kernel-config.mount
+disable proc-sys-fs-binfmt_misc.mount
+disable proc-sys-fs-binfmt_misc.automount
+EOF
+    if [ "${PLATFORM:-}" = virt ]; then
+        printf 'disable boot.mount\n' >> etc/systemd/system-preset/80-lfs.preset
+    fi
 }
