@@ -312,7 +312,7 @@ _tools_relocate() {
         # convention (e.g. perl's XS .so modules), which patchelf can't
         # open for writing otherwise.
         chmod -f u+w "$f"
-        patchelf --set-rpath $lib_dir "$f"
+        patchelf --set-rpath $lib_dir:$TOOL_DIR/usr/lib64 "$f"
     done || true
 
     # bail runs in this (non-subshell) context, not inside a `while read`
