@@ -20,6 +20,7 @@ readonly QEMU=qemu-system-arm
 # our terminal (and allows Ctrl-A C to escape to the QEMU monitor).
 readonly QEMU_FLAGS="\
     -M raspi0 -m 512 \
+    -display none \
     -serial mon:stdio"
 
 # Kernel command line fragment specific to this platform (combined with

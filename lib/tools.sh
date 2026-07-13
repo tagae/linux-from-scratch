@@ -77,10 +77,8 @@ bootstrap_tools() {
         prefix=/usr
 
         cross_arch=$native_arch install linux#headers
-        nscd=no kernel=5.10 werror=no install glibc
+        nscd=no enable_kernel=5.10 werror=no install glibc
     )
-
-    _tools_fix_native_ldscripts
 
     # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
     # every remaining native binary at link time, rather than patchelf-ing
@@ -179,6 +177,22 @@ bootstrap_tools() {
     done
     unset _tool
 
+    # Stage the native C++/GCC runtime into $TOOL_DIR/usr/lib. pass1-native
+    # is built with --target=$native_target, so gcc installs its target
+    # runtime (libstdc++.so.6, libgcc_s.so.1) under $TOOL_DIR/$native_target/
+    # lib64 — a compiler-internal path found at *link* time but on nobody's
+    # *runtime* search path. The scratch container is FROM scratch (no
+    # /etc/ld.so.conf, no default /usr/lib population), so every binary
+    # there resolves its libraries purely via the rpath baked in by
+    # _tools_set_rtld_ldflags, which points at $TOOL_DIR/usr/lib. Copying
+    # the C++ runtime there (next to glibc) is what lets a just-built C++
+    # program actually run in scratch — e.g. ninja's bootstrap, which
+    # compiles ./ninja and then executes it. cp -a preserves the soname
+    # symlink chain (libstdc++.so.6 -> libstdc++.so.6.0.NN).
+    cp -av $TOOL_DIR/$native_target/lib64/libstdc++.so.6* \
+           $TOOL_DIR/$native_target/lib64/libgcc_s.so.1 \
+           $TOOL_DIR/usr/lib/
+
     # --- Temporary tools (glibc-linked, native, relocatable) --------
     #
     # The scratch container's own userspace (bash as /bin/sh, coreutils,
@@ -192,31 +206,38 @@ bootstrap_tools() {
         package_install_dir=$TOOL_DIR
         prefix=/usr
 
+        # Compiled through pass1-native's own $native_target-gcc (sysroot=
+        # $TOOL_DIR), NOT this Debian container's bare "gcc". host=
+        # $native_target routes every autoconf package's compiler to it;
+        # zlib/openssl/bzip2 (hand-rolled Makefiles, no --host) read
+        # cross_target/cross_arch for the same prefixed names. Going
+        # through the sysroot'd compiler is what makes $TOOL_DIR/usr/
+        # {include,lib} its *own* system paths, so headers and libraries
+        # installed here (zlib.h, libssl, ...) resolve with no extra -I/-L,
+        # and glibc's ld-script stubs (libc.so/libm.so, whose internal refs
+        # are bare /usr/lib/... paths) get sysroot-prefixed to $TOOL_DIR
+        # automatically — none of which holds for Debian's bare gcc, which
+        # is what forced the pkg-config/ldscript/-I workarounds this
+        # replaces. Same shape as the per-target cross build below, just
+        # aimed at the build host's own triple.
+        #
+        # build must be explicit: with only --host, autoconf sets
+        # cross_compiling=maybe and falls back to running a test binary,
+        # which (same arch as build) runs fine against the host libc and
+        # wrongly resolves cross_compiling=no — packages then execute their
+        # freshly-built (newer-glibc) binaries directly, e.g. coreutils'
+        # help2man man-page generation.
+        readonly build=$(cc -dumpmachine)
+        readonly host=$native_target
+        readonly cross_target=$native_target
+        readonly cross_arch=$native_arch
+
         # pkgconf's own compiled-in default search path is the literal
         # /usr/lib/pkgconfig (from its own --prefix=/usr at build time — it
         # has no notion of TOOL_DIR as a DESTDIR), so left alone it looks
         # in this container's real /usr instead of TOOL_DIR/usr. Needed by
         # e.g. wget's configure to find openssl.
         export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
-
-        # .pc files installed here (e.g. zlib.pc) also have includedir/
-        # libdir=/usr/include, /usr/lib (same --prefix=/usr, DESTDIR-blind
-        # story as above) — pkgconf treats those as "already on the
-        # compiler's default search path" and silently drops -I/-L for
-        # them. True in the *scratch* container (TOOL_DIR/usr is bind-
-        # mounted onto /usr there), but not here in *bootstrap*, where bare
-        # "gcc" still resolves to this container's own Debian gcc (see the
-        # PATH comment in ./lfs) and genuinely can't see TOOL_DIR/usr
-        # without an explicit flag. Force pkgconf to always emit them.
-        export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
-        export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
-
-        # Every install below is build-host-native: m4/ncurses/bash/etc.
-        # don't reference $target at all (they'll correctly auto-detect
-        # native since $host is never set here), but zlib/openssl/bzip2
-        # hardcode $target-prefixed tool names directly, so they need the
-        # cross_target override explicitly (see those package files).
-        readonly cross_target=
 
         install m4
         package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
@@ -247,7 +268,7 @@ bootstrap_tools() {
         # phases can fetch their own package sources over HTTPS — bootstrap
         # stays minimal and never pre-fetches anything on their behalf.
         install zlib
-        cross_arch=$native_arch install openssl
+        install openssl
         install pkgconf
         install wget
     )
@@ -266,7 +287,7 @@ bootstrap_tools() {
         unset LDFLAGS
 
         install linux#headers
-        nscd=no kernel=5.10 werror=no install glibc
+        nscd=no enable_kernel=5.10 werror=no install glibc
     )
 
     # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
@@ -426,6 +447,11 @@ build_tools() {
     # populate the root filesystem — never shipped, build/test-time only.
     install btrfs-progs
 
+    # mkfs.fat, needed by `image build` to format the FAT boot partition of
+    # the Pi image layout (the virt `single` layout has no boot partition
+    # and never calls it) — never shipped, build/test-time only.
+    install dosfstools
+
     # kpartx, needed by `image build` to expose the loop device's
     # partitions: losetup -P's own kernel-level partition scanning doesn't
     # reliably create the /dev/loopNpM device nodes inside a container (no
@@ -438,27 +464,6 @@ build_tools() {
     install kpartx
 }
 
-# glibc's own install generates a couple of tiny GNU ld scripts (not real
-# shared objects) for libraries that ship both a shared and a static part
-# (libc.so, libm.so), e.g.:
-#   GROUP ( /usr/lib/libc.so.6 /usr/lib/libc_nonshared.a AS_NEEDED (...) )
-# Its internal references are bare, root-relative paths — correct only
-# where /usr/lib is bind-mounted to TOOL_DIR (the scratch container), not
-# in *bootstrap*, where /usr/lib is Debian's own multiarch tree and ld
-# fails outright ("cannot find /usr/lib/libc.so.6"). Rewriting them to
-# TOOL_DIR-absolute paths makes them correct in both containers alike
-# (TOOL_DIR itself is the same real path in each), without having to ban
-# every future -L$TOOL_DIR/usr/lib (e.g. from pkg-config .pc Libs: lines —
-# see PKG_CONFIG_ALLOW_SYSTEM_LIBS above) just to dodge this.
-_tools_fix_native_ldscripts() {
-    local f
-    for f in $TOOL_DIR/usr/lib/*.so $TOOL_DIR/usr/lib64/*.so; do
-        [ -f "$f" ] || continue
-        head -c11 "$f" | grep -q '^/\* GNU ld' || continue
-        sed -i "s|/usr/lib/lib|$TOOL_DIR/usr/lib/lib|g" "$f"
-    done
-}
-
 # Every native binary from here on (the temporary tools, build_tools()'s
 # own output, and the cross-compilers' own executables) should carry a
 # correct, TOOL_DIR-relative interpreter/rpath pointing at the native
@@ -468,11 +473,11 @@ _tools_fix_native_ldscripts() {
 _tools_set_rtld_ldflags() {
     local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
-    # usr/lib64 too: gcc's own build puts libstdc++ there by default on this
-    # target regardless of multilib=no, unlike every other TOOL_DIR package
-    # (glibc included), which all land under plain usr/lib.
+    # A single rpath at $TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough:
+    # glibc, and the native libstdc++/libgcc_s staged next to it after
+    # pass1-native (see bootstrap_tools), all live there.
     #
-    # Deliberately no -L$TOOL_DIR/usr/lib[64] here (tried it, reverted):
+    # Deliberately no -L$TOOL_DIR/usr/lib here (tried it, reverted):
     # inside the *bootstrap* container specifically, that makes ld find
     # TOOL_DIR's own libc.so — a linker script whose internal references
     # are bare, root-relative paths (/usr/lib/libc.so.6), correct only
@@ -482,7 +487,7 @@ _tools_set_rtld_ldflags() {
     # libc.so.6") for anything compiled inside the bootstrap container
     # with this exported. -rpath alone doesn't have this problem (it's
     # just a runtime hint, not a link-time search path).
-    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld) -Wl,-rpath,$TOOL_DIR/usr/lib64"
+    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
 }
 
 # Safety net for anything under TOOL_DIR/usr that didn't pick up
@@ -491,6 +496,16 @@ _tools_set_rtld_ldflags() {
 # container's default rpath. Only ever adds an rpath — never touches
 # PT_INTERP after the fact, since growing it is what corrupts segment
 # layout (see tools_set_rtld_ldflags).
+#
+# Must be idempotent AND non-destructive: bootstrap_tools() runs it on
+# every `make tools` (there's no marker gating the function itself), over a
+# persistent volume that a *prior* run's build_tools() already populated —
+# and a bare `--set-rpath X` *replaces*, so re-running would collapse
+# already-correct richer rpaths down to just $lib_dir. That silently broke
+# real binaries: perl (libperl.so lives in .../CORE, not $lib_dir) and
+# kpartx/anything with a legitimately multi-dir rpath. So: skip files that
+# already resolve via $lib_dir, and otherwise *append* $lib_dir to the
+# existing rpath rather than overwriting it.
 #
 # TOOL_DIR/bin isn't scanned at all (only TOOL_DIR/usr is): pass1's
 # binutils/gcc there are a throwaway toolchain used only to bootstrap the
@@ -521,13 +536,18 @@ _tools_relocate() {
     while IFS= read -r f; do
         [ "$(head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 7f454c46 ] || continue
         readelf -d "$f" 2>/dev/null | grep -q 'Dynamic section' || continue
+        # Already reachable via $lib_dir? Leave it exactly as-is — this is
+        # what makes re-runs idempotent and preserves richer rpaths.
+        local cur=$(patchelf --print-rpath "$f" 2>/dev/null)
+        case ":$cur:" in *":$lib_dir:"*) continue ;; esac
         # This tree also holds files build_tools() installed in a later,
         # separate invocation (TOOL_DIR is one persistent volume) — some of
         # those are deliberately read-only by their own package's
         # convention (e.g. perl's XS .so modules), which patchelf can't
         # open for writing otherwise.
         chmod -f u+w "$f"
-        patchelf --set-rpath $lib_dir:$TOOL_DIR/usr/lib64 "$f"
+        # Append, don't replace: keep any existing entries (e.g. perl's CORE).
+        patchelf --set-rpath "${cur:+$cur:}$lib_dir" "$f"
     done || true
 
     # bail runs in this (non-subshell) context, not inside a `while read`

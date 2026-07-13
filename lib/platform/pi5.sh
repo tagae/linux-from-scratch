@@ -22,7 +22,8 @@ readonly DTB=broadcom/bcm2712-rpi-5-b.dtb
 readonly QEMU=qemu-system-aarch64
 readonly QEMU_FLAGS="\
     -M raspi4b -smp 4 -m 2048 \
-    -serial null -serial mon:stdio"
+    -display none \
+    -serial mon:stdio -serial null"
 
 readonly QEMU_APPEND="earlycon=pl011,0xfe201000 console=ttyAMA0,115200 \
     root=/dev/mmcblk0p2 rootdelay=5"

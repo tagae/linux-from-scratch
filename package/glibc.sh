@@ -38,7 +38,7 @@ prepare() {
         ${prefix:+--libdir=$prefix/lib} \
         ${headers:+--with-headers=$headers} \
         ${werror:+--enable-werror=$werror} \
-        ${kernel:+--enable-kernel=$kernel} \
+        ${enable_kernel:+--enable-kernel=$enable_kernel} \
         ${shared:+--enable-shared=$shared} \
         ${multilib:+--enable-multilib=$multilib} \
         ${profile:+--enable-profile=$profile} \

@@ -60,7 +60,20 @@ c_link_args = ['-Wl,-rpath-link,$sysroot/usr/lib']
 sys_root = '$sysroot'
 EOF
 
-    export PKG_CONFIG_PATH=$sysroot/usr/lib/pkgconfig
+    # PKG_CONFIG_LIBDIR (which *replaces* pkgconf's compiled-in default
+    # search path), not PKG_CONFIG_PATH (which only *adds* to it): this is a
+    # cross build, so pkg-config must see the target sysroot's .pc files and
+    # ONLY those. The scratch container bind-mounts TOOL_DIR/usr/lib onto
+    # /usr/lib, so pkgconf's default /usr/lib/pkgconfig otherwise exposes the
+    # build tools' own .pc files (liblzma, zlib, libssl, ... from the xz/
+    # zlib/openssl built in the tools phase). meson would then auto-detect
+    # and enable e.g. xz — and systemd's compress.c would #include <lzma.h>,
+    # which does not exist in the target sysroot ($sysroot/usr/include),
+    # breaking the build. Scoping to $sysroot keeps the genuinely-needed
+    # target libs (libcap/libmount/libblkid/libkmod/...) while dropping the
+    # host-tool leak, so optional features with no target library simply
+    # stay disabled.
+    export PKG_CONFIG_LIBDIR=$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig
     export PKG_CONFIG_SYSROOT_DIR=$sysroot
     # Makes pkg-config drop the bare "-I$sysroot/usr/include" it would emit
     # for libcap/libkmod (its harmless per-library subdir -Is stay); the
