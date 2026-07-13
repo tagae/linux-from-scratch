@@ -122,10 +122,16 @@ case "${1:-help}" in
         IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
         _kernel="$WORK_DIR/boot/kernel.img"
         [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
+        set -- -kernel "$_kernel"
+        if [ -n "${DTB:-}" ]; then
+            _dtb="$WORK_DIR/boot/$DTB"
+            [ -f "$_dtb" ] || bail "DTB not found: $_dtb (run './lfs system build' first)"
+            set -- "$@" -dtb "$_dtb"
+        fi
         exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
             -no-reboot \
-            -kernel "$_kernel" \
-            -append "${QEMU_APPEND:-} rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait" \
+            "$@" \
+            -append "${QEMU_APPEND:-} ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait}" \
             -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}"
         ;;
 

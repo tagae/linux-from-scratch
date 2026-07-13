@@ -1,5 +1,8 @@
 : ${package_version:=3.1.6}
-: ${package_source:=https://github.com/pallets/jinja/archive/refs/tags/$package_version.tar.gz}
+# archive/<ref>/<name>.tar.gz so the download is jinja-<v>.tar.gz, not a bare
+# <v>.tar.gz — see kpartx.sh for why. (Repo is "jinja"; it extracts to
+# jinja-<v>, which package_source_dir below matches.)
+: ${package_source:=https://github.com/pallets/jinja/archive/$package_version/jinja-$package_version.tar.gz}
 
 # Repo (and therefore tarball top-level dir) is named "jinja", not "jinja2".
 package_source_dir=$SOURCE_DIR/jinja-$package_version

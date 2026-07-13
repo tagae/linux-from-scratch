@@ -40,13 +40,17 @@ prefix = '$prefix'
 # standard system dirs, hence after -isystem), and tell pkg-config that
 # $sysroot/usr/include is a system dir (below) so it drops the redundant bare
 # -I. The override then sits ahead of every real header, as systemd intends.
-# INSTALL_DIR is needed for libcap/libkmod's own headers; TOOL_DIR for kernel
-# headers — a build-time dependency only, glibc doesn't ship them and
-# INSTALL_DIR deliberately has none (see tools_bootstrap).
-c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/usr/include']
+# INSTALL_DIR is needed for libcap/libkmod's own headers; TOOL_DIR/$target
+# (the per-target sysroot, matching this cross-compiler's own --target —
+# NOT TOOL_DIR/usr, which holds the build-host-native toolchain's own
+# headers instead, a different architecture entirely on e.g. pi0) for the
+# kernel headers — a build-time dependency only, glibc doesn't ship them
+# and INSTALL_DIR deliberately has none (see tools_bootstrap).
+c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/$target/usr/include']
 # Some deps systemd links by full path (e.g. libfdisk.so, via libshared-fdisk)
 # rather than as "-L$sysroot/usr/lib -lfdisk", so no -L reaches those links —
-# and gcc's sysroot is TOOL_DIR, not INSTALL_DIR. ld then can't find that lib's
+# and gcc's own baked-in sysroot is TOOL_DIR/$target, not INSTALL_DIR. ld
+# then can't find that lib's
 # own NEEDED siblings (libblkid.so.1, libuuid.so.1) to resolve their versioned
 # symbols, and --no-undefined turns that into a link error. -rpath-link points
 # ld's indirect-dependency search at INSTALL_DIR without affecting -l lookup.
@@ -56,7 +60,20 @@ c_link_args = ['-Wl,-rpath-link,$sysroot/usr/lib']
 sys_root = '$sysroot'
 EOF
 
-    export PKG_CONFIG_PATH=$sysroot/usr/lib/pkgconfig
+    # PKG_CONFIG_LIBDIR (which *replaces* pkgconf's compiled-in default
+    # search path), not PKG_CONFIG_PATH (which only *adds* to it): this is a
+    # cross build, so pkg-config must see the target sysroot's .pc files and
+    # ONLY those. The scratch container bind-mounts TOOL_DIR/usr/lib onto
+    # /usr/lib, so pkgconf's default /usr/lib/pkgconfig otherwise exposes the
+    # build tools' own .pc files (liblzma, zlib, libssl, ... from the xz/
+    # zlib/openssl built in the tools phase). meson would then auto-detect
+    # and enable e.g. xz — and systemd's compress.c would #include <lzma.h>,
+    # which does not exist in the target sysroot ($sysroot/usr/include),
+    # breaking the build. Scoping to $sysroot keeps the genuinely-needed
+    # target libs (libcap/libmount/libblkid/libkmod/...) while dropping the
+    # host-tool leak, so optional features with no target library simply
+    # stay disabled.
+    export PKG_CONFIG_LIBDIR=$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig
     export PKG_CONFIG_SYSROOT_DIR=$sysroot
     # Makes pkg-config drop the bare "-I$sysroot/usr/include" it would emit
     # for libcap/libkmod (its harmless per-library subdir -Is stay); the
