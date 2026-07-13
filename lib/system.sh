@@ -24,7 +24,11 @@ build_system() {
     # more than pkgconf did.
     export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison
 
-    headers=$TOOL_DIR/usr/include install glibc
+    # TOOL_DIR/$target, not TOOL_DIR/usr: the per-target sysroot holds
+    # this platform's own kernel headers, matching $target's architecture
+    # — TOOL_DIR/usr holds the build-host-native toolchain's headers
+    # instead, a different architecture entirely on e.g. pi0.
+    headers=$TOOL_DIR/$target/usr/include install glibc
 
     # Capabilities.
     install libcap

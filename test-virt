@@ -1,9 +1,13 @@
 #!/usr/bin/expect -f
-# Boot the virt image in QEMU, log in as root, and poweroff.
+# Boot the platform image in QEMU, log in as root, and poweroff.
 # Exits 0 on success, 1 on any failure.
-# Usage: ./test-virt
-
-set timeout 120
+# Usage: [PLATFORM=…] [TEST_TIMEOUT=seconds] ./test-virt
+#
+# TEST_TIMEOUT overrides the default per-phase timeout — the emulated Pi
+# machines (raspi0/raspi4b) run under pure TCG (no HVF), which is ~10x
+# slower than the HVF-accelerated virt guest, so they need a much larger
+# value to reach the login prompt.
+set timeout [expr {[info exists env(TEST_TIMEOUT)] ? $env(TEST_TIMEOUT) : 120}]
 
 # Don't mirror the spawned process's raw output to our controlling
 # terminal. The guest (systemd's console-size probing, bash on login) sends

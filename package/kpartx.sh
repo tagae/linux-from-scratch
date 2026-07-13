@@ -1,5 +1,10 @@
 : ${package_version:=0.14.3}
-: ${package_source:=https://github.com/opensvc/multipath-tools/archive/refs/tags/$package_version.tar.gz}
+# archive/<ref>/<name>.tar.gz form (not archive/refs/tags/<tag>.tar.gz): the
+# latter makes the downloaded file just "<version>.tar.gz" — ambiguous in
+# the shared download/ dir, and get() derives its "already extracted?" check
+# from that name (multipath-tools-<v>, so it never matches → re-extracts
+# every fetch). Naming it after the extracted dir fixes both.
+: ${package_source:=https://github.com/opensvc/multipath-tools/archive/$package_version/multipath-tools-$package_version.tar.gz}
 
 package_source_dir=$SOURCE_DIR/multipath-tools-$package_version
 

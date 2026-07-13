@@ -1,6 +1,6 @@
 .PHONY: \
 	all tools system image \
-	qemu test \
+	qemu qemu-raspi0 qemu-raspi4b test \
 	reinstall-tools reinstall-system \
 	clean distclean
 
@@ -33,6 +33,16 @@ image:
 
 qemu:
 	./lfs qemu
+
+# Both expect `PLATFORM=pi0` / `PLATFORM=pi4 make tools system image` to
+# have already been run for that platform — same convention as `tools`/
+# `system`/`image` above, which also read PLATFORM from the environment
+# rather than taking it as a target parameter.
+qemu-raspi0:
+	PLATFORM=pi0 ./lfs qemu
+
+qemu-raspi4b:
+	PLATFORM=pi4 ./lfs qemu
 
 test:
 	./test-virt
