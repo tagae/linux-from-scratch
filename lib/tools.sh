@@ -68,7 +68,7 @@ bootstrap_tools() {
     # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
     # every remaining native binary at link time. Exported here in the outer
     # (non-subshell) scope, *before* pass1-native builds below, so it
-    # picks up the correct rpath at link time instead — every native
+    # picks up the correct rpath at link time instead —every native
     # build below inherits this export; a subshell's own export can't
     # propagate back out or sideways.
     _tools_set_rtld_ldflags

@@ -11,7 +11,19 @@ system() {
 
 build_system() {
     host=$target
-    package_install_dir=$INSTALL_DIR
+    # $INSTALL_DIR/$PLATFORM, not bare $INSTALL_DIR: package_variant below
+    # already disambiguates the install *stamp* per platform (so switching
+    # PLATFORM correctly triggers a fresh install rather than being skipped
+    # as "already done"), but the install *destination* also has to be
+    # keyed by platform, the same way lib/tools.sh keys its own
+    # package_install_dir=$TOOL_DIR/$target. Without this, every platform's
+    # build still lands in the one shared $INSTALL_DIR: fine the first time
+    # any given platform is built, but revisiting an already-stamped
+    # platform after a different one has run in between skips install()
+    # (its stamp already exists) while $INSTALL_DIR still holds that other,
+    # more recent platform's files — e.g. an aarch64 kernel/systemd/etc.
+    # silently left in place for a supposedly-pi0 (arm) build.
+    package_install_dir=$INSTALL_DIR/$PLATFORM
     prefix=/usr
     package_variant=$PLATFORM
 
@@ -72,12 +84,12 @@ build_system() {
     chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
     pylibmount=no static=no liblastlog2=no python=no systemd=no wall=no \
     makeinstall_chown=no makeinstall_setuid=no \
-    CC="$target-gcc --sysroot=$INSTALL_DIR -idirafter $TOOL_DIR/$target/usr/include" \
+    CC="$target-gcc --sysroot=$INSTALL_DIR/$PLATFORM -idirafter $TOOL_DIR/$target/usr/include" \
     install util-linux
 
     # Init system; sysroot points meson/pkg-config at what we've installed
-    # into INSTALL_DIR so far (libcap, util-linux's libmount/libblkid, …).
-    sysroot=$INSTALL_DIR install systemd
+    # into INSTALL_DIR/$PLATFORM so far (libcap, util-linux's libmount/libblkid, …).
+    sysroot=$INSTALL_DIR/$PLATFORM install systemd
 
     # Kernel image, DTBs and modules
     install linux
@@ -94,9 +106,9 @@ build_system() {
     # kernel (and DTB, for Pi platforms tested under QEMU) end up somewhere
     # the host-side `qemu` command can actually read.
     mkdir -p $WORK_DIR/boot
-    cp -v $INSTALL_DIR/boot/kernel.img $WORK_DIR/boot/
+    cp -v $INSTALL_DIR/$PLATFORM/boot/kernel.img $WORK_DIR/boot/
     if [ -n "${DTB:-}" ]; then
         mkdir -p $WORK_DIR/boot/$(dirname $DTB)
-        cp -v $INSTALL_DIR/boot/$DTB $WORK_DIR/boot/$DTB
+        cp -v $INSTALL_DIR/$PLATFORM/boot/$DTB $WORK_DIR/boot/$DTB
     fi
 }
