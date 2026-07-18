@@ -54,7 +54,19 @@ c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/$target
 # own NEEDED siblings (libblkid.so.1, libuuid.so.1) to resolve their versioned
 # symbols, and --no-undefined turns that into a link error. -rpath-link points
 # ld's indirect-dependency search at INSTALL_DIR without affecting -l lookup.
-c_link_args = ['-Wl,-rpath-link,$sysroot/usr/lib']
+#
+# --sysroot=$sysroot: pkg-config-discovered deps (libcap/libmount/libblkid/
+# libkmod, via PKG_CONFIG_LIBDIR below) DO reach the link line as explicit
+# "-L$sysroot/usr/lib", ahead of gcc's own default library search path — so
+# the implicit "-lc" gcc adds resolves against INSTALL_DIR's glibc first.
+# INSTALL_DIR's libc.so is an ld script with bare absolute paths
+# (GROUP ( /usr/lib/libc.so.6 ... )); without --sysroot active those resolve
+# against the container's real root (the scratch container's bind-mounted
+# TOOL_DIR/usr/lib — the toolchain's native, build-host-arch runtime)
+# instead of INSTALL_DIR, breaking with "file format not recognized" on any
+# target whose arch differs from the build host's (e.g. pi0/arm on an
+# aarch64 host).
+c_link_args = ['--sysroot=$sysroot', '-Wl,-rpath-link,$sysroot/usr/lib']
 
 [properties]
 sys_root = '$sysroot'

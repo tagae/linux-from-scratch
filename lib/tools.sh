@@ -30,10 +30,8 @@ bootstrap_tools() {
 
     # --- Cross Toolchain Pass 1 (throwaway) ------------------
     # Builds the per-target sysroot glibc below. Linked against the
-    # bootstrap container's own (Debian) glibc — a throwaway tool that
-    # only ever runs here, never copied into the scratch image, so it
-    # needs no relocation. package_variant carries $target so pi0's pass1
-    # and virt/pi4/pi5's pass1 (which share one $target) don't collide.
+    # host's own (Debian) glibc —a throwaway tool that only ever runs here,
+    # never copied into the scratch image, so it needs no relocation.
     (
         readonly package_variant=pass1-$target
         readonly package_install_dir=/
@@ -55,21 +53,8 @@ bootstrap_tools() {
         install gcc
     )
 
-    # --- Native runtime toolchain (build-host arch, shared by every
-    # target platform — built once, ever, regardless of how many
-    # platforms are bootstrapped afterward) --------------------------
-    #
-    # TOOL_DIR/usr must be executable *in the scratch container itself*:
-    # the temporary tools below, build_tools()'s own output, and pass1-
-    # native's/pass2's own cross-compiler executables (further down) all
-    # run there. For virt/pi4/pi5 this happens to be the same architecture
-    # as the platform's own $target (aarch64) — but pi0 (32-bit ARM)
-    # genuinely isn't, so this can't be tied to $target at all.
-    # cross_target="" (see package/glibc.sh's, gcc.sh's, binutils.sh's
-    # prepare()) omits --host/--target entirely, producing a plain native
-    # build via this container's own (Debian) system compiler — found on
-    # PATH ahead of anything TOOL_DIR provides (see the PATH comment in
-    # ../lfs).
+    # --- Native runtime toolchain
+    # build-host arch, shared by every target platform
     (
         readonly package_variant=tools
         readonly cross_target=
@@ -81,15 +66,7 @@ bootstrap_tools() {
     )
 
     # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
-    # every remaining native binary at link time, rather than patchelf-ing
-    # it in after the fact — patchelf can safely add an rpath, but growing
-    # an already-linked PT_INTERP to a much longer string forces it to
-    # split the ELF's leading segment, which it does incorrectly for
-    # larger binaries (marks the split-off segment non-executable,
-    # crashing anything whose .plt/.init ends up there — confirmed
-    # empirically: patchelf --set-rpath alone, patched in after the fact
-    # on pass1-native's own gcc driver below, corrupted it into crashing
-    # with a bare SIGBUS on `-qversion`). Exported here in the outer
+    # every remaining native binary at link time. Exported here in the outer
     # (non-subshell) scope, *before* pass1-native builds below, so it
     # picks up the correct rpath at link time instead — every native
     # build below inherits this export; a subshell's own export can't

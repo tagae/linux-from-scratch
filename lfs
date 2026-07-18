@@ -23,23 +23,24 @@ while getopts ":p:d:h" opt; do
         \?) bail "Could not parse options" ;;
     esac
 done
+
 [ "${1:-}" = help ] || shift $((OPTIND - 1))
 
 #--[ Project ]
 
-: ${OUTPUT_DIR:=$PROJECT_DIR}
-: ${DOWNLOAD_DIR:=$OUTPUT_DIR/download}
-: ${SOURCE_DIR:=$OUTPUT_DIR/source}
-: ${WORK_DIR:=$OUTPUT_DIR/work}
-: ${TOOL_DIR:=$OUTPUT_DIR/tools}
-: ${INSTALL_DIR:=$OUTPUT_DIR/install}
-: ${ARCHIVE_DIR:=$OUTPUT_DIR/archive}
-: ${IMAGE_DIR:=$OUTPUT_DIR/image}
+: ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
+: ${SOURCE_DIR:=$PROJECT_DIR/source}
+: ${WORK_DIR:=$PROJECT_DIR/work}
+: ${TOOL_DIR:=$PROJECT_DIR/tools}
+: ${INSTALL_DIR:=$PROJECT_DIR/install}
+: ${ARCHIVE_DIR:=$PROJECT_DIR/archive}
+: ${IMAGE_DIR:=$PROJECT_DIR/image}
 
 # Small bind-mounted staging area for the few files Dockerfile.scratch needs at build time.
 : ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
 
-readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
+readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
+         INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
 
 #--[ Target platform ]
 

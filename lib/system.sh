@@ -13,15 +13,14 @@ build_system() {
     host=$target
     package_install_dir=$INSTALL_DIR
     prefix=/usr
+    package_variant=$PLATFORM
 
     install system-files
 
-    # glibc's own build invokes bison (e.g. for intl/plural.y) as an
-    # external tool. bison was built with --prefix=/usr (landing under
-    # TOOL_DIR via DESTDIR), but its own compiled-in default pkgdatadir is
-    # the literal /usr/share/bison (this container's real root, not
-    # TOOL_DIR-relative) — it has no notion of TOOL_DIR as a DESTDIR any
-    # more than pkgconf did.
+    # glibc's own build invokes bison as an  external tool.
+    # bison was built with --prefix=/usr (landing under TOOL_DIR via DESTDIR),
+    # but its own compiled-in default pkgdatadir is the literal /usr/share/bison
+    # (this container's real root, not TOOL_DIR-relative).
     export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison
 
     # TOOL_DIR/$target, not TOOL_DIR/usr: the per-target sysroot holds
@@ -53,10 +52,27 @@ build_system() {
     # still chmod u+s's mount/umount despite the chown above being
     # skipped — leaving them setuid to the *build* UID, not root, which
     # is actively wrong (and leaves mount unusable for anyone but root).
+    #
+    # CC must target INSTALL_DIR's own glibc explicitly, not gcc's default
+    # $TOOL_DIR/$target sysroot: util-linux's `make install` DESTDIR-installs
+    # several interdependent libtool libraries (libmount needs libblkid,
+    # etc.), which makes libtool relink them, adding an explicit
+    # "-L$INSTALL_DIR/usr/lib" ahead of gcc's own default library search
+    # path. ld then resolves the implicit "-lc" against INSTALL_DIR's own
+    # glibc — but glibc's libc.so is an ld script with bare absolute paths
+    # (GROUP ( /usr/lib/libc.so.6 ... )), which without --sysroot resolve
+    # against the container's real root instead of INSTALL_DIR: the scratch
+    # container bind-mounts TOOL_DIR/usr/lib (the toolchain's native,
+    # build-host-arch runtime) onto /usr/lib, a mismatch invisible on
+    # aarch64 targets (native happens to be the same arch as the target)
+    # but a hard "file format not recognized" on pi0 (arm). -idirafter
+    # keeps the target sysroot's kernel headers reachable, since
+    # INSTALL_DIR itself carries none (see systemd below).
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib \
     chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no \
     pylibmount=no static=no liblastlog2=no python=no systemd=no wall=no \
     makeinstall_chown=no makeinstall_setuid=no \
+    CC="$target-gcc --sysroot=$INSTALL_DIR -idirafter $TOOL_DIR/$target/usr/include" \
     install util-linux
 
     # Init system; sysroot points meson/pkg-config at what we've installed
