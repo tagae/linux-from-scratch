@@ -4,13 +4,28 @@
 # default branch isn't. A github URL ending in .tar.gz matches the plain
 # wget/tar fetch path (checked before the git path in lib/package.sh), and
 # GitHub extracts refs/heads/$b.tar.gz to linux-$b/ — so setting
-# package_version=$raspberrypi_kernel_branch makes package_source_dir
+# package_version=$branch makes package_source_dir
 # (=$SOURCE_DIR/linux-$package_version) line up exactly. Bump deliberately.
 raspberrypi_kernel_branch=rpi-6.18.y
+# pi0/pi1 (BCM2835/ARMv6) pin to an older branch instead: 6.18's
+# bcm2835-sdhost driver hits a raspberrypi/linux MMIO-DMA regression (their
+# own downstream phys-to-dma patch racing a mainline dma-mapping refactor
+# around dma_direct_map_phys/DMA_ATTR_MMIO — see raspberrypi/linux#7136).
+# phys_to_dma() on the SD controller's own SDDATA register address comes
+# back as the bogus sentinel 0xffffffff instead of a real bus address, so
+# every DMA-driven SD read (including the very first one, for the
+# partition table) fails silently and boot panics with "VFS: Unable to
+# mount root fs" — invisible on pi4/pi5, which use sdhci-iproc/emmc2 and
+# never go through bcm2835-dma at all. rpi-6.6.y predates the offending
+# mainline refactor entirely.
+raspberrypi_kernel_branch_pi0=rpi-6.6.y
+
 # archive/<ref>/<name>.tar.gz form so the download is named linux-<branch>.tar.gz
 # (matching the dir GitHub extracts to, = package_source_dir below) rather than
 # a bare <branch>.tar.gz — see kpartx.sh for the full rationale.
-raspberrypi_kernel_source=https://github.com/raspberrypi/linux/archive/refs/heads/$raspberrypi_kernel_branch/linux-$raspberrypi_kernel_branch.tar.gz
+_raspberrypi_kernel_source() {
+    echo "https://github.com/raspberrypi/linux/archive/refs/heads/$1/linux-$1.tar.gz"
+}
 
 if [ "${package_component:-}" = headers ]; then
     # The toolchain's glibc (the shared native one and every per-target
@@ -26,18 +41,18 @@ if [ "${package_component:-}" = headers ]; then
 else
     case $PLATFORM in
         pi0|pi1)
-            : ${package_version:=$raspberrypi_kernel_branch}
-            : ${package_source:=$raspberrypi_kernel_source}
+            : ${package_version:=$raspberrypi_kernel_branch_pi0}
+            : ${package_source:=$(_raspberrypi_kernel_source $raspberrypi_kernel_branch_pi0)}
             : ${defconfig:=bcmrpi_defconfig}
             ;;
         pi4)
             : ${package_version:=$raspberrypi_kernel_branch}
-            : ${package_source:=$raspberrypi_kernel_source}
+            : ${package_source:=$(_raspberrypi_kernel_source $raspberrypi_kernel_branch)}
             : ${defconfig:=bcm2711_defconfig}
             ;;
         pi5)
             : ${package_version:=$raspberrypi_kernel_branch}
-            : ${package_source:=$raspberrypi_kernel_source}
+            : ${package_source:=$(_raspberrypi_kernel_source $raspberrypi_kernel_branch)}
             : ${defconfig:=bcm2712_defconfig}
             ;;
         *)
