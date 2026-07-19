@@ -121,11 +121,11 @@ case "${1:-help}" in
     qemu)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
         IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
-        _kernel="$WORK_DIR/boot/kernel.img"
+        _kernel="$WORK_DIR/boot/$PLATFORM/kernel.img"
         [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
         set -- -kernel "$_kernel"
         if [ -n "${DTB:-}" ]; then
-            _dtb="$WORK_DIR/boot/$DTB"
+            _dtb="$WORK_DIR/boot/$PLATFORM/$DTB"
             [ -f "$_dtb" ] || bail "DTB not found: $_dtb (run './lfs system build' first)"
             set -- "$@" -dtb "$_dtb"
         fi

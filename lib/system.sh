@@ -104,11 +104,16 @@ build_system() {
     # is a Docker volume the host can't see at all. WORK_DIR/boot is bind-
     # mounted to the host (see docker-compose.yaml) specifically so the
     # kernel (and DTB, for Pi platforms tested under QEMU) end up somewhere
-    # the host-side `qemu` command can actually read.
-    mkdir -p $WORK_DIR/boot
-    cp -v $INSTALL_DIR/$PLATFORM/boot/kernel.img $WORK_DIR/boot/
+    # the host-side `qemu` command can actually read. Scoped under
+    # WORK_DIR/boot/$PLATFORM, not flat WORK_DIR/boot: this copy is
+    # unconditional on every system build (unlike the packages above, it's
+    # not gated by an install stamp), so a flat shared path meant one
+    # platform's kernel/DTB silently clobbered another's the moment a
+    # second platform was ever built.
+    mkdir -p $WORK_DIR/boot/$PLATFORM
+    cp -v $INSTALL_DIR/$PLATFORM/boot/kernel.img $WORK_DIR/boot/$PLATFORM/
     if [ -n "${DTB:-}" ]; then
-        mkdir -p $WORK_DIR/boot/$(dirname $DTB)
-        cp -v $INSTALL_DIR/$PLATFORM/boot/$DTB $WORK_DIR/boot/$DTB
+        mkdir -p $WORK_DIR/boot/$PLATFORM/$(dirname $DTB)
+        cp -v $INSTALL_DIR/$PLATFORM/boot/$DTB $WORK_DIR/boot/$PLATFORM/$DTB
     fi
 }
