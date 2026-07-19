@@ -116,16 +116,19 @@ mount_partitions() {
 
 populate_image() {
     [ -n "${ROOT_DIR:-}" ] || bail "No root directory — call 'image' first"
-    [ -d "$INSTALL_DIR" ] || bail "Install directory not found: $INSTALL_DIR — run './lfs system' first"
-    stage "Populating image from $INSTALL_DIR"
+    # $INSTALL_DIR/$PLATFORM: build_system() installs per-platform under
+    # here (see lib/system.sh) rather than into a single shared $INSTALL_DIR.
+    local platform_install_dir=$INSTALL_DIR/$PLATFORM
+    [ -d "$platform_install_dir" ] || bail "Install directory not found: $platform_install_dir — run './lfs system' first"
+    stage "Populating image from $platform_install_dir"
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
         # All files including boot go into the btrfs subvolume
-        tar -C $INSTALL_DIR -cf - . | tar -C $ROOT_DIR -xf -
+        tar -C $platform_install_dir -cf - . | tar -C $ROOT_DIR -xf -
     else
         # Rootfs to btrfs subvolume (exclude boot — it lives on the FAT partition)
-        tar -C $INSTALL_DIR -cf - --exclude=./boot . | tar -C $ROOT_DIR -xf -
+        tar -C $platform_install_dir -cf - --exclude=./boot . | tar -C $ROOT_DIR -xf -
         # Boot files to FAT partition (ownership not supported by FAT)
-        cp -r $INSTALL_DIR/boot/. $ROOT_DIR/boot/
+        cp -r $platform_install_dir/boot/. $ROOT_DIR/boot/
     fi
 }
 

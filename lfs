@@ -23,23 +23,24 @@ while getopts ":p:d:h" opt; do
         \?) bail "Could not parse options" ;;
     esac
 done
+
 [ "${1:-}" = help ] || shift $((OPTIND - 1))
 
 #--[ Project ]
 
-: ${OUTPUT_DIR:=$PROJECT_DIR}
-: ${DOWNLOAD_DIR:=$OUTPUT_DIR/download}
-: ${SOURCE_DIR:=$OUTPUT_DIR/source}
-: ${WORK_DIR:=$OUTPUT_DIR/work}
-: ${TOOL_DIR:=$OUTPUT_DIR/tools}
-: ${INSTALL_DIR:=$OUTPUT_DIR/install}
-: ${ARCHIVE_DIR:=$OUTPUT_DIR/archive}
-: ${IMAGE_DIR:=$OUTPUT_DIR/image}
+: ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
+: ${SOURCE_DIR:=$PROJECT_DIR/source}
+: ${WORK_DIR:=$PROJECT_DIR/work}
+: ${TOOL_DIR:=$PROJECT_DIR/tools}
+: ${INSTALL_DIR:=$PROJECT_DIR/install}
+: ${ARCHIVE_DIR:=$PROJECT_DIR/archive}
+: ${IMAGE_DIR:=$PROJECT_DIR/image}
 
 # Small bind-mounted staging area for the few files Dockerfile.scratch needs at build time.
 : ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
 
-readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
+readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
+         INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
 
 #--[ Target platform ]
 
@@ -120,11 +121,11 @@ case "${1:-help}" in
     qemu)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
         IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
-        _kernel="$WORK_DIR/boot/kernel.img"
+        _kernel="$WORK_DIR/boot/$PLATFORM/kernel.img"
         [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
         set -- -kernel "$_kernel"
         if [ -n "${DTB:-}" ]; then
-            _dtb="$WORK_DIR/boot/$DTB"
+            _dtb="$WORK_DIR/boot/$PLATFORM/$DTB"
             [ -f "$_dtb" ] || bail "DTB not found: $_dtb (run './lfs system build' first)"
             set -- "$@" -dtb "$_dtb"
         fi
