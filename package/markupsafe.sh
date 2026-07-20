@@ -2,6 +2,7 @@
 # archive/<ref>/<name>.tar.gz so the download is markupsafe-<v>.tar.gz, not a
 # bare <v>.tar.gz — see kpartx.sh for why.
 : ${package_source:=https://github.com/pallets/markupsafe/archive/$package_version/markupsafe-$package_version.tar.gz}
+: ${package_source_sha256:=cd182103704bfafefce25369fd27f14a5f578f078b7f3ddd1ce2cb940b86403a}
 
 package_source_dir=$SOURCE_DIR/markupsafe-$package_version
 

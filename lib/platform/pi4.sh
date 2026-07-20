@@ -45,6 +45,11 @@ readonly QEMU_FLAGS="\
 readonly QEMU_APPEND="earlycon=pl011,0xfe201000 console=ttyAMA1,115200 \
     root=/dev/mmcblk1p2 rootdelay=5 maxcpus=1"
 
+# Serial console device the busybox-init flavor runs getty on (see
+# package/busybox-init.sh). Under QEMU raspi4b the console PL011 is ttyAMA1
+# (see the console= note above).
+readonly CONSOLE=ttyAMA1
+
 readonly QEMU_DISK_IF=sd
 
 # FAT boot partition (kernel.img/config.txt/DTB, for real hardware) + btrfs root.

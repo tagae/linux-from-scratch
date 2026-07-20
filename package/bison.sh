@@ -1,5 +1,6 @@
 : ${package_version:=3.8.2}
 : ${package_source:=https://ftp.gnu.org/gnu/bison/bison-$package_version.tar.xz}
+: ${package_source_sha256:=9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2}
 
 prepare() {
     $package_source_dir/configure \

@@ -4,32 +4,22 @@
 	image \
 	qemu qemu-% \
 	test test-% \
+	systemd-system systemd-system-% \
+	systemd-image \
+	systemd-qemu systemd-qemu-% \
+	systemd-test systemd-test-% \
+	busybox-system busybox-system-% \
+	busybox-image \
+	busybox-qemu busybox-qemu-% \
+	busybox-test busybox-test-% \
 	reinstall-tools reinstall-system \
 	clean distclean \
 	FORCE
 
-# GNU Make quirk, confirmed by isolated repro: a *pattern-rule* target with a
-# phony prerequisite (image/%.img: system-%) only reliably rebuilds while the
-# target file doesn't exist yet — once image/pi4.img is sitting on disk, make
-# treats it as up to date and never re-checks system-%, even though system-%
-# is phony and "always" out of date. A *literal* (non-pattern) target with the
-# same phony prerequisite doesn't have this problem — only patterns do. Adding
-# an explicit FORCE prerequisite (below) sidesteps it: FORCE itself has no
-# file, so make can never treat image/%.img as up to date relative to it.
+# Whatever depends on FORCE will be considered out of date, since it depends on nothing.
 FORCE:
 
-# Bare — NOT ".SECONDARY: image/%.img tools-% system-%". Confirmed by
-# isolated repro: unlike .PHONY, .SECONDARY's prerequisite list does not
-# match "%" against instantiated names at all — a scoped/pattern form
-# silently protects nothing. It only looks like it works if you test it by
-# requesting image/pi4.img directly on the command line, since an explicitly
-# -requested goal is never auto-deleted regardless of .SECONDARY — but
-# qemu-%/test-% request it *transitively* (qemu-pi4 -> image/pi4.img), and
-# in that shape the scoped form lets make delete image/%.img itself plus
-# tools-%/system-% right after a successful build (the tools-%/system-%
-# deletion attempt fails outright, since those names never correspond to a
-# real file). Bare .SECONDARY (protect every target here) is the only form
-# that's actually effective.
+# Keep intermediate files, in particular image/%.img. Otherwise, they would be deleted.
 .SECONDARY:
 
 # The `test` goal covers the whole chain for the `virt` platform:
@@ -37,12 +27,23 @@ FORCE:
 .DEFAULT_GOAL := test
 
 tools: tools-virt
-system: system-virt
-# image/virt.img, not image-virt: unlike tools-%/system-%/qemu-%/test-%,
-# there's no image-% pattern rule — image/%.img (a real file) is it.
+system: systemd-system-virt
 image: image/virt.img
-qemu: qemu-virt
-test: test-virt
+qemu: systemd-qemu-virt
+test: systemd-test-virt
+
+systemd-system: systemd-system-virt
+systemd-image:  image/virt.img
+systemd-qemu:   systemd-qemu-virt
+systemd-test:   systemd-test-virt
+
+# Busybox-init flavor (INIT=busybox): the same chain, a separate install
+# tree / boot dir / image (image/busybox-<platform>.img) so it coexists
+# with the default systemd flavor.
+busybox-system: busybox-system-virt
+busybox-image:  image/busybox-virt.img
+busybox-qemu:   busybox-qemu-virt
+busybox-test:   busybox-test-virt
 
 .env:
 	echo HOST_UID=$$(id -u) >> $@
@@ -58,20 +59,45 @@ tools-%: .env
 	# Chapter 7: Building Additional Temporary Tools
 	PLATFORM=$* docker compose run --build --rm scratch ./lfs tools build
 
-system-%: tools-%
+# ---- systemd flavor (the default; image is bare image/<platform>.img) ----
+systemd-system-%: tools-%
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
-	PLATFORM=$*	docker compose run --rm scratch ./lfs system build
+	PLATFORM=$* INIT=systemd docker compose run --rm scratch ./lfs system build
 
-image/%.img: system-% FORCE
+image/%.img: systemd-system-% FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* docker compose run --rm --user 0:0 scratch ./lfs image build
+	PLATFORM=$* INIT=systemd docker compose run --rm --user 0:0 scratch ./lfs image build
 
-test-%: image/%.img
-	./test $*
+systemd-test-%: image/%.img
+	./test $* systemd
 
-qemu-%: image/%.img
-	PLATFORM=$* ./lfs qemu
+systemd-qemu-%: image/%.img
+	PLATFORM=$* INIT=systemd ./lfs qemu
+
+# ---- busybox-init flavor (image is image/busybox-<platform>.img) ----
+# Same shape as the systemd rules above; shares the toolchain (tools-%).
+busybox-system-%: tools-%
+	PLATFORM=$* INIT=busybox docker compose run --rm scratch ./lfs system build
+
+image/busybox-%.img: busybox-system-% FORCE
+	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
+	PLATFORM=$* INIT=busybox docker compose run --rm --user 0:0 scratch ./lfs image build
+
+busybox-test-%: image/busybox-%.img
+	./test $* busybox
+
+busybox-qemu-%: image/busybox-%.img
+	PLATFORM=$* INIT=busybox ./lfs qemu
+
+# ---- unprefixed shortcuts for the default (systemd) flavor ----
+# A recipe-less pattern rule can't act as an alias (make then reports "no
+# rule to make target"), so these delegate to the systemd-<verb>-% rule via
+# a sub-make. Bare `system`/`qemu`/`test` alias the systemd goals directly
+# (above), so only the per-platform pattern forms need this.
+system-%: ; @$(MAKE) systemd-system-$*
+test-%:   ; @$(MAKE) systemd-test-$*
+qemu-%:   ; @$(MAKE) systemd-qemu-$*
 
 reinstall-tools:
 	docker compose run --rm scratch find work -name '.install-*' -delete

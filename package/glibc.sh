@@ -2,6 +2,7 @@
 
 : ${package_version:=2.43}
 : ${package_source:=https://ftpmirror.gnu.org/glibc/glibc-$package_version.tar.xz}
+: ${package_source_sha256:=d9c86c6b5dbddb43a3e08270c5844fc5177d19442cf5b8df4be7c07cd5fa3831}
 
 prepare() {
     : ${build:=$($package_source_dir/scripts/config.guess)}

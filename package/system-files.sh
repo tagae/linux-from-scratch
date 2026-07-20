@@ -13,9 +13,6 @@ install() {
 
     # Compatibility symlinks (merged-usr layout: /bin, /sbin, /lib -> usr/*)
     # These must be created BEFORE any package installs to /bin, /sbin, /lib.
-    # No lib64: every platform this project targets builds with
-    # multilib=no, so there's never a second word length's libraries on
-    # the same install to distinguish from usr/lib.
     ln -sfv usr/bin  bin
     ln -sfv usr/sbin sbin
     ln -sfv usr/lib  lib

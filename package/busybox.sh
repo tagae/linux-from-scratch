@@ -1,5 +1,6 @@
 : ${package_version:=1.37.0}
 : ${package_source:=https://busybox.net/downloads/busybox-$package_version.tar.bz2}
+: ${package_source_sha256:=3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4}
 
 prepare() {
     make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- defconfig

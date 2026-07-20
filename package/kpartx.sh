@@ -5,6 +5,7 @@
 # from that name (multipath-tools-<v>, so it never matches → re-extracts
 # every fetch). Naming it after the extracted dir fixes both.
 : ${package_source:=https://github.com/opensvc/multipath-tools/archive/$package_version/multipath-tools-$package_version.tar.gz}
+: ${package_source_sha256:=206ab1635b09309974e2fdf3bbd1825254638dc9b3d2bbd436d1105cd518d379}
 
 package_source_dir=$SOURCE_DIR/multipath-tools-$package_version
 

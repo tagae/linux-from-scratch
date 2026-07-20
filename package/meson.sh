@@ -1,5 +1,6 @@
 : ${package_version:=1.9.1}
 : ${package_source:=https://github.com/mesonbuild/meson/releases/download/$package_version/meson-$package_version.tar.gz}
+: ${package_source_sha256:=4e076606f2afff7881d195574bddcd8d89286f35a17b4977a216f535dc0c74ac}
 
 # Pure-Python, no build step. setuptools isn't available for our python3
 # build, so a plain setup.py install won't work — copy the package and its
