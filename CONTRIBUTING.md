@@ -1,9 +1,164 @@
-Project structure
------------------
+Contributing
+============
 
-* `lfs` is the frontend command.
-* `lib` contains the LFS command implementations.
-* `package` contains definitions for software bundles that can be installed on the LFS system.
+What this is
+-------------
+
+A from-scratch build system that cross-compiles a minimal, bootable Linux —
+[systemd](https://www.linuxfromscratch.org/lfs/view/systemd/) or BusyBox
+init — for QEMU `virt` and Raspberry Pi targets (pi0/pi4/pi5), from source.
+Everything the target runs is built by this project's own recipes.
+
+
+Quick start
+-----------
+
+```shell
+make tools    # cross-toolchain + temporary build tools (slow; once per platform)
+make system   # build every package into the target install tree
+make image    # produce a bootable disk image
+make qemu     # boot it in QEMU
+make test     # tools + system + image + boot, log in, poweroff, assert clean exit
+```
+
+All default to `PLATFORM=virt`, `INIT=systemd`; everything above runs
+inside Docker. For another platform/flavor use `<verb>-<platform>` /
+`busybox-<verb>-<platform>`, e.g. `make system-pi0`, `make
+busybox-test-pi0`. `make distclean` tears down the Docker volumes,
+`work/` and `image/`, for a clean rebuild.
+
+
+How a build flows
+------------------
+
+Two Docker images, two phases:
+
+1. **`bootstrap`** (Debian, `Dockerfile.bootstrap`) — `./lfs tools
+   bootstrap` builds a cross-compiler plus a native, relocatable set of
+   temporary tools (bash, coreutils, make, wget, ...) into the `tools`
+   volume.
+2. **`scratch`** (`FROM scratch`, `Dockerfile.scratch`) — self-hosted
+   using only what `bootstrap` staged. `./lfs tools build` adds
+   build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...);
+   `./lfs system build` cross-compiles the target system into
+   `install/$SYSTEM_KEY`; `./lfs image build` formats a disk image from
+   that tree.
+
+`./lfs qemu` runs on the host, not in a container (QEMU needs to see the
+built kernel/image); `docker-compose.yaml` bind-mounts `work/boot` and
+`image/` out for that reason.
+
+`lfs` is the CLI frontend (`tools`, `system`, `install`, `image`, `qemu`,
+`fetch`); `lib/*.sh` implements each command; `package/*.sh` are the
+build recipes. `-p PLATFORM` selects the target (`lib/platform/
+$PLATFORM.sh`, default `virt`); `INIT` selects `systemd`/`busybox`
+(`package/bootable-$INIT.sh`). `SYSTEM_KEY` (`$PLATFORM`, or
+`$INIT-$PLATFORM` when not systemd) keys the install tree, stamps, boot
+files and image, so switching `PLATFORM`/`INIT` never clobbers another
+combination's build.
+
+
+The package model
+------------------
+
+Each `package/<name>.sh` runs in a fresh subshell (`_source` in
+`lib/package.sh`) that predefines the hooks `fetch`/`prepare`/`build`/
+`install`/`depends` with sane defaults. A script sets a few
+`: ${var:=default}` knobs and overrides only what it needs:
+
+```sh
+: ${package_version:=5.3}
+: ${package_source:=https://ftp.gnu.org/gnu/bash/bash-$package_version.tar.gz}
+: ${package_source_sha256:=...}
+
+prepare() { $package_source_dir/configure ${host:+--host=$host} ...; }
+build()   { make; }
+install() { make install DESTDIR=$package_install_dir; }
+```
+
+See `package/bash.sh`/`make.sh` for a minimal example, `util-linux.sh`
+for heavy knob use. Every knob (`host`, `prefix`, `nls`, ...) is a plain
+variable, defaulted with `:=` and overridden by the caller before
+`require`/`install`, e.g. `nls=no install m4`.
+
+Two verbs drive everything:
+- **`install <pkg>...`** — the `lfs install` command: establishes the
+  target build scenario (`host=$target`, `package_install_dir=
+  $INSTALL_DIR/$SYSTEM_KEY`, ...) unless already set, then calls
+  `require`. Not to be confused with the per-package `install()` *hook*
+  above (same name, different layer: this sets up the scenario and
+  installs a set of packages; the hook is one package's own install step).
+- **`require <pkg>...`** — fetch/prepare/build/install one or more
+  packages, each step stamped so reruns skip what's already done. What
+  umbrella `depends()` hooks call too.
+
+**Umbrellas** are meta-packages: `package_meta=yes` plus a `depends()`
+that just `require`s members with their knobs, nothing else. `bootable-
+$INIT` (`bootable-systemd.sh`/`bootable-busybox.sh`) is the package list
+for a bootable system; `build_system` (`lib/system.sh`) is just `install
+bootable-$INIT` plus staging the kernel for `./lfs qemu`. `ncdu.sh` shows
+the same `depends()` mechanism used by an ordinary leaf package to pull
+in a build-only dependency (wide ncurses).
+
+`target_sysroot_cc` is an opt-in a package's `prepare()` calls when it
+links a library another package already installed into the target tree
+(util-linux, the gnupg family, ncdu) — it points `CC` at the
+cross-compiler with `--sysroot=$INSTALL_DIR/$SYSTEM_KEY` so `-lfoo`
+resolves against the target tree, not the toolchain's default sysroot.
+
+For the full rationale: `DEPENDENCIES.md` (package/umbrella model),
+`BUSYBOX-INIT.md` (the INIT/SYSTEM_KEY flavor split).
+
+
+Make targets
+------------
+
+```
+<verb>                    == <verb>-virt                (systemd, default platform)
+<verb>-<platform>         == systemd-<verb>-<platform>   (explicit systemd alias)
+busybox-<verb>-<platform>                                (busybox-init flavor)
+```
+
+`<verb>` is `system`/`image`/`qemu`/`test`. `tools`/`tools-<platform>` is
+shared across flavors. Image targets are real files (`image/
+$SYSTEM_KEY.img`), not phony names.
+
+
+Conventions & gotchas
+----------------------
+
+- POSIX `sh` only in `lib/`/`package/`, no bashisms (bash is just the
+  shell the images happen to run). ash/dash's `A | B` does not fail the
+  pipeline if `A` fails — no `pipefail` — so such failures are mostly
+  left unhandled rather than worked around.
+- No documentation is built (`--disable-doc`, `manpages=no`, ...): keep
+  images minimal.
+- Sources are SHA-256 pinned (`package_source_sha256`) and fetched over
+  TLS verified against `$SSL_CERT_FILE` once a CA bundle exists (absent
+  on first bootstrap — see `fetch_url` in `lib/base.sh`); the hash check
+  applies regardless.
+- A package that links a library already installed into the target tree
+  must opt into `target_sysroot_cc` or it silently links the wrong glibc.
+- `SYSTEM_KEY` namespacing makes switching `PLATFORM`/`INIT` safe by
+  construction — don't hand-reuse another flavor's `package_variant`/
+  `package_install_dir`.
+
+
+Where things live
+------------------
+
+* `lfs` — CLI frontend.
+* `lib/` — `base.sh`/`package.sh` (core framework), `tools.sh`/
+  `system.sh`/`image.sh` (the phases), `platform/*.sh` (per-target defs).
+* `package/` — one recipe per package; `linux/` holds per-platform kernel
+  config fragments.
+* `download/`, `source/`, `work/`, `tools/`, `install/`, `image/` — build
+  state (fetched archives, unpacked sources, stamps/build dirs, the
+  toolchain, the target install tree, finished disk images); the
+  Docker-volume-backed ones are declared in `docker-compose.yaml`.
+* `Dockerfile.bootstrap` / `Dockerfile.scratch` — the two build containers.
+* `test` — the expect script `make test`/`*-test-*` drive.
+
 
 Pointers
 --------
@@ -13,12 +168,6 @@ http://www.dettus.net/detLFS/
 https://www.linux-magazine.com/Issues/2021/245/detLFS
 https://blog.jgosmann.de/posts/2021/02/07/a-guide-to-crosscompiling-applications/
 
-
-Caveats
--------
-
-In ash/dash, pipes such as A | B do not fail if A fails.
-There is no `set -o pipefail` like in Bash.
-
-Code that deals with such failures becomes arcane.
-So such failures are not gracefully handled.
+Design/assessment docs (rationale, not spec — some describe unfinished
+work): `DEPENDENCIES.md`, `BUSYBOX-INIT.md`, `PACKAGING.md`,
+`GUEST-BUILD.md`, `GNUPG-YUBIKEY.md`, `SIMPLIFICATIONS.md`.

@@ -1,5 +1,6 @@
 : ${package_version:=2.03.38}
 : ${package_source:=https://sourceware.org/ftp/lvm2/LVM2.$package_version.tgz}
+: ${package_source_sha256:=322d44bf40de318e6e6b52c56999aaeb86b16c8267187ac2e01a44d4dc526960}
 
 package_source_dir=$SOURCE_DIR/LVM2.$package_version
 

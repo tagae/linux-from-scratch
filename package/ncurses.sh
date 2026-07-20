@@ -1,5 +1,6 @@
 : ${package_version:=6.6}
 : ${package_source:=https://ftpmirror.gnu.org/ncurses/ncurses-$package_version.tar.gz}
+: ${package_source_sha256:=355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11}
 
 prepare() {
     case $package_component in
@@ -17,6 +18,7 @@ prepare() {
                 ${normal:+--with-normal=$normal} \
                 ${cxx_shared:+--with-cxx-shared=$cxx_shared} \
                 ${ada:+--with-ada=$ada} \
+                ${widec:+--enable-widec=$widec} \
                 ${stripping:+--enable-stripping=$stripping}
             ;;
     esac

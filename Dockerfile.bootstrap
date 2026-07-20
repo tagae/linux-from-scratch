@@ -3,7 +3,7 @@ FROM debian:stable-slim
 RUN groupdel dialout # conflicts with macOS
 
 RUN apt update
-RUN apt install -y build-essential curl wget rsync gawk bison python3 patchelf
+RUN apt install -y build-essential curl wget rsync gawk bison python3 patchelf ca-certificates
 
 ARG HOST_UID
 ARG HOST_GID

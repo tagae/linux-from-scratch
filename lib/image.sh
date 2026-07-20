@@ -14,7 +14,20 @@ image() {
 
 build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE]"
-    readonly IMAGE="${1:-$IMAGE_DIR/$PLATFORM.img}"
+    readonly IMAGE="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}"
+
+    # Mirrors the _once-stamp pattern lib/package.sh uses everywhere else:
+    # skip the (expensive — mkfs/tar/mount) rebuild if $IMAGE already
+    # reflects the current $INSTALL_DIR/$SYSTEM_KEY content. This can't live
+    # in the Makefile instead: image/%.img's prerequisite is the phony
+    # system-%, not $INSTALL_DIR itself, since $INSTALL_DIR is a Docker
+    # volume invisible to the host-side `make` process — so image/%.img's
+    # recipe always gets invoked, and the skip has to happen in here.
+    if [ -e "$IMAGE" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
+        && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$IMAGE" -print -quit)" ]; then
+        echo "image (done)"
+        return
+    fi
 
     # libmount needs a writable /run/mount for its own lock/state files —
     # this is a bare `FROM scratch` image with no /run at all, and without
@@ -116,9 +129,9 @@ mount_partitions() {
 
 populate_image() {
     [ -n "${ROOT_DIR:-}" ] || bail "No root directory — call 'image' first"
-    # $INSTALL_DIR/$PLATFORM: build_system() installs per-platform under
-    # here (see lib/system.sh) rather than into a single shared $INSTALL_DIR.
-    local platform_install_dir=$INSTALL_DIR/$PLATFORM
+    # $INSTALL_DIR/$SYSTEM_KEY: the system build installs per platform-and-
+    # init-flavor under here (see lib/system.sh), not into a shared $INSTALL_DIR.
+    local platform_install_dir=$INSTALL_DIR/$SYSTEM_KEY
     [ -d "$platform_install_dir" ] || bail "Install directory not found: $platform_install_dir — run './lfs system' first"
     stage "Populating image from $platform_install_dir"
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then

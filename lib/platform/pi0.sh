@@ -32,6 +32,10 @@ readonly QEMU_APPEND="earlycon=pl011,0x20201000 console=ttyAMA0,115200 \
     root=/dev/mmcblk0p2 rootdelay=5 \
     initcall_blacklist=bcm2835_pm_driver_init"
 
+# Serial console device the busybox-init flavor runs getty on (see
+# package/busybox-init.sh). BCM2835's PL011 is ttyAMA0.
+readonly CONSOLE=ttyAMA0
+
 readonly QEMU_DISK_IF=sd
 
 # FAT boot partition (kernel.img/config.txt/DTB, for real hardware) + btrfs root.

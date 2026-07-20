@@ -51,6 +51,7 @@ services:
     privileged: true
     environment:
       PLATFORM:
+      INIT:
       LFS_RELEASE:
       LFS_PHASE: scratch
       VERSION_CODENAME:

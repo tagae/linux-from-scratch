@@ -52,6 +52,27 @@ readonly PLATFORM
 
 . $PROJECT_DIR/lib/platform/$PLATFORM.sh
 
+#--[ Init flavor ]
+
+# Which init/unit system the built system uses. Selects the umbrella
+# package installed by `system build` (bootable-$INIT), and — via
+# SYSTEM_KEY below — keeps each flavor's install tree, stamps, boot files
+# and disk image separate so they coexist without clobbering (same
+# reasoning as the per-PLATFORM keying; see feedback-cross-platform-stamp-
+# contamination).
+: ${INIT:=systemd}
+
+[ -f $PROJECT_DIR/package/bootable-$INIT.sh ] || bail "Unsupported init '$INIT'"
+
+# The default (systemd) keeps the bare $PLATFORM key so existing builds,
+# stamps and images are unaffected; other flavors get an $INIT- prefix.
+case $INIT in
+    systemd) SYSTEM_KEY=$PLATFORM ;;
+    *)       SYSTEM_KEY=$INIT-$PLATFORM ;;
+esac
+
+readonly INIT SYSTEM_KEY
+
 #--[ Compilation ]
 
 export LC_ALL=POSIX
@@ -78,6 +99,19 @@ fi
 
 readonly PATH
 export PATH
+
+# CA bundle used to verify TLS on source downloads (see fetch_url in
+# lib/base.sh). Bootstrap runs in Debian, which ships one at the standard
+# path. The scratch container is FROM scratch: its bundle is the one the
+# ca-certificates package generates into TOOL_DIR — absent on a first build
+# until that package runs, so fetch_url falls back to unverified transport
+# (still integrity-checked by package_source_sha256) until it exists.
+if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
+    : ${SSL_CERT_FILE:=$TOOL_DIR/etc/ssl/certs/ca-certificates.crt}
+else
+    : ${SSL_CERT_FILE:=/etc/ssl/certs/ca-certificates.crt}
+fi
+export SSL_CERT_FILE
 
 #--[ Installation ]
 
@@ -120,12 +154,12 @@ case "${1:-help}" in
 
     qemu)
         [ $# -le 2 ] || usage "$1 [IMAGE]"
-        IMAGE="${2:-$IMAGE_DIR/$PLATFORM.img}"
-        _kernel="$WORK_DIR/boot/$PLATFORM/kernel.img"
+        IMAGE="${2:-$IMAGE_DIR/$SYSTEM_KEY.img}"
+        _kernel="$WORK_DIR/boot/$SYSTEM_KEY/kernel.img"
         [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
         set -- -kernel "$_kernel"
         if [ -n "${DTB:-}" ]; then
-            _dtb="$WORK_DIR/boot/$PLATFORM/$DTB"
+            _dtb="$WORK_DIR/boot/$SYSTEM_KEY/$DTB"
             [ -f "$_dtb" ] || bail "DTB not found: $_dtb (run './lfs system build' first)"
             set -- "$@" -dtb "$_dtb"
         fi

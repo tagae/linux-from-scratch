@@ -1,5 +1,6 @@
 : ${package_version:=1.25.0}
 : ${package_source:=https://ftpmirror.gnu.org/wget/wget-$package_version.tar.gz}
+: ${package_source_sha256:=766e48423e79359ea31e41db9e5c289675947a7fcf2efdcedb726ac9d0da3784}
 
 prepare() {
     # wget-1.25.0 still references SSLv3_client_method, which OpenSSL 4.0

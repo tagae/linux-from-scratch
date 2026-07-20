@@ -28,6 +28,10 @@ readonly QEMU_FLAGS="\
 readonly QEMU_APPEND="earlycon=pl011,0xfe201000 console=ttyAMA0,115200 \
     root=/dev/mmcblk0p2 rootdelay=5"
 
+# Serial console device the busybox-init flavor runs getty on (see
+# package/busybox-init.sh).
+readonly CONSOLE=ttyAMA0
+
 readonly QEMU_DISK_IF=sd
 
 readonly IMAGE_LAYOUT=pi
