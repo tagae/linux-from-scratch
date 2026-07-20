@@ -30,6 +30,10 @@ readonly QEMU_FLAGS="\
 # filesystem-related fragment in `lfs`'s qemu case under a single -append).
 readonly QEMU_APPEND="console=hvc0 root=/dev/vda1"
 
+# Serial console device the busybox-init flavor runs getty on (see
+# package/busybox-init.sh). The QEMU virtio-console above enumerates as hvc0.
+readonly CONSOLE=hvc0
+
 readonly QEMU_DISK_IF=virtio
 
 # Single btrfs partition — no FAT boot partition (QEMU loads kernel directly)

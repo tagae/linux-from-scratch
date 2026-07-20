@@ -1,5 +1,6 @@
 : ${package_version:=8.3}
 : ${package_source:=https://ftp.gnu.org/gnu/readline/readline-$package_version.tar.gz}
+: ${package_source_sha256:=fe5383204467828cd495ee8d1d3c037a7eba1389c22bc6a041f627976f9061cc}
 
 prepare() {
     $package_source_dir/configure \

@@ -357,6 +357,22 @@ build_tools() {
     # /python above instead of landing in INSTALL_DIR.
     install ninja
     install meson
+
+    # The CA trust store scratch-phase downloads verify TLS against (see
+    # SSL_CERT_FILE in `lfs` and fetch_url in lib/base.sh) — built as early
+    # as possible (right after ninja/meson, which p11-kit needs) so every
+    # remaining download in this function switches from fetch_url's
+    # unverified fallback to real, verified TLS. All native build-host
+    # tooling: make-ca's own PEM output is architecture-independent, so
+    # this only needs to run once, here, against the build host itself
+    # (see package/ca-certificates.sh) — bootable-{systemd,busybox}.sh
+    # separately require() it again into each target tree.
+    install libffi
+    install libtasn1
+    install p11-kit
+    install make-ca
+    install ca-certificates
+
     install gperf
 
     # systemd's meson.build itself requires python3's jinja2 module (used
