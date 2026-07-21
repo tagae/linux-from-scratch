@@ -7,14 +7,6 @@ install() {
             ;;
     esac
 
-    # Establish the build environment for installing INTO a platform's
-    # target system tree ($INSTALL_DIR/$PLATFORM) — what a bare
-    # `./lfs install <pkg>` means, and what the system build and any
-    # umbrella package rely on. Skipped when a caller has already chosen a
-    # scenario by presetting package_install_dir: lib/tools.sh's
-    # build_tools() sets it to $TOOL_DIR for build-host-native tooling
-    # (same scratch phase, but not a target install). The bootstrap phase
-    # (tools bootstrap) never reaches install() as a target scenario.
     if [ "${LFS_PHASE:-}" = scratch ] && [ -z "${package_install_dir:-}" ]; then
         target_build_env
     fi
@@ -61,8 +53,7 @@ require() {
 # The build environment shared by every package installed into a
 # platform's target system tree. Set once per install scenario (by
 # install() for a bare invocation; inherited by an umbrella's members),
-# so no package carries its own copy — this generalizes what the old
-# package/_cross.sh did for the gnupg family alone. Defaults only ( := ),
+# so no package carries its own copy. Defaults only ( := ),
 # so a caller (or -d DESTINATION handling above) can still override.
 target_build_env() {
     : ${host:=$target}
@@ -130,7 +121,7 @@ _source() {
     # install scenario, meant to carry from an umbrella (or build_tools /
     # tools) down to every member.
     unset package_name package_component package_version package_branch \
-          package_source package_source_sha256 \
+          package_source package_source_hash \
           package_release package_files_dir package_source_dir \
           package_work_dir package_build_dir package_product \
           package_deliverable package_archive package_meta
@@ -201,7 +192,7 @@ _source() {
     default_fetch() {
         case ${package_source:-none} in
             https://*.tar.*|https://*.tgz)
-                get $package_source ${package_source_sha256:-}
+                get $package_source ${package_source_hash:-}
                 ;;
             https://github.com*|https://git.*)
                 git_checkout $package_source $package_branch $package_source_dir
@@ -277,12 +268,4 @@ _source() {
         : ${package_deliverable=$package_release-$package_component}
     fi
     : ${package_archive=$package_deliverable.tar.xz}
-
-    # NOTE: package API variables are deliberately NOT frozen readonly here.
-    # An umbrella calls require() from within its own subshell, whose child
-    # (the member's) _source must be able to clear and re-derive them (see
-    # the unset at the top of this function); readonly would propagate into
-    # that child and make the clear fail. lib/tools.sh still freezes the few
-    # it depends on (package_variant, package_install_dir, …) in its own
-    # per-stage subshells where it needs that guarantee.
 }

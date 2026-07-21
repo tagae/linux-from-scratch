@@ -102,12 +102,14 @@ export PATH
 
 # CA bundle used to verify TLS on source downloads (see fetch_url in
 # lib/base.sh). Bootstrap runs in Debian, which ships one at the standard
-# path. The scratch container is FROM scratch: its bundle is the one the
-# ca-certificates package generates into TOOL_DIR — absent on a first build
-# until that package runs, so fetch_url falls back to unverified transport
-# (still integrity-checked by package_source_sha256) until it exists.
+# path. The scratch container is FROM scratch: it verifies against OUR OWN
+# bundle, generated from Mozilla's certdata.txt by the ca-certificates
+# package and staged to $WORK_DIR/certs during bootstrap_tools (see there) —
+# present before the very first scratch download, so fetch_url always
+# verifies and never falls back to unverified transport. $WORK_DIR is the
+# shared `work` volume, so the bundle bootstrap staged is visible here.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    : ${SSL_CERT_FILE:=$TOOL_DIR/etc/ssl/certs/ca-certificates.crt}
+    : ${SSL_CERT_FILE:=$WORK_DIR/certs/ca-certificates.crt}
 else
     : ${SSL_CERT_FILE:=/etc/ssl/certs/ca-certificates.crt}
 fi

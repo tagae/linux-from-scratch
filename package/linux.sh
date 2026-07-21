@@ -22,7 +22,7 @@ raspberrypi_kernel_branch_pi0=rpi-6.6.y
 
 # archive/<ref>/<name>.tar.gz form so the download is named linux-<branch>.tar.gz
 # (matching the dir GitHub extracts to, = package_source_dir below) rather than
-# a bare <branch>.tar.gz — see kpartx.sh for the full rationale.
+# a bare <branch>.tar.gz — see multipath-tools.sh for the full rationale.
 _raspberrypi_kernel_source() {
     echo "https://github.com/raspberrypi/linux/archive/refs/heads/$1/linux-$1.tar.gz"
 }
@@ -38,32 +38,32 @@ if [ "${package_component:-}" = headers ]; then
     : ${package_version:=7.1.2}
     local package_major_version="${package_version%%.*}"
     : ${package_source:=https://www.kernel.org/pub/linux/kernel/v$package_major_version.x/linux-$package_version.tar.xz}
-    : ${package_source_sha256:=37198c93727be247c9fb5309bb86cd5e496c61e5322cd8c4eca9476bb0b5883f}
+    : ${package_source_hash:=sha256:37198c93727be247c9fb5309bb86cd5e496c61e5322cd8c4eca9476bb0b5883f}
 else
     case $PLATFORM in
         pi0|pi1)
             : ${package_version:=$raspberrypi_kernel_branch_pi0}
             : ${package_source:=$(_raspberrypi_kernel_source $raspberrypi_kernel_branch_pi0)}
-            : ${package_source_sha256:=5875c9889e3b28d34ff3e29f53bb349a680e70632c598685bde6a68d31fe1891}
+            : ${package_source_hash:=sha256:5875c9889e3b28d34ff3e29f53bb349a680e70632c598685bde6a68d31fe1891}
             : ${defconfig:=bcmrpi_defconfig}
             ;;
         pi4)
             : ${package_version:=$raspberrypi_kernel_branch}
             : ${package_source:=$(_raspberrypi_kernel_source $raspberrypi_kernel_branch)}
-            : ${package_source_sha256:=3733ac9cbd3d2aa7bb5e123d0ba838e84465107df997c0e9a587d5f590fa1d86}
+            : ${package_source_hash:=sha256:3733ac9cbd3d2aa7bb5e123d0ba838e84465107df997c0e9a587d5f590fa1d86}
             : ${defconfig:=bcm2711_defconfig}
             ;;
         pi5)
             : ${package_version:=$raspberrypi_kernel_branch}
             : ${package_source:=$(_raspberrypi_kernel_source $raspberrypi_kernel_branch)}
-            : ${package_source_sha256:=3733ac9cbd3d2aa7bb5e123d0ba838e84465107df997c0e9a587d5f590fa1d86}
+            : ${package_source_hash:=sha256:3733ac9cbd3d2aa7bb5e123d0ba838e84465107df997c0e9a587d5f590fa1d86}
             : ${defconfig:=bcm2712_defconfig}
             ;;
         *)
             : ${package_version:=7.1.2}
             local package_major_version="${package_version%%.*}"
             : ${package_source:=https://www.kernel.org/pub/linux/kernel/v$package_major_version.x/linux-$package_version.tar.xz}
-            : ${package_source_sha256:=37198c93727be247c9fb5309bb86cd5e496c61e5322cd8c4eca9476bb0b5883f}
+            : ${package_source_hash:=sha256:37198c93727be247c9fb5309bb86cd5e496c61e5322cd8c4eca9476bb0b5883f}
             ;;
     esac
 fi

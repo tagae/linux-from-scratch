@@ -73,8 +73,12 @@ depends() {
     # installed into the target tree (libcap, util-linux's libmount/libblkid, …).
     ( sysroot=$INSTALL_DIR/$PLATFORM require systemd )
 
-    # Kernel image, DTBs and modules.
-    require linux
+    # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
+    # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
+    # shells out to bison, whose compiled-in default pkgdatadir is the
+    # literal /usr/share/bison — this container's empty real root, not
+    # TOOL_DIR-relative (same fixup as glibc above; see there).
+    ( export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison; require linux )
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only.
     if [ -n "${DTB:-}" ]; then

@@ -1,6 +1,6 @@
 : ${package_version:=3.5.2}
 : ${package_source:=https://github.com/libffi/libffi/releases/download/v$package_version/libffi-$package_version.tar.gz}
-: ${package_source_sha256:=f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc}
+: ${package_source_hash:=sha256:f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc}
 
 prepare() {
     # --libdir + --disable-multi-os-directory: libffi's configure actually

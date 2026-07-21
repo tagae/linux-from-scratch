@@ -1,6 +1,6 @@
-: ${package_version:=2.5.7}
+: ${package_version:=3.0.2}
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libassuan/libassuan-$package_version.tar.bz2}
-: ${package_source_sha256:=0103081ffc27838a2e50479153ca105e873d3d65d8a9593282e9c94c7e6afb76}
+: ${package_source_hash:=sha256:d2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6}
 
 # IPC between gpg, gpg-agent, scdaemon and pinentry (see GNUPG-YUBIKEY.md).
 # Links against libgpg-error, already installed into $INSTALL_DIR/$PLATFORM

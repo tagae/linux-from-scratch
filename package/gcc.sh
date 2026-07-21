@@ -2,7 +2,7 @@
 
 : ${package_version:=16.1.0}
 : ${package_source:=https://ftpmirror.gnu.org/gcc/gcc-$package_version/gcc-$package_version.tar.xz}
-: ${package_source_sha256:=50efb4d94c3397aff3b0d61a5abd748b4dd31d9d3f2ab7be05b171d36a510f79}
+: ${package_source_hash:=sha256:50efb4d94c3397aff3b0d61a5abd748b4dd31d9d3f2ab7be05b171d36a510f79}
 
 fetch() {
     default_fetch

@@ -1,8 +1,16 @@
-: ${package_version:=1.51}
+: ${package_version:=1.59}
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$package_version.tar.bz2}
-: ${package_source_sha256:=be0f1b2db6b93eed55369cdf79f19f72750c8c7c39fc20b577e724545427e6b2}
+: ${package_source_hash:=sha256:a19bc5087fd97026d93cb4b45d51638d1a25202a5e1fbc3905799f424cfa6134}
 
 # Base of the gnupg family (see GNUPG-YUBIKEY.md) — install this first.
+#
+# Bumped 1.51 -> 1.59 alongside the rest of the family's BLFS gnupg-2.5.17
+# alignment: BLFS's own gnupg page doesn't pin this one, but libgcrypt-1.12.0
+# does — its configure hard-requires "GPG Error - version >= 1.56" (confirmed
+# empirically: 1.51 fails libgcrypt's configure with exactly that message),
+# and BLFS's own libgcrypt-1.12.0 page lists libgpg-error-1.59 as its
+# required dependency. Matching that pairing rather than picking the bare
+# minimum 1.56.
 # host/prefix/install-dir come from target_build_env (applied by install()
 # for a standalone `./lfs install`); build= forces autoconf to treat a
 # same-arch target (virt/pi4) as a cross build; target_sysroot_cc compiles
