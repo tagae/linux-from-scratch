@@ -22,6 +22,27 @@ build() {
 }
 
 install() {
+    # busybox's own install.sh writes straight to bin/, sbin/, usr/bin/,
+    # usr/sbin/ (the classic split-usr FHS layout, not this project's
+    # merged-usr one) — it never creates these as symlinks itself. Under
+    # the old flow every package DESTDIR-installed straight into the one
+    # shared, already-merged tree, so this "just worked": system-files had
+    # already turned bin/sbin into symlinks to usr/bin/usr/sbin *in that
+    # same tree* before busybox ever ran, so busybox's own bin/ash write
+    # landed at usr/bin/ash for free, with no duplication. Now busybox
+    # DESTDIR-installs into its own fresh, isolated stage dir (see
+    # target_build_env/_source) that system-files' symlinks never touch —
+    # left alone, busybox would instead create REAL bin/sbin directories
+    # here, which later clobber the merged tree's symlinks on merge
+    # (tar overwrites a symlink with a real directory when the archive
+    # entry is one). Recreate system-files' own precondition locally, in
+    # this stage, before busybox's install runs, to reproduce the exact
+    # same consolidated-into-usr result its build never learned to do on
+    # its own.
+    mkdir -p $package_install_dir/usr/bin $package_install_dir/usr/sbin
+    ln -sfn usr/bin  $package_install_dir/bin
+    ln -sfn usr/sbin $package_install_dir/sbin
+
     make -C $package_source_dir \
         ARCH=$ARCH \
         CROSS_COMPILE=$target- \

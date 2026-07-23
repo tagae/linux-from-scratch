@@ -71,7 +71,16 @@ depends() {
 
     # Init system; sysroot points meson/pkg-config at what earlier members
     # installed into the target tree (libcap, util-linux's libmount/libblkid, …).
-    ( sysroot=$INSTALL_DIR/$PLATFORM require systemd )
+    # $INSTALL_DIR/$SYSTEM_KEY, not bare $PLATFORM: with the stage->archive
+    # ->merge inversion (PACKAGING.md), package_install_dir is now each
+    # member's own per-package stage dir — $INSTALL_DIR/$SYSTEM_KEY (=
+    # package_merge_dir, see target_build_env) is the one path that still
+    # names the actual merged tree these earlier members landed in, and is
+    # also what target_sysroot_cc (util-linux) already points at. Bare
+    # $PLATFORM silently diverges from that whenever $CAPS is non-empty
+    # (SYSTEM_KEY folds CAPS in, see lfs) — same tree only by coincidence
+    # for the default no-caps build.
+    ( sysroot=$INSTALL_DIR/$SYSTEM_KEY require systemd )
 
     # Opt-in capabilities (see lfs's Capabilities section for CAPS). Must
     # come after systemd above: network-config reverses part of systemd.sh's

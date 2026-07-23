@@ -28,6 +28,26 @@ done
 
 #--[ Project ]
 
+# Guest phase (LFS_PHASE=guest, see SELF-HOST.md M2): heavy build state is
+# guest-LOCAL, not the 9p share — mirrors how docker-compose keeps the
+# I/O-hot dirs (source/work/tools/install) in named volumes instead of the
+# bind-mounted project tree, since compiling over 9p would be painfully
+# slow. Deliberately NOT ARCHIVE_DIR=$PROJECT_DIR/archive: the guest's own
+# natively-built tarballs must not collide with/overwrite the cross-built
+# ones already shared there (a later reproducibility comparison between
+# the two is a feature, not a bug). Checked here, ahead of the generic `:
+# ${VAR:=...}` defaults below, so those become no-ops for these three vars
+# in guest phase (first assignment wins) and untouched everywhere else.
+# DOWNLOAD_DIR is deliberately NOT overridden: it stays PROJECT_DIR-
+# relative even in guest phase (=/mnt/lfs/download, since PROJECT_DIR IS
+# /mnt/lfs when run from the guest's 9p mount) — the shared, hash-verified
+# source cache is exactly what a guest build wants to reuse, offline.
+if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
+    : ${SOURCE_DIR:=/var/lfs/source}
+    : ${WORK_DIR:=/var/lfs/work}
+    : ${ARCHIVE_DIR:=/var/lfs/archive}
+fi
+
 : ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
 : ${SOURCE_DIR:=$PROJECT_DIR/source}
 : ${WORK_DIR:=$PROJECT_DIR/work}
@@ -120,8 +140,13 @@ readonly LC_ALL MAKEFLAGS
 # configure) aren't on the host at all, so they're only found as a
 # fallback after host tools are checked first.
 # Scratch phase: toolchain only, no host PATH.
+# Guest phase: PATH untouched, on purpose — there is no TOOL_DIR here at
+# all; the booted system's own /usr/bin already has everything a native
+# build needs (see native-toolchain.sh / SELF-HOST.md M1-M2).
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
     PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin:$TOOL_DIR/bin
+elif [ "${LFS_PHASE:-bootstrap}" = guest ]; then
+    :
 else
     PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 fi
@@ -137,6 +162,11 @@ export PATH
 # present before the very first scratch download, so fetch_url always
 # verifies and never falls back to unverified transport. $WORK_DIR is the
 # shared `work` volume, so the bundle bootstrap staged is visible here.
+# Guest phase falls into the same "else" branch as bootstrap: the booted
+# system already has its own from-scratch bundle at the standard path
+# (installed target-side by the ca-certificates package — see
+# bootable-systemd.sh), so no override is needed; this only matters at all
+# on a download cache miss, since download/ is normally fully populated.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
     : ${SSL_CERT_FILE:=$WORK_DIR/certs/ca-certificates.crt}
 else
@@ -176,6 +206,12 @@ case "${1:-help}" in
     install)
         shift
         install "$@"
+        ;;
+
+    unarchive)
+        shift
+        [ $# -ge 1 ] || usage "unarchive FILE [DEST]"
+        unarchive "$@"
         ;;
 
     image)
@@ -224,6 +260,9 @@ case "${1:-help}" in
         echo "  tools            Build cross-compilation toolchain"
         echo "  system           Build all final system packages"
         echo "  install <PKG>... Install one or more packages"
+        echo "  unarchive FILE [DEST]"
+        echo "                   Extract a package tarball (DEST defaults to"
+        echo "                   this system key's merged tree, e.g. / in a guest)"
         echo "  image [FILE]     Create bootable disk image"
         echo "  qemu [FILE]      Boot image in QEMU (creates image if needed)"
         echo ""

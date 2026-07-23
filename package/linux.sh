@@ -149,6 +149,20 @@ install() {
             _make INSTALL_HDR_PATH=$package_install_dir/usr headers_install
             ;;
         linux)
+            # modules_install's own INSTALL_MOD_PATH convention always
+            # writes to a literal lib/modules/ (not usr/lib/modules/ — not
+            # configurable). Under the old flow this "just worked" the same
+            # way busybox's install does (see busybox.sh's own comment):
+            # the shared tree already had system-files' lib->usr/lib
+            # symlink in place, so this landed in usr/lib/modules for free.
+            # Now this DESTDIR-installs into linux's own fresh, isolated
+            # stage dir, which has no such symlink of its own — recreate it
+            # here first so modules_install's real writes end up consolidated
+            # into usr/lib exactly as before, instead of a literal top-level
+            # lib/ that later clobbers the merged tree's own symlink.
+            mkdir -p $package_install_dir/usr/lib
+            ln -sfn usr/lib $package_install_dir/lib
+
             # modules_install runs depmod (module.dep/modules.alias/etc —
             # without them modprobe/systemd can't resolve a module by name
             # even though the .ko file is right there on disk) as a matter
