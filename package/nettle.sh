@@ -28,13 +28,36 @@ depends() {
 }
 
 prepare() {
-    # Plain AC_CHECK_LIB(gmp, ...)/#include <gmp.h> probes, no pkg-config
-    # or *-config script involved — target_sysroot_cc's --sysroot already
+    # Compiling/linking against gmp needs nothing extra: this is a plain
+    # AC_CHECK_LIB(gmp, ...)/#include <gmp.h> probe, no pkg-config or
+    # *-config script involved, and target_sysroot_cc's --sysroot already
     # makes -lgmp/<gmp.h> resolve against the target tree gmp installed
-    # into by depends() above, so no --with-lib-path/--with-include-path
-    # is needed (unlike the gnupg family's *-config-script probes, which
-    # need an explicit absolute path because those resolve via $PATH,
-    # not the sysroot — see libassuan.sh).
+    # into by depends() above (unlike the gnupg family's *-config-script
+    # probes, which need an explicit absolute path because those resolve
+    # via $PATH, not the sysroot — see libassuan.sh).
+    #
+    # --with-lib-path IS still needed, but for a different reason: RUNning
+    # a just-linked-against-gmp test program, not finding gmp at
+    # link time. On virt/pi4 ($target is the same CPU arch as this build
+    # host), autoconf's cross_compiling check genuinely executes compiled
+    # binaries right here (see gnupg.sh's own am_cv_func_iconv_works
+    # comment for the identical situation) — so once nettle's own
+    # AC_CHECK_LIB(gmp, __gmpn_zero_p) test succeeds and adds -lgmp to
+    # LIBS, every subsequent test program nettle *runs* (its own
+    # LSH_RPATH_FIX probe immediately afterwards, then the GMP_NUMB_BITS
+    # AC_COMPUTE_INT check) links against gmp too — and fails to execute,
+    # because our target gmp lives in $INSTALL_DIR/$PLATFORM/usr/lib, a
+    # path the dynamic loader has no reason to search by default
+    # (confirmed empirically: "Running simple test program failed. Trying
+    # -R flags... failed" -> "cannot find value of GMP_NUMB_BITS"). Nettle
+    # already has a purpose-built fix for exactly this — LSH_RPATH_FIX
+    # retries with -Wl,-rpath,<dir> for each directory named in
+    # --with-lib-path (see configure.ac's LSH_RPATH_INIT call) — but its
+    # own default candidate list is a handful of generic system paths
+    # (/usr/local/lib, /sw/lib, ...) that obviously never include our
+    # target tree. Naming it explicitly here fixes the rpath retry;
+    # harmless on pi0 (genuinely cross-arch), where LSH_RPATH_FIX's whole
+    # mechanism is skipped (it's gated on cross_compiling = no).
     #
     # --disable-documentation: this project's standing no-package-docs
     # policy (see e.g. libgpg-error.sh/libtasn1.sh's own --disable-doc).
@@ -45,6 +68,7 @@ prepare() {
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
+        --with-lib-path=$INSTALL_DIR/$PLATFORM/usr/lib \
         --disable-static \
         --disable-documentation
 }

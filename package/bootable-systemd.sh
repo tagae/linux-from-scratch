@@ -73,6 +73,18 @@ depends() {
     # installed into the target tree (libcap, util-linux's libmount/libblkid, …).
     ( sysroot=$INSTALL_DIR/$PLATFORM require systemd )
 
+    # Opt-in capabilities (see lfs's Capabilities section for CAPS). Must
+    # come after systemd above: network-config reverses part of systemd.sh's
+    # own install()-time masking, so it has to run after that masking exists
+    # to reverse. Absent from CAPS (the default), neither require() below
+    # ever runs, so a no-caps build is unaffected.
+    case " ${CAPS:-} " in
+        *" network "*) require network-config ;;
+    esac
+    case " ${CAPS:-} " in
+        *" 9p "*) require 9p-config ;;
+    esac
+
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
     # shells out to bison, whose compiled-in default pkgdatadir is the

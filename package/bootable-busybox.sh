@@ -29,6 +29,18 @@ depends() {
     # platform's serial console).
     require busybox-init
 
+    # Opt-in capabilities (see lfs's Capabilities section for CAPS). Placed
+    # after busybox-init above since both members' busybox halves drop a
+    # script into the /etc/init.d it creates. Absent from CAPS (the
+    # default), neither require() below ever runs, so a no-caps build is
+    # unaffected.
+    case " ${CAPS:-} " in
+        *" network "*) require network-config ;;
+    esac
+    case " ${CAPS:-} " in
+        *" 9p "*) require 9p-config ;;
+    esac
+
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
     # shells out to bison, whose compiled-in default pkgdatadir is the

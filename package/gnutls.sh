@@ -51,11 +51,32 @@ prepare() {
     # otherwise emit land in $INSTALL_DIR/$PLATFORM/usr/{include,lib}
     # instead of the container's real (wrong-architecture) /usr.
     #
-    # --without-p11-kit: no target build of p11-kit exists (see
-    # gnutls.sh's own commit message / task notes — p11-kit has only
-    # ever been built as a native build-host tool, for make-ca). Paired
-    # with --with-default-trust-store-file below instead of the
-    # PKCS#11-URI trust store BLFS itself defaults to.
+    # --with-sysroot is the libtool analogue of the pkg-config vars above:
+    # libtasn1 (like nettle/hogweed) is built with libtool, whose
+    # generated .la file (see libtasn1.sh's own install()) always records
+    # the dependency's intended FINAL runtime "libdir" (bare "/usr/lib" —
+    # correct once booted, meaningless mid-build) rather than wherever
+    # libtool actually found the .la file on THIS build's own disk.
+    # Without telling libtool about our sysroot, its own link-time
+    # dependency resolution trusts that recorded "/usr/lib" literally —
+    # which, in the scratch container, is bind-mounted onto TOOL_DIR's
+    # own (build-host-arch) copies, not this target tree — and silently
+    # hands the linker a wrong-architecture library, confirmed
+    # empirically ("file not recognized: file format not recognized"
+    # against TOOL_DIR's own native libtasn1.so, installed there for
+    # p11-kit's unrelated native use — see libtasn1.sh). --with-sysroot
+    # is libtool's own purpose-built mechanism for exactly this (see
+    # m4/libtool.m4's _LT_WITH_SYSROOT): it rewrites any dependency .la
+    # file's recorded absolute paths through this prefix before using
+    # them, so libtasn1 (and nettle/hogweed, in case a future collision
+    # made those affected too) resolve against the actual on-disk target
+    # tree instead.
+    #
+    # --without-p11-kit: no target build of p11-kit exists — see
+    # package/p11-kit.sh, which has only ever been built as a native
+    # build-host tool (for make-ca). Paired with --with-default-trust-
+    # store-file below instead of the PKCS#11-URI trust store BLFS
+    # itself defaults to.
     #
     # --with-included-unistring: bundle GnuTLS's own copy of libunistring
     # rather than requiring a separate target build of it. Its only
@@ -106,6 +127,7 @@ prepare() {
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
+        --with-sysroot=$INSTALL_DIR/$PLATFORM \
         --without-p11-kit \
         --with-included-unistring \
         --with-default-trust-store-file=/etc/ssl/certs/ca-certificates.crt \

@@ -12,30 +12,40 @@
 : ${build:=$(cc -dumpmachine)}
 
 prepare() {
-    # CC_FOR_BUILD: only exercised so far by a target (cross) build (see
-    # build= above) — GMP needs a *build*-machine-native compiler of its
-    # own, separate from $CC (the target cross-compiler), to compile a
-    # handful of table-generator programs it runs during its own build.
-    # Left unset, GMP's configure (GMP_PROG_CC_FOR_BUILD) probes a
-    # candidate list ("$host_alias-gcc", "gcc", "$host_alias-cc", "cc")
-    # via its own "long long reliability test" conftest — a K&R-era
-    # program that calls `g(i, ...six args...)` against a `void g(){}`
-    # forward declaration, relying on empty parens meaning "unspecified
-    # arguments" (true pre-C23). This project's GCC defaults to a new
-    # enough C standard that empty parens now mean "no arguments", so
-    # *every* candidate in GMP's list fails that probe with a hard
-    # "too many arguments to function 'g'" compile error, and configure
-    # aborts with "could not find a working compiler" — even though the
-    # underlying compilers (both $target-gcc and plain build-host gcc)
-    # are completely fine. Explicitly setting CC_FOR_BUILD skips that
-    # whole broken candidate loop for a trivial compile-and-run check
-    # instead (see configure's own CC_FOR_BUILD branch), sidestepping
-    # the broken conftest rather than the real question. Plain "gcc" is
-    # always this project's build-host-native compiler regardless of
-    # host architecture (see lib/tools.sh's native_target — the same
-    # bare name every other native invocation in this project relies
-    # on), so it's the correct choice unconditionally here, not just for
-    # today's build host.
+    # CFLAGS=-std=gnu17: GMP doesn't use plain AC_PROG_CC — it has its own
+    # hand-tuned compiler/flags selection (GMP_PROG_CC_WORKS, run against
+    # a "gcc cc" candidate list, optionally $host_alias-prefixed when
+    # cross-compiling), which puts every candidate through a battery of
+    # conftests, including one literally named "long long reliability
+    # test 1": a K&R-era program that forward-declares `void g(){}` (old
+    # style empty parens, meaning "unspecified arguments") and then calls
+    # it with six arguments — legal pre-C23, but a hard "too many
+    # arguments to function 'g'" error once empty parens mean "takes no
+    # arguments" instead. This project's GCC defaults to a C standard new
+    # enough to make that switch, so *every* candidate GMP tries (both
+    # $target-gcc and plain build-host gcc — confirmed via config.log,
+    # this is not a missing- or wrong-compiler problem) fails this same
+    # probe, and configure aborts with "could not find a working
+    # compiler". GMP's own probing loop honors a user-supplied $CFLAGS
+    # ahead of its internal per-compiler defaults ("Any user CFLAGS, even
+    # an empty string, takes precedence" — configure.ac's own comment),
+    # so pinning the last pre-C23 GNU dialect here sidesteps the broken
+    # conftest instead of the real question, the same fix and rationale
+    # as gnupg.sh's own identical-cause CFLAGS=-std=gnu17.
+    #
+    # CC_FOR_BUILD=gcc: separate from the above — a cross build (host !=
+    # build, the only way this script is used, see build= above) also
+    # needs GMP to compile a handful of table-generator programs that
+    # must run on the *build* machine, using a build-machine-native
+    # compiler distinct from $CC (the target cross-compiler). Left
+    # unset, configure's own CC_FOR_BUILD detection falls back to a
+    # similar candidate probe; setting it explicitly skips straight to a
+    # trivial compile-and-run check instead (see configure's own
+    # CC_FOR_BUILD branch). Plain "gcc" is always this project's build-
+    # host-native compiler regardless of host architecture (see lib/
+    # tools.sh's native_target — the same bare name every other native
+    # invocation in this project relies on).
+    CFLAGS=-std=gnu17 \
     CC_FOR_BUILD=gcc \
     $package_source_dir/configure \
         ${host:+--host=$host} \

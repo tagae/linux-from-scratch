@@ -52,6 +52,7 @@ services:
     environment:
       PLATFORM:
       INIT:
+      CAPS:
       LFS_RELEASE:
       LFS_PHASE: scratch
       VERSION_CODENAME:

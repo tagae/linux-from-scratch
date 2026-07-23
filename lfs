@@ -71,14 +71,43 @@ case $INIT in
     *)       SYSTEM_KEY=$INIT-$PLATFORM ;;
 esac
 
-readonly INIT SYSTEM_KEY
+#--[ Capabilities ]
+
+# Opt-in features layered on top of the base system (space-separated,
+# e.g. CAPS="network 9p"). Each capability <cap> names a kernel config
+# fragment (package/linux/<cap>.config, folded into the kernel build by
+# package/linux.sh's prepare()) plus, optionally, packages the bootable-*
+# umbrellas require() when enabled (see network-config.sh/9p-config.sh) and
+# QEMU flags (see the qemu case below). Empty by default, so a build with
+# CAPS unset is byte-for-byte what existed before capabilities were added —
+# this project's own network-less Pi Zero depends on that staying true.
+: ${CAPS:=}
+
+for cap in $CAPS; do
+    [ -f $PROJECT_DIR/package/linux/$cap.config ] || bail "Unknown capability '$cap' (no package/linux/$cap.config)"
+done
+
+# Sorted + de-duplicated so any ordering of the same set of caps (e.g.
+# "9p network" vs "network 9p") lands on the identical SYSTEM_KEY below —
+# same install tree, stamps and image either way.
+CAPS=$(printf '%s\n' $CAPS | sort -u | xargs)
+
+# Folded into SYSTEM_KEY so each capability combination gets its own
+# install tree, stamps, boot dir and image — same reasoning as the
+# PLATFORM/INIT keying above. CRITICAL: with CAPS empty (the default) this
+# loop doesn't execute, so SYSTEM_KEY — and every existing build, stamp and
+# image for the no-caps case — is untouched.
+for cap in $CAPS; do
+    SYSTEM_KEY=$SYSTEM_KEY+$cap
+done
+
+readonly INIT SYSTEM_KEY CAPS
 
 #--[ Compilation ]
 
 export LC_ALL=POSIX
-# nproc is Linux-only (the usual case, inside the bootstrap/scratch
-# containers); qemu runs directly on the host instead (see the `qemu`
-# command below), where macOS has no nproc but does have sysctl.
+
+# Support both Linux (nproc) and macOS (sysctl).
 export MAKEFLAGS=-j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
 readonly LC_ALL MAKEFLAGS
@@ -165,6 +194,22 @@ case "${1:-help}" in
             [ -f "$_dtb" ] || bail "DTB not found: $_dtb (run './lfs system build' first)"
             set -- "$@" -dtb "$_dtb"
         fi
+        # Capability-gated QEMU devices. Both are virtio-pci, so they only
+        # make sense where there's a PCI bus (virt); the Pi machine models
+        # have none — real hardware support for these capabilities is
+        # separate future work, not something to guard against here.
+        case " $CAPS " in
+            *" network "*)
+                set -- "$@" -netdev user,id=net0 -device virtio-net-pci,netdev=net0
+                ;;
+        esac
+        case " $CAPS " in
+            *" 9p "*)
+                set -- "$@" \
+                    -fsdev local,id=lfs,path=$PROJECT_DIR,security_model=mapped-xattr \
+                    -device virtio-9p-pci,fsdev=lfs,mount_tag=lfs
+                ;;
+        esac
         exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
             -no-reboot \
             "$@" \
