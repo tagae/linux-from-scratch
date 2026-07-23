@@ -21,7 +21,7 @@
 # follows a moving "tip" URL.
 : ${package_version:=NSS_3_126_RTM}
 : ${package_source:=https://raw.githubusercontent.com/nss-dev/nss/$package_version/lib/ckfw/builtins/certdata.txt}
-: ${package_source_sha256:=81b7f2576333a2e360e673f912d7b0b7a765d836c731003e348a46cac5d37198}
+: ${package_source_hash:=sha256:81b7f2576333a2e360e673f912d7b0b7a765d836c731003e348a46cac5d37198}
 
 # fetch_url names the download after the URL's own basename — a bare
 # "certdata.txt" here, regardless of $package_version (see get() in lib/
@@ -38,50 +38,48 @@ fetch() {
     mkdir -p $DOWNLOAD_DIR
     [ -f $package_certdata_file ] || fetch_url "$package_source" "$DOWNLOAD_DIR"
     [ -f $package_certdata_file ] || mv $DOWNLOAD_DIR/certdata.txt $package_certdata_file
-    printf '%s  %s\n' "$package_source_sha256" "$package_certdata_file" | sha256sum -c - \
-        || bail "Integrity check failed for certdata.txt (expected sha256 $package_source_sha256)"
+    verify_hash "$package_certdata_file" "$package_source_hash"
 }
 
 install() {
     local anchordir=$package_install_dir/etc/pki/anchors
 
-    # p11-kit's `trust` tool (make-ca's own backend for turning the anchor
-    # files it writes below into actual trust-store output formats) finds
-    # its PKCS#11 modules and their config via compiled-in absolute paths
-    # (sysconfdir=/etc, pkgdatadir=/usr/share/..., libdir=/usr/lib/...) —
-    # real filesystem paths that resolve correctly for p11-kit's own,
-    # single, always-in-$TOOL_DIR install (package/p11-kit.sh), but this
-    # scratch container's actual root never bind-mounts TOOL_DIR onto it
-    # (see Dockerfile.scratch / docker-compose.yaml: only tools/usr/{bin,
-    # lib} are, never tools/etc or tools/usr/share) — so those compiled-in
-    # paths would resolve against an empty/nonexistent real /etc or
-    # /usr/share, finding no module at all, regardless of which tree this
-    # invocation is actually generating certs into ($TOOL_DIR itself, or a
-    # target's $INSTALL_DIR/$SYSTEM_KEY via the bootable-* umbrellas).
+    # make-ca's EXTRACT phase runs p11-kit's `trust extract`, which turns the
+    # anchor files make-ca just wrote into the actual bundle — but only if a
+    # PKCS#11 trust-policy MODULE is registered pointing at those anchors.
+    # p11-kit discovers modules from compiled-in absolute config directories
+    # (/usr/share/p11-kit/modules, /etc/pkcs11/modules) that resolve to
+    # nothing useful here: TOOL_DIR is never bind-mounted onto the container's
+    # real /usr/share or /etc (see docker-compose.yaml — only tools/usr/{bin,
+    # lib}), and in the bootstrap container those are Debian's. So p11-kit's
+    # OWN installed module config is never found, and `trust extract` reports
+    # "no modules containing trust policy are registered" → an empty bundle
+    # (the cold-build failure this exact code path exhibited).
     #
-    # p11-kit.sh builds with -Denv_override_paths=enabled specifically for
-    # this: it honors P11_PACKAGE_CONFIG_MODULES/P11_SYSTEM_CONFIG_MODULES/
-    # P11_USER_CONFIG_MODULES at runtime (see p11-kit/modules.c's
-    # p11_get_paths_from_env), letting us point `trust` at a throwaway
-    # module-config directory generated fresh per invocation below, whose
-    # "x-init-reserved: paths=" line (module.c's own hook for exactly this
-    # — see parse_argument()) tells the trust module where THIS
-    # invocation's anchors actually landed: $anchordir, which is
-    # DESTDIR-relative and so differs between the $TOOL_DIR build and a
-    # target-tree build. The module .so itself is referenced by absolute
-    # path (found below), so no separate P11_MODULE_PATH override is
-    # needed — module.c's own loader only consults p11_module_path for
-    # relative module filenames.
+    # p11-kit's env overrides (P11_PACKAGE_CONFIG_MODULES/..., via
+    # -Denv_override_paths) are NOT honored by `trust` on a clean tree
+    # (verified empirically — the module config is simply never discovered
+    # through them). What IS honored is p11-kit's user config directory,
+    # relocatable via XDG_CONFIG_HOME: `trust` reads
+    # $XDG_CONFIG_HOME/pkcs11/modules/*.module. So point it at a throwaway
+    # per-invocation config tree holding a trust-module config for THIS run:
+    #   module:  absolute path to p11-kit-trust.so (a relative name would be
+    #            resolved against p11_module_path and not found).
+    #   trust-policy: yes — required; trust/enumerate.c's ca-anchors filter
+    #            only considers modules marked as a trust-policy source.
+    #   x-init-reserved: paths=$anchordir — module.c's parse_argument() hook
+    #            telling the trust module where THIS invocation's anchors are
+    #            ($anchordir is DESTDIR-relative, so it differs between the
+    #            $TOOL_DIR build and a target-tree build).
+    # (Relies on `trust` running as a normal, non-root user — the case for
+    # every build_tools()/umbrella invocation — since p11-kit skips user
+    # config for root/AT_SECURE processes.)
     local trust_so=$(find $TOOL_DIR/usr -name 'p11-kit-trust.so' | head -1)
     [ -n "$trust_so" ] || bail "p11-kit-trust.so not found under $TOOL_DIR/usr"
 
-    local moddir=$package_build_dir/pkcs11-modules
+    local xdg=$package_build_dir/p11-kit-config
+    local moddir=$xdg/pkcs11/modules
     mkdir -p $moddir
-    # Mirrors p11-kit's own installed trust/p11-kit-trust.module, with an
-    # absolute "module:" path (see above) and a non-empty "x-init-reserved"
-    # pointing at this invocation's own anchor directory. trust-policy: yes
-    # is required — trust/enumerate.c's ca-anchors filter only considers
-    # modules explicitly marked as a trust-policy source.
     cat > $moddir/p11-kit-trust.module <<EOF
 module: $trust_so
 priority: 1
@@ -100,9 +98,9 @@ EOF
     #     handling: our pinned NSS certdata.txt carries no "# Revision:"
     #     line, so make-ca always regenerates unconditionally regardless),
     #     kept for clarity/future-proofing.
-    P11_PACKAGE_CONFIG_MODULES=$moddir \
-    P11_SYSTEM_CONFIG_MODULES=$moddir \
-    P11_USER_CONFIG_MODULES=$moddir \
+    # XDG_CONFIG_HOME propagates from make-ca to the `trust` subprocess it
+    # spawns for the extract step (make-ca doesn't scrub the environment).
+    XDG_CONFIG_HOME=$xdg \
         make-ca \
             -C $package_certdata_file \
             -D $package_install_dir \
@@ -123,10 +121,14 @@ EOF
     # make-ca) leaves etc/ssl/certs itself mode 0555 (its own read-only-
     # trust-store convention) — put back the standard, writable 0755 so we
     # (and anything else touching this tree later) can still add to it.
+    # -f: both ca-bundle.crt and the ca-certificates.crt it becomes are left
+    # read-only (0444) by make-ca/trust, so regenerating into an existing tree
+    # (a re-run into $TOOL_DIR, or a rebuilt target tree) must be able to
+    # replace an unwritable copy — cp -f removes it and retries.
     mkdir -p $package_install_dir/etc/ssl/certs
     chmod -v 755 $package_install_dir/etc/ssl/certs
-    cp -v $package_install_dir/etc/pki/tls/certs/ca-bundle.crt \
-          $package_install_dir/etc/ssl/certs/ca-certificates.crt
+    cp -fv $package_install_dir/etc/pki/tls/certs/ca-bundle.crt \
+           $package_install_dir/etc/ssl/certs/ca-certificates.crt
 
     # openssl's own compiled-in default CAfile (--openssldir=/etc/ssl).
     ln -sfv certs/ca-certificates.crt $package_install_dir/etc/ssl/cert.pem

@@ -1,6 +1,6 @@
 : ${package_version:=1.0.27}
 : ${package_source:=https://github.com/libusb/libusb/releases/download/v$package_version/libusb-$package_version.tar.bz2}
-: ${package_source_sha256:=ffaa41d741a8a3bee244ac8e54a72ea05bf2879663c098c82fc5757853441575}
+: ${package_source_hash:=sha256:ffaa41d741a8a3bee244ac8e54a72ea05bf2879663c098c82fc5757853441575}
 
 # scdaemon's internal CCID driver talks to a YubiKey directly over USB
 # through this (see GNUPG-YUBIKEY.md) — no pcscd/libccid stack needed.

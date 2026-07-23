@@ -12,6 +12,7 @@
 	busybox-image \
 	busybox-qemu busybox-qemu-% \
 	busybox-test busybox-test-% \
+	network-system network-image network-qemu network-test \
 	reinstall-tools reinstall-system \
 	clean distclean \
 	FORCE
@@ -89,6 +90,24 @@ busybox-test-%: image/busybox-%.img
 
 busybox-qemu-%: image/busybox-%.img
 	PLATFORM=$* INIT=busybox ./lfs qemu
+
+# ---- opt-in "network" capability (CAPS=network; virt/systemd only for
+# now — capabilities are proven here first; a %-pattern version can follow
+# once a Pi platform actually has a NIC driver, see network.config) ----
+network-system: tools-virt
+	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm scratch ./lfs system build
+
+image/virt+network.img: network-system FORCE
+	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
+	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm --user 0:0 scratch ./lfs image build
+
+network-image: image/virt+network.img
+
+network-test: image/virt+network.img
+	./test virt systemd network
+
+network-qemu: image/virt+network.img
+	PLATFORM=virt INIT=systemd CAPS=network ./lfs qemu
 
 # ---- unprefixed shortcuts for the default (systemd) flavor ----
 # A recipe-less pattern rule can't act as an alias (make then reports "no

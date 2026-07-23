@@ -1,6 +1,6 @@
-: ${package_version:=1.2.1}
+: ${package_version:=1.3.2}
 : ${package_source:=https://gnupg.org/ftp/gcrypt/pinentry/pinentry-$package_version.tar.bz2}
-: ${package_source_sha256:=457a185e5a85238fb945a955dc6352ab962dc8b48720b62fc9fa48c7540a4067}
+: ${package_source_hash:=sha256:8e986ed88561b4da6e9efe0c54fa4ca8923035c99264df0b0464497c5fb94e9e}
 
 # Passphrase/PIN prompting (see GNUPG-YUBIKEY.md). Links against
 # libgpg-error/libassuan, already installed into $INSTALL_DIR/$PLATFORM —

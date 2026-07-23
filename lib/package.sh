@@ -7,34 +7,48 @@ install() {
             ;;
     esac
 
-    # Establish the build environment for installing INTO a platform's
-    # target system tree ($INSTALL_DIR/$PLATFORM) — what a bare
-    # `./lfs install <pkg>` means, and what the system build and any
-    # umbrella package rely on. Skipped when a caller has already chosen a
-    # scenario by presetting package_install_dir: lib/tools.sh's
-    # build_tools() sets it to $TOOL_DIR for build-host-native tooling
-    # (same scratch phase, but not a target install). The bootstrap phase
-    # (tools bootstrap) never reaches install() as a target scenario.
-    if [ "${LFS_PHASE:-}" = scratch ] && [ -z "${package_install_dir:-}" ]; then
+    # Guard on package_install_dir, NOT package_merge_dir: lib/tools.sh
+    # calls this SAME install() function directly (bare `install <pkg>`
+    # inside build_tools()/bootstrap_tools()) with package_install_dir
+    # already explicitly pre-set (e.g. =$TOOL_DIR) — that pre-set value is
+    # what must suppress target_build_env there, exactly as before this
+    # feature existed. target_build_env no longer sets package_install_dir
+    # itself (it sets package_merge_dir instead — see there), so guarding
+    # on package_merge_dir would fire target_build_env even for those
+    # tools-phase calls, wrongly handing them a package_merge_dir and
+    # making _install archive/merge $TOOL_DIR itself.
+    if [ -n "${package_install_dir:-}" ]; then
+        : # lib/tools.sh already pre-set an explicit scenario — leave it alone.
+    elif [ "${LFS_PHASE:-}" = scratch ]; then
         target_build_env
+    elif [ "${LFS_PHASE:-}" = guest ]; then
+        guest_build_env
     fi
 
+    # DESTINATION (-d) picks an explicit, caller-chosen install location —
+    # this bypasses the stage->archive->merge inversion entirely (it would
+    # be actively wrong to archive a DESTDIR install meant for e.g. a
+    # device or .img and then merge it into $INSTALL_DIR/$SYSTEM_KEY
+    # instead), so unset whatever target_build_env just set above.
     if [ -z "${DESTINATION:-}" ]; then
         true
-    elif [ -d "$DESTINATION" ]; then
-        package_install_dir=$(realpath "$DESTINATION")
-    elif [ -f "$DESTINATION" ]; then
-        IMAGE="$DESTINATION" image
-        package_install_dir=$ROOT_DIR
-    elif [ -b "$DESTINATION" ]; then
-        DEVICE="$DESTINATION" device
-        package_install_dir=$ROOT_DIR
-    elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
-        IMAGE="$DESTINATION" image
-        package_install_dir=$ROOT_DIR
     else
-        mkdir -pv "$DESTINATION"
-        package_install_dir=$(realpath "$DESTINATION")
+        unset package_merge_dir
+        if [ -d "$DESTINATION" ]; then
+            package_install_dir=$(realpath "$DESTINATION")
+        elif [ -f "$DESTINATION" ]; then
+            IMAGE="$DESTINATION" image
+            package_install_dir=$ROOT_DIR
+        elif [ -b "$DESTINATION" ]; then
+            DEVICE="$DESTINATION" device
+            package_install_dir=$ROOT_DIR
+        elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
+            IMAGE="$DESTINATION" image
+            package_install_dir=$ROOT_DIR
+        else
+            mkdir -pv "$DESTINATION"
+            package_install_dir=$(realpath "$DESTINATION")
+        fi
     fi
 
     require "$@"
@@ -61,9 +75,17 @@ require() {
 # The build environment shared by every package installed into a
 # platform's target system tree. Set once per install scenario (by
 # install() for a bare invocation; inherited by an umbrella's members),
-# so no package carries its own copy — this generalizes what the old
-# package/_cross.sh did for the gnupg family alone. Defaults only ( := ),
+# so no package carries its own copy. Defaults only ( := ),
 # so a caller (or -d DESTINATION handling above) can still override.
+#
+# Sets package_merge_dir, NOT package_install_dir: every package under this
+# scenario DESTDIR-installs into its own framework-default per-package
+# staging dir instead (package_install_dir's own default, further down in
+# _source) and is archived + merged into package_merge_dir afterwards (see
+# _install) — the stage->archive->merge inversion (PACKAGING.md). Tools-
+# phase scenarios (lib/tools.sh) set package_install_dir explicitly
+# themselves and never call target_build_env, so they never set
+# package_merge_dir and _install's archive/merge steps stay a no-op there.
 target_build_env() {
     : ${host:=$target}
     : ${prefix:=/usr}
@@ -72,7 +94,31 @@ target_build_env() {
     # separate stamps and install dirs. Equal to $PLATFORM for the default
     # (systemd) flavor, so existing builds are unaffected.
     : ${package_variant:=$SYSTEM_KEY}
-    : ${package_install_dir:=$INSTALL_DIR/$SYSTEM_KEY}
+    : ${package_merge_dir:=$INSTALL_DIR/$SYSTEM_KEY}
+}
+
+# The build environment for a guest-phase install (LFS_PHASE=guest, see
+# SELF-HOST.md M2): building NATIVELY, inside the booted system itself,
+# with that system's own toolchain — install() applies this when nothing
+# is preset, mirroring target_build_env above. package_merge_dir=/: merge
+# writes straight into the LIVE system rather than a build-host install
+# tree (default_merge's guest-phase branch below handles the mechanics).
+#
+# Critically, host is deliberately left UNSET (target_build_env's first
+# line, `: ${host:=$target}`, has no equivalent here): every package's
+# configure then runs with host=build, i.e. a genuine native build, not a
+# cross one. Two things depend on host staying unset:
+#   - target_sysroot_cc's own guard, `[ "${host:-}" = "$target" ]`, fails
+#     with host unset, so it returns immediately and never overrides CC —
+#     self-neutralizing, no guest-specific change needed there.
+#   - package scripts' own `: ${build:=$(gcc -dumpmachine)}` guards
+#     (gmp.sh, mpfr.sh, mpc.sh, ...) resolve harmlessly to the guest's own
+#     native triple, since that's exactly what bare `gcc -dumpmachine`
+#     reports when run on the guest itself.
+guest_build_env() {
+    : ${prefix:=/usr}
+    : ${package_variant:=$SYSTEM_KEY}
+    : ${package_merge_dir:=/}
 }
 
 # Compile against the packages already installed into the target system
@@ -85,7 +131,27 @@ target_build_env() {
 target_sysroot_cc() {
     [ "${host:-}" = "$target" ] || return 0
     if [ -z "${CC:-}" ]; then
-        CC="$target-gcc --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $TOOL_DIR/$target/usr/include"
+        # Explicit -L, not just --sysroot: libtool's own `--mode=install`
+        # relink (util-linux's libmount->libblkid, triggered by DESTDIR now
+        # differing from --prefix — see package_install_dir's own per-
+        # package stage default) rebases ITS dependencies' recorded libdir
+        # (e.g. libblkid.la's libdir=/usr/lib) two ways at once: it adds
+        # "-L$inst_prefix_dir/usr/lib" (correct — finds this package's own
+        # just-staged siblings) AND ALSO keeps the ORIGINAL, un-rebased
+        # "-L/usr/lib" verbatim (a libtool quirk, not this project's doing).
+        # --sysroot alone does NOT save us here: it only adjusts the
+        # compiler's OWN *implicit* default search paths, never an
+        # explicit -L such as that leftover one — so plain "/usr/lib"
+        # (this container's real root, i.e. the NATIVE toolchain's own
+        # runtime — see docker-compose.yaml) gets searched for "-lc" too,
+        # and on same-arch targets (e.g. virt on an aarch64 build host)
+        # that's architecture-COMPATIBLE, so ld silently links against the
+        # wrong (native, not target-merged) glibc instead of erroring; on a
+        # different-arch target (pi0/arm on an aarch64 host) it hard-fails
+        # ("file format not recognized" — the canary this was caught on).
+        # An explicit "-L$sysroot/usr/lib" here, ahead of anything libtool
+        # appends later, wins the search unconditionally either way.
+        CC="$target-gcc --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $TOOL_DIR/$target/usr/include -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
     fi
     export CC
 }
@@ -112,9 +178,19 @@ archive() {
     )
 }
 
+# Extract a package tarball anywhere: FILE [DEST], DEST defaulting to this
+# system key's own merged tree. DEST deliberately never defaults to bare
+# "/" — inside the build containers /usr/{bin,lib} are read-only bind
+# mounts of the toolchain itself (see docker-compose.yaml), so extracting
+# there would be wrong at best and fail outright at worst. A live guest
+# (which has a real, writable "/" and no such mounts) passes "/" itself,
+# explicitly.
 unarchive() {
-    echo "Unarchiving $1 on $INSTALL_DIR..."
-    tar xf $1 -C $INSTALL_DIR
+    local file=$1
+    local dest=${2:-$INSTALL_DIR/$SYSTEM_KEY}
+    echo "Unarchiving $file to $dest..."
+    mkdir -p "$dest"
+    tar xf "$file" -C "$dest"
 }
 
 # This function executes in the subshell that evaluates package scripts.
@@ -125,12 +201,12 @@ _source() {
     # calls require() for its members from within its own subshell, so
     # without this the umbrella's own name/version/paths would be inherited
     # and, being already set, shadow each member's own values (the defaults
-    # below only assign when unset). package_install_dir and
-    # package_variant are deliberately NOT cleared — they are the ambient
-    # install scenario, meant to carry from an umbrella (or build_tools /
-    # tools) down to every member.
+    # below only assign when unset). package_install_dir, package_variant
+    # and package_merge_dir are deliberately NOT cleared — they are the
+    # ambient install scenario, meant to carry from an umbrella (or
+    # build_tools / tools) down to every member.
     unset package_name package_component package_version package_branch \
-          package_source package_source_sha256 \
+          package_source package_source_hash \
           package_release package_files_dir package_source_dir \
           package_work_dir package_build_dir package_product \
           package_deliverable package_archive package_meta
@@ -158,12 +234,52 @@ _source() {
         # rebuild re-checks the whole set; each member is still fast-pathed
         # by its own install stamp. For an ordinary package depends() is the
         # no-op default below.
-        depends
+        #
+        # depends() must NOT hand its own require()d members MY
+        # package_install_dir: require()'s subshell forks the whole variable
+        # scope, so without this every member would inherit it unchanged
+        # instead of deriving its own fresh per-package stage dir (see
+        # _source) — exactly the bug this once had, where every member of an
+        # umbrella landed inside the UMBRELLA's own stage dir instead of its
+        # own. Scoped to the target scenario (package_merge_dir set): under
+        # lib/tools.sh, sharing one hand-picked package_install_dir (e.g.
+        # =$TOOL_DIR) across many `install <pkg>` calls in a block is exactly
+        # the intended behavior, so this save/restore is a no-op there.
+        if [ -n "${package_merge_dir:-}" ]; then
+            local _own_install_dir=$package_install_dir
+            unset package_install_dir
+            depends
+            package_install_dir=$_own_install_dir
+        else
+            depends
+        fi
         [ "${package_meta:-}" = yes ] && return 0
         ( _once fetch; )
         ( _once prepare; )
         ( _once build; )
         ( _once install; )
+        # Stage->archive->merge inversion (PACKAGING.md), scoped to the
+        # target scenario: only when target_build_env (or a caller) set
+        # package_merge_dir. Tools-phase scenarios (lib/tools.sh) never set
+        # it, so `install` above is the final destination there, exactly as
+        # before this feature existed — no archive, no merge, no new stamps.
+        if [ -n "${package_merge_dir:-}" ]; then
+            mkdir -p $package_merge_dir
+            # Guest-phase deviation, temporary (SELF-HOST.md M2): busybox
+            # tar can create plain tar archives but has no xz compressor
+            # applet, so it cannot produce the .tar.xz default_archive
+            # writes — and there's no GNU tar/xz on the guest yet (those
+            # arrive with M3's tool tarballs). Skip the archive step
+            # entirely; default_merge's own guest-phase branch copies the
+            # stage dir straight into the live system with a plain tar
+            # pipe instead of extracting a tarball. The merge stamp itself
+            # is unaffected — same semantics, same _once gating, in every
+            # phase.
+            if [ "${LFS_PHASE:-}" != guest ]; then
+                ( _once archive; )
+            fi
+            ( _once merge; )
+        fi
     }
 
     _archive() {
@@ -192,6 +308,10 @@ _source() {
         default_archive
     }
 
+    merge() {
+        default_merge
+    }
+
     # Overridden by umbrella packages (see package_meta) to require() their
     # members; a no-op for ordinary packages.
     depends() {
@@ -201,7 +321,7 @@ _source() {
     default_fetch() {
         case ${package_source:-none} in
             https://*.tar.*|https://*.tgz)
-                get $package_source ${package_source_sha256:-}
+                get $package_source ${package_source_hash:-}
                 ;;
             https://github.com*|https://git.*)
                 git_checkout $package_source $package_branch $package_source_dir
@@ -229,10 +349,81 @@ _source() {
     }
 
     default_archive() {
-        ! [ -f $package_archive ] || return 0
-        mkdir -p $(dirname $package_archive)
-        echo "Expanding $package_archive..."
-        tar cjf $ARCHIVE_DIR/$PLATFORM/$package_archive -C $package_install_dir .
+        local out=$ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
+        ! [ -f $out ] || return 0
+        mkdir -p $ARCHIVE_DIR/$SYSTEM_KEY
+        stage "Archiving $package_archive"
+        tar --owner=0 --group=0 --numeric-owner -cJf $out -C $package_install_dir .
+        # Merge-order manifest: extraction order matters for the handful of
+        # files more than one package installs (busybox's symlink farm vs.
+        # util-linux/systemd's real binaries overwriting it) — record each
+        # package's tarball once, in the order it was archived, so a from-
+        # scratch reconstruction (or a guest doing its own unarchiving) can
+        # reproduce that order with no other bookkeeping.
+        grep -qxF "$package_archive" $ARCHIVE_DIR/$SYSTEM_KEY/ORDER 2>/dev/null \
+            || echo "$package_archive" >> $ARCHIVE_DIR/$SYSTEM_KEY/ORDER
+    }
+
+    default_merge() {
+        stage "Merging $package_archive"
+        # A prior merge's own output can be read-only by design (e.g.
+        # ca-certificates' 0444 trust bundle, util-linux's 0444 man pages)
+        # — plain `tar x` opens the destination for writing, which a
+        # read-only file refuses even to its own owning uid, breaking the
+        # ROLLOUT/re-run case specifically (an already-merged tree). chmod
+        # always succeeds for files we own regardless of their current
+        # mode, so this reliably clears the way; the tarball's own mode
+        # bits (also 0444) are reapplied right after by the extraction
+        # itself, so the end state is identical to a from-empty extraction.
+        #
+        # Scoped to exactly the paths this package is about to (re-)write,
+        # NOT a blanket recursive chmod of the whole merge dir: with
+        # package_merge_dir=/ (guest phase — see guest_build_env) an
+        # unscoped `chmod -R u+w /` would walk the ENTIRE guest
+        # filesystem, including the 9p-mounted host project at /mnt/lfs —
+        # silently altering host file modes as a side effect of installing
+        # one package. List the package's own paths — from the archive
+        # normally, or from the stage dir itself in guest phase, where no
+        # archive exists (see the merge step below) — and chmod only the
+        # ones that already exist in the merge dir; paths the tarball is
+        # about to newly introduce need no chmod at all. Also better for
+        # the container case: a full-tree chmod was always more than any
+        # single package needed.
+        if [ "${LFS_PHASE:-}" = guest ]; then
+            (cd $package_install_dir && find . -mindepth 1)
+        else
+            tar tf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
+        fi | while IFS= read -r path; do
+            path=${path#./}
+            path=${path%/}
+            # Skip both "" and "." (the top-level dir entry itself, spelled
+            # either way depending on tar/find implementation) — never
+            # chmod package_merge_dir's own root; only its contents.
+            if [ -n "$path" ] && [ "$path" != "." ] && [ -e "$package_merge_dir/$path" ]; then
+                chmod u+w "$package_merge_dir/$path" 2>/dev/null || true
+            fi
+        done
+
+        if [ "${LFS_PHASE:-}" = guest ]; then
+            # Guest-phase deviation, temporary (see the archive-skip
+            # comment in _install): no tarball exists to extract, so copy
+            # the stage dir straight into the live system with a plain
+            # tar pipe instead — busybox tar handles plain (uncompressed)
+            # tar fine as both source and sink. Full parity with the
+            # archive-extracting path below — and the continuous self-test
+            # an extracted tarball ordinarily proves — returns once the
+            # guest has a real tar+xz (M3's tool tarballs).
+            tar -C $package_install_dir -cf - . | tar -C $package_merge_dir -xf -
+        else
+            # Extract the just-created tarball itself, rather than cp-ing
+            # the stage dir directly: every build then continuously proves
+            # the tarball is complete and correct, since it's literally
+            # what lands in the merged tree. tar overwrites existing files
+            # by default, so merging in package order reproduces the
+            # pre-inversion tree exactly (see the ORDER manifest above for
+            # why order matters).
+            tar xf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive -C $package_merge_dir
+        fi
     }
 
     patch_source() {
@@ -277,12 +468,4 @@ _source() {
         : ${package_deliverable=$package_release-$package_component}
     fi
     : ${package_archive=$package_deliverable.tar.xz}
-
-    # NOTE: package API variables are deliberately NOT frozen readonly here.
-    # An umbrella calls require() from within its own subshell, whose child
-    # (the member's) _source must be able to clear and re-derive them (see
-    # the unset at the top of this function); readonly would propagate into
-    # that child and make the clear fail. lib/tools.sh still freezes the few
-    # it depends on (package_variant, package_install_dir, …) in its own
-    # per-stage subshells where it needs that guarantee.
 }

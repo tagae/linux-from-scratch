@@ -1,9 +1,9 @@
 : ${package_version:=1.13.1}
 # archive/<ref>/<name>.tar.gz so the download is ninja-<v>.tar.gz, not a bare
-# v<v>.tar.gz — see kpartx.sh for why. (Tag is v<v>; GitHub strips the v from
+# v<v>.tar.gz — see multipath-tools.sh for why. (Tag is v<v>; GitHub strips the v from
 # the extracted dir, so name the file ninja-<v> to match.)
 : ${package_source:=https://github.com/ninja-build/ninja/archive/v$package_version/ninja-$package_version.tar.gz}
-: ${package_source_sha256:=f0055ad0369bf2e372955ba55128d000cfcc21777057806015b45e4accbebf23}
+: ${package_source_hash:=sha256:f0055ad0369bf2e372955ba55128d000cfcc21777057806015b45e4accbebf23}
 
 # --bootstrap compiles ninja from nothing (no ninja needed to build ninja):
 # it invokes the compiler directly per source file, then uses the resulting
