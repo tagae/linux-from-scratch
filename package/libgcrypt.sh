@@ -5,7 +5,7 @@
 # Crypto primitives (see GNUPG-YUBIKEY.md). Links against libgpg-error —
 # see libassuan.sh for why target_sysroot_cc and the explicit
 # --with-libgpg-error-prefix are both needed.
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {

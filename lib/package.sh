@@ -121,6 +121,21 @@ guest_build_env() {
     : ${package_merge_dir:=/}
 }
 
+# Guest archive-parity check (SELF-HOST.md M3): a freshly-booted guest
+# starts with only busybox tar (no xz applet, so it can neither produce nor
+# extract the .tar.xz default_archive/default_merge use — see _install's
+# and default_merge's own guest-phase branches below) — but once M3's own
+# tool tarballs (tar.sh + xz.sh, the "archive-parity enablers") are
+# unarchived into it, the guest gains a real GNU tar and xz and can run the
+# whole stage->archive->merge dance for real, exactly like the container.
+# Checked fresh on every call (cheap: two PATH lookups) instead of cached,
+# so installing xz/tar mid-session is picked up by the very next package,
+# with no separate "capability refresh" step needed.
+_guest_has_archive_tools() {
+    command -v xz >/dev/null 2>&1 || return 1
+    tar --version 2>/dev/null | grep -q GNU
+}
+
 # Compile against the packages already installed into the target system
 # tree ($INSTALL_DIR/$PLATFORM) rather than the toolchain's own default
 # sysroot. A package opts in (from its own script) when it links a library
@@ -265,17 +280,23 @@ _source() {
         # before this feature existed — no archive, no merge, no new stamps.
         if [ -n "${package_merge_dir:-}" ]; then
             mkdir -p $package_merge_dir
-            # Guest-phase deviation, temporary (SELF-HOST.md M2): busybox
-            # tar can create plain tar archives but has no xz compressor
-            # applet, so it cannot produce the .tar.xz default_archive
-            # writes — and there's no GNU tar/xz on the guest yet (those
-            # arrive with M3's tool tarballs). Skip the archive step
-            # entirely; default_merge's own guest-phase branch copies the
-            # stage dir straight into the live system with a plain tar
-            # pipe instead of extracting a tarball. The merge stamp itself
-            # is unaffected — same semantics, same _once gating, in every
-            # phase.
-            if [ "${LFS_PHASE:-}" != guest ]; then
+            # Guest-phase archive parity (SELF-HOST.md M3, was M2's
+            # unconditional skip): a tool-less guest still can't produce
+            # the .tar.xz default_archive writes (no xz applet in busybox
+            # tar), so this stays skipped there — default_merge's own
+            # guest-phase fallback copies the stage dir straight into the
+            # live system with a plain tar pipe instead. But once the
+            # guest has unarchived M3's own tar+xz tarballs
+            # (_guest_has_archive_tools), it archives for real, into its
+            # own guest-local ARCHIVE_DIR (see `lfs`'s guest-phase
+            # DOWNLOAD_DIR/SOURCE_DIR/WORK_DIR/ARCHIVE_DIR overrides —
+            # already guest-local by construction, no change needed here),
+            # and default_merge extracts that tarball exactly as the
+            # container does — the same continuous self-test extracting
+            # the tarball rather than cp-ing the stage dir gives everywhere
+            # else. The merge stamp itself is unaffected either way — same
+            # semantics, same _once gating, in every phase.
+            if [ "${LFS_PHASE:-}" != guest ] || _guest_has_archive_tools; then
                 ( _once archive; )
             fi
             ( _once merge; )
@@ -383,13 +404,13 @@ _source() {
         # filesystem, including the 9p-mounted host project at /mnt/lfs —
         # silently altering host file modes as a side effect of installing
         # one package. List the package's own paths — from the archive
-        # normally, or from the stage dir itself in guest phase, where no
-        # archive exists (see the merge step below) — and chmod only the
-        # ones that already exist in the merge dir; paths the tarball is
-        # about to newly introduce need no chmod at all. Also better for
-        # the container case: a full-tree chmod was always more than any
-        # single package needed.
-        if [ "${LFS_PHASE:-}" = guest ]; then
+        # normally, or from the stage dir itself in a tool-less guest,
+        # where no archive exists (see the merge step below) — and chmod
+        # only the ones that already exist in the merge dir; paths the
+        # tarball is about to newly introduce need no chmod at all. Also
+        # better for the container case: a full-tree chmod was always more
+        # than any single package needed.
+        if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
             (cd $package_install_dir && find . -mindepth 1)
         else
             tar tf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
@@ -404,15 +425,16 @@ _source() {
             fi
         done
 
-        if [ "${LFS_PHASE:-}" = guest ]; then
-            # Guest-phase deviation, temporary (see the archive-skip
-            # comment in _install): no tarball exists to extract, so copy
-            # the stage dir straight into the live system with a plain
-            # tar pipe instead — busybox tar handles plain (uncompressed)
-            # tar fine as both source and sink. Full parity with the
-            # archive-extracting path below — and the continuous self-test
-            # an extracted tarball ordinarily proves — returns once the
-            # guest has a real tar+xz (M3's tool tarballs).
+        if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
+            # Tool-less-guest fallback (SELF-HOST.md M2, before M3's own
+            # tar+xz tarballs are unarchived into it): no tarball exists to
+            # extract (the archive step above was skipped too — see
+            # _install), so copy the stage dir straight into the live
+            # system with a plain tar pipe instead — busybox tar handles
+            # plain (uncompressed) tar fine as both source and sink. Full
+            # parity with the archive-extracting path below — and the
+            # continuous self-test an extracted tarball ordinarily proves —
+            # returns once the guest has a real tar+xz.
             tar -C $package_install_dir -cf - . | tar -C $package_merge_dir -xf -
         else
             # Extract the just-created tarball itself, rather than cp-ing
@@ -421,7 +443,10 @@ _source() {
             # what lands in the merged tree. tar overwrites existing files
             # by default, so merging in package order reproduces the
             # pre-inversion tree exactly (see the ORDER manifest above for
-            # why order matters).
+            # why order matters). Guest phase reaches here too once
+            # _guest_has_archive_tools is true — the guest's own GNU tar
+            # extracts its own guest-local ARCHIVE_DIR tarball exactly like
+            # the container extracts archive/$SYSTEM_KEY's.
             tar xf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive -C $package_merge_dir
         fi
     }

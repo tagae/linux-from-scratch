@@ -51,7 +51,7 @@
 # path instead — see config.log for which one, if a wrong path ever leaks).
 # gnutls itself is found via plain pkg-config rather than a *-config
 # script — see the PKG_CONFIG_LIBDIR/_SYSROOT_DIR comment in prepare().
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {

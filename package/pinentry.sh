@@ -6,7 +6,7 @@
 # libgpg-error/libassuan, already installed into $INSTALL_DIR/$PLATFORM —
 # see libassuan.sh for why target_sysroot_cc and the explicit --with-*-prefix
 # flags are both needed.
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {

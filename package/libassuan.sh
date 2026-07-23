@@ -9,7 +9,7 @@
 # gpg-error-config probing from leaking a host or toolchain path instead.
 # host/prefix/install-dir come from target_build_env; build= forces
 # autoconf to treat a same-arch target (virt/pi4) as a cross build.
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {

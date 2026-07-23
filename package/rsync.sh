@@ -2,6 +2,12 @@
 : ${package_source:=https://download.samba.org/pub/rsync/rsync-$package_version.tar.gz}
 : ${package_source_hash:=sha256:bd88cf82fa653da32314fb229136407c5c90f80d1758d8f4b091767877d8fa96}
 
+# build=: see m4.sh's copy of this guard (SELF-HOST.md M3 target build). No
+# target_sysroot_cc: this build already --disables every optional target
+# library (openssl/xxhash/zstd/lz4) below, so rsync links nothing from the
+# target tree either.
+: ${build:=$(gcc -dumpmachine)}
+
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \

@@ -108,6 +108,48 @@ install() {
                         > $($target-gcc -print-file-name=include)/limits.h
                     ;;
             esac
+
+            # Native-for-target scenario (package/native-toolchain.sh: this
+            # gcc's own host==target, i.e. it runs ON $target and emits
+            # $target code — SELF-HOST.md M1). Reuse target_sysroot_cc's own
+            # guard to identify it: every OTHER caller (lib/tools.sh's
+            # pass1/pass1-native/pass2) leaves host unset (a genuine cross
+            # build, build!=host), so this is false for them and this whole
+            # block is a no-op there — byte-identical tools/cross behavior.
+            #
+            # Both fixups belong here, in the package's own install step, so
+            # they stage->archive->merge like everything else (PACKAGING.md)
+            # instead of being patched by hand afterward in the merged tree.
+            if [ "${host:-}" = "$target" ]; then
+                # Bare "cc": this build already installs plain "gcc"/"g++"/
+                # "c++" itself (hardlinked to the $target-prefixed names,
+                # confirmed empirically — see native-toolchain.sh) but never
+                # "cc", the POSIX-conventional name a plain ./configure or
+                # Makefile run ON the guest (SELF-HOST.md Tier 3) is liable
+                # to look for first.
+                ln -sfv gcc $package_install_dir/$prefix/bin/cc
+
+                # usr/lib64 -> usr/lib: GCC hardcodes MULTILIB_OSDIRNAMES=
+                # lib64 for aarch64 (and other 64-bit targets), so this
+                # native-for-target gcc's own libstdc++.so*/libgcc_s.so* land
+                # under usr/lib64 — off the search path of this project's
+                # merged-usr, lib64-less target tree (glibc, and everything
+                # else this project installs, only ever populates usr/lib).
+                # Relocated HERE, in this package's own install step, rather
+                # than by sed-ing gcc's shared source tree (which pass1/
+                # pass1-native/pass2 also build from and whose existing,
+                # unaffected-by-this-bug behavior must not change — e.g.
+                # lib/tools.sh's own pass1-native copies FROM $native_target/
+                # lib64 on purpose). The lib64->lib symlink keeps anything
+                # still hardcoded to the lib64 path (this gcc's own
+                # -print-file-name, recorded libtool .la libdirs) resolving.
+                if [ -d $package_install_dir/$prefix/lib64 ]; then
+                    mkdir -p $package_install_dir/$prefix/lib
+                    cp -av $package_install_dir/$prefix/lib64/. $package_install_dir/$prefix/lib/
+                    rm -rf $package_install_dir/$prefix/lib64
+                    ln -sv lib $package_install_dir/$prefix/lib64
+                fi
+            fi
             ;;
     esac
 }

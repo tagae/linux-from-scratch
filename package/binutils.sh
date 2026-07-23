@@ -34,4 +34,22 @@ build() {
 
 install() {
     make install DESTDIR=$package_install_dir
+
+    # Native-for-target scenario (package/native-toolchain.sh): host==target
+    # here makes binutils treat this as a native build and install only bare
+    # names (ar, ld, ...) — but hand-rolled configures elsewhere (zlib's,
+    # the kernel's) look for $target-prefixed names first, mirroring what
+    # gcc's own install already provides for gcc (see gcc.sh). Same guard
+    # target_sysroot_cc uses to identify this scenario; every other caller
+    # (lib/tools.sh's pass1/pass2) leaves host unset, so this is a no-op
+    # there — byte-identical tools/cross behavior.
+    if [ "${host:-}" = "$target" ]; then
+        local _tool
+        for _tool in addr2line ar as c++filt dwp elfedit gprof ld ld.bfd \
+                     ld.gold nm objcopy objdump ranlib readelf size \
+                     strings strip; do
+            [ -x $package_install_dir/$prefix/bin/$_tool ] || continue
+            ln -sfv $_tool $package_install_dir/$prefix/bin/$target-$_tool
+        done
+    fi
 }

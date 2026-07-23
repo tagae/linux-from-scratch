@@ -2,6 +2,13 @@
 : ${package_source:=https://github.com/libffi/libffi/releases/download/v$package_version/libffi-$package_version.tar.gz}
 : ${package_source_hash:=sha256:f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc}
 
+# build=: see m4.sh's copy of this guard (SELF-HOST.md M3 target build —
+# python's ctypes module needs a target libffi). No-op for the existing
+# bootstrap_tools() CA-chain caller, which already sets build= explicitly
+# itself before calling here. No target_sysroot_cc: libffi links nothing
+# from the target tree beyond plain libc.
+: ${build:=$(gcc -dumpmachine)}
+
 prepare() {
     # --libdir + --disable-multi-os-directory: libffi's configure actually
     # installs its shared library via a separate "toolexeclibdir" variable,

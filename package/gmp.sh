@@ -9,7 +9,7 @@
 # checks try to actually compile-and-run a test program against the wrong
 # sysroot instead of taking their safe cross-compiling fallback. No-op for
 # the existing native (tools-phase) use, which already runs with host=build.
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 
 prepare() {
     # CFLAGS=-std=gnu17: GMP doesn't use plain AC_PROG_CC — it has its own
