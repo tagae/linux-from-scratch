@@ -4,24 +4,53 @@
 # ordered build phase like build_system():
 #
 #   zlib -> libgpg-error -> npth -> libassuan -> libksba -> libgcrypt ->
-#   libusb -> gnupg -> pinentry
+#   libusb -> gmp -> nettle -> libtasn1 -> gnutls -> gnupg -> pinentry
 #
-# Keeps gpg, gpg-agent and scdaemon; keyboxd/tofu/ldap/dirmngr/wks-tools/
-# gpgtar/photo-viewers/doc are all out of scope for a minimal embedded
-# build (keyboxd avoids sqlite, doc avoids texinfo, dirmngr avoids a
-# network daemon this project doesn't otherwise carry). --enable-ccid-
-# driver lets scdaemon talk to a YubiKey directly over USB via libusb, no
-# pcscd/libccid stack needed.
-: ${package_version:=2.4.5}
+# Versions aligned to BLFS stable-systemd's gnupg-2.5.17 page (gnupg,
+# libassuan, libgcrypt, npth, pinentry all bumped to match its tested set;
+# libksba/libgpg-error/libusb are unchanged — BLFS's own page doesn't pin
+# the first two at all, and libusb here is this project's own YubiKey
+# addition, not one of gnupg's own required deps). gmp/nettle/libtasn1/
+# gnutls are this project's own addition too, on top of BLFS's own gnupg
+# page — see package/gnutls.sh — pulled in solely to give dirmngr (below)
+# a TLS backend; BLFS's gnupg page doesn't need them because it always
+# builds on a system with a target GnuTLS already present system-wide.
+#
+# Keeps gpg, gpg-agent and scdaemon; keyboxd/tofu/ldap/wks-tools/gpgtar/
+# photo-viewers/doc stay disabled — still out of scope for a minimal
+# embedded build (keyboxd avoids sqlite, doc avoids texinfo — this project
+# doesn't build package documentation). --enable-ccid-driver lets scdaemon
+# talk to a YubiKey directly over USB via libusb, no pcscd/libccid stack
+# needed.
+#
+# --disable-dirmngr was DROPPED, and dirmngr now genuinely builds. dirmngr
+# is the daemon gpg shells out to for keyserver access; the goal was
+# reaching it eventually reaching hkps:// (HTTPS) keyservers (see GNUPG-
+# YUBIKEY.md). gnupg-2.5.17's own configure.ac hard-requires a TLS backend
+# (NTBTLS or GnuTLS) to build dirmngr AT ALL — there is no "build it, just
+# skip HTTPS" middle ground; dirmngr's networking layer needs one even for
+# plain hkp://. Without either, configure prints "*** Neither NTBTLS nor
+# GNUTLS available - not building dirmngr." and simply omits it (not a
+# fatal error — confirmed empirically before GnuTLS was added: gpg/gpg-
+# agent/scdaemon/pinentry-tty all still built and ran fine; no dirmngr
+# binary existed in the install tree at all). GnuTLS (package/gnutls.sh)
+# is now built ahead of gnupg in the install order above, and configure.ac
+# detects it automatically via pkg-config (PKG_CHECK_MODULES([LIBGNUTLS],
+# [gnutls >= 3.2]) — see NEED_GNUTLS_VERSION in gnupg's own configure.ac),
+# the same PKG_CONFIG_LIBDIR/_SYSROOT_DIR mechanism package/systemd.sh
+# already established for cross pkg-config lookups — see prepare() below.
+: ${package_version:=2.5.17}
 : ${package_source:=https://gnupg.org/ftp/gcrypt/gnupg/gnupg-$package_version.tar.bz2}
-: ${package_source_sha256:=f68f7d75d06cb1635c336d34d844af97436c3f64ea14bcb7c869782f96f44277}
+: ${package_source_hash:=sha256:2c1fbe20e2958fd8fb53cf37d7c38e84a900edc0d561a1c4af4bc3a10888685d}
 
-# Links against libgpg-error/libgcrypt/libassuan/libksba/npth, all already
-# installed into $INSTALL_DIR/$PLATFORM — see libassuan.sh for why
+# Links against libgpg-error/libgcrypt/libassuan/libksba/npth/gnutls, all
+# already installed into $INSTALL_DIR/$PLATFORM — see libassuan.sh for why
 # target_sysroot_cc and explicit --with-*-prefix flags are both needed
 # (gnupg's own configure probes each dependency's own *-config/pkg-config
 # script, which would otherwise happily answer with a host or toolchain
 # path instead — see config.log for which one, if a wrong path ever leaks).
+# gnutls itself is found via plain pkg-config rather than a *-config
+# script — see the PKG_CONFIG_LIBDIR/_SYSROOT_DIR comment in prepare().
 : ${build:=$(cc -dumpmachine)}
 target_sysroot_cc
 
@@ -62,10 +91,30 @@ prepare() {
     # compiling fallback and answers "guessing yes" for the identical
     # glibc). Answering directly sidesteps the broken self-test instead
     # of the real question.
+    #
+    # PKG_CONFIG_LIBDIR/_SYSROOT_DIR: gnutls detection (configure.ac's
+    # PKG_CHECK_MODULES([LIBGNUTLS], [gnutls >= 3.2])) goes through plain
+    # pkg-config, not a *-config script like the other deps above, so the
+    # GPGRT_CONFIG-style absolute path doesn't apply here. LIBDIR replaces
+    # pkgconf's compiled-in default search path (rather than adding to
+    # it, like PKG_CONFIG_PATH would) so only the target tree's own .pc
+    # files are seen, never TOOL_DIR's bind-mounted host copies; SYSROOT_DIR
+    # remaps gnutls.pc's own runtime-relative "prefix=/usr" onto this
+    # build's real on-disk target tree — see gnutls.sh's own prepare() for
+    # the fuller version of this same rationale (package/systemd.sh is
+    # this project's original precedent for the mechanism).
+    #
+    # --disable-ntbtls: gnupg tries NTBTLS before falling back to GnuTLS
+    # (see configure.ac); no target build of NTBTLS exists in this
+    # project (and none is planned — GnuTLS was the deliberate choice,
+    # see gnutls.sh), so skip straight to the GnuTLS probe instead of
+    # relying on an implicit "ntbtls-config not found" fallback.
     am_cv_func_iconv_works=yes \
     CFLAGS=-std=gnu17 \
     CPPFLAGS=-I$INSTALL_DIR/$PLATFORM/usr/include/libusb-1.0 \
     GPGRT_CONFIG=$INSTALL_DIR/$PLATFORM/usr/bin/gpgrt-config \
+    PKG_CONFIG_LIBDIR=$INSTALL_DIR/$PLATFORM/usr/lib/pkgconfig \
+    PKG_CONFIG_SYSROOT_DIR=$INSTALL_DIR/$PLATFORM \
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
@@ -74,10 +123,10 @@ prepare() {
         --disable-keyboxd \
         --disable-tofu \
         --disable-ldap \
-        --disable-dirmngr \
         --disable-wks-tools \
         --disable-gpgtar \
         --disable-photo-viewers \
+        --disable-ntbtls \
         --enable-ccid-driver \
         --with-libgpg-error-prefix=$INSTALL_DIR/$PLATFORM/usr \
         --with-libgcrypt-prefix=$INSTALL_DIR/$PLATFORM/usr \

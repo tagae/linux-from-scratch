@@ -20,26 +20,41 @@ stage() {
     fi
 }
 
-# Download a URL into a directory, verifying the server's TLS certificate
-# against $SSL_CERT_FILE when that bundle exists, and falling back to
-# unverified transport otherwise. The fallback is safe because every source
-# is integrity-checked by package_source_sha256 regardless — the CA bundle
-# only adds channel authentication (defence in depth, fail-fast on a MITM).
-# It is a fallback specifically to break the bootstrap: the ca-certificates
-# package's own hash-pinned sources are fetched before that bundle exists.
+# Download a URL into a directory, always verifying the server's TLS
+# certificate against $SSL_CERT_FILE — never falling back to unverified
+# transport. That bundle is guaranteed present: the bootstrap phase runs in
+# Debian (which ships one at the standard path), and the scratch phase gets
+# one seeded into $TOOL_DIR at the end of bootstrap_tools (see there) before
+# its first download, later overwritten by the ca-certificates package's own
+# from-scratch bundle. If it is somehow missing or empty we refuse to
+# download rather than fetch over an unauthenticated channel. (Integrity is
+# still additionally guaranteed by package_source_hash in get() — defence
+# in depth against a trusted-but-compromised mirror — but authentication is
+# no longer optional.)
 fetch_url() {
     local url=$1 dest=$2
-    if [ -s "${SSL_CERT_FILE:-/dev/null}" ]; then
-        wget --ca-certificate="$SSL_CERT_FILE" -P "$dest" "$url"
-    else
-        wget --no-check-certificate -P "$dest" "$url"
-    fi
+    [ -s "${SSL_CERT_FILE:-/dev/null}" ] \
+        || bail "No CA bundle at '${SSL_CERT_FILE:-}': refusing to fetch $url over unverified TLS"
+    wget --ca-certificate="$SSL_CERT_FILE" -P "$dest" "$url"
+}
+
+# Verify a file against an expected hash written "algo:hexdigest"
+# (package_source_hash), e.g. sha256:abc… — the algorithm prefix selects the
+# coreutils checker (sha256 -> sha256sum, sha512 -> sha512sum, …), so a pin
+# can move to a stronger digest per package with no change here. Bails on
+# mismatch. (SRI/Nix-style; a bare digest with no "algo:" prefix fails, since
+# "<digest>sum" is not a command — every pin must name its algorithm.)
+verify_hash() {
+    local file=$1 hash=$2
+    local algo=${hash%%:*} digest=${hash#*:}
+    printf '%s  %s\n' "$digest" "$file" | "${algo}sum" -c - \
+        || bail "Integrity check failed for $file (expected $hash)"
 }
 
 get() {
     local url=$1
-    # Optional expected SHA-256 of the archive (package_source_sha256).
-    local sha256=${2:-}
+    # Optional expected source hash, "algo:hexdigest" (package_source_hash).
+    local hash=${2:-}
     local archive=${url##*/}
     # .tgz is a common alternate spelling of .tar.gz with no ".tar."
     # substring to strip via the usual pattern.
@@ -51,10 +66,7 @@ get() {
     # Runs on the on-disk archive whether just downloaded or cached from a
     # previous run, so a corrupted/tampered cache is caught too. (fetch is
     # stamped via _once, so this happens once per package, not every build.)
-    if [ -n "$sha256" ]; then
-        printf '%s  %s\n' "$sha256" "$DOWNLOAD_DIR/$archive" | sha256sum -c - \
-            || bail "Integrity check failed for $archive (expected sha256 $sha256)"
-    fi
+    [ -z "$hash" ] || verify_hash "$DOWNLOAD_DIR/$archive" "$hash"
     [ -d $SOURCE_DIR/$extracted ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
 }
 

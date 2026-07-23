@@ -1,6 +1,6 @@
 : ${package_version:=4.19.4}
 : ${package_source:=https://github.com/shadow-maint/shadow/releases/download/$package_version/shadow-$package_version.tar.xz}
-: ${package_source_sha256:=ce57a313e315a0a7cb04a8f50cc20753e994e487bbe9b78a2a824ca75cb486c0}
+: ${package_source_hash:=sha256:ce57a313e315a0a7cb04a8f50cc20753e994e487bbe9b78a2a824ca75cb486c0}
 
 prepare() {
     $package_source_dir/configure \

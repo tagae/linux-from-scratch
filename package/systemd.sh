@@ -1,6 +1,6 @@
 : ${package_version:=260.2}
 : ${package_source:=https://github.com/systemd/systemd/archive/v$package_version/systemd-$package_version.tar.gz}
-: ${package_source_sha256:=71a9ed11cf773478b0d7a16cd96e39ca3c3939ab37ed9a8ee814c31ea9b4f2b5}
+: ${package_source_hash:=sha256:71a9ed11cf773478b0d7a16cd96e39ca3c3939ab37ed9a8ee814c31ea9b4f2b5}
 
 prepare() {
     # meson's cpu_family values are its own fixed vocabulary, not this

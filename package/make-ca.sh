@@ -1,16 +1,9 @@
-# make-ca — the lfs-book shell script that turns Mozilla's certdata.txt into
-# a PKCS#11 anchor directory and, via p11-kit's `trust extract`, the actual
-# trust-store outputs (openssl directory, PEM bundles, Java cacerts). No
-# compilation: install the script (and its bundled default ISRG_Root_X1.pem/
-# CS.txt data) as build-host-native tooling under $TOOL_DIR. Consumed by
-# package/ca-certificates.sh, which supplies the actual (pinned) certdata.txt
-# and does the real generation work.
+# Turns Mozilla's certdata.txt into a PKCS#11 anchor directory and, via p11-kit's `trust extract`,
+# the actual trust-store outputs (openssl directory, PEM bundles, Java cacerts).
+
 : ${package_version:=1.16.1}
-# archive/<ref>/<name>-<version>.tar.gz (not archive/refs/tags/<tag>.tar.gz):
-# names the download make-ca-$version.tar.gz, matching the extracted dir —
-# see kpartx.sh for why that naming avoids get()'s re-extract-every-fetch bug.
 : ${package_source:=https://github.com/lfs-book/make-ca/archive/v$package_version/make-ca-$package_version.tar.gz}
-: ${package_source_sha256:=98c7e6fded1938b972d0177b5d5e925d318be87f84ee9e4cad680656a8c29414}
+: ${package_source_hash:=sha256:98c7e6fded1938b972d0177b5d5e925d318be87f84ee9e4cad680656a8c29414}
 
 prepare() {
     # BLFS's own fix: make-ca calls `mktemp -p DIR -t TEMPLATE`, but GNU

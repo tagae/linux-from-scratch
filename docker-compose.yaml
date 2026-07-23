@@ -52,6 +52,7 @@ services:
     environment:
       PLATFORM:
       INIT:
+      CAPS:
       LFS_RELEASE:
       LFS_PHASE: scratch
       VERSION_CODENAME:
@@ -134,6 +135,13 @@ services:
       - type: bind
         source: $PWD/image
         target: /mnt/lfs/image
+      # Same reasoning as image/ above: per-package tarballs (lib/package.sh's
+      # archive/merge, see PACKAGING.md) need to survive the --rm container
+      # and be readable outside it — by a from-scratch reconstruction on the
+      # host, and (over the 9p share) by the guest's own unarchive path.
+      - type: bind
+        source: $PWD/archive
+        target: /mnt/lfs/archive
 
 volumes:
   source:

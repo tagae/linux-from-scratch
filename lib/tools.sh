@@ -250,6 +250,53 @@ bootstrap_tools() {
         install wget
     )
 
+    # --- CA trust store: build our own bundle here, in bootstrap -------
+    # Generate the CA certificate bundle from Mozilla's certdata.txt now, in
+    # the bootstrap (Debian) container, so it exists BEFORE the scratch phase
+    # runs — letting that phase verify TLS against OUR OWN trust store from
+    # its very first download (eating our own dog food) instead of a copy of
+    # Debian's bundle. The chain's own sources download verified by Debian's
+    # bundle (this phase's SSL_CERT_FILE), exactly as every other bootstrap
+    # source already does — Debian's certs authenticate the downloads, but
+    # Debian's bundle *file* is never used as the scratch phase's trust anchor.
+    #
+    # openssl (make-ca's crypto backend) and pkgconf (p11-kit's meson
+    # dependency probe) come from the temp-tools subshell above; python3 for
+    # meson/ninja is the Debian container's own (it ships no ninja/meson, so
+    # build them here — they are also build_tools() members, stamp-shared, so
+    # that later call fast-paths). CC/CXX are pointed explicitly at the native
+    # cross-compiler: unlike the scratch phase, bare `gcc` here resolves to
+    # Debian's own (PATH order), which would link p11-kit's `trust` against
+    # Debian glibc and leave it unable to run in the FROM-scratch container.
+    # meson/ninja honor CC/CXX from the environment; autoconf (libffi/
+    # libtasn1) via --host below.
+    (
+        readonly package_variant=tools
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
+
+        # Debian's own build triple — computed via bare `cc` BEFORE the CC
+        # override below (which would otherwise make it report $native_target).
+        readonly build=$(cc -dumpmachine)
+        readonly host=$native_target
+        export CC=$native_target-gcc CXX=$native_target-g++
+        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+        # Mirror build_tools()' env: glibc's compiled-in gconv path is this
+        # container's real /usr/lib/gconv; point it at our own. (No modules are
+        # actually installed there, so make-ca's UTF-8 cert labels resolve via
+        # glibc's built-in converters — this only prevents a stray lookup in
+        # the wrong tree.)
+        export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
+
+        install ninja
+        install meson
+        install libffi
+        install libtasn1
+        install p11-kit
+        install make-ca
+        install ca-certificates
+    )
+
     # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
     # share one since they all use the same target triplet) ----------
     # Never executed — only ever linked/read against by pass2 below — so
@@ -298,6 +345,20 @@ bootstrap_tools() {
     rm -f a.out
 
     _tools_relocate
+
+    # Stage our own generated CA bundle (built by the cert chain above from
+    # Mozilla's certdata.txt, never Debian's) where the scratch phase's
+    # SSL_CERT_FILE points (see lfs). $WORK_DIR is the shared `work` volume —
+    # mounted in both the bootstrap and scratch containers — so a copy here
+    # reaches the scratch phase with no extra mount, the same way the toolchain
+    # itself does. Kept separate from the in-tree $TOOL_DIR/etc/ssl store the
+    # ca-certificates package installs, so the build's trust anchor is one
+    # explicit, dedicated file (cf. the staged bash in $SCRATCH_INIT_DIR).
+    # -f: make-ca leaves the bundle read-only (0444), so a re-run (another
+    # `make tools`) must be able to replace an existing, unwritable copy —
+    # cp -f removes it and retries rather than failing with EACCES.
+    mkdir -p $WORK_DIR/certs
+    cp -fv $TOOL_DIR/etc/ssl/certs/ca-certificates.crt $WORK_DIR/certs/ca-certificates.crt
 
     # TOOL_DIR is a named volume, invisible to `docker build`; stage our
     # own already-built bash where Dockerfile.scratch's COPY can reach it.
@@ -355,23 +416,17 @@ build_tools() {
     # strip build-only tooling back out of the final system; this project
     # does, so they get the same build-time-only treatment as bison/gettext
     # /python above instead of landing in INSTALL_DIR.
+    # Also built (earlier) by bootstrap_tools' cert chain, so these fast-path
+    # here; kept because the later systemd build genuinely depends on them.
     install ninja
     install meson
 
-    # The CA trust store scratch-phase downloads verify TLS against (see
-    # SSL_CERT_FILE in `lfs` and fetch_url in lib/base.sh) — built as early
-    # as possible (right after ninja/meson, which p11-kit needs) so every
-    # remaining download in this function switches from fetch_url's
-    # unverified fallback to real, verified TLS. All native build-host
-    # tooling: make-ca's own PEM output is architecture-independent, so
-    # this only needs to run once, here, against the build host itself
-    # (see package/ca-certificates.sh) — bootable-{systemd,busybox}.sh
-    # separately require() it again into each target tree.
-    install libffi
-    install libtasn1
-    install p11-kit
-    install make-ca
-    install ca-certificates
+    # NOTE: the CA trust store (libffi → libtasn1 → p11-kit → make-ca →
+    # ca-certificates) is built in bootstrap_tools(), not here — our own
+    # bundle must exist before this phase's very first download so fetch_url
+    # (lib/base.sh) can verify TLS against it from the start. See the cert
+    # chain comment there. bootable-{systemd,busybox}.sh separately require()
+    # ca-certificates into each target tree.
 
     install gperf
 
@@ -453,8 +508,8 @@ build_tools() {
     # libdevmapper, so build that (via lvm2, its own required dependency
     # is libaio) rather than the rest of LVM2's tools/daemon.
     install libaio
-    install lvm2
-    install kpartx
+    install lvm2#device-mapper
+    install multipath-tools#kpartx
 }
 
 # Every native binary from here on (the temporary tools, build_tools()'s

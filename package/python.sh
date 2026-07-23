@@ -1,6 +1,6 @@
 : ${package_version:=3.14.6}
 : ${package_source:=https://www.python.org/ftp/python/$package_version/Python-$package_version.tar.xz}
-: ${package_source_sha256:=143b1dddefaec3bd2e21e3b839b34a2b7fb9842272883c576420d605e9f30c63}
+: ${package_source_hash:=sha256:143b1dddefaec3bd2e21e3b839b34a2b7fb9842272883c576420d605e9f30c63}
 
 package_source_dir=$SOURCE_DIR/Python-$package_version
 

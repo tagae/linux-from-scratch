@@ -35,6 +35,16 @@ mount -t sysfs sysfs /sys
 mount -t tmpfs tmpfs /run
 mount -t tmpfs tmpfs /tmp
 hostname ${MACHINE:-lfs}
+
+# Run any capability's own startup script dropped into /etc/init.d (e.g.
+# network-config's S40network, 9p-config's S30mount-9p) — a generic
+# mechanism so no future capability needs its own edit here. With no such
+# script present the glob is left unmatched (this shell's own doing, not
+# the scripts'), so [ -x ] on the literal pattern is simply false and a
+# no-caps boot is unchanged.
+for f in /etc/init.d/S*; do
+    [ -x "\$f" ] && "\$f"
+done
 EOF
     chmod -v 0755 $package_install_dir/etc/init.d/rcS
 }

@@ -1,6 +1,6 @@
 : ${package_version:=5.48}
 : ${package_source:=https://astron.com/pub/file/file-$package_version.tar.gz}
-: ${package_source_sha256:=ed14656883b23a364b4057c05595d93252da9bc473d30106519519d0da141283}
+: ${package_source_hash:=sha256:ed14656883b23a364b4057c05595d93252da9bc473d30106519519d0da141283}
 
 prepare() {
     case $package_component in

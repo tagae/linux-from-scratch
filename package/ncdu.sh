@@ -11,7 +11,7 @@
 : ${package_version:=1.22}
 : ${package_source:=https://dev.yorhel.nl/download/ncdu-$package_version.tar.gz}
 # Optional: verified against the downloaded archive before unpacking.
-: ${package_source_sha256:=0ad6c096dc04d5120581104760c01b8f4e97d4191d6c9ef79654fa3c691a176b}
+: ${package_source_hash:=sha256:0ad6c096dc04d5120581104760c01b8f4e97d4191d6c9ef79654fa3c691a176b}
 
 # host/prefix/install-dir come from target_build_env (applied by install());
 # build= forces autoconf to treat a same-arch target (virt/pi4) as a cross

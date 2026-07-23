@@ -1,6 +1,6 @@
-: ${package_version:=1.10.3}
+: ${package_version:=1.12.0}
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-$package_version.tar.bz2}
-: ${package_source_sha256:=8b0870897ac5ac67ded568dcfadf45969cfa8a6beb0fd60af2a9eadc2a3272aa}
+: ${package_source_hash:=sha256:0311454e678189bad62a7e9402a9dd793025efff6e7449898616e2fc75e0f4f5}
 
 # Crypto primitives (see GNUPG-YUBIKEY.md). Links against libgpg-error —
 # see libassuan.sh for why target_sysroot_cc and the explicit

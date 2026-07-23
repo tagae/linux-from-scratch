@@ -1,6 +1,6 @@
 : ${package_version:=1.16.2}
 : ${package_source:=https://dbus.freedesktop.org/releases/dbus/dbus-$package_version.tar.xz}
-: ${package_source_sha256:=0ba2a1a4b16afe7bceb2c07e9ce99a8c2c3508e5dec290dbb643384bd6beb7e2}
+: ${package_source_hash:=sha256:0ba2a1a4b16afe7bceb2c07e9ce99a8c2c3508e5dec290dbb643384bd6beb7e2}
 
 prepare() {
     $package_source_dir/configure \

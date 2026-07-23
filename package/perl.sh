@@ -1,6 +1,6 @@
 : ${package_version:=5.42.2}
 : ${package_source:=https://www.cpan.org/src/5.0/perl-$package_version.tar.xz}
-: ${package_source_sha256:=0a585eeb9e363c0f80482ddb3571625250c2c86aeb408853e8ea50805cfb14bb}
+: ${package_source_hash:=sha256:0a585eeb9e363c0f80482ddb3571625250c2c86aeb408853e8ea50805cfb14bb}
 
 # Custom build system (Configure, not autoconf) — native only, no
 # --host/--build: matches how bison/gettext/python are built here too.
