@@ -35,9 +35,28 @@ depends() {
     # root, not TOOL_DIR-relative); point it at our own. headers=: the
     # per-target sysroot's kernel headers ($TOOL_DIR/$target), matching
     # $target's architecture.
+    #
+    # Both are TOOL_DIR-relative paths that only exist in the container —
+    # on the guest (LFS_PHASE=guest, SELF-HOST.md M4) there is no TOOL_DIR
+    # at all (see lfs), so $TOOL_DIR resolves to the 9p-shared project
+    # dir's nonexistent "tools" subdir. Guarded with [ -d ... ], not an
+    # LFS_PHASE check: it's the same condition either way (only true in the
+    # container) but self-documents WHY, and needs no phase-var lookup.
+    # Left unset there, both fall back to already-correct native defaults:
+    # bison's own compiled-in /usr/share/bison is real on the guest (it was
+    # itself installed with prefix=/usr — see SELF-HOST.md M3), and plain
+    # ./configure with no --with-headers lets glibc's build find the
+    # kernel UAPI headers at the guest's own real /usr/include (installed
+    # there by a prior `unarchive` of linux#headers's own tarball — see
+    # native-toolchain.sh) exactly like any ordinary native glibc build.
     (
-        export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison
-        headers=$TOOL_DIR/$target/usr/include require glibc
+        if [ -d "$TOOL_DIR/usr/share/bison" ]; then
+            export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison
+        fi
+        if [ -d "$TOOL_DIR/$target/usr/include" ]; then
+            headers=$TOOL_DIR/$target/usr/include
+        fi
+        require glibc
     )
 
     # Capabilities.
@@ -61,11 +80,39 @@ depends() {
     # (see feedback-util-linux-setuid). util-linux links its own just-
     # installed libmount/libblkid, so its script opts into the sysroot CC
     # (target_sysroot_cc) — nothing to set here for that.
+    # losetup/fallocate/mountpoint/mount explicitly enabled: no extra
+    # library dependency, cheap either way, and any self-hosting system
+    # benefits from having them (not just the CAPS=loop builder guest
+    # below).
+    #
+    # fdisks (sfdisk) is trickier: the guest needs it from its OWN target-
+    # built util-linux to partition its own output image (SELF-HOST.md M4 —
+    # lib/image.sh's create_partitions(), container-side today via the
+    # build-host-native copy build_tools() installs into $TOOL_DIR). But
+    # upstream util-linux has no standalone --enable-sfdisk — --enable-
+    # fdisks is ONE combined switch for fdisk(8)+sfdisk(8)+cfdisk(8)
+    # together (confirmed via ./configure --help: no per-tool cfdisk
+    # toggle), and cfdisk hard-requires ncurses/ncursesw/slang or configure
+    # itself fails outright — none of those are otherwise part of this
+    # minimal target tree. So pull in a small target-built ncursesw
+    # (ncurses.sh is already proven, used for TOOL_DIR's own tic/ncurses the
+    # same way — see lib/tools.sh) ahead of util-linux, but ONLY for the
+    # CAPS=loop builder-guest scenario that actually needs sfdisk — keeping
+    # every other build (real Pi hardware images, the plain virt image,
+    # busybox-init, …) exactly as lean as before.
+    local fdisks=
+    case " ${CAPS:-} " in
+        *" loop "*)
+            fdisks=yes
+            ( widec=yes shared=yes normal=yes ada=no debug=no stripping=no require ncurses )
+            ;;
+    esac
     (
         bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
         chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no
         pylibmount=no static=no liblastlog2=no python=no systemd=no wall=no
         makeinstall_chown=no makeinstall_setuid=no
+        losetup=yes fallocate=yes mountpoint=yes mount=yes fdisks=$fdisks
         require util-linux
     )
 
@@ -98,8 +145,14 @@ depends() {
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
     # shells out to bison, whose compiled-in default pkgdatadir is the
     # literal /usr/share/bison — this container's empty real root, not
-    # TOOL_DIR-relative (same fixup as glibc above; see there).
-    ( export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison; require linux )
+    # TOOL_DIR-relative (same fixup as glibc above; see there, including why
+    # this is guarded the same way for the guest).
+    (
+        if [ -d "$TOOL_DIR/usr/share/bison" ]; then
+            export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison
+        fi
+        require linux
+    )
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only.
     if [ -n "${DTB:-}" ]; then

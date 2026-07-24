@@ -11,6 +11,37 @@ prepare() {
         *)     local meson_cpu_family=$ARCH ;;
     esac
 
+    # Guest phase (LFS_PHASE=guest, SELF-HOST.md M4): host==build==target
+    # for real here (a genuine native build), unlike the container's own
+    # cross build where host==target but build is the container's own
+    # architecture — see target_build_env/guest_build_env in lib/package.sh
+    # and build_system()'s own guest-phase call to the former. But this
+    # meson.ini's [binaries]/[host_machine] describe a CROSS build either
+    # way (that's the whole point of a cross-file), which makes meson
+    # default to assuming compiled binaries can't just be executed here
+    # (needs_exe_wrapper, defaulting true with no exe_wrapper= configured) —
+    # wrong on the guest, where they genuinely can run directly, and fatal:
+    # systemd's own meson.build compiles and RUNS several codegen helpers
+    # during configuration. Keeping the cross-file itself byte-identical
+    # (rather than skipping it) keeps the container's own cross path
+    # completely unaffected by this guest-only property.
+    local needs_exe_wrapper=
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        needs_exe_wrapper='needs_exe_wrapper = false'
+    fi
+
+    # Kernel UAPI headers for c_args below: normally the container's own
+    # per-target sysroot ($TOOL_DIR/$target/usr/include) — doesn't exist on
+    # the guest (no TOOL_DIR there at all, see lfs). The guest's own live
+    # /usr/include has them instead (unarchived straight onto "/" — see
+    # native-toolchain.sh) — same fixup, and same "confirmed empirically,
+    # not harmless when missing" story, as target_sysroot_cc's own copy of
+    # this in lib/package.sh; see there for the full account.
+    local kernel_headers=$TOOL_DIR/$target/usr/include
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        kernel_headers=/usr/include
+    fi
+
     cat > meson.ini <<EOF
 [host_machine]
 system = 'linux'
@@ -47,7 +78,7 @@ prefix = '$prefix'
 # headers instead, a different architecture entirely on e.g. pi0) for the
 # kernel headers — a build-time dependency only, glibc doesn't ship them
 # and INSTALL_DIR deliberately has none (see tools_bootstrap).
-c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/$target/usr/include']
+c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$kernel_headers']
 # Some deps systemd links by full path (e.g. libfdisk.so, via libshared-fdisk)
 # rather than as "-L$sysroot/usr/lib -lfdisk", so no -L reaches those links —
 # and gcc's own baked-in sysroot is TOOL_DIR/$target, not INSTALL_DIR. ld
@@ -71,6 +102,7 @@ c_link_args = ['--sysroot=$sysroot', '-Wl,-rpath-link,$sysroot/usr/lib']
 
 [properties]
 sys_root = '$sysroot'
+$needs_exe_wrapper
 EOF
 
     # PKG_CONFIG_LIBDIR (which *replaces* pkgconf's compiled-in default

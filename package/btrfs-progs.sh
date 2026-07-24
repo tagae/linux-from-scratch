@@ -12,8 +12,30 @@ package_source_dir=$SOURCE_DIR/btrfs-progs-v$package_version
 # format a fresh one).
 # Hand-rolled configure/Makefile, not full autoconf — no out-of-tree build
 # support, so run every step directly in package_source_dir.
+#
+# Note: this in-tree build model (package_source_dir hardcoded above,
+# reused directly as the build dir) means this package is NOT safe to
+# build for two different scenarios back to back without a clean rebuild
+# in between (e.g. build_tools()'s own build-host-native "tools" variant
+# vs. a target "virt" variant, SELF-HOST.md M4) — `make`'s own dependency
+# tracking can see already-compiled objects from the OTHER variant's run
+# and skip recompiling, silently installing stale, wrong-toolchain
+# binaries (confirmed the hard way: a target build produced a binary whose
+# ELF interpreter was still TOOL_DIR-relative). Every other package in
+# this project avoids this by building out-of-tree in its own variant-
+# scoped package_build_dir; this one can't (no out-of-tree support
+# upstream). `rm -rf source/btrfs-progs-v$package_version` before
+# switching scenarios is the workaround.
 prepare() {
     cd $package_source_dir
+
+    # libuuid/libblkid (uuid/uuid.h, blkid.h) come from util-linux, already
+    # installed into the target tree earlier in the same umbrella — needs
+    # the sysroot CC (target_sysroot_cc) to find them, same reasoning as
+    # util-linux's own script; a no-op in the build-host-native reuse
+    # (build_tools()), where host != $target.
+    target_sysroot_cc
+
     ./configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \

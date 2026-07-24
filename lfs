@@ -42,10 +42,19 @@ done
 # relative even in guest phase (=/mnt/lfs/download, since PROJECT_DIR IS
 # /mnt/lfs when run from the guest's 9p mount) — the shared, hash-verified
 # source cache is exactly what a guest build wants to reuse, offline.
+# INSTALL_DIR/IMAGE_DIR join the three above for the same reason (SELF-HOST.md
+# M4): `system build`/`image build` need somewhere guest-local to stage the
+# system tree and the .img file while building — INSTALL_DIR is a full
+# native-built system tree (~GBs of churn), and the not-yet-finished .img
+# under IMAGE_DIR is actively attached to a loop device mid-build, neither
+# of which belongs on the 9p share. M5 copies the *finished* artifacts back
+# out to the shared image/ and work/boot/ explicitly (see SELF-HOST.md).
 if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
     : ${SOURCE_DIR:=/var/lfs/source}
     : ${WORK_DIR:=/var/lfs/work}
     : ${ARCHIVE_DIR:=/var/lfs/archive}
+    : ${INSTALL_DIR:=/var/lfs/install}
+    : ${IMAGE_DIR:=/var/lfs/image}
 fi
 
 : ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
@@ -246,11 +255,18 @@ case "${1:-help}" in
                     -device virtio-9p-pci,fsdev=lfs,mount_tag=lfs
                 ;;
         esac
+        # QEMU_EXTRA last: QEMU's own "last flag wins" rule for repeated
+        # options (-smp/-m/...) lets this override QEMU_FLAGS's defaults
+        # (e.g. the self-host builder guest needs more than virt's default
+        # -smp 1 -m 512 to build a whole system natively — see SELF-HOST.md
+        # M4) without editing the platform file itself. Empty by default,
+        # so an unset QEMU_EXTRA changes nothing.
         exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
             -no-reboot \
             "$@" \
             -append "${QEMU_APPEND:-} ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait}" \
-            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}"
+            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}" \
+            ${QEMU_EXTRA:-}
         ;;
 
     help)

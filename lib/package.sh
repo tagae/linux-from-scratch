@@ -145,6 +145,27 @@ _guest_has_archive_tools() {
 # call is harmless where build_tools() reuses these scripts natively.
 target_sysroot_cc() {
     [ "${host:-}" = "$target" ] || return 0
+
+    # Kernel UAPI headers: normally the container's own per-target
+    # sysroot ($TOOL_DIR/$target/usr/include, see tools_bootstrap) — but
+    # that doesn't exist on the guest (LFS_PHASE=guest, SELF-HOST.md
+    # M4; there is no TOOL_DIR there at all, see lfs). The guest's own
+    # live /usr/include DOES have them (unarchived straight onto "/" —
+    # see native-toolchain.sh), but --sysroot below routes ALL
+    # *implicit* header search through $sysroot (=$INSTALL_DIR/
+    # $SYSTEM_KEY, a fresh per-build staging tree with no kernel
+    # headers of its own — the guest's own system build never
+    # require()s linux#headers into it), making those live headers
+    # invisible unless explicitly re-added — confirmed empirically, not
+    # "harmless when missing" as first assumed: util-linux's own
+    # configure reported sys/mount.h, sys/ioctl.h, sys/socket.h, etc.
+    # all missing despite a real, populated guest /usr/include. Computed
+    # once, ahead of the CC/CXX branches below (both need it).
+    local kernel_headers=$TOOL_DIR/$target/usr/include
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        kernel_headers=/usr/include
+    fi
+
     if [ -z "${CC:-}" ]; then
         # Explicit -L, not just --sysroot: libtool's own `--mode=install`
         # relink (util-linux's libmount->libblkid, triggered by DESTDIR now
@@ -166,9 +187,23 @@ target_sysroot_cc() {
         # ("file format not recognized" — the canary this was caught on).
         # An explicit "-L$sysroot/usr/lib" here, ahead of anything libtool
         # appends later, wins the search unconditionally either way.
-        CC="$target-gcc --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $TOOL_DIR/$target/usr/include -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
+        CC="$target-gcc --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $kernel_headers -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
     fi
-    export CC
+    # CXX mirrors CC exactly (same guard, same flags, just $target-g++):
+    # every existing caller of this function (mpfr.sh, mpc.sh, util-linux.sh,
+    # btrfs-progs.sh) builds pure C, so a bare, un-sysroot'd CXX never
+    # mattered before — but gcc.sh's own native-for-target build (SELF-HOST.md
+    # M6: host=$target, see native-toolchain.sh) is C++ (GCC's own sources,
+    # and libstdc++-v3 in the same combined build), and its final cc1 link is
+    # run through $(CXX), not $(CC) — confirmed empirically: a bare
+    # "$target-g++" (CXX left untouched by this function) hit the exact same
+    # "-L/usr/lib" wrong-arch-libc canary this function's own CC branch above
+    # already documents, just on the C++ side. Guarded identically, so it's
+    # a no-op for every other caller.
+    if [ -z "${CXX:-}" ]; then
+        CXX="$target-g++ --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $kernel_headers -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
+    fi
+    export CC CXX
 }
 
 version() {
@@ -236,7 +271,28 @@ _source() {
         if [ -f $package_build_dir/.$step-$package_component ]; then
             echo "$step (done)"
         else
-            $step && touch $package_build_dir/.$step-$package_component
+            # NOT "$step && touch ..." (reverted — found while diagnosing
+            # SELF-HOST.md M4's 9p mount silently never working): bash's
+            # errexit exemption for the left side of "&&" applies to that
+            # command's ENTIRE execution, including everything a called
+            # shell FUNCTION does internally — so with $step on the left of
+            # &&, a failure anywhere inside e.g. install() (a plain shell
+            # function, not a subshell) was silently swallowed instead of
+            # aborting the build: the function kept running past the failed
+            # command, "touch" was correctly skipped (short-circuited, so
+            # the stamp wasn't wrongly created), but the overall build just
+            # carried on as if nothing had gone wrong (confirmed
+            # empirically — package/9p-config.sh's `cat > etc/fstab`
+            # failed with ENOENT on a from-scratch stage dir and the
+            # system build finished "successfully" regardless, silently
+            # producing a tarball with no fstab at all). Splitting into two
+            # statements makes $step a bare, untested command again, so
+            # errexit fires immediately on failure like everywhere else in
+            # this codebase; touch only runs at all if $step succeeded,
+            # since a failure aborts (via errexit) before reaching it —
+            # same stamp semantics as before, minus the silent swallow.
+            $step
+            touch $package_build_dir/.$step-$package_component
         fi
     }
 
@@ -456,7 +512,14 @@ _source() {
         local file=${url##*/}
         mkdir -p $DOWNLOAD_DIR
         [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"
-        patch -d $package_source_dir -Np1 -i $DOWNLOAD_DIR/$file
+        # Portable across GNU patch (container) and busybox's patch applet
+        # (SELF-HOST.md M4's guest — no target-built GNU patch exists; see
+        # package/patch.sh, never a required guest tool): busybox's patch
+        # has no -d at all ("invalid option -- 'd'") and requires "-p N" as
+        # two tokens, not GNU's combined "-Np1" — a subshell cd achieves -d's
+        # effect portably without touching the caller's own CWD, and both
+        # patch implementations accept -N and -p 1 as separate flags.
+        ( cd $package_source_dir && patch -N -p 1 -i $DOWNLOAD_DIR/$file )
     }
 
     . $PACKAGE_DIR/$package_name.sh
