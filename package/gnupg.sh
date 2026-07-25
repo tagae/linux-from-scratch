@@ -44,14 +44,14 @@
 : ${package_source_hash:=sha256:2c1fbe20e2958fd8fb53cf37d7c38e84a900edc0d561a1c4af4bc3a10888685d}
 
 # Links against libgpg-error/libgcrypt/libassuan/libksba/npth/gnutls, all
-# already installed into $INSTALL_DIR/$PLATFORM — see libassuan.sh for why
+# already installed into $INSTALL_DIR/$SYSTEM_KEY — see libassuan.sh for why
 # target_sysroot_cc and explicit --with-*-prefix flags are both needed
 # (gnupg's own configure probes each dependency's own *-config/pkg-config
 # script, which would otherwise happily answer with a host or toolchain
 # path instead — see config.log for which one, if a wrong path ever leaks).
 # gnutls itself is found via plain pkg-config rather than a *-config
 # script — see the PKG_CONFIG_LIBDIR/_SYSROOT_DIR comment in prepare().
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {
@@ -111,10 +111,10 @@ prepare() {
     # relying on an implicit "ntbtls-config not found" fallback.
     am_cv_func_iconv_works=yes \
     CFLAGS=-std=gnu17 \
-    CPPFLAGS=-I$INSTALL_DIR/$PLATFORM/usr/include/libusb-1.0 \
-    GPGRT_CONFIG=$INSTALL_DIR/$PLATFORM/usr/bin/gpgrt-config \
-    PKG_CONFIG_LIBDIR=$INSTALL_DIR/$PLATFORM/usr/lib/pkgconfig \
-    PKG_CONFIG_SYSROOT_DIR=$INSTALL_DIR/$PLATFORM \
+    CPPFLAGS=-I$INSTALL_DIR/$SYSTEM_KEY/usr/include/libusb-1.0 \
+    GPGRT_CONFIG=$INSTALL_DIR/$SYSTEM_KEY/usr/bin/gpgrt-config \
+    PKG_CONFIG_LIBDIR=$INSTALL_DIR/$SYSTEM_KEY/usr/lib/pkgconfig \
+    PKG_CONFIG_SYSROOT_DIR=$INSTALL_DIR/$SYSTEM_KEY \
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
@@ -128,11 +128,11 @@ prepare() {
         --disable-photo-viewers \
         --disable-ntbtls \
         --enable-ccid-driver \
-        --with-libgpg-error-prefix=$INSTALL_DIR/$PLATFORM/usr \
-        --with-libgcrypt-prefix=$INSTALL_DIR/$PLATFORM/usr \
-        --with-libassuan-prefix=$INSTALL_DIR/$PLATFORM/usr \
-        --with-libksba-prefix=$INSTALL_DIR/$PLATFORM/usr \
-        --with-npth-prefix=$INSTALL_DIR/$PLATFORM/usr
+        --with-libgpg-error-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr \
+        --with-libgcrypt-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr \
+        --with-libassuan-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr \
+        --with-libksba-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr \
+        --with-npth-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr
 }
 
 build() {

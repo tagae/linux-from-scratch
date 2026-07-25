@@ -14,7 +14,7 @@
 # target_sysroot_cc compiles/links against the target tree's own libc and
 # the gmp installed there by depends() below — same trio every gnupg-
 # family script already carries, for the same reason (see gnupg.sh).
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 depends() {

@@ -146,12 +146,13 @@ depends() {
         require make
     )
 
-    # Bare "cc": gcc's own build (host==target above, is_cross_compiler=no
-    # in its own terms) already installs plain "gcc"/"g++"/"c++" itself —
-    # confirmed empirically (hardlinked to the $target-prefixed names) —
-    # but never "cc", the POSIX-conventional C compiler name a plain
-    # ./configure/Makefile run ON the guest itself (see SELF-HOST.md Tier
-    # 3) is liable to look for first. package_install_dir is ambient here
-    # (ditto every require() above), already $INSTALL_DIR/$SYSTEM_KEY.
-    ln -sfv gcc $package_install_dir/usr/bin/cc
+    # Bare "cc" (and the usr/lib64->usr/lib relocation for gcc's own
+    # libstdc++/libgcc_s) used to be created HERE — but this depends()
+    # context runs under the inversion (see lib/package.sh's _install):
+    # package_install_dir is deliberately UNSET while depends() runs (only
+    # restored for the umbrella's own payload, which native-toolchain.sh
+    # has none of, being package_meta=yes), so referencing it directly here
+    # crashed. Both fixups now live in gcc.sh's own install() step instead,
+    # guarded on the same host==target condition — that way they stage->
+    # archive->merge like the rest of the package (see gcc.sh).
 }

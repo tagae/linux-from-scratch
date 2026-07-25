@@ -94,19 +94,41 @@ EOF
 }
 
 find_partitions() {
-    # losetup -P's own kernel-level partition scanning doesn't reliably
-    # create /dev/loopNpM device nodes inside a container (no working
-    # udev/devtmpfs auto-population there) — confirmed empirically, not
-    # just in theory. kpartx creates the same devices explicitly via
-    # device-mapper instead, which doesn't have that problem.
-    kpartx -av $DEVICE
-    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        BASE_DEVICE=/dev/mapper/${DEVICE##*/}p1
-        [ -b $BASE_DEVICE ]
+    if command -v kpartx >/dev/null 2>&1; then
+        # losetup -P's own kernel-level partition scanning doesn't reliably
+        # create /dev/loopNpM device nodes inside a container (no working
+        # udev/devtmpfs auto-population there) — confirmed empirically, not
+        # just in theory. kpartx creates the same devices explicitly via
+        # device-mapper instead, which doesn't have that problem.
+        kpartx -av $DEVICE
+        if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
+            BASE_DEVICE=/dev/mapper/${DEVICE##*/}p1
+            [ -b $BASE_DEVICE ]
+        else
+            BOOT_DEVICE=/dev/mapper/${DEVICE##*/}p1
+            BASE_DEVICE=/dev/mapper/${DEVICE##*/}p2
+            [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
+        fi
     else
-        BOOT_DEVICE=/dev/mapper/${DEVICE##*/}p1
-        BASE_DEVICE=/dev/mapper/${DEVICE##*/}p2
-        [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
+        # Guest phase fallback (SELF-HOST.md M4): kpartx is container-only
+        # build-time tooling (see lib/tools.sh's build_tools(), never a
+        # member of any bootable-$INIT umbrella) and genuinely absent on
+        # the guest. But the container-only problem above doesn't apply
+        # here — the guest boots a real kernel with a real, working
+        # devtmpfs (CONFIG_DEVTMPFS_MOUNT=y, see package/linux/base.config),
+        # so losetup -P's own kernel-level partition scanning (attach_image,
+        # already unconditional) DOES reliably create /dev/loopNpM nodes on
+        # its own, with nothing further to do here beyond checking for them
+        # under their plain kernel-assigned names (no device-mapper
+        # involved at all).
+        if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
+            BASE_DEVICE=${DEVICE}p1
+            [ -b $BASE_DEVICE ]
+        else
+            BOOT_DEVICE=${DEVICE}p1
+            BASE_DEVICE=${DEVICE}p2
+            [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
+        fi
     fi
 }
 

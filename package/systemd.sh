@@ -11,6 +11,37 @@ prepare() {
         *)     local meson_cpu_family=$ARCH ;;
     esac
 
+    # Guest phase (LFS_PHASE=guest, SELF-HOST.md M4): host==build==target
+    # for real here (a genuine native build), unlike the container's own
+    # cross build where host==target but build is the container's own
+    # architecture — see target_build_env/guest_build_env in lib/package.sh
+    # and build_system()'s own guest-phase call to the former. But this
+    # meson.ini's [binaries]/[host_machine] describe a CROSS build either
+    # way (that's the whole point of a cross-file), which makes meson
+    # default to assuming compiled binaries can't just be executed here
+    # (needs_exe_wrapper, defaulting true with no exe_wrapper= configured) —
+    # wrong on the guest, where they genuinely can run directly, and fatal:
+    # systemd's own meson.build compiles and RUNS several codegen helpers
+    # during configuration. Keeping the cross-file itself byte-identical
+    # (rather than skipping it) keeps the container's own cross path
+    # completely unaffected by this guest-only property.
+    local needs_exe_wrapper=
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        needs_exe_wrapper='needs_exe_wrapper = false'
+    fi
+
+    # Kernel UAPI headers for c_args below: normally the container's own
+    # per-target sysroot ($TOOL_DIR/$target/usr/include) — doesn't exist on
+    # the guest (no TOOL_DIR there at all, see lfs). The guest's own live
+    # /usr/include has them instead (unarchived straight onto "/" — see
+    # native-toolchain.sh) — same fixup, and same "confirmed empirically,
+    # not harmless when missing" story, as target_sysroot_cc's own copy of
+    # this in lib/package.sh; see there for the full account.
+    local kernel_headers=$TOOL_DIR/$target/usr/include
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        kernel_headers=/usr/include
+    fi
+
     cat > meson.ini <<EOF
 [host_machine]
 system = 'linux'
@@ -47,7 +78,7 @@ prefix = '$prefix'
 # headers instead, a different architecture entirely on e.g. pi0) for the
 # kernel headers — a build-time dependency only, glibc doesn't ship them
 # and INSTALL_DIR deliberately has none (see tools_bootstrap).
-c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$TOOL_DIR/$target/usr/include']
+c_args = ['-idirafter', '$sysroot/usr/include', '-idirafter', '$kernel_headers']
 # Some deps systemd links by full path (e.g. libfdisk.so, via libshared-fdisk)
 # rather than as "-L$sysroot/usr/lib -lfdisk", so no -L reaches those links —
 # and gcc's own baked-in sysroot is TOOL_DIR/$target, not INSTALL_DIR. ld
@@ -71,6 +102,7 @@ c_link_args = ['--sysroot=$sysroot', '-Wl,-rpath-link,$sysroot/usr/lib']
 
 [properties]
 sys_root = '$sysroot'
+$needs_exe_wrapper
 EOF
 
     # PKG_CONFIG_LIBDIR (which *replaces* pkgconf's compiled-in default
@@ -155,8 +187,32 @@ install() {
     ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-wait-online.service
 
-    # Optional filesystem mounts and automounts — not needed for minimal boot
-    ln -sfv /dev/null etc/systemd/system/tmp.mount
+    # Optional filesystem mounts and automounts — not needed for minimal boot.
+    # tmp.mount is skipped when CAPS=amnesia (see package/amnesia-config.sh):
+    # a masked unit here always wins over the fstab-generator's own
+    # synthesized tmp.mount (etc/systemd/system/ outranks the generator's
+    # /run/systemd/generator/ in systemd's unit load order — see
+    # systemd.unit(5)'s UNIT FILE LOAD PATH), so amnesia's own /etc/fstab
+    # tmpfs entry for /tmp would otherwise be silently shadowed.
+    #
+    # This mask can NOT be reversed by a later package's own install(), the
+    # way network-config.sh reverses systemd-networkd's masks — confirmed
+    # empirically while building the amnesia capability: since the
+    # stage->archive->merge inversion (PACKAGING.md), every package's
+    # package_install_dir is its own fresh, empty per-package stage dir;
+    # `rm -fv` there removes nothing (the path was never there to begin
+    # with), and merge only extracts paths a package's OWN tarball actually
+    # contains — it can add or overwrite, never delete something an
+    # earlier package already merged. (network-config.sh's own
+    # systemd-networkd unmask has the identical bug — inspecting an old,
+    # pre-inversion install/virt+network tree gives a false-positive; a
+    # fresh rebuild would show the mask still present, same as here.)
+    # Gating the mask right here, at the one place that actually controls
+    # the merged tree's content, is the only way to make it conditional.
+    case " ${CAPS:-} " in
+        *" amnesia "*) : ;;
+        *) ln -sfv /dev/null etc/systemd/system/tmp.mount ;;
+    esac
     ln -sfv /dev/null etc/systemd/system/dev-mqueue.mount
     ln -sfv /dev/null etc/systemd/system/sys-kernel-debug.mount
     ln -sfv /dev/null etc/systemd/system/sys-kernel-config.mount

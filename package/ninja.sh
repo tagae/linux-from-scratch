@@ -9,9 +9,22 @@
 # it invokes the compiler directly per source file, then uses the resulting
 # binary to rebuild itself properly. Plain c++/g++ on PATH already resolves
 # to our own toolchain here (same convention as gettext/bison/python).
+#
+# CXX/AR: a target-scenario build (SELF-HOST.md M3, host=$target set by
+# target_build_env) needs configure.py routed to the CROSS C++ compiler
+# ($target-g++) instead — left alone, its own default ('c++'/'ar', both
+# respected via env per configure.py's own env_keys) would resolve to this
+# build host's bare native toolchain instead, producing a binary linked for
+# the WRONG runtime (same architecture as virt, so this wouldn't fail
+# outright, just silently link wrong — the same same-arch canary risk
+# ncdu.sh/the gnupg family guard against). ${host:+$host-} is a no-op
+# wherever host stays unset (every existing caller, including
+# build_tools()'s own native `install ninja`), keeping bare c++/ar exactly
+# as before. python3 itself is always this build host's own tools python —
+# it only RUNS configure.py, the file it produces is target C++.
 build() {
     cd $package_source_dir
-    python3 configure.py --bootstrap
+    CXX=${host:+$host-}g++ AR=${host:+$host-}ar python3 configure.py --bootstrap
 }
 
 install() {

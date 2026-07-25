@@ -8,7 +8,7 @@
 
 # build=: see gmp.sh's copy of this guard for why a target build (unlike
 # this script's original native/tools-phase use) needs it.
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 
 prepare() {
     $package_source_dir/configure \

@@ -121,6 +121,21 @@ guest_build_env() {
     : ${package_merge_dir:=/}
 }
 
+# Guest archive-parity check (SELF-HOST.md M3): a freshly-booted guest
+# starts with only busybox tar (no xz applet, so it can neither produce nor
+# extract the .tar.xz default_archive/default_merge use — see _install's
+# and default_merge's own guest-phase branches below) — but once M3's own
+# tool tarballs (tar.sh + xz.sh, the "archive-parity enablers") are
+# unarchived into it, the guest gains a real GNU tar and xz and can run the
+# whole stage->archive->merge dance for real, exactly like the container.
+# Checked fresh on every call (cheap: two PATH lookups) instead of cached,
+# so installing xz/tar mid-session is picked up by the very next package,
+# with no separate "capability refresh" step needed.
+_guest_has_archive_tools() {
+    command -v xz >/dev/null 2>&1 || return 1
+    tar --version 2>/dev/null | grep -q GNU
+}
+
 # Compile against the packages already installed into the target system
 # tree ($INSTALL_DIR/$PLATFORM) rather than the toolchain's own default
 # sysroot. A package opts in (from its own script) when it links a library
@@ -130,6 +145,27 @@ guest_build_env() {
 # call is harmless where build_tools() reuses these scripts natively.
 target_sysroot_cc() {
     [ "${host:-}" = "$target" ] || return 0
+
+    # Kernel UAPI headers: normally the container's own per-target
+    # sysroot ($TOOL_DIR/$target/usr/include, see tools_bootstrap) — but
+    # that doesn't exist on the guest (LFS_PHASE=guest, SELF-HOST.md
+    # M4; there is no TOOL_DIR there at all, see lfs). The guest's own
+    # live /usr/include DOES have them (unarchived straight onto "/" —
+    # see native-toolchain.sh), but --sysroot below routes ALL
+    # *implicit* header search through $sysroot (=$INSTALL_DIR/
+    # $SYSTEM_KEY, a fresh per-build staging tree with no kernel
+    # headers of its own — the guest's own system build never
+    # require()s linux#headers into it), making those live headers
+    # invisible unless explicitly re-added — confirmed empirically, not
+    # "harmless when missing" as first assumed: util-linux's own
+    # configure reported sys/mount.h, sys/ioctl.h, sys/socket.h, etc.
+    # all missing despite a real, populated guest /usr/include. Computed
+    # once, ahead of the CC/CXX branches below (both need it).
+    local kernel_headers=$TOOL_DIR/$target/usr/include
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        kernel_headers=/usr/include
+    fi
+
     if [ -z "${CC:-}" ]; then
         # Explicit -L, not just --sysroot: libtool's own `--mode=install`
         # relink (util-linux's libmount->libblkid, triggered by DESTDIR now
@@ -151,9 +187,23 @@ target_sysroot_cc() {
         # ("file format not recognized" — the canary this was caught on).
         # An explicit "-L$sysroot/usr/lib" here, ahead of anything libtool
         # appends later, wins the search unconditionally either way.
-        CC="$target-gcc --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $TOOL_DIR/$target/usr/include -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
+        CC="$target-gcc --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $kernel_headers -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
     fi
-    export CC
+    # CXX mirrors CC exactly (same guard, same flags, just $target-g++):
+    # every existing caller of this function (mpfr.sh, mpc.sh, util-linux.sh,
+    # btrfs-progs.sh) builds pure C, so a bare, un-sysroot'd CXX never
+    # mattered before — but gcc.sh's own native-for-target build (SELF-HOST.md
+    # M6: host=$target, see native-toolchain.sh) is C++ (GCC's own sources,
+    # and libstdc++-v3 in the same combined build), and its final cc1 link is
+    # run through $(CXX), not $(CC) — confirmed empirically: a bare
+    # "$target-g++" (CXX left untouched by this function) hit the exact same
+    # "-L/usr/lib" wrong-arch-libc canary this function's own CC branch above
+    # already documents, just on the C++ side. Guarded identically, so it's
+    # a no-op for every other caller.
+    if [ -z "${CXX:-}" ]; then
+        CXX="$target-g++ --sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $kernel_headers -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
+    fi
+    export CC CXX
 }
 
 version() {
@@ -221,7 +271,28 @@ _source() {
         if [ -f $package_build_dir/.$step-$package_component ]; then
             echo "$step (done)"
         else
-            $step && touch $package_build_dir/.$step-$package_component
+            # NOT "$step && touch ..." (reverted — found while diagnosing
+            # SELF-HOST.md M4's 9p mount silently never working): bash's
+            # errexit exemption for the left side of "&&" applies to that
+            # command's ENTIRE execution, including everything a called
+            # shell FUNCTION does internally — so with $step on the left of
+            # &&, a failure anywhere inside e.g. install() (a plain shell
+            # function, not a subshell) was silently swallowed instead of
+            # aborting the build: the function kept running past the failed
+            # command, "touch" was correctly skipped (short-circuited, so
+            # the stamp wasn't wrongly created), but the overall build just
+            # carried on as if nothing had gone wrong (confirmed
+            # empirically — package/9p-config.sh's `cat > etc/fstab`
+            # failed with ENOENT on a from-scratch stage dir and the
+            # system build finished "successfully" regardless, silently
+            # producing a tarball with no fstab at all). Splitting into two
+            # statements makes $step a bare, untested command again, so
+            # errexit fires immediately on failure like everywhere else in
+            # this codebase; touch only runs at all if $step succeeded,
+            # since a failure aborts (via errexit) before reaching it —
+            # same stamp semantics as before, minus the silent swallow.
+            $step
+            touch $package_build_dir/.$step-$package_component
         fi
     }
 
@@ -265,17 +336,23 @@ _source() {
         # before this feature existed — no archive, no merge, no new stamps.
         if [ -n "${package_merge_dir:-}" ]; then
             mkdir -p $package_merge_dir
-            # Guest-phase deviation, temporary (SELF-HOST.md M2): busybox
-            # tar can create plain tar archives but has no xz compressor
-            # applet, so it cannot produce the .tar.xz default_archive
-            # writes — and there's no GNU tar/xz on the guest yet (those
-            # arrive with M3's tool tarballs). Skip the archive step
-            # entirely; default_merge's own guest-phase branch copies the
-            # stage dir straight into the live system with a plain tar
-            # pipe instead of extracting a tarball. The merge stamp itself
-            # is unaffected — same semantics, same _once gating, in every
-            # phase.
-            if [ "${LFS_PHASE:-}" != guest ]; then
+            # Guest-phase archive parity (SELF-HOST.md M3, was M2's
+            # unconditional skip): a tool-less guest still can't produce
+            # the .tar.xz default_archive writes (no xz applet in busybox
+            # tar), so this stays skipped there — default_merge's own
+            # guest-phase fallback copies the stage dir straight into the
+            # live system with a plain tar pipe instead. But once the
+            # guest has unarchived M3's own tar+xz tarballs
+            # (_guest_has_archive_tools), it archives for real, into its
+            # own guest-local ARCHIVE_DIR (see `lfs`'s guest-phase
+            # DOWNLOAD_DIR/SOURCE_DIR/WORK_DIR/ARCHIVE_DIR overrides —
+            # already guest-local by construction, no change needed here),
+            # and default_merge extracts that tarball exactly as the
+            # container does — the same continuous self-test extracting
+            # the tarball rather than cp-ing the stage dir gives everywhere
+            # else. The merge stamp itself is unaffected either way — same
+            # semantics, same _once gating, in every phase.
+            if [ "${LFS_PHASE:-}" != guest ] || _guest_has_archive_tools; then
                 ( _once archive; )
             fi
             ( _once merge; )
@@ -383,13 +460,13 @@ _source() {
         # filesystem, including the 9p-mounted host project at /mnt/lfs —
         # silently altering host file modes as a side effect of installing
         # one package. List the package's own paths — from the archive
-        # normally, or from the stage dir itself in guest phase, where no
-        # archive exists (see the merge step below) — and chmod only the
-        # ones that already exist in the merge dir; paths the tarball is
-        # about to newly introduce need no chmod at all. Also better for
-        # the container case: a full-tree chmod was always more than any
-        # single package needed.
-        if [ "${LFS_PHASE:-}" = guest ]; then
+        # normally, or from the stage dir itself in a tool-less guest,
+        # where no archive exists (see the merge step below) — and chmod
+        # only the ones that already exist in the merge dir; paths the
+        # tarball is about to newly introduce need no chmod at all. Also
+        # better for the container case: a full-tree chmod was always more
+        # than any single package needed.
+        if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
             (cd $package_install_dir && find . -mindepth 1)
         else
             tar tf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
@@ -404,15 +481,16 @@ _source() {
             fi
         done
 
-        if [ "${LFS_PHASE:-}" = guest ]; then
-            # Guest-phase deviation, temporary (see the archive-skip
-            # comment in _install): no tarball exists to extract, so copy
-            # the stage dir straight into the live system with a plain
-            # tar pipe instead — busybox tar handles plain (uncompressed)
-            # tar fine as both source and sink. Full parity with the
-            # archive-extracting path below — and the continuous self-test
-            # an extracted tarball ordinarily proves — returns once the
-            # guest has a real tar+xz (M3's tool tarballs).
+        if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
+            # Tool-less-guest fallback (SELF-HOST.md M2, before M3's own
+            # tar+xz tarballs are unarchived into it): no tarball exists to
+            # extract (the archive step above was skipped too — see
+            # _install), so copy the stage dir straight into the live
+            # system with a plain tar pipe instead — busybox tar handles
+            # plain (uncompressed) tar fine as both source and sink. Full
+            # parity with the archive-extracting path below — and the
+            # continuous self-test an extracted tarball ordinarily proves —
+            # returns once the guest has a real tar+xz.
             tar -C $package_install_dir -cf - . | tar -C $package_merge_dir -xf -
         else
             # Extract the just-created tarball itself, rather than cp-ing
@@ -421,7 +499,10 @@ _source() {
             # what lands in the merged tree. tar overwrites existing files
             # by default, so merging in package order reproduces the
             # pre-inversion tree exactly (see the ORDER manifest above for
-            # why order matters).
+            # why order matters). Guest phase reaches here too once
+            # _guest_has_archive_tools is true — the guest's own GNU tar
+            # extracts its own guest-local ARCHIVE_DIR tarball exactly like
+            # the container extracts archive/$SYSTEM_KEY's.
             tar xf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive -C $package_merge_dir
         fi
     }
@@ -431,7 +512,14 @@ _source() {
         local file=${url##*/}
         mkdir -p $DOWNLOAD_DIR
         [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"
-        patch -d $package_source_dir -Np1 -i $DOWNLOAD_DIR/$file
+        # Portable across GNU patch (container) and busybox's patch applet
+        # (SELF-HOST.md M4's guest — no target-built GNU patch exists; see
+        # package/patch.sh, never a required guest tool): busybox's patch
+        # has no -d at all ("invalid option -- 'd'") and requires "-p N" as
+        # two tokens, not GNU's combined "-Np1" — a subshell cd achieves -d's
+        # effect portably without touching the caller's own CWD, and both
+        # patch implementations accept -N and -p 1 as separate flags.
+        ( cd $package_source_dir && patch -N -p 1 -i $DOWNLOAD_DIR/$file )
     }
 
     . $PACKAGE_DIR/$package_name.sh

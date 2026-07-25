@@ -3,10 +3,10 @@
 : ${package_source_hash:=sha256:8e986ed88561b4da6e9efe0c54fa4ca8923035c99264df0b0464497c5fb94e9e}
 
 # Passphrase/PIN prompting (see GNUPG-YUBIKEY.md). Links against
-# libgpg-error/libassuan, already installed into $INSTALL_DIR/$PLATFORM —
+# libgpg-error/libassuan, already installed into $INSTALL_DIR/$SYSTEM_KEY —
 # see libassuan.sh for why target_sysroot_cc and the explicit --with-*-prefix
 # flags are both needed.
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {
@@ -17,7 +17,7 @@ prepare() {
     # GPGRT_CONFIG: see libassuan.sh's prepare() for why this absolute
     # path (rather than relying on configure's own $PATH search) is
     # needed for every package here that probes libgpg-error this way.
-    GPGRT_CONFIG=$INSTALL_DIR/$PLATFORM/usr/bin/gpgrt-config \
+    GPGRT_CONFIG=$INSTALL_DIR/$SYSTEM_KEY/usr/bin/gpgrt-config \
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
@@ -31,8 +31,8 @@ prepare() {
         --disable-pinentry-gnome3 \
         --disable-pinentry-tqt \
         --disable-pinentry-fltk \
-        --with-libgpg-error-prefix=$INSTALL_DIR/$PLATFORM/usr \
-        --with-libassuan-prefix=$INSTALL_DIR/$PLATFORM/usr
+        --with-libgpg-error-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr \
+        --with-libassuan-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr
 }
 
 build() {
