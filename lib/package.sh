@@ -82,10 +82,10 @@ require() {
 # scenario DESTDIR-installs into its own framework-default per-package
 # staging dir instead (package_install_dir's own default, further down in
 # _source) and is archived + merged into package_merge_dir afterwards (see
-# _install) — the stage->archive->merge inversion (PACKAGING.md). Tools-
-# phase scenarios (lib/tools.sh) set package_install_dir explicitly
-# themselves and never call target_build_env, so they never set
-# package_merge_dir and _install's archive/merge steps stay a no-op there.
+# _install) — the stage->archive->merge inversion. Tools-phase scenarios
+# (lib/tools.sh) set package_install_dir explicitly themselves and never
+# call target_build_env, so they never set package_merge_dir and
+# _install's archive/merge steps stay a no-op there.
 target_build_env() {
     : ${host:=$target}
     : ${prefix:=/usr}
@@ -97,9 +97,9 @@ target_build_env() {
     : ${package_merge_dir:=$INSTALL_DIR/$SYSTEM_KEY}
 }
 
-# The build environment for a guest-phase install (LFS_PHASE=guest, see
-# SELF-HOST.md M2): building NATIVELY, inside the booted system itself,
-# with that system's own toolchain — install() applies this when nothing
+# The build environment for a guest-phase install (LFS_PHASE=guest):
+# building NATIVELY, inside the booted system itself, with that system's
+# own toolchain — install() applies this when nothing
 # is preset, mirroring target_build_env above. package_merge_dir=/: merge
 # writes straight into the LIVE system rather than a build-host install
 # tree (default_merge's guest-phase branch below handles the mechanics).
@@ -121,13 +121,14 @@ guest_build_env() {
     : ${package_merge_dir:=/}
 }
 
-# Guest archive-parity check (SELF-HOST.md M3): a freshly-booted guest
-# starts with only busybox tar (no xz applet, so it can neither produce nor
-# extract the .tar.xz default_archive/default_merge use — see _install's
-# and default_merge's own guest-phase branches below) — but once M3's own
-# tool tarballs (tar.sh + xz.sh, the "archive-parity enablers") are
-# unarchived into it, the guest gains a real GNU tar and xz and can run the
-# whole stage->archive->merge dance for real, exactly like the container.
+# Guest archive-parity check: a freshly-booted guest starts with only
+# busybox tar (no xz applet, so it can neither produce nor extract the
+# .tar.xz default_archive/default_merge use — see _install's and
+# default_merge's own guest-phase branches below) — but once its own tool
+# tarballs (tar.sh + xz.sh, the "archive-parity enablers", delivered like
+# the rest of the toolchain rather than rebuilt in-guest) are unarchived
+# into it, the guest gains a real GNU tar and xz and can run the whole
+# stage->archive->merge dance for real, exactly like the container.
 # Checked fresh on every call (cheap: two PATH lookups) instead of cached,
 # so installing xz/tar mid-session is picked up by the very next package,
 # with no separate "capability refresh" step needed.
@@ -148,8 +149,8 @@ target_sysroot_cc() {
 
     # Kernel UAPI headers: normally the container's own per-target
     # sysroot ($TOOL_DIR/$target/usr/include, see tools_bootstrap) — but
-    # that doesn't exist on the guest (LFS_PHASE=guest, SELF-HOST.md
-    # M4; there is no TOOL_DIR there at all, see lfs). The guest's own
+    # that doesn't exist on the guest (LFS_PHASE=guest; there is no
+    # TOOL_DIR there at all, see lfs). The guest's own
     # live /usr/include DOES have them (unarchived straight onto "/" —
     # see native-toolchain.sh), but --sysroot below routes ALL
     # *implicit* header search through $sysroot (=$INSTALL_DIR/
@@ -192,8 +193,9 @@ target_sysroot_cc() {
     # CXX mirrors CC exactly (same guard, same flags, just $target-g++):
     # every existing caller of this function (mpfr.sh, mpc.sh, util-linux.sh,
     # btrfs-progs.sh) builds pure C, so a bare, un-sysroot'd CXX never
-    # mattered before — but gcc.sh's own native-for-target build (SELF-HOST.md
-    # M6: host=$target, see native-toolchain.sh) is C++ (GCC's own sources,
+    # mattered before — but gcc.sh's own native-for-target build (host=
+    # $target, cross-building the native toolchain that ships to guests as
+    # archive tarballs — see native-toolchain.sh) is C++ (GCC's own sources,
     # and libstdc++-v3 in the same combined build), and its final cc1 link is
     # run through $(CXX), not $(CC) — confirmed empirically: a bare
     # "$target-g++" (CXX left untouched by this function) hit the exact same
@@ -272,8 +274,8 @@ _source() {
             echo "$step (done)"
         else
             # NOT "$step && touch ..." (reverted — found while diagnosing
-            # SELF-HOST.md M4's 9p mount silently never working): bash's
-            # errexit exemption for the left side of "&&" applies to that
+            # the in-guest system build's 9p mount silently never working):
+            # bash's errexit exemption for the left side of "&&" applies to that
             # command's ENTIRE execution, including everything a called
             # shell FUNCTION does internally — so with $step on the left of
             # &&, a failure anywhere inside e.g. install() (a plain shell
@@ -329,22 +331,23 @@ _source() {
         ( _once prepare; )
         ( _once build; )
         ( _once install; )
-        # Stage->archive->merge inversion (PACKAGING.md), scoped to the
-        # target scenario: only when target_build_env (or a caller) set
+        # Stage->archive->merge inversion, scoped to the target scenario:
+        # only when target_build_env (or a caller) set
         # package_merge_dir. Tools-phase scenarios (lib/tools.sh) never set
         # it, so `install` above is the final destination there, exactly as
         # before this feature existed — no archive, no merge, no new stamps.
         if [ -n "${package_merge_dir:-}" ]; then
             mkdir -p $package_merge_dir
-            # Guest-phase archive parity (SELF-HOST.md M3, was M2's
-            # unconditional skip): a tool-less guest still can't produce
-            # the .tar.xz default_archive writes (no xz applet in busybox
-            # tar), so this stays skipped there — default_merge's own
-            # guest-phase fallback copies the stage dir straight into the
-            # live system with a plain tar pipe instead. But once the
-            # guest has unarchived M3's own tar+xz tarballs
-            # (_guest_has_archive_tools), it archives for real, into its
-            # own guest-local ARCHIVE_DIR (see `lfs`'s guest-phase
+            # Guest-phase archive parity (conditional now that tar+xz
+            # arrive as delivered tool tarballs; earlier, guest phase
+            # skipped archiving unconditionally): a tool-less guest still
+            # can't produce the .tar.xz default_archive writes (no xz
+            # applet in busybox tar), so this stays skipped there —
+            # default_merge's own guest-phase fallback copies the stage dir
+            # straight into the live system with a plain tar pipe instead.
+            # But once the guest has unarchived its own delivered tar+xz
+            # tarballs (_guest_has_archive_tools), it archives for real,
+            # into its own guest-local ARCHIVE_DIR (see `lfs`'s guest-phase
             # DOWNLOAD_DIR/SOURCE_DIR/WORK_DIR/ARCHIVE_DIR overrides —
             # already guest-local by construction, no change needed here),
             # and default_merge extracts that tarball exactly as the
@@ -482,8 +485,8 @@ _source() {
         done
 
         if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
-            # Tool-less-guest fallback (SELF-HOST.md M2, before M3's own
-            # tar+xz tarballs are unarchived into it): no tarball exists to
+            # Tool-less-guest fallback (before the delivered tar+xz
+            # tarballs are unarchived into it): no tarball exists to
             # extract (the archive step above was skipped too — see
             # _install), so copy the stage dir straight into the live
             # system with a plain tar pipe instead — busybox tar handles
@@ -513,7 +516,7 @@ _source() {
         mkdir -p $DOWNLOAD_DIR
         [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"
         # Portable across GNU patch (container) and busybox's patch applet
-        # (SELF-HOST.md M4's guest — no target-built GNU patch exists; see
+        # (the in-guest system build has no target-built GNU patch; see
         # package/patch.sh, never a required guest tool): busybox's patch
         # has no -d at all ("invalid option -- 'd'") and requires "-p N" as
         # two tokens, not GNU's combined "-Np1" — a subshell cd achieves -d's

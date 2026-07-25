@@ -10,8 +10,8 @@ system() {
 }
 
 build_system() {
-    # Guest phase (LFS_PHASE=guest, SELF-HOST.md M4): install() would
-    # otherwise apply guest_build_env instead (see there) — host left
+    # Guest phase (LFS_PHASE=guest): install() would otherwise apply
+    # guest_build_env instead (see there) — host left
     # UNSET (a bare native build) and package_merge_dir=/ (installs
     # straight into the LIVE system), right for `./lfs install <pkg>`
     # one-offs but wrong for a whole `system build`: that wants its own

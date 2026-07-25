@@ -44,19 +44,21 @@ fetch() {
 install() {
     local anchordir=$package_install_dir/etc/pki/anchors
 
-    # Guest phase (SELF-HOST.md M4): make-ca/p11-kit/trust are container-
-    # native build-host tools (installed only into $TOOL_DIR by
-    # build_tools(), see there) that simply don't exist on the guest — no
-    # amount of path-guarding fixes that, unlike the TOOL_DIR knobs
-    # elsewhere on this umbrella path (bootable-systemd.sh, systemd.sh).
-    # Special-cased honestly instead: install by extracting the already
-    # cross-built tarball for this exact $SYSTEM_KEY (produced by an
-    # earlier container-side build of this same package, shared over the 9p
-    # mount at $PROJECT_DIR/archive — NOT $ARCHIVE_DIR, which in guest
-    # phase is the guest's own local dir, see lfs) — same generation-N
-    # trust-store-input lineage as the guest's own native toolchain
-    # (SELF-HOST.md M1/M3: "generation N builds generation N+1"). The
-    # extracted files land in $package_install_dir exactly like a normal
+    # Guest phase: make-ca/p11-kit/trust are container-native build-host
+    # tools (installed only into $TOOL_DIR by build_tools(), see there)
+    # that simply don't exist on the guest — no amount of path-guarding
+    # fixes that, unlike the TOOL_DIR knobs elsewhere on this umbrella path
+    # (bootable-systemd.sh, systemd.sh). Special-cased honestly instead:
+    # install by extracting the already cross-built tarball for this exact
+    # $SYSTEM_KEY (produced by an earlier container-side build of this same
+    # package, shared over the 9p mount at $PROJECT_DIR/archive — NOT
+    # $ARCHIVE_DIR, which in guest phase is the guest's own local dir, see
+    # lfs) — same generation-N trust-store-input lineage as the guest's own
+    # native toolchain: each generation is cross-built host==target in the
+    # container, then delivered to the guest as an archive tarball —
+    # "generation N builds generation N+1", the same lineage as Debian
+    # seeding the original cross toolchain. The extracted files land in
+    # $package_install_dir exactly like a normal
     # install() would, so the ordinary archive->merge steps below (in
     # lib/package.sh's _install) proceed unchanged from here — the guest
     # re-archives this content into its OWN local ARCHIVE_DIR, same as

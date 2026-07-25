@@ -61,10 +61,10 @@ services:
       RELEASE_TYPE:
       # `image build` (lib/image.sh) reads this to size the created .img
       # (default 4g) — the self-host builder guest needs headroom for its
-      # own guest-local build state on top of its own output image, hence
-      # a bigger builder image (SELF-HOST.md M4: IMAGE_SIZE=16g).
+      # own guest-local build state on top of its own output image, hence a
+      # bigger builder image for the in-guest system build (IMAGE_SIZE=16g).
       IMAGE_SIZE:
-      # SELF-HOST.md M6 (pi0 capstone): populate_image() always reads
+      # For the pi0 tarball-delivery capstone: populate_image() always reads
       # $INSTALL_DIR/$SYSTEM_KEY (lib/image.sh) — overriding this lets an
       # `image build` run against a throwaway staged copy of install/pi0
       # (base system + the baked /srv payload) instead of the canonical
@@ -152,9 +152,9 @@ services:
         source: $PWD/image
         target: /mnt/lfs/image
       # Same reasoning as image/ above: per-package tarballs (lib/package.sh's
-      # archive/merge, see PACKAGING.md) need to survive the --rm container
-      # and be readable outside it — by a from-scratch reconstruction on the
-      # host, and (over the 9p share) by the guest's own unarchive path.
+      # archive/merge) need to survive the --rm container and be readable
+      # outside it — by a from-scratch reconstruction on the host, and
+      # (over the 9p share) by the guest's own unarchive path.
       - type: bind
         source: $PWD/archive
         target: /mnt/lfs/archive

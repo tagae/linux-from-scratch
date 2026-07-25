@@ -110,10 +110,10 @@ find_partitions() {
             [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
         fi
     else
-        # Guest phase fallback (SELF-HOST.md M4): kpartx is container-only
-        # build-time tooling (see lib/tools.sh's build_tools(), never a
-        # member of any bootable-$INIT umbrella) and genuinely absent on
-        # the guest. But the container-only problem above doesn't apply
+        # Guest phase fallback: kpartx is container-only build-time tooling
+        # (see lib/tools.sh's build_tools(), never a member of any
+        # bootable-$INIT umbrella) and genuinely absent on the guest. But
+        # the container-only problem above doesn't apply
         # here — the guest boots a real kernel with a real, working
         # devtmpfs (CONFIG_DEVTMPFS_MOUNT=y, see package/linux/base.config),
         # so losetup -P's own kernel-level partition scanning (attach_image,

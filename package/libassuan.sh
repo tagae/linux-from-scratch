@@ -2,13 +2,13 @@
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libassuan/libassuan-$package_version.tar.bz2}
 : ${package_source_hash:=sha256:d2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6}
 
-# IPC between gpg, gpg-agent, scdaemon and pinentry (see GNUPG-YUBIKEY.md).
-# Links against libgpg-error, already installed into $INSTALL_DIR/$SYSTEM_KEY
+# IPC between gpg, gpg-agent, scdaemon and pinentry. Links against
+# libgpg-error, already installed into $INSTALL_DIR/$SYSTEM_KEY
 # — target_sysroot_cc (below) points the compiler at that tree's libc, and
 # an explicit --with-libgpg-error-prefix (below) stops libassuan's own
 # gpg-error-config probing from leaking a host or toolchain path instead.
-# $SYSTEM_KEY, NOT bare $PLATFORM: with the stage->archive->merge inversion
-# (PACKAGING.md), $INSTALL_DIR/$SYSTEM_KEY is the tree earlier require()d
+# $SYSTEM_KEY, NOT bare $PLATFORM: with the stage->archive->merge
+# inversion, $INSTALL_DIR/$SYSTEM_KEY is the tree earlier require()d
 # members actually merged into (see target_build_env) — bare $PLATFORM
 # only coincides with it when CAPS is empty (same divergence
 # bootable-systemd.sh's own systemd require() already guards against;

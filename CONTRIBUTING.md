@@ -106,8 +106,8 @@ links a library another package already installed into the target tree
 cross-compiler with `--sysroot=$INSTALL_DIR/$SYSTEM_KEY` so `-lfoo`
 resolves against the target tree, not the toolchain's default sysroot.
 
-For the full rationale: `DEPENDENCIES.md` (package/umbrella model),
-`BUSYBOX-INIT.md` (the INIT/SYSTEM_KEY flavor split).
+The package/umbrella model and the INIT/SYSTEM_KEY flavor split are
+documented in `lib/package.sh`'s and `lfs`'s own comments.
 
 
 Make targets
@@ -168,6 +168,6 @@ http://www.dettus.net/detLFS/
 https://www.linux-magazine.com/Issues/2021/245/detLFS
 https://blog.jgosmann.de/posts/2021/02/07/a-guide-to-crosscompiling-applications/
 
-Design/assessment docs (rationale, not spec — some describe unfinished
-work): `DEPENDENCIES.md`, `BUSYBOX-INIT.md`, `PACKAGING.md`,
-`GUEST-BUILD.md`, `GNUPG-YUBIKEY.md`, `SIMPLIFICATIONS.md`.
+Architecture records: `docs/design/` (package framework, packaging,
+build phases, capabilities, kernel config, trust, self-hosting, the
+GnuPG appliance). Open cleanups: `SIMPLIFICATIONS.md`.

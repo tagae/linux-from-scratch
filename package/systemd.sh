@@ -11,8 +11,8 @@ prepare() {
         *)     local meson_cpu_family=$ARCH ;;
     esac
 
-    # Guest phase (LFS_PHASE=guest, SELF-HOST.md M4): host==build==target
-    # for real here (a genuine native build), unlike the container's own
+    # Guest phase (LFS_PHASE=guest): host==build==target for real here (a
+    # genuine native build), unlike the container's own
     # cross build where host==target but build is the container's own
     # architecture — see target_build_env/guest_build_env in lib/package.sh
     # and build_system()'s own guest-phase call to the former. But this
@@ -182,9 +182,22 @@ install() {
     # systemd-gpt-auto-generator fails on btrfs /dev/root pseudo-device
     ln -sfv /dev/null etc/systemd/system-generators/systemd-gpt-auto-generator
 
-    # Network services — not needed for minimal serial-console boot
-    ln -sfv /dev/null etc/systemd/system/systemd-resolved.service
-    ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
+    # Network services — not needed for minimal serial-console boot.
+    # systemd-networkd's and systemd-resolved's masks (and, below, their
+    # sockets') are skipped when CAPS contains network — same
+    # conditional-at-the-source reasoning as tmp.mount below: merge is
+    # additive-only, so network-config.sh could never delete a mask
+    # merged here; it only ships enable symlinks and configuration
+    # (resolved handles DNS from DHCP plus mDNS/.local — see there).
+    # wait-online stays masked even with networking: it would gate boot
+    # on network availability.
+    case " ${CAPS:-} " in
+        *" network "*) : ;;
+        *)
+            ln -sfv /dev/null etc/systemd/system/systemd-resolved.service
+            ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
+            ;;
+    esac
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-wait-online.service
 
     # Optional filesystem mounts and automounts — not needed for minimal boot.
@@ -195,20 +208,17 @@ install() {
     # systemd.unit(5)'s UNIT FILE LOAD PATH), so amnesia's own /etc/fstab
     # tmpfs entry for /tmp would otherwise be silently shadowed.
     #
-    # This mask can NOT be reversed by a later package's own install(), the
-    # way network-config.sh reverses systemd-networkd's masks — confirmed
-    # empirically while building the amnesia capability: since the
-    # stage->archive->merge inversion (PACKAGING.md), every package's
+    # A mask can NOT be reversed by a later package's own install() —
+    # confirmed empirically while building the amnesia capability: since
+    # the stage->archive->merge inversion, every package's
     # package_install_dir is its own fresh, empty per-package stage dir;
     # `rm -fv` there removes nothing (the path was never there to begin
     # with), and merge only extracts paths a package's OWN tarball actually
     # contains — it can add or overwrite, never delete something an
-    # earlier package already merged. (network-config.sh's own
-    # systemd-networkd unmask has the identical bug — inspecting an old,
-    # pre-inversion install/virt+network tree gives a false-positive; a
-    # fresh rebuild would show the mask still present, same as here.)
-    # Gating the mask right here, at the one place that actually controls
-    # the merged tree's content, is the only way to make it conditional.
+    # earlier package already merged. Gating each mask right here, at the
+    # one place that actually controls the merged tree's content, is the
+    # only way to make it conditional (the networkd masks above/below are
+    # gated the same way for the same reason).
     case " ${CAPS:-} " in
         *" amnesia "*) : ;;
         *) ln -sfv /dev/null etc/systemd/system/tmp.mount ;;
@@ -219,13 +229,23 @@ install() {
     ln -sfv /dev/null etc/systemd/system/proc-sys-fs-binfmt_misc.mount
     ln -sfv /dev/null etc/systemd/system/proc-sys-fs-binfmt_misc.automount
 
-    # Sockets whose backing services are masked above
-    ln -sfv /dev/null etc/systemd/system/systemd-networkd.socket
+    # Sockets whose backing services are masked above. networkd's netlink
+    # socket and resolved's varlink/monitor sockets follow their services'
+    # CAPS gate (networkd's is named in its unit's Sockets= and needed for
+    # a DHCP lease; resolved's varlink socket serves resolvectl); the
+    # networkd varlink/metrics/resolve-hook sockets stay masked even with
+    # networking — not needed to bring an interface up.
+    case " ${CAPS:-} " in
+        *" network "*) : ;;
+        *)
+            ln -sfv /dev/null etc/systemd/system/systemd-networkd.socket
+            ln -sfv /dev/null etc/systemd/system/systemd-resolved-varlink.socket
+            ln -sfv /dev/null etc/systemd/system/systemd-resolved-monitor.socket
+            ;;
+    esac
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-varlink.socket
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-varlink-metrics.socket
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-resolve-hook.socket
-    ln -sfv /dev/null etc/systemd/system/systemd-resolved-varlink.socket
-    ln -sfv /dev/null etc/systemd/system/systemd-resolved-monitor.socket
 
     # On virt, there is no BOOT partition — mask boot.mount to avoid a 90 s device timeout
     if [ "${PLATFORM:-}" = virt ]; then

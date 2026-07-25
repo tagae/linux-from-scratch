@@ -17,8 +17,8 @@ package_source_dir=$SOURCE_DIR/btrfs-progs-v$package_version
 # reused directly as the build dir) means this package is NOT safe to
 # build for two different scenarios back to back without a clean rebuild
 # in between (e.g. build_tools()'s own build-host-native "tools" variant
-# vs. a target "virt" variant, SELF-HOST.md M4) — `make`'s own dependency
-# tracking can see already-compiled objects from the OTHER variant's run
+# vs. a target "virt" variant) — `make`'s own dependency tracking can see
+# already-compiled objects from the OTHER variant's run
 # and skip recompiling, silently installing stale, wrong-toolchain
 # binaries (confirmed the hard way: a target build produced a binary whose
 # ELF interpreter was still TOOL_DIR-relative). Every other package in

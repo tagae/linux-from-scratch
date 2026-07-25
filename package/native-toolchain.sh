@@ -2,8 +2,9 @@
 # host=$target (not the usual host=build cross-compiler these scripts
 # normally produce), so the resulting binaries RUN on $target and EMIT
 # $target code, i.e. they execute inside the booted system itself, rather
-# than in the build container (see SELF-HOST.md milestone M1: "target
-# packages for binutils/gcc/make ... compile and run hello.c natively").
+# than in the build container. Generation N builds generation N+1: these
+# target packages for binutils/gcc/make compile and run natively on the
+# guest, the same lineage as Debian seeding the original cross toolchain.
 #
 # Optional, like the gnupg family: not a member of any bootable-$INIT
 # umbrella, installed on demand via `./lfs install native-toolchain`

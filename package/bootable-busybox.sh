@@ -54,8 +54,14 @@ depends() {
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only,
     # for real hardware; QEMU loads the kernel directly and ignores them.
+    # Also the GPU/bootloader firmware (bootcode.bin/start.elf/fixup.dat +
+    # overlays — package/firmware.sh): real hardware's boot ROM can't start
+    # the kernel without these on the FAT partition; QEMU ignores them too
+    # (same reasoning as boot#cmdline/#config above), so this is
+    # regression-neutral for every existing QEMU-only Pi boot.
     if [ -n "${DTB:-}" ]; then
         require boot#cmdline
         require boot#config
+        require firmware
     fi
 }

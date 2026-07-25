@@ -4,7 +4,8 @@
 
 package_source_dir=$SOURCE_DIR/Python-$package_version
 
-# build=: see m4.sh's copy of this guard (SELF-HOST.md M3 target build).
+# build=: see m4.sh's copy of this guard (the target build that ships this
+# tool to the guest as an archive tarball).
 # build_python: the native python3 CPython's own cross-build process needs
 # to run at BUILD time (freezing importlib, running Parser/pgen, deriving
 # platform constants it can't cross-derive by static analysis alone) —

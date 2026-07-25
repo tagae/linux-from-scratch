@@ -11,14 +11,15 @@ install() {
     mkdir -pv mnt/lfs
 
     # mkdir -p etc: this package's own stage dir starts empty (the stage->
-    # archive->merge inversion, PACKAGING.md — package_install_dir is a
-    # fresh per-package dir now, not the already-populated shared merged
-    # tree system-files created etc/ in). Found the hard way (SELF-HOST.md
-    # M4): without this, `cat > etc/fstab` below failed with ENOENT and —
-    # due to a separate, now-fixed _once() bug (lib/package.sh) — that
-    # failure was silently swallowed instead of aborting the build, so this
-    # went undetected since M3 landed: every CAPS=9p image since then
-    # shipped with NO /etc/fstab at all, and the 9p share never mounted.
+    # archive->merge inversion — package_install_dir is a fresh per-package
+    # dir now, not the already-populated shared merged tree system-files
+    # created etc/ in). Found the hard way, during the
+    # in-guest system build: without this, `cat > etc/fstab` below failed
+    # with ENOENT and — due to a separate, now-fixed _once() bug
+    # (lib/package.sh) — that failure was silently swallowed instead of
+    # aborting the build, so this went undetected since tool delivery via
+    # archive tarballs landed: every CAPS=9p image since then shipped with
+    # NO /etc/fstab at all, and the 9p share never mounted.
     mkdir -pv etc
 
     # nofail: don't block boot if the share isn't attached (e.g. this same

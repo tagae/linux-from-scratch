@@ -28,7 +28,7 @@ done
 
 #--[ Project ]
 
-# Guest phase (LFS_PHASE=guest, see SELF-HOST.md M2): heavy build state is
+# The guest build phase (LFS_PHASE=guest): heavy build state is
 # guest-LOCAL, not the 9p share — mirrors how docker-compose keeps the
 # I/O-hot dirs (source/work/tools/install) in named volumes instead of the
 # bind-mounted project tree, since compiling over 9p would be painfully
@@ -42,13 +42,14 @@ done
 # relative even in guest phase (=/mnt/lfs/download, since PROJECT_DIR IS
 # /mnt/lfs when run from the guest's 9p mount) — the shared, hash-verified
 # source cache is exactly what a guest build wants to reuse, offline.
-# INSTALL_DIR/IMAGE_DIR join the three above for the same reason (SELF-HOST.md
-# M4): `system build`/`image build` need somewhere guest-local to stage the
-# system tree and the .img file while building — INSTALL_DIR is a full
-# native-built system tree (~GBs of churn), and the not-yet-finished .img
-# under IMAGE_DIR is actively attached to a loop device mid-build, neither
-# of which belongs on the 9p share. M5 copies the *finished* artifacts back
-# out to the shared image/ and work/boot/ explicitly (see SELF-HOST.md).
+# INSTALL_DIR/IMAGE_DIR join the three above for the same reason (the
+# in-guest system build): `system build`/`image build` need somewhere
+# guest-local to stage the system tree and the .img file while building —
+# INSTALL_DIR is a full native-built system tree (~GBs of churn), and the
+# not-yet-finished .img under IMAGE_DIR is actively attached to a loop
+# device mid-build, neither of which belongs on the 9p share. The finished
+# artifacts get copied back out to the shared image/ and work/boot/
+# explicitly once the build completes, so the host can boot them.
 if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
     : ${SOURCE_DIR:=/var/lfs/source}
     : ${WORK_DIR:=/var/lfs/work}
@@ -151,7 +152,9 @@ readonly LC_ALL MAKEFLAGS
 # Scratch phase: toolchain only, no host PATH.
 # Guest phase: PATH untouched, on purpose — there is no TOOL_DIR here at
 # all; the booted system's own /usr/bin already has everything a native
-# build needs (see native-toolchain.sh / SELF-HOST.md M1-M2).
+# build needs (see native-toolchain.sh, which delivers the guest-native
+# toolchain as archive tarballs replayed on the guest rather than one
+# rebuilt there from source).
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
     PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin:$TOOL_DIR/bin
 elif [ "${LFS_PHASE:-bootstrap}" = guest ]; then
@@ -256,16 +259,24 @@ case "${1:-help}" in
                 ;;
         esac
         # Removable USB stick for the air-gapped GPG key-persist workflow
-        # (see SELF-HOST.md, package/gpg-genkey.sh). virt/xhci form only —
-        # pi0's dwc2 attach (real hardware has no PCI bus for qemu-xhci) is
-        # a later increment, out of scope here. USB_DISK must already exist
-        # (e.g. a blank vfat image created on the host); unset/empty is a
-        # no-op, so a usb-capable build with no stick attached still boots
-        # (just with no USB device present, same as the network/9p caps
-        # above only wiring up when the guarding env var/CAPS conditions
-        # hold). The virt root disk itself is virtio-blk (/dev/vda, see
-        # QEMU_DISK_IF above) — this stick therefore enumerates in the
-        # guest as the first SCSI/USB-storage disk, /dev/sda.
+        # (see package/gpg-genkey.sh). Two attach forms, chosen by
+        # $PLATFORM: virt has no dwc2 (only QEMU's PCI-attached qemu-xhci,
+        # itself needing a PCI bus, which only virt's machine model
+        # provides), while the Pi machine models (pi0 here; real hardware
+        # has no PCI bus at all) expose their SoC's own dwc2 OTG controller
+        # instead — QEMU's raspi0 machine models it as a plain usb-bus (id
+        # "usb-bus.0", confirmed empirically via `info qtree`/`info usb` on
+        # a bare `-M raspi0`: `dev: dwc2-usb ... bus: usb-bus.0`), so
+        # usb-storage attaches straight to it with no controller device of
+        # its own to instantiate first (unlike xhci, which needs one).
+        # USB_DISK must already exist (e.g. a blank vfat image created on
+        # the host); unset/empty is a no-op, so a usb-capable build with no
+        # stick attached still boots (just with no USB device present, same
+        # as the network/9p caps above only wiring up when the guarding env
+        # var/CAPS conditions hold). The virt root disk itself is
+        # virtio-blk (/dev/vda, see QEMU_DISK_IF above) and pi0's is the SD
+        # card (/dev/mmcblk0, QEMU_DISK_IF=sd) — either way this stick
+        # enumerates as the guest's first SCSI/USB-storage disk, /dev/sda.
         case " $CAPS " in
             *" usb "*)
                 if [ -n "${USB_DISK:-}" ]; then
@@ -283,34 +294,50 @@ case "${1:-help}" in
                     # the guest's own explicit sync, not on however cleanly
                     # this particular QEMU process happens to exit afterward.
                     set -- "$@" \
-                        -drive if=none,id=usbstick,format=raw,file=$USB_DISK,cache=writethrough \
-                        -device qemu-xhci,id=xhci \
-                        -device usb-storage,bus=xhci.0,drive=usbstick
+                        -drive if=none,id=usbstick,format=raw,file=$USB_DISK,cache=writethrough
+                    case $PLATFORM in
+                        pi0)
+                            set -- "$@" -device usb-storage,bus=usb-bus.0,drive=usbstick
+                            ;;
+                        *)
+                            set -- "$@" \
+                                -device qemu-xhci,id=xhci \
+                                -device usb-storage,bus=xhci.0,drive=usbstick
+                            ;;
+                    esac
                 fi
                 ;;
         esac
         # Cap-conditional read-only root (CAPS=amnesia — increment #2 of the
-        # air-gapped GPG appliance, see SELF-HOST.md and
-        # package/amnesia-config.sh). Sets ROOTFLAGS's own DEFAULT here,
+        # air-gapped GPG appliance; see package/amnesia-config.sh). Sets
+        # ROOTFLAGS's own DEFAULT here,
         # rather than touching the "${ROOTFLAGS:-...}" fallback in the
         # -append line below, so: (a) ROOTFLAGS's existing override contract
         # (any caller can still set it directly) is untouched, and (b) the
         # no-amnesia fallback text below stays byte-identical to what it was
-        # before this capability existed. nologreplay: btrfs replays its
-        # crash-consistency log tree at mount time even under `ro` — that
-        # replay writes to the device — so without this a "read-only" mount
-        # would still, occasionally, touch the boot medium; nologreplay is
-        # what actually makes the hash-identical proof (SELF-HOST.md) hold.
+        # before this capability existed. rescue=nologreplay: btrfs replays
+        # its crash-consistency log tree at mount time even under `ro` —
+        # that replay writes to the device — so without this a "read-only"
+        # mount would still, occasionally, touch the boot medium;
+        # rescue=nologreplay is what actually makes the hash-identical proof
+        # hold (verified by comparing the image file's SHA-256 across a
+        # full boot->keygen->poweroff cycle: byte-identical, i.e. the boot
+        # medium really is never written). NOT the bare "nologreplay"
+        # spelling: this
+        # kernel's btrfs (7.1.2) rejects it outright ("Unknown parameter
+        # 'nologreplay'", a boot-time kernel panic — confirmed empirically)
+        # — the older standalone option was consolidated into the "rescue="
+        # namespace and the bare alias no longer parses.
         case " $CAPS " in
             *" amnesia "*)
-                : ${ROOTFLAGS:=rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME,nologreplay ro rootwait}
+                : ${ROOTFLAGS:=rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME,rescue=nologreplay ro rootwait}
                 ;;
         esac
         # QEMU_EXTRA last: QEMU's own "last flag wins" rule for repeated
         # options (-smp/-m/...) lets this override QEMU_FLAGS's defaults
         # (e.g. the self-host builder guest needs more than virt's default
-        # -smp 1 -m 512 to build a whole system natively — see SELF-HOST.md
-        # M4) without editing the platform file itself. Empty by default,
+        # -smp 1 -m 512 to build a whole system natively) without editing
+        # the platform file itself. Empty by default,
         # so an unset QEMU_EXTRA changes nothing.
         exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
             -no-reboot \

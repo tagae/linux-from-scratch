@@ -37,15 +37,16 @@ depends() {
     # $target's architecture.
     #
     # Both are TOOL_DIR-relative paths that only exist in the container —
-    # on the guest (LFS_PHASE=guest, SELF-HOST.md M4) there is no TOOL_DIR
-    # at all (see lfs), so $TOOL_DIR resolves to the 9p-shared project
-    # dir's nonexistent "tools" subdir. Guarded with [ -d ... ], not an
-    # LFS_PHASE check: it's the same condition either way (only true in the
-    # container) but self-documents WHY, and needs no phase-var lookup.
-    # Left unset there, both fall back to already-correct native defaults:
-    # bison's own compiled-in /usr/share/bison is real on the guest (it was
-    # itself installed with prefix=/usr — see SELF-HOST.md M3), and plain
-    # ./configure with no --with-headers lets glibc's build find the
+    # on the guest (LFS_PHASE=guest) there is no TOOL_DIR at all (see lfs),
+    # so $TOOL_DIR resolves to the 9p-shared project dir's nonexistent
+    # "tools" subdir. Guarded with [ -d ... ], not an LFS_PHASE check: it's
+    # the same condition either way (only true in the container) but
+    # self-documents WHY, and needs no phase-var lookup. Left unset there,
+    # both fall back to already-correct native defaults: bison's own
+    # compiled-in /usr/share/bison is real on the guest (it was itself
+    # installed with prefix=/usr, like every other tool delivered to the
+    # guest as an archive tarball), and plain ./configure with no
+    # --with-headers lets glibc's build find the
     # kernel UAPI headers at the guest's own real /usr/include (installed
     # there by a prior `unarchive` of linux#headers's own tarball — see
     # native-toolchain.sh) exactly like any ordinary native glibc build.
@@ -86,9 +87,10 @@ depends() {
     # below).
     #
     # fdisks (sfdisk) is trickier: the guest needs it from its OWN target-
-    # built util-linux to partition its own output image (SELF-HOST.md M4 —
-    # lib/image.sh's create_partitions(), container-side today via the
-    # build-host-native copy build_tools() installs into $TOOL_DIR). But
+    # built util-linux to partition its own output image during the
+    # in-guest system build (lib/image.sh's create_partitions(),
+    # container-side today via the build-host-native copy build_tools()
+    # installs into $TOOL_DIR). But
     # upstream util-linux has no standalone --enable-sfdisk — --enable-
     # fdisks is ONE combined switch for fdisk(8)+sfdisk(8)+cfdisk(8)
     # together (confirmed via ./configure --help: no per-tool cfdisk
@@ -119,7 +121,7 @@ depends() {
     # Init system; sysroot points meson/pkg-config at what earlier members
     # installed into the target tree (libcap, util-linux's libmount/libblkid, …).
     # $INSTALL_DIR/$SYSTEM_KEY, not bare $PLATFORM: with the stage->archive
-    # ->merge inversion (PACKAGING.md), package_install_dir is now each
+    # ->merge inversion, package_install_dir is now each
     # member's own per-package stage dir — $INSTALL_DIR/$SYSTEM_KEY (=
     # package_merge_dir, see target_build_env) is the one path that still
     # names the actual merged tree these earlier members landed in, and is
@@ -161,8 +163,14 @@ depends() {
     )
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only.
+    # Also the GPU/bootloader firmware (bootcode.bin/start.elf/fixup.dat +
+    # overlays — package/firmware.sh): real Pi hardware's boot ROM can't
+    # start the kernel without these on the FAT partition, but QEMU never
+    # reads them (it loads -kernel/-dtb directly), so pulling this in here
+    # is regression-neutral for every existing QEMU-only Pi boot.
     if [ -n "${DTB:-}" ]; then
         require boot#cmdline
         require boot#config
+        require firmware
     fi
 }

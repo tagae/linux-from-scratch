@@ -175,21 +175,22 @@ install() {
 
             # Native-for-target scenario (package/native-toolchain.sh: this
             # gcc's own host==target, i.e. it runs ON $target and emits
-            # $target code — SELF-HOST.md M1). Reuse target_sysroot_cc's own
-            # guard to identify it: every OTHER caller (lib/tools.sh's
-            # pass1/pass1-native/pass2) leaves host unset (a genuine cross
-            # build, build!=host), so this is false for them and this whole
-            # block is a no-op there — byte-identical tools/cross behavior.
+            # $target code — the guest-native toolchain). Reuse
+            # target_sysroot_cc's own guard to identify it: every OTHER
+            # caller (lib/tools.sh's pass1/pass1-native/pass2) leaves host
+            # unset (a genuine cross build, build!=host), so this is false
+            # for them and this whole block is a no-op there —
+            # byte-identical tools/cross behavior.
             #
             # Both fixups belong here, in the package's own install step, so
-            # they stage->archive->merge like everything else (PACKAGING.md)
-            # instead of being patched by hand afterward in the merged tree.
+            # they stage->archive->merge like everything else instead of
+            # being patched by hand afterward in the merged tree.
             if [ "${host:-}" = "$target" ]; then
                 # Bare "cc": this build already installs plain "gcc"/"g++"/
                 # "c++" itself (hardlinked to the $target-prefixed names,
                 # confirmed empirically — see native-toolchain.sh) but never
                 # "cc", the POSIX-conventional name a plain ./configure or
-                # Makefile run ON the guest (SELF-HOST.md Tier 3) is liable
+                # Makefile run natively on the booted guest is liable
                 # to look for first.
                 ln -sfv gcc $package_install_dir/$prefix/bin/cc
 
