@@ -3,10 +3,17 @@
 : ${package_source_hash:=sha256:d2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6}
 
 # IPC between gpg, gpg-agent, scdaemon and pinentry (see GNUPG-YUBIKEY.md).
-# Links against libgpg-error, already installed into $INSTALL_DIR/$PLATFORM
+# Links against libgpg-error, already installed into $INSTALL_DIR/$SYSTEM_KEY
 # — target_sysroot_cc (below) points the compiler at that tree's libc, and
 # an explicit --with-libgpg-error-prefix (below) stops libassuan's own
 # gpg-error-config probing from leaking a host or toolchain path instead.
+# $SYSTEM_KEY, NOT bare $PLATFORM: with the stage->archive->merge inversion
+# (PACKAGING.md), $INSTALL_DIR/$SYSTEM_KEY is the tree earlier require()d
+# members actually merged into (see target_build_env) — bare $PLATFORM
+# only coincides with it when CAPS is empty (same divergence
+# bootable-systemd.sh's own systemd require() already guards against;
+# confirmed the hard way here too: CAPS=usb's gpgrt-config/gpg-error-config
+# probes silently pointed at the wrong, caps-less install tree).
 # host/prefix/install-dir come from target_build_env; build= forces
 # autoconf to treat a same-arch target (virt/pi4) as a cross build.
 : ${build:=$(gcc -dumpmachine)}
@@ -22,13 +29,13 @@ prepare() {
     # $GPGRT_CONFIG in [\/]*) use it as-is`), and configure then derives
     # --libdir from GPGRT_CONFIG's own path, so gpgrt-config in turn finds
     # libgpg-error's .pc file with no separate PKG_CONFIG_LIBDIR needed.
-    GPGRT_CONFIG=$INSTALL_DIR/$PLATFORM/usr/bin/gpgrt-config \
+    GPGRT_CONFIG=$INSTALL_DIR/$SYSTEM_KEY/usr/bin/gpgrt-config \
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
         --disable-doc \
-        --with-libgpg-error-prefix=$INSTALL_DIR/$PLATFORM/usr
+        --with-libgpg-error-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr
 }
 
 build() {

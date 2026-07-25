@@ -187,8 +187,32 @@ install() {
     ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-wait-online.service
 
-    # Optional filesystem mounts and automounts — not needed for minimal boot
-    ln -sfv /dev/null etc/systemd/system/tmp.mount
+    # Optional filesystem mounts and automounts — not needed for minimal boot.
+    # tmp.mount is skipped when CAPS=amnesia (see package/amnesia-config.sh):
+    # a masked unit here always wins over the fstab-generator's own
+    # synthesized tmp.mount (etc/systemd/system/ outranks the generator's
+    # /run/systemd/generator/ in systemd's unit load order — see
+    # systemd.unit(5)'s UNIT FILE LOAD PATH), so amnesia's own /etc/fstab
+    # tmpfs entry for /tmp would otherwise be silently shadowed.
+    #
+    # This mask can NOT be reversed by a later package's own install(), the
+    # way network-config.sh reverses systemd-networkd's masks — confirmed
+    # empirically while building the amnesia capability: since the
+    # stage->archive->merge inversion (PACKAGING.md), every package's
+    # package_install_dir is its own fresh, empty per-package stage dir;
+    # `rm -fv` there removes nothing (the path was never there to begin
+    # with), and merge only extracts paths a package's OWN tarball actually
+    # contains — it can add or overwrite, never delete something an
+    # earlier package already merged. (network-config.sh's own
+    # systemd-networkd unmask has the identical bug — inspecting an old,
+    # pre-inversion install/virt+network tree gives a false-positive; a
+    # fresh rebuild would show the mask still present, same as here.)
+    # Gating the mask right here, at the one place that actually controls
+    # the merged tree's content, is the only way to make it conditional.
+    case " ${CAPS:-} " in
+        *" amnesia "*) : ;;
+        *) ln -sfv /dev/null etc/systemd/system/tmp.mount ;;
+    esac
     ln -sfv /dev/null etc/systemd/system/dev-mqueue.mount
     ln -sfv /dev/null etc/systemd/system/sys-kernel-debug.mount
     ln -sfv /dev/null etc/systemd/system/sys-kernel-config.mount

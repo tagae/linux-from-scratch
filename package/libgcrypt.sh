@@ -12,13 +12,13 @@ prepare() {
     # GPGRT_CONFIG: see libassuan.sh's prepare() for why this absolute
     # path (rather than relying on configure's own $PATH search) is
     # needed for every package here that probes libgpg-error this way.
-    GPGRT_CONFIG=$INSTALL_DIR/$PLATFORM/usr/bin/gpgrt-config \
+    GPGRT_CONFIG=$INSTALL_DIR/$SYSTEM_KEY/usr/bin/gpgrt-config \
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
         --disable-doc \
-        --with-libgpg-error-prefix=$INSTALL_DIR/$PLATFORM/usr
+        --with-libgpg-error-prefix=$INSTALL_DIR/$SYSTEM_KEY/usr
 }
 
 build() {

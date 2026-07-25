@@ -140,6 +140,12 @@ depends() {
     case " ${CAPS:-} " in
         *" 9p "*) require 9p-config ;;
     esac
+    # amnesia-config reverses part of systemd.sh's own install()-time
+    # tmp.mount mask (same "must come after" reasoning as network-config
+    # above), so it has to run after that masking exists to reverse.
+    case " ${CAPS:-} " in
+        *" amnesia "*) require amnesia-config ;;
+    esac
 
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
