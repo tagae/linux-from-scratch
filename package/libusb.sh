@@ -8,7 +8,7 @@
 # for a standalone `./lfs install`); build= forces autoconf to treat a
 # same-arch target (virt/pi4) as a cross build; target_sysroot_cc compiles
 # against the target tree's own libc (see lib/package.sh).
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 prepare() {

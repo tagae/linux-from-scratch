@@ -4,10 +4,25 @@ install() {
     case $package_component in
         cmdline)
             mkdir -pv $package_install_dir/boot
+            # Cap-conditional read-only root (CAPS=amnesia, ambient here —
+            # see lfs's qemu case for the QEMU-side twin of this same
+            # substitution, and package/amnesia-config.sh for the rest of
+            # the capability). nologreplay: see lfs's qemu case for why
+            # even a `ro` mount needs it. Defaults (rootflags/rwmode) match
+            # the pre-amnesia text exactly, so a no-amnesia build's
+            # cmdline.txt is byte-identical to before this capability existed.
+            local rootflags=subvol=root/$ROOT_VOLUME
+            local rwmode=rw
+            case " ${CAPS:-} " in
+                *" amnesia "*)
+                    rootflags=$rootflags,nologreplay
+                    rwmode=ro
+                    ;;
+            esac
             printf '%s\n' \
                 "earlycon=pl011,0x20201000 console=ttyAMA0,115200" \
-                "root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME" \
-                "rw rootwait rootdelay=5" \
+                "root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=$rootflags" \
+                "$rwmode rootwait rootdelay=5" \
                 "initcall_blacklist=bcm2835_pm_driver_init" \
                 > $package_install_dir/boot/cmdline.txt
             # Collapse to a single space-separated line as the kernel expects

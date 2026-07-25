@@ -17,7 +17,7 @@
 # build= forces autoconf to treat a same-arch target (virt/pi4) as a cross
 # build; target_sysroot_cc compiles/links against the target tree (its libc
 # and the ncursesw installed by depends()).
-: ${build:=$(cc -dumpmachine)}
+: ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 
 depends() {

@@ -40,6 +40,9 @@ depends() {
     case " ${CAPS:-} " in
         *" 9p "*) require 9p-config ;;
     esac
+    case " ${CAPS:-} " in
+        *" amnesia "*) require amnesia-config ;;
+    esac
 
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())

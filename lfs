@@ -42,10 +42,19 @@ done
 # relative even in guest phase (=/mnt/lfs/download, since PROJECT_DIR IS
 # /mnt/lfs when run from the guest's 9p mount) — the shared, hash-verified
 # source cache is exactly what a guest build wants to reuse, offline.
+# INSTALL_DIR/IMAGE_DIR join the three above for the same reason (SELF-HOST.md
+# M4): `system build`/`image build` need somewhere guest-local to stage the
+# system tree and the .img file while building — INSTALL_DIR is a full
+# native-built system tree (~GBs of churn), and the not-yet-finished .img
+# under IMAGE_DIR is actively attached to a loop device mid-build, neither
+# of which belongs on the 9p share. M5 copies the *finished* artifacts back
+# out to the shared image/ and work/boot/ explicitly (see SELF-HOST.md).
 if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
     : ${SOURCE_DIR:=/var/lfs/source}
     : ${WORK_DIR:=/var/lfs/work}
     : ${ARCHIVE_DIR:=/var/lfs/archive}
+    : ${INSTALL_DIR:=/var/lfs/install}
+    : ${IMAGE_DIR:=/var/lfs/image}
 fi
 
 : ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
@@ -246,11 +255,69 @@ case "${1:-help}" in
                     -device virtio-9p-pci,fsdev=lfs,mount_tag=lfs
                 ;;
         esac
+        # Removable USB stick for the air-gapped GPG key-persist workflow
+        # (see SELF-HOST.md, package/gpg-genkey.sh). virt/xhci form only —
+        # pi0's dwc2 attach (real hardware has no PCI bus for qemu-xhci) is
+        # a later increment, out of scope here. USB_DISK must already exist
+        # (e.g. a blank vfat image created on the host); unset/empty is a
+        # no-op, so a usb-capable build with no stick attached still boots
+        # (just with no USB device present, same as the network/9p caps
+        # above only wiring up when the guarding env var/CAPS conditions
+        # hold). The virt root disk itself is virtio-blk (/dev/vda, see
+        # QEMU_DISK_IF above) — this stick therefore enumerates in the
+        # guest as the first SCSI/USB-storage disk, /dev/sda.
+        case " $CAPS " in
+            *" usb "*)
+                if [ -n "${USB_DISK:-}" ]; then
+                    [ -f "$USB_DISK" ] || bail "USB_DISK not found: $USB_DISK"
+                    # cache=writethrough: every guest write is committed to
+                    # $USB_DISK on the host as soon as the guest's own
+                    # sync()/umount() say it's durable, rather than trusting
+                    # QEMU's own write-back cache to still be intact by the
+                    # time this same file is read back later (e.g. the host-
+                    # side verification step, or a later boot with a fresh
+                    # guest that never issues its own flush). This stick
+                    # models removable media a guest can yank at any time
+                    # (that's the whole point of the appliance — see
+                    # gpg-genkey.sh): its persistence contract should rest on
+                    # the guest's own explicit sync, not on however cleanly
+                    # this particular QEMU process happens to exit afterward.
+                    set -- "$@" \
+                        -drive if=none,id=usbstick,format=raw,file=$USB_DISK,cache=writethrough \
+                        -device qemu-xhci,id=xhci \
+                        -device usb-storage,bus=xhci.0,drive=usbstick
+                fi
+                ;;
+        esac
+        # Cap-conditional read-only root (CAPS=amnesia — increment #2 of the
+        # air-gapped GPG appliance, see SELF-HOST.md and
+        # package/amnesia-config.sh). Sets ROOTFLAGS's own DEFAULT here,
+        # rather than touching the "${ROOTFLAGS:-...}" fallback in the
+        # -append line below, so: (a) ROOTFLAGS's existing override contract
+        # (any caller can still set it directly) is untouched, and (b) the
+        # no-amnesia fallback text below stays byte-identical to what it was
+        # before this capability existed. nologreplay: btrfs replays its
+        # crash-consistency log tree at mount time even under `ro` — that
+        # replay writes to the device — so without this a "read-only" mount
+        # would still, occasionally, touch the boot medium; nologreplay is
+        # what actually makes the hash-identical proof (SELF-HOST.md) hold.
+        case " $CAPS " in
+            *" amnesia "*)
+                : ${ROOTFLAGS:=rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME,nologreplay ro rootwait}
+                ;;
+        esac
+        # QEMU_EXTRA last: QEMU's own "last flag wins" rule for repeated
+        # options (-smp/-m/...) lets this override QEMU_FLAGS's defaults
+        # (e.g. the self-host builder guest needs more than virt's default
+        # -smp 1 -m 512 to build a whole system natively — see SELF-HOST.md
+        # M4) without editing the platform file itself. Empty by default,
+        # so an unset QEMU_EXTRA changes nothing.
         exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
             -no-reboot \
             "$@" \
             -append "${QEMU_APPEND:-} ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait}" \
-            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}"
+            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}" \
+            ${QEMU_EXTRA:-}
         ;;
 
     help)

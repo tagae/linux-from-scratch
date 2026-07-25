@@ -8,6 +8,35 @@ fetch() {
     default_fetch
     local dependency
     for dependency in mpfr gmp mpc; do
+        # Skip symlinking this dependency's source into the gcc tree when
+        # the caller already points gcc at an external, prebuilt copy
+        # (native-toolchain.sh: host=$target, --with-gmp/--with-mpfr/
+        # --with-mpc — see prepare()) — mirrors the standard LFS-book
+        # instruction to remove these symlinks once the version
+        # requirements are satisfied some other way. This is NOT just
+        # cosmetic/redundant-avoidance: gcc's own top-level configure
+        # decides whether to configure+build EACH bundled directory purely
+        # by whether it EXISTS in the source tree (confirmed against its
+        # own configure script — no noconfigdirs/skipdirs gating on
+        # --with-gmp/mpfr/mpc at all); those flags only redirect cc1's own
+        # final LINK (gmplibs/gmpinc), so leaving the symlinks in place
+        # would make gcc ALSO configure+build the bundled copies, wastefully
+        # and — on this host==target scenario, whose $CC now carries
+        # target_sysroot_cc's own explicit -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib
+        # (below) — brokenly: each bundled subdir's own throwaway libtool
+        # (configured by gcc's build system itself, with no matching
+        # --with-sysroot of its own) picks up that SAME -L and finds our
+        # ALREADY-INSTALLED target .la files instead of its sibling bundled
+        # ones, whose "=" sysroot-relative dependency_libs entries (see
+        # mpfr.sh's own --with-sysroot comment) have nothing to substitute
+        # against and degrade to a bare, wrong path. Every other caller
+        # (pass1/pass1-native/pass2 in lib/tools.sh) never sets gmp/mpfr/mpc,
+        # so this stays unconditional bundling there, unchanged.
+        case $dependency in
+            gmp)  [ -n "${gmp:-}" ]  && continue ;;
+            mpfr) [ -n "${mpfr:-}" ] && continue ;;
+            mpc)  [ -n "${mpc:-}" ]  && continue ;;
+        esac
         sh $PROJECT_DIR/lfs fetch $dependency
         dependency_version=$(sh $PROJECT_DIR/lfs version $dependency)
         ln -sfnv \
@@ -26,6 +55,41 @@ fetch() {
 # mpfr/--with-mpc makes gcc's own top-level configure skip configuring the
 # symlinked-in bundled copies entirely (its own noconfigdirs mechanism) and
 # link these prebuilt ones instead.
+
+# target_sysroot_cc (host==target only — see lib/package.sh; a no-op for
+# every existing caller, pass1/pass1-native/pass2 in lib/tools.sh, which
+# all leave host unset): the native-toolchain.sh scenario above hands
+# --with-gmp/--with-mpfr/--with-mpc an explicit, literal
+# "-L$INSTALL_DIR/$SYSTEM_KEY/usr/lib" — and gcc's own TOP-LEVEL configure
+# (before any Makefile exists, so --with-build-sysroot's effect on the
+# generated build hasn't kicked in yet) immediately re-uses that same $CC
+# to link a throwaway "gmp/mpfr version check" conftest against gmp/mpfr/
+# mpc found via that literal -L. Found empirically on pi0 (this native gcc
+# build's actual canary, mentioned but never hit by mpfr.sh/mpc.sh
+# themselves, whose OWN target linking happens after their -L is already in
+# place): the version-check link failed with "/usr/lib/libc.so.6: file
+# format not recognized". Root cause is exactly target_sysroot_cc's own
+# documented mechanism — plain $target-gcc's DEFAULT (compiled-in) sysroot
+# is $TOOL_DIR/$target (the bootstrap per-target sysroot, see lib/tools.sh),
+# not $INSTALL_DIR/$SYSTEM_KEY; ld happily resolves "-lc" through the
+# explicit, non-sysroot-relative -L$INSTALL_DIR/$SYSTEM_KEY/usr/lib first,
+# opens ITS libc.so (a linker script — glibc's own, containing a literal
+# absolute "GROUP ( /usr/lib/libc.so.6 ... )" written at glibc's OWN
+# build-time prefix=/usr), and since THIS SPECIFIC -L was not tagged
+# sysroot-relative, ld does NOT re-relocate that inner absolute reference
+# through the active sysroot — it opens literal "/usr/lib/libc.so.6" on
+# this scratch container's own real root instead (bind-mounted from
+# $TOOL_DIR/usr/lib, the BUILD host's native runtime — see docker-
+# compose.yaml), which happens to be architecture-compatible on an aarch64
+# build host cross-building for virt/pi4/pi5 (masking the bug there) but is
+# a different, wrong architecture for pi0 (32-bit ARM), hence the hard
+# failure. Calling target_sysroot_cc here (guarded, exactly like mpfr.sh/
+# mpc.sh) points $CC's OWN --sysroot at $INSTALL_DIR/$SYSTEM_KEY instead —
+# the very same tree --with-gmp/--with-mpfr/--with-mpc/--with-build-sysroot
+# already target — so every implicit lookup (including this early
+# version-check conftest, run long before --with-build-sysroot's own
+# Makefile-level effect exists) resolves consistently against it too.
+target_sysroot_cc
 
 prepare() {
     # cross_target defaults to $target (the platform's real cross target —
@@ -108,6 +172,48 @@ install() {
                         > $($target-gcc -print-file-name=include)/limits.h
                     ;;
             esac
+
+            # Native-for-target scenario (package/native-toolchain.sh: this
+            # gcc's own host==target, i.e. it runs ON $target and emits
+            # $target code — SELF-HOST.md M1). Reuse target_sysroot_cc's own
+            # guard to identify it: every OTHER caller (lib/tools.sh's
+            # pass1/pass1-native/pass2) leaves host unset (a genuine cross
+            # build, build!=host), so this is false for them and this whole
+            # block is a no-op there — byte-identical tools/cross behavior.
+            #
+            # Both fixups belong here, in the package's own install step, so
+            # they stage->archive->merge like everything else (PACKAGING.md)
+            # instead of being patched by hand afterward in the merged tree.
+            if [ "${host:-}" = "$target" ]; then
+                # Bare "cc": this build already installs plain "gcc"/"g++"/
+                # "c++" itself (hardlinked to the $target-prefixed names,
+                # confirmed empirically — see native-toolchain.sh) but never
+                # "cc", the POSIX-conventional name a plain ./configure or
+                # Makefile run ON the guest (SELF-HOST.md Tier 3) is liable
+                # to look for first.
+                ln -sfv gcc $package_install_dir/$prefix/bin/cc
+
+                # usr/lib64 -> usr/lib: GCC hardcodes MULTILIB_OSDIRNAMES=
+                # lib64 for aarch64 (and other 64-bit targets), so this
+                # native-for-target gcc's own libstdc++.so*/libgcc_s.so* land
+                # under usr/lib64 — off the search path of this project's
+                # merged-usr, lib64-less target tree (glibc, and everything
+                # else this project installs, only ever populates usr/lib).
+                # Relocated HERE, in this package's own install step, rather
+                # than by sed-ing gcc's shared source tree (which pass1/
+                # pass1-native/pass2 also build from and whose existing,
+                # unaffected-by-this-bug behavior must not change — e.g.
+                # lib/tools.sh's own pass1-native copies FROM $native_target/
+                # lib64 on purpose). The lib64->lib symlink keeps anything
+                # still hardcoded to the lib64 path (this gcc's own
+                # -print-file-name, recorded libtool .la libdirs) resolving.
+                if [ -d $package_install_dir/$prefix/lib64 ]; then
+                    mkdir -p $package_install_dir/$prefix/lib
+                    cp -av $package_install_dir/$prefix/lib64/. $package_install_dir/$prefix/lib/
+                    rm -rf $package_install_dir/$prefix/lib64
+                    ln -sv lib $package_install_dir/$prefix/lib64
+                fi
+            fi
             ;;
     esac
 }

@@ -2,6 +2,13 @@
 : ${package_source:=https://ftp.gnu.org/gnu/gettext/gettext-$package_version.tar.xz}
 : ${package_source_hash:=sha256:71132a3fb71e68245b8f2ac4e9e97137d3e5c02f415636eb508ae607bc01add7}
 
+# build=: see m4.sh's copy of this guard (SELF-HOST.md M3 target build —
+# msgfmt for later target-scenario builds, e.g. a guest rebuild of
+# systemd). No target_sysroot_cc: --disable-shared --disable-static below
+# already means no libintl.so/.a is built to link against; nothing from
+# the target tree is linked.
+: ${build:=$(gcc -dumpmachine)}
+
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \
