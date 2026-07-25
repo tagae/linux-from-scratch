@@ -55,7 +55,8 @@ prepare() {
     # sidestep (Python 3.14's _ssl.c referenced TLSv1_method, which OpenSSL
     # 4.0 dropped); it also carries a few unrelated upstream CVE fixes
     # bundled into the same "consolidated_fixes" patch.
-    patch_source https://www.linuxfromscratch.org/patches/lfs/development/Python-$package_version-consolidated_fixes-1.patch
+    patch_source https://www.linuxfromscratch.org/patches/lfs/development/Python-$package_version-consolidated_fixes-1.patch \
+        sha256:2b10cd96a07e8c45de3ac5d5f4c7e24c10df720c529fd2de3ffec809e559d311
 
     # ac_cv_buggy_getaddrinfo: cross-compiling can't run Python's own
     # getaddrinfo(3) behavior probe (needs to compile-AND-run a test

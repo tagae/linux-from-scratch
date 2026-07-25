@@ -3,7 +3,14 @@ FROM debian:stable-slim
 RUN groupdel dialout # conflicts with macOS
 
 RUN apt update
-RUN apt install -y build-essential curl wget rsync gawk bison python3 patchelf ca-certificates
+RUN apt install -y build-essential curl wget rsync gawk bison python3 patchelf ca-certificates \
+    # busybox: gives tests/syntax-ash.sh a real ash to parse scripts with
+    # (see there) even before any LFS build exists to provide this
+    # project's own static one -- Debian's busybox package installs
+    # alongside coreutils/dash rather than replacing them, so this is a
+    # pure addition, not a behavior change for anything bootstrap already
+    # does.
+    busybox
 
 ARG HOST_UID
 ARG HOST_GID

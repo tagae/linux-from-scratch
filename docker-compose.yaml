@@ -20,6 +20,14 @@ services:
       - type: bind
         source: package
         target: /mnt/lfs/package
+      # tests/ (Stage-1 regression suite -- see tests/README.md): bind
+      # mounted like lfs/lib/package above so `sh tests/<x>.sh` can run
+      # inside this container too, e.g. as a bootstrap-container fallback
+      # for tests/syntax-ash.sh when no LFS build (hence no scratch image)
+      # exists yet.
+      - type: bind
+        source: tests
+        target: /mnt/lfs/tests
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download
@@ -85,6 +93,13 @@ services:
       - type: bind
         source: package
         target: /mnt/lfs/package
+      # tests/ (Stage-1 regression suite -- see tests/README.md): bind
+      # mounted like lfs/lib/package above so `sh tests/<x>.sh` can run
+      # inside this container (tests/unit.sh and tests/artifacts.sh need
+      # this container specifically -- see there for why).
+      - type: bind
+        source: tests
+        target: /mnt/lfs/tests
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download

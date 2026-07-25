@@ -14,6 +14,7 @@
 	busybox-test busybox-test-% \
 	network-system network-image network-qemu network-test \
 	reinstall-tools reinstall-system \
+	check check-probes check-probe \
 	clean distclean \
 	FORCE
 
@@ -127,6 +128,27 @@ reinstall-system:
 	docker compose run --rm scratch find work -name '.install-*' -delete
 	docker volume rm -f linux-from-scratch_install
 	$(MAKE) system
+
+# Fast, deterministic regression suite (no QEMU, no package builds) -- see
+# tests/README.md. Separate from `test` above (the slow, real boot-matrix
+# harness, which this does not replace and does not run).
+check: .env
+	@sh tests/run.sh
+
+# Stage 2: functional in-guest probes (boot a real image, assert on live
+# behavior) -- see tests/README.md and tests/probes.sh. Separate from
+# `check` above ON PURPOSE: this needs QEMU plus already-built images
+# (./lfs system build / ./lfs image build for whatever SYSTEM_KEYs the
+# probes under tests/probes/ target), and a single probe can take
+# minutes where `check` is seconds -- so this never runs implicitly as
+# part of `check`, only when asked for explicitly. A probe whose image
+# isn't built yet SKIPs rather than failing (see tests/probes.sh).
+check-probes: .env
+	@sh tests/probes.sh
+
+# Run a single probe: make check-probe PROBE=network
+check-probe: .env
+	@PROBE=$(PROBE) sh tests/probes.sh
 
 clean:
 	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install

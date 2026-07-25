@@ -18,8 +18,10 @@ prepare() {
     # separate var.
     : ${cross_target=$target}
 
-    patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch
-    patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch
+    patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch \
+        sha256:643552db030e2f2d7ffde4f558e0f5f83d3fabf34a2e0e56ebdb49750ac27b0d
+    patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-$package_version-upstream_fixes-1.patch \
+        sha256:dd4b9d3b03e98a48d2094401ec6b70d669a89173685958e4b84b894065fdd70c
 
     # Ensure that the ldconfig and sln utilities are installed alongside the
     # rest of this glibc, rather than glibc's default rootsbindir=/sbin.
