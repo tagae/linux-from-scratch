@@ -57,7 +57,7 @@ Building and booting by stage
 -----------------------------
 
 `test` runs the full chain and boots headless; the stages can also be run on their own. Each defaults
-to `virt`/systemd; suffix a platform and/or prefix `busybox-`:
+to `virt`/systemd; suffix a platform and/or set the `INIT` variable:
 
 ```shell
 make tools      # cross-toolchain + temporary build tools
@@ -66,9 +66,9 @@ make image      # produce a bootable disk image
 make qemu       # boot the image in QEMU (interactive serial console)
 ```
 
-For example `make system-pi0`, `make busybox-system-pi4`, `make qemu-pi0`, `make busybox-qemu`.
-Per-platform images are the file targets `image/<platform>.img` / `image/busybox-<platform>.img`
-(e.g. `make image/pi0.img`), and are built automatically by the matching `qemu`/`test` goal.
+For example `make system-pi0`, `make system-pi4 INIT=busybox`, `make qemu-pi0`, `make qemu INIT=busybox`.
+Per-platform images are the file targets `image/<init>-<platform>.img`
+(e.g. `make image/systemd-pi0.img`), and are built automatically by the matching `qemu`/`test` goal.
 
 `make distclean` tears down the Docker volumes, `work/`, and `image/` for a clean rebuild.
 
@@ -76,7 +76,7 @@ Per-platform images are the file targets `image/<platform>.img` / `image/busybox
 Testing
 -------
 
-`make test` (and `make <platform>-test` / `make busybox-test[-<platform>]`) boots the image in QEMU,
+`make test` (and `make test-<platform>`, optionally with `INIT=busybox`) boots the image in QEMU,
 logs in as root, runs `poweroff`, and verifies that QEMU exits cleanly. It drives the `./test` expect
 script, which takes the platform and init flavor as arguments (`./test pi0 busybox`) and reads the
 kernel and disk image the build staged out of the Docker volumes.

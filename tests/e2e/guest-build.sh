@@ -34,14 +34,14 @@ echo "### e2e guest-build: builder-guest tool completions (probe-first)"
 overlay() {
     # Prefer the builder's OWN key's archives (the only ones a from-pristine
     # E1 produces), then plain virt (present on older/hand-grown setups).
-    f=$(ls "archive/virt+9p+loop/$1"-*.tar.xz archive/virt/$1-virt-*.tar.xz \
+    f=$(ls "archive/systemd-virt+9p+loop/$1"-*.tar.xz archive/systemd-virt/$1-systemd-virt-*.tar.xz \
         2>/dev/null | head -1)
     if [ -z "$f" ]; then
         echo "### FATAL: $1 capability missing and no archive fallback"
         exit 1
     fi
     echo "###   unarchive $f -> /"
-    LFS_PHASE=guest ./lfs unarchive "$f" / || exit 1
+    ./lfs unarchive "$f" / || exit 1
 }
 [ -e /usr/lib/libz.so.1 ]             || overlay zlib
 python3 -c 'import zlib' 2>/dev/null  || overlay python
@@ -49,28 +49,33 @@ depmod -V 2>/dev/null | grep -q kmod  || overlay kmod
 command -v mkfs.btrfs >/dev/null 2>&1 || overlay btrfs-progs
 if ! command -v mkfs.fat >/dev/null 2>&1; then
     echo "###   native install dosfstools"
-    LFS_PHASE=guest ./lfs install dosfstools
+    ./lfs install dosfstools
 fi
 
 echo "### e2e guest-build: E2 - guest builds its own aarch64->arm cross-toolchain"
-LFS_PHASE=guest PLATFORM=pi0 ./lfs tools bootstrap
+PLATFORM=pi0 ./lfs tools bootstrap
 
 echo "### e2e guest-build: E3 - cross-compile the pi0 system"
-LFS_PHASE=guest PLATFORM=pi0 INIT=systemd ./lfs system build
+PLATFORM=pi0 INIT=systemd ./lfs system build
 
 echo "### e2e guest-build: E3 - cross-compile the GnuPG family for pi0"
-LFS_PHASE=guest PLATFORM=pi0 INIT=systemd ./lfs install \
+PLATFORM=pi0 INIT=systemd ./lfs install \
     zlib libgpg-error npth libassuan libksba libgcrypt libusb gnupg pinentry
 
 echo "### e2e guest-build: E3 - build the pi0 image"
-LFS_PHASE=guest PLATFORM=pi0 INIT=systemd ./lfs image build
+PLATFORM=pi0 INIT=systemd ./lfs image build
 
-echo "### e2e guest-build: copy artifacts out over 9p (never clobbering the"
-echo "### container-built image/pi0.img or work/boot/pi0/)"
-cp /var/lfs/image/pi0.img /mnt/lfs/image/e2e-pi0.img
-mkdir -p /mnt/lfs/work-e2e/boot/pi0
-cp /var/lfs/work/boot/pi0/kernel.img /mnt/lfs/work-e2e/boot/pi0/kernel.img
-cp /var/lfs/work/boot/pi0/*.dtb      /mnt/lfs/work-e2e/boot/pi0/ 2>/dev/null || true
+echo "### e2e guest-build: copy artifacts out over 9p"
+# The image gets its own e2e- name (the container-built pi0.img, when one
+# exists, is a distinct artifact worth keeping); the kernel/dtb go to the
+# CANONICAL work/boot/systemd-pi0/ — deliberately superseding the container
+# baseline's copy there, so ./lfs qemu boots the guest-built kernel with
+# no WORK_DIR override. The errexit trap + the OK sentinel below are what
+# guarantee these copies actually happened.
+cp /var/lfs/image/systemd-pi0.img /mnt/lfs/image/e2e-pi0.img
+mkdir -p /mnt/lfs/work/boot/systemd-pi0
+cp /var/lfs/work/boot/systemd-pi0/kernel.img /mnt/lfs/work/boot/systemd-pi0/kernel.img
+cp /var/lfs/work/boot/systemd-pi0/*.dtb      /mnt/lfs/work/boot/systemd-pi0/ 2>/dev/null || true
 sync
 
 echo E2E_GUEST_BUILD_OK

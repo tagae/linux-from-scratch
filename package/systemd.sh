@@ -26,7 +26,7 @@ prepare() {
     # (rather than skipping it) keeps the container's own cross path
     # completely unaffected by this guest-only property.
     local needs_exe_wrapper=
-    if [ "${LFS_PHASE:-}" = guest ]; then
+    if _os_is_build_host; then
         needs_exe_wrapper='needs_exe_wrapper = false'
     fi
 
@@ -38,7 +38,7 @@ prepare() {
     # not harmless when missing" story, as target_sysroot_cc's own copy of
     # this in lib/package.sh; see there for the full account.
     local kernel_headers=$TOOL_DIR/$target/usr/include
-    if [ "${LFS_PHASE:-}" = guest ]; then
+    if [ ! -d "$kernel_headers" ]; then
         kernel_headers=/usr/include
     fi
 

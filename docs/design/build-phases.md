@@ -1,58 +1,38 @@
-Build phases and environments
-=============================
+Build environments: one path, detected
+======================================
 
-Three phases (`LFS_PHASE`), each a different executor honoring the same
-`/mnt/lfs` project contract and the same `lfs`/`lib/`/`package/` code.
+There is no phase flag. `./lfs` computes ONE layout everywhere: code at
+$PROJECT_DIR (bind mount in the containers, 9p share on a booted guest,
+the repo itself on the dev host), heavy build state under /var/lfs
+(named volumes in the containers, local disk on a guest), and the
+hash-verified download/ mirror always PROJECT_DIR-relative. Two
+detections replace the old bootstrap/scratch/guest LFS_PHASE variable:
 
-bootstrap (Debian container)
-----------------------------
+* **`[ -d /var/lfs ]`** (lfs) — mounted build state present? If not,
+  this is the development host, whose only role is booting the
+  bind-mounted artifacts (image/, work/boot/); state dirs then default
+  PROJECT_DIR-relative.
+* **`_os_is_build_host`** (lib/base.sh) — is the running OS itself an
+  LFS build host (a booted guest)? True when `gcc -dumpmachine` carries
+  our `-scratch-` vendor triple AND the compiler is not the tools volume
+  aliased at /usr (there, $TOOL_DIR/usr/bin/gcc is the same file). Skips
+  the build-host construction + tool set (`_bootstrap_build_host`,
+  `build_tools`, scratch staging) that a booted LFS already carries, and
+  selects the live-`/` install scenario for self-arch one-offs.
 
-Seeds everything: builds the cross toolchains (binutils/gcc pass 1 and
-2 per target triple) plus the build-host-native tool set into the
-`tools` volume (TOOL_DIR), using Debian's compiler only as the initial
-seed. PATH keeps host tools first, toolchain `usr/bin` last — once
-glibc-linked binaries exist they must not shadow host tools mid-phase.
-Also generates the from-scratch CA bundle and stages it to
-`work/certs/` for the next phase (trust.md).
+Everything else was already detection or is now uniform: kernel headers
+and the install scenario key on the per-target sysroot's existence,
+archive/merge on `_guest_has_archive_tools`, imaging on kpartx-vs-losetup,
+and gcc ALWAYS gets prebuilt gmp/mpfr/mpc (one code path; gcc.sh's
+prepare() reconciles the bundled symlinks per build).
 
-scratch (FROM scratch container)
---------------------------------
+The residual seed: `Dockerfile.bootstrap` (Debian) is the only place
+with no LFS lineage — there `_os_is_build_host` is false and nothing
+exists yet, so `./lfs tools bootstrap` builds the full native build-host
+environment before the cross-toolchain. Docker is bootstrap-only; any
+booted LFS builds any other LFS (docs/design/guest-cross-builder.md).
 
-The self-contained build environment: PATH is TOOL_DIR only; no host
-userland at all. Because the container's real `/` is empty, the tools
-volume's `usr/lib` and `usr/bin` are also bind-mounted read-only at
-`/lib`, `/usr/lib`, `/usr/bin` — native codegen helpers that packages
-compile-and-run mid-build (and `#!/usr/bin/env` shebangs) resolve
-without baking anything into the image. Cross-compiles all target
-systems (system phase) and builds images.
-
-Volume/bind split (docker-compose): small, host-shared things are bind
-mounts (`lfs`, `lib/`, `package/`, `download/`, `image/`, `archive/`,
-`work/boot/`); I/O-hot build state lives in named volumes (`source`,
-`work`, `tools`, `install`). `work/boot` is bind-mounted because
-host-side `./lfs qemu` must read kernels; named volumes are invisible
-outside Docker.
-
-guest (the booted LFS system itself)
-------------------------------------
-
-`LFS_PHASE=guest` runs the same machinery natively on a booted target
-(self-hosting.md): PATH untouched (the system's own /usr/bin is the
-toolchain), heavy dirs guest-local under `/var/lfs`
-(SOURCE/WORK/ARCHIVE/INSTALL/IMAGE — compiling over 9p is too slow),
-`DOWNLOAD_DIR` stays on the 9p-mounted project (the shared,
-hash-verified cache; fully-populated = offline builds).
-
-Cross-phase invariants
-----------------------
-
-* `SSL_CERT_FILE`: bootstrap uses Debian's bundle; scratch uses OUR
-  generated bundle staged at `work/certs/`; guest uses the system's own
-  `/etc/ssl/certs/ca-certificates.crt` (installed by the
-  ca-certificates package). Downloads never skip verification.
-* Env-overridable dirs (`SOURCE_DIR`, `WORK_DIR`, …) are what let one
-  script serve all three executors without code changes.
-* QEMU runs on the HOST (not in a container): `./lfs qemu` reads the
-  kernel from `work/boot/$SYSTEM_KEY/` and the image from `image/`.
-  `QEMU_EXTRA` appends last (overrides -smp/-m); `IMAGE_SIZE` sizes
-  built images.
+The SSL trust anchor is the system path /etc/ssl/certs/ca-certificates.crt
+everywhere: Debian ships one, a booted LFS ships its own from-scratch
+bundle, and the scratch container gets the bundle bootstrap staged into
+the work volume, mounted read-only at that same path (docker-compose).

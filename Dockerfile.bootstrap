@@ -17,7 +17,14 @@ ARG HOST_GID
 RUN groupadd --gid $HOST_GID lfs
 RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --no-create-home lfs
 
+# State dirs under /var/lfs (the unified layout, see lfs): pre-created
+# and owned by the build user so docker's fresh-volume seeding copies
+# this ownership into newly created named volumes.
 RUN mkdir -pv \
+    /var/lfs/source \
+    /var/lfs/tools \
+    /var/lfs/work \
+    /var/lfs/install \
     /mnt/lfs/download \
     /mnt/lfs/image \
     /mnt/lfs/lib \
@@ -27,6 +34,11 @@ RUN mkdir -pv \
     /mnt/lfs/work
 
 RUN chown lfs:lfs \
+    /var/lfs \
+    /var/lfs/source \
+    /var/lfs/tools \
+    /var/lfs/work \
+    /var/lfs/install \
     /mnt/lfs \
     /mnt/lfs/download \
     /mnt/lfs/image \

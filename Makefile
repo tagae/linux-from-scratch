@@ -4,14 +4,6 @@
 	image \
 	qemu qemu-% \
 	test test-% \
-	systemd-system systemd-system-% \
-	systemd-image \
-	systemd-qemu systemd-qemu-% \
-	systemd-test systemd-test-% \
-	busybox-system busybox-system-% \
-	busybox-image \
-	busybox-qemu busybox-qemu-% \
-	busybox-test busybox-test-% \
 	network-system network-image network-qemu network-test \
 	reinstall-tools reinstall-system \
 	check check-probes check-probe \
@@ -22,31 +14,25 @@
 # Whatever depends on FORCE will be considered out of date, since it depends on nothing.
 FORCE:
 
-# Keep intermediate files, in particular image/%.img. Otherwise, they would be deleted.
+# Keep intermediate files, in particular image/*.img. Otherwise, they would be deleted.
 .SECONDARY:
 
 # The `test` goal covers the whole chain for the `virt` platform:
 # tools, system, image, and emulation.
 .DEFAULT_GOAL := test
 
+# Init flavor: ONE set of rules, parameterized by INIT (default systemd) —
+# `make test-virt` builds/tests the systemd flavor, `make test-virt
+# INIT=busybox` the busybox one. SYSTEM_KEY (see lfs) always includes the
+# init component, so image names are uniform (image/systemd-virt.img,
+# image/busybox-virt.img) and the rules below need no per-flavor cases.
+INIT ?= systemd
+
 tools: tools-virt
-system: systemd-system-virt
-image: image/virt.img
-qemu: systemd-qemu-virt
-test: systemd-test-virt
-
-systemd-system: systemd-system-virt
-systemd-image:  image/virt.img
-systemd-qemu:   systemd-qemu-virt
-systemd-test:   systemd-test-virt
-
-# Busybox-init flavor (INIT=busybox): the same chain, a separate install
-# tree / boot dir / image (image/busybox-<platform>.img) so it coexists
-# with the default systemd flavor.
-busybox-system: busybox-system-virt
-busybox-image:  image/busybox-virt.img
-busybox-qemu:   busybox-qemu-virt
-busybox-test:   busybox-test-virt
+system: system-virt
+image: image/$(INIT)-virt.img
+qemu: qemu-virt
+test: test-virt
 
 .env:
 	echo HOST_UID=$$(id -u) >> $@
@@ -62,63 +48,39 @@ tools-%: .env
 	# Chapter 7: Building Additional Temporary Tools
 	PLATFORM=$* docker compose run --build --rm scratch ./lfs tools build
 
-# ---- systemd flavor (the default; image is bare image/<platform>.img) ----
-systemd-system-%: tools-%
+system-%: tools-%
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
-	PLATFORM=$* INIT=systemd docker compose run --rm scratch ./lfs system build
+	PLATFORM=$* INIT=$(INIT) docker compose run --rm scratch ./lfs system build
 
-image/%.img: systemd-system-% FORCE
+image/$(INIT)-%.img: system-% FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* INIT=systemd docker compose run --rm --user 0:0 scratch ./lfs image build
+	PLATFORM=$* INIT=$(INIT) docker compose run --rm --user 0:0 scratch ./lfs image build
 
-systemd-test-%: image/%.img
-	./test $* systemd
+test-%: image/$(INIT)-%.img
+	./test $* $(INIT)
 
-systemd-qemu-%: image/%.img
-	PLATFORM=$* INIT=systemd ./lfs qemu
-
-# ---- busybox-init flavor (image is image/busybox-<platform>.img) ----
-# Same shape as the systemd rules above; shares the toolchain (tools-%).
-busybox-system-%: tools-%
-	PLATFORM=$* INIT=busybox docker compose run --rm scratch ./lfs system build
-
-image/busybox-%.img: busybox-system-% FORCE
-	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* INIT=busybox docker compose run --rm --user 0:0 scratch ./lfs image build
-
-busybox-test-%: image/busybox-%.img
-	./test $* busybox
-
-busybox-qemu-%: image/busybox-%.img
-	PLATFORM=$* INIT=busybox ./lfs qemu
+qemu-%: image/$(INIT)-%.img
+	PLATFORM=$* INIT=$(INIT) ./lfs qemu
 
 # ---- opt-in "network" capability (CAPS=network; virt/systemd only for
-# now — capabilities are proven here first; a %-pattern version can follow
-# once a Pi platform actually has a NIC driver, see network.config) ----
+# now — capabilities are proven here first; folding CAPS into the
+# parameterized rules above the same way INIT was is the recorded
+# follow-on) ----
 network-system: tools-virt
 	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm scratch ./lfs system build
 
-image/virt+network.img: network-system FORCE
+image/systemd-virt+network.img: network-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
 	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm --user 0:0 scratch ./lfs image build
 
-network-image: image/virt+network.img
+network-image: image/systemd-virt+network.img
 
-network-test: image/virt+network.img
+network-test: image/systemd-virt+network.img
 	./test virt systemd network
 
-network-qemu: image/virt+network.img
+network-qemu: image/systemd-virt+network.img
 	PLATFORM=virt INIT=systemd CAPS=network ./lfs qemu
-
-# ---- unprefixed shortcuts for the default (systemd) flavor ----
-# A recipe-less pattern rule can't act as an alias (make then reports "no
-# rule to make target"), so these delegate to the systemd-<verb>-% rule via
-# a sub-make. Bare `system`/`qemu`/`test` alias the systemd goals directly
-# (above), so only the per-platform pattern forms need this.
-system-%: ; @$(MAKE) systemd-system-$*
-test-%:   ; @$(MAKE) systemd-test-$*
-qemu-%:   ; @$(MAKE) systemd-qemu-$*
 
 reinstall-tools:
 	docker compose run --rm scratch find work -name '.install-*' -delete

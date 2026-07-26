@@ -12,10 +12,10 @@
 # tests/probes/gnupg-keygen.probe) - keygen + subkey structure only.
 log_user 1
 
-# The guest-built kernel/dtb live under work-e2e/ (copied there by
-# guest-build.sh); WORK_DIR points ./lfs qemu at them without disturbing the
-# container-built work/boot/pi0/.
-spawn env WORK_DIR=work-e2e PLATFORM=pi0 ./lfs qemu image/e2e-pi0.img
+# The guest-built kernel/dtb sit at the canonical work/boot/systemd-pi0/ (guest-
+# build.sh copies them there, superseding any container baseline), so the
+# default WORK_DIR just works.
+spawn env PLATFORM=pi0 ./lfs qemu image/e2e-pi0.img
 
 set timeout 600
 expect {

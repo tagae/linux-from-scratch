@@ -13,7 +13,7 @@
 #      at all, and this is what would catch a regression that broke that
 #      (e.g. btrfs log-tree replay writing on mount without
 #      rescue=nologreplay -- see amnesia.md).
-PROBE_KEY=virt+amnesia+usb
+PROBE_KEY=systemd-virt+amnesia+usb
 PROBE_TIMEOUT=180
 
 probe_guest() {

@@ -82,3 +82,17 @@ git_checkout() {
     mkdir -p $(dirname $dest)
     git clone --branch $branch --depth 1 $url $dest
 }
+
+# Is the running system ITSELF an LFS build host — i.e. a booted LFS
+# guest? True when the OS's own compiler is our lineage (vendor triple
+# "-scratch-", something no seed container's compiler has) AND it is
+# genuinely the OS's own: the scratch container sees the same compiler
+# only because the tools volume is aliased at /usr, in which case
+# TOOL_DIR's own copy is that same file — whereas on a booted guest,
+# TOOL_DIR holds only per-target cross tools (bin/$target-*), never a
+# native usr/bin/gcc. Replaces the old LFS_PHASE=guest flag with
+# detection (docs/design/build-phases.md).
+_os_is_build_host() {
+    gcc -dumpmachine 2>/dev/null | grep -q -- -scratch- \
+        && [ ! -e "$TOOL_DIR/usr/bin/gcc" ]
+}

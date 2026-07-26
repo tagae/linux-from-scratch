@@ -26,7 +26,10 @@ build_system() {
     # on the guest either way), this just also fixes package_merge_dir to
     # $INSTALL_DIR/$SYSTEM_KEY (a separate guest-local tree — see lfs's
     # guest-phase INSTALL_DIR default) instead of "/".
-    [ "${LFS_PHASE:-}" = guest ] && target_build_env
+    # Unconditional: in the containers install() would pick the same
+    # scenario per package anyway; on a booted guest this is what routes a
+    # whole `system build` into its own staging tree instead of the live /.
+    target_build_env
 
     # The package set that makes up a bootable system lives in an umbrella
     # package — bootable-$INIT (bootable-systemd, bootable-busybox), which

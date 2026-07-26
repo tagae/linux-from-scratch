@@ -77,12 +77,13 @@ create_usb_stick() {
 }
 
 # ---- PROBE_KEY -> PLATFORM/INIT/CAPS, mirroring `lfs`'s own SYSTEM_KEY
-# grammar (bare PLATFORM for systemd, INIT-PLATFORM otherwise, then
-# +cap1+cap2... sorted -- see `lfs`'s "Init flavor"/"Capabilities"
-# sections and docs/design/capabilities.md). Since every probe's
-# PROBE_KEY below is literally the image's own filename stem, this is
-# the same string `lfs` folded CAPS into when the image was built, so
-# splitting it back apart reconstructs the exact env `./lfs qemu` needs.
+# grammar: ALWAYS INIT-PLATFORM, then +cap1+cap2... -- see `lfs`'s "Init
+# flavor"/"Capabilities" sections and docs/design/capabilities.md. Since
+# every probe's PROBE_KEY below is literally the image's own filename
+# stem, this is the same string `lfs` folded INIT/CAPS into when the
+# image was built, so splitting it back apart reconstructs the exact env
+# `./lfs qemu` needs. Neither init names nor platform names contain a
+# dash, so the first dash always separates the two.
 
 derive_platform_init_caps() {
     key=$1
@@ -91,16 +92,8 @@ derive_platform_init_caps() {
         *+*) caps_part=${key#*+} ;;
         *)   caps_part= ;;
     esac
-    case $platform_part in
-        busybox-*)
-            DERIVED_INIT=busybox
-            DERIVED_PLATFORM=${platform_part#busybox-}
-            ;;
-        *)
-            DERIVED_INIT=systemd
-            DERIVED_PLATFORM=$platform_part
-            ;;
-    esac
+    DERIVED_INIT=${platform_part%%-*}
+    DERIVED_PLATFORM=${platform_part#*-}
     DERIVED_CAPS=$(printf '%s' "$caps_part" | tr '+' ' ')
 }
 

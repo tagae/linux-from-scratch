@@ -1,7 +1,7 @@
 #!/bin/sh
 # E1 of the end-to-end self-host proof (docs/design/e2e-cross.md): assemble
-# the virt+9p+loop BUILDER image from a pristine state, container-side.
-# Invoked by tests/e2e/run.sh when image/virt+9p+loop.img doesn't exist.
+# the systemd-virt+9p+loop BUILDER image from a pristine state, container-side.
+# Invoked by tests/e2e/run.sh when image/systemd-virt+9p+loop.img doesn't exist.
 #
 # The builder is a bootable-systemd virt system (CAPS="9p loop") whose image
 # tree additionally carries the full build tool payload — the native
@@ -66,4 +66,4 @@ echo "e1: [6/6] builder image build"
 PLATFORM=virt INIT=systemd CAPS="9p loop" IMAGE_SIZE=64g \
     docker compose run --rm --user 0:0 scratch ./lfs image build
 
-echo "e1: builder image ready: image/virt+9p+loop.img"
+echo "e1: builder image ready: image/systemd-virt+9p+loop.img"

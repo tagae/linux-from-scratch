@@ -22,7 +22,7 @@ prepare() {
         ${prefix:+--prefix=$prefix} \
         ${host:+--with-sysroot=$INSTALL_DIR/$SYSTEM_KEY} \
         --disable-static \
-        --docdir=/usr/share/doc/mpc-$package_version
+        --docdir=${prefix:-/usr}/share/doc/mpc-$package_version
 }
 
 build() {

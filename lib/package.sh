@@ -19,9 +19,9 @@ install() {
     # making _install archive/merge $TOOL_DIR itself.
     if [ -n "${package_install_dir:-}" ]; then
         : # lib/tools.sh already pre-set an explicit scenario — leave it alone.
-    elif [ "${LFS_PHASE:-}" = scratch ]; then
+    elif ! _os_is_build_host; then
         target_build_env
-    elif [ "${LFS_PHASE:-}" = guest ]; then
+    else
         # Self vs foreign, decided the same way target_sysroot_cc's own
         # kernel_headers guard decides it (see there): $TOOL_DIR/$target/
         # usr/include only exists once guest-phase `./lfs tools bootstrap`
@@ -192,7 +192,7 @@ target_sysroot_cc() {
     # pick target_build_env vs guest_build_env. Computed once, ahead of
     # the CC/CXX branches below (both need it).
     local kernel_headers=$TOOL_DIR/$target/usr/include
-    if [ "${LFS_PHASE:-}" = guest ] && [ ! -d "$kernel_headers" ]; then
+    if [ ! -d "$kernel_headers" ]; then
         kernel_headers=/usr/include
     fi
 
@@ -410,7 +410,7 @@ _source() {
             # the tarball rather than cp-ing the stage dir gives everywhere
             # else. The merge stamp itself is unaffected either way — same
             # semantics, same _once gating, in every phase.
-            if [ "${LFS_PHASE:-}" != guest ] || _guest_has_archive_tools; then
+            if _guest_has_archive_tools; then
                 ( _once archive; )
             fi
             ( _once merge; )
@@ -524,7 +524,7 @@ _source() {
         # tarball is about to newly introduce need no chmod at all. Also
         # better for the container case: a full-tree chmod was always more
         # than any single package needed.
-        if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
+        if ! _guest_has_archive_tools; then
             (cd $package_install_dir && find . -mindepth 1)
         else
             tar tf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
@@ -539,7 +539,7 @@ _source() {
             fi
         done
 
-        if [ "${LFS_PHASE:-}" = guest ] && ! _guest_has_archive_tools; then
+        if ! _guest_has_archive_tools; then
             # Tool-less-guest fallback (before the delivered tar+xz
             # tarballs are unarchived into it): no tarball exists to
             # extract (the archive step above was skipped too — see

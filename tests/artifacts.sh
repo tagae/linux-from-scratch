@@ -23,8 +23,8 @@ PROJECT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 
 # ---- helpers ----
 
-# Map a SYSTEM_KEY (bare PLATFORM, INIT-PLATFORM, or either +CAP...) back to
-# its bare PLATFORM by matching against the known lib/platform/*.sh names --
+# Map a SYSTEM_KEY (ALWAYS INIT-PLATFORM, optionally +CAP...) back to its
+# bare PLATFORM by matching against the known lib/platform/*.sh names --
 # see `lfs` for the exact SYSTEM_KEY grammar this mirrors.
 platform_for_key() {
     key=$1
@@ -32,7 +32,7 @@ platform_for_key() {
     for pf in "$PROJECT_DIR"/lib/platform/*.sh; do
         p=$(basename "$pf" .sh)
         case $base in
-            "$p" | *"-$p")
+            *"-$p")
                 echo "$p"
                 return 0
                 ;;

@@ -42,7 +42,7 @@ prepare() {
         ${host:+--with-sysroot=$INSTALL_DIR/$SYSTEM_KEY} \
         --disable-static \
         ${thread_safe:+--enable-thread-safe=$thread_safe} \
-        --docdir=/usr/share/doc/mpfr-$package_version
+        --docdir=${prefix:-/usr}/share/doc/mpfr-$package_version
 }
 
 build() {

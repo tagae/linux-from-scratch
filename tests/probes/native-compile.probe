@@ -14,7 +14,7 @@
 # self-hosting.md's "toolchain is delivered, not rebuilt"). PROBE_KEY
 # names it directly (virt+9p+loop derives PLATFORM=virt, CAPS="9p loop"
 # the same way every other probe's key does -- no special-casing needed).
-PROBE_KEY=virt+9p+loop
+PROBE_KEY=systemd-virt+9p+loop
 PROBE_TIMEOUT=240
 
 probe_guest() {

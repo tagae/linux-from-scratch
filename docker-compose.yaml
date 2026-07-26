@@ -33,20 +33,20 @@ services:
         target: /mnt/lfs/download
       - type: volume
         source: source
-        target: /mnt/lfs/source
+        target: /var/lfs/source
       - type: volume
         source: work
-        target: /mnt/lfs/work
+        target: /var/lfs/work
       - type: volume
         source: tools
-        target: /mnt/lfs/tools
+        target: /var/lfs/tools
       # Bind mount: Dockerfile.scratch needs to COPY our own already-built
       # bash out of here at image build time. TOOL_DIR itself stays a named
       # volume (not visible to `docker build` at all); tools_bootstrap
       # stages just this one file here instead.
       - type: bind
         source: $PWD/work/scratch-init
-        target: /mnt/lfs/work/scratch-init
+        target: /var/lfs/work/scratch-init
 
   scratch:
     build:
@@ -62,7 +62,6 @@ services:
       INIT:
       CAPS:
       LFS_RELEASE:
-      LFS_PHASE: scratch
       VERSION_CODENAME:
       DISTRIB_CODENAME:
       DISTRIB_RELEASE:
@@ -105,20 +104,20 @@ services:
         target: /mnt/lfs/download
       - type: volume
         source: source
-        target: /mnt/lfs/source
+        target: /var/lfs/source
       - type: volume
         source: work
-        target: /mnt/lfs/work
+        target: /var/lfs/work
       # Bind mount, nested inside the `work` volume mount above: `./lfs qemu`
       # runs directly on the host (not in a container), so the kernel needs
       # to land somewhere the host can actually see — named volumes aren't
       # visible outside Docker at all.
       - type: bind
         source: $PWD/work/boot
-        target: /mnt/lfs/work/boot
+        target: /var/lfs/work/boot
       - type: volume
         source: tools
-        target: /mnt/lfs/tools
+        target: /var/lfs/tools
       # Binaries linked for INSTALL_DIR correctly get /lib/ld-linux-*.so.*
       # baked in as their interpreter (right for eventual deployment, since
       # system-files sets up /lib -> usr/lib there). But some package
@@ -152,6 +151,15 @@ services:
         read_only: true
         volume:
           subpath: usr/bin
+      # The from-scratch CA bundle bootstrap staged into the work volume
+      # (bootstrap_tools, $WORK_DIR/certs), surfaced at the SYSTEM path so
+      # fetch_url's single SSL_CERT_FILE default (see lfs) works here too.
+      - type: volume
+        source: work
+        target: /etc/ssl/certs
+        read_only: true
+        volume:
+          subpath: certs
       # Docker seeds a freshly created named volume with whatever content
       # (and ownership) already exists at that path in the image. Dockerfile
       # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly
@@ -159,20 +167,20 @@ services:
       # exist here — no other service needs to touch it first.
       - type: volume
         source: install
-        target: /mnt/lfs/install
+        target: /var/lfs/install
       # Bind mount, not a named volume: the built image needs to land
       # somewhere reachable outside the container (e.g. for QEMU), and
       # named volumes aren't visible on the host at all.
       - type: bind
         source: $PWD/image
-        target: /mnt/lfs/image
+        target: /var/lfs/image
       # Same reasoning as image/ above: per-package tarballs (lib/package.sh's
       # archive/merge) need to survive the --rm container and be readable
       # outside it — by a from-scratch reconstruction on the host, and
       # (over the 9p share) by the guest's own unarchive path.
       - type: bind
         source: $PWD/archive
-        target: /mnt/lfs/archive
+        target: /var/lfs/archive
 
 volumes:
   source:

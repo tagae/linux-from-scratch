@@ -18,7 +18,7 @@ monopoly on.
 Stages (each independently verifiable)
 --------------------------------------
 
-**E1 — the builder guest.** A `virt+9p+loop` systemd image carrying the
+**E1 — the builder guest.** A `systemd-virt+9p+loop` systemd image carrying the
 native toolchain (native-toolchain) + the full build tool set
 (bison/flex/bc/gperf/pkgconf/gettext/m4/tar/xz/python/meson/ninja/perl +
 gawk/coreutils/bash/patch/kmod). Reuses the self-hosting.md M1–M3
@@ -64,7 +64,7 @@ Automation (`make e2e-test`)
 
 `make e2e-test` runs `tests/e2e/run.sh`, which orchestrates:
 
-* **`tests/e2e/e1-builder-image.sh`** — runs only when `image/virt+9p+loop.
+* **`tests/e2e/e1-builder-image.sh`** — runs only when `image/systemd-virt+9p+loop.
   img` is absent (pristine state): container-side, it builds the tools
   (Debian bootstrap + scratch), the builder system (`CAPS="9p loop"`),
   bakes the full build tool payload into the image tree as ordinary target
@@ -73,20 +73,21 @@ Automation (`make e2e-test`)
   container pi0 baseline (system + GnuPG family — this populates the
   `download/` source mirror the NO-NETWORK guest builds from), and builds
   the 64g builder image. Against a warm builder image this is skipped.
-* **`tests/e2e/builder.exp`** — boots the `virt+9p+loop` builder guest
+* **`tests/e2e/builder.exp`** — boots the `systemd-virt+9p+loop` builder guest
   (`QEMU_EXTRA="-smp 8 -m 8192"`, HVF) and runs the in-guest build to a
   sentinel.
 * **`tests/e2e/guest-build.sh`** — runs INSIDE the guest (POSIX sh): the E2
   cross-toolchain (`LFS_PHASE=guest PLATFORM=pi0 ./lfs tools bootstrap`),
   the E3 system + GnuPG family + image, then copies `pi0.img` + kernel/dtb
-  out over 9p to `image/e2e-pi0.img` and `work-e2e/boot/pi0/`. It first
+  out over 9p to `image/e2e-pi0.img` and the canonical `work/boot/systemd-pi0/`
+  (the guest-built kernel supersedes any container baseline's). It first
   applies the **builder-guest tool completions** — overlaying the correct
   target-built zlib/python(with-zlib)/kmod/btrfs-progs archives onto the
   live `/` and a native `dosfstools` — that the base image's tools lack for
   cross-building a foreign-arch image. Idempotent, so it fast-paths every
   already-built package against a warm builder guest.
 * **`tests/e2e/keygen.exp`** — boots the guest-built pi0 image on the host
-  (TCG, `WORK_DIR=work-e2e`) and asserts a keypair with a `cv25519`
+  (TCG, default `WORK_DIR`) and asserts a keypair with a `cv25519`
   encryption subkey (cap `e`) AND an `ed25519` authentication subkey
   (cap `a`) via `--with-colons`.
 

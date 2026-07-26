@@ -35,25 +35,35 @@ bootstrap_tools() {
     (
         readonly package_variant=pass1-$target
         readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
+        prefix=$TOOL_DIR
         readonly sysroot=$TOOL_DIR/$target
         readonly build_sysroot=$TOOL_DIR/$target
 
         # Cross-assembler and linker.
         gprofng=no werror=no new_dtags=yes default_hash_style=gnu install binutils
 
-        # Guest phase only: sidestep a gcc/libtool sysroot-leak bug — see
-        # the identical guard on Cross Toolchain Pass 2 below for the full
-        # explanation (this is the same fix, needed here too since pass1
-        # ALSO builds gcc's own bundled gmp/mpfr/mpc).
-        if [ "${LFS_PHASE:-}" = guest ]; then
-            install gmp
-            install mpfr
-            install mpc
-            gmp=$TOOL_DIR
-            mpfr=$TOOL_DIR
-            mpc=$TOOL_DIR
-        fi
+        # Sidestep a gcc/libtool sysroot-leak bug by ALWAYS handing gcc
+        # prebuilt gmp/mpfr/mpc instead of its bundled copies — one code
+        # path on every build host (Debian seed, scratch, booted guest);
+        # gcc.sh's prepare() reconciles the bundled symlinks accordingly.
+        # The trio lives at $TOOL_DIR root ({include,lib}), NOT usr/ —
+        # $TOOL_DIR/usr/lib is the temp-tools RUNTIME whose libc.so linker
+        # script would shadow the seed's real libc if put on -L. cc1 links
+        # these SHARED, so gcc gets an explicit rpath to $TOOL_DIR/lib —
+        # an absolute path that resolves identically on every layout.
+        # The -I/-L matter only on the unaliased Debian seed.
+        install gmp
+        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+        install mpfr
+        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+        install mpc
+        gmp=$TOOL_DIR
+        mpfr=$TOOL_DIR
+        mpc=$TOOL_DIR
+        LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
+        export LDFLAGS
 
         # Minimal C cross-compiler to build glibc.
         glibc_version=$(version glibc) \
@@ -66,7 +76,7 @@ bootstrap_tools() {
         install gcc
     )
 
-    [ "${LFS_PHASE:-}" = guest ] || _bootstrap_build_host
+    _os_is_build_host || _bootstrap_build_host
 
     # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
     # share one since they all use the same target triplet) ----------
@@ -97,7 +107,7 @@ bootstrap_tools() {
     (
         readonly package_variant=$target
         readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
+        prefix=$TOOL_DIR
         readonly sysroot=$TOOL_DIR/$target
         readonly build_sysroot=$TOOL_DIR/$target
 
@@ -148,14 +158,28 @@ bootstrap_tools() {
         # it — which inherits every variable already set, exported or
         # not — so gcc.sh's own "${gmp:+--with-gmp=$gmp}" (etc.) sees them
         # with no extra plumbing needed on the "install gcc" line itself.
-        if [ "${LFS_PHASE:-}" = guest ]; then
-            install gmp
-            install mpfr
-            install mpc
-            gmp=$TOOL_DIR
-            mpfr=$TOOL_DIR
-            mpc=$TOOL_DIR
-        fi
+        # Sidestep a gcc/libtool sysroot-leak bug by ALWAYS handing gcc
+        # prebuilt gmp/mpfr/mpc instead of its bundled copies — one code
+        # path on every build host (Debian seed, scratch, booted guest);
+        # gcc.sh's prepare() reconciles the bundled symlinks accordingly.
+        # The trio lives at $TOOL_DIR root ({include,lib}), NOT usr/ —
+        # $TOOL_DIR/usr/lib is the temp-tools RUNTIME whose libc.so linker
+        # script would shadow the seed's real libc if put on -L. cc1 links
+        # these SHARED, so gcc gets an explicit rpath to $TOOL_DIR/lib —
+        # an absolute path that resolves identically on every layout.
+        # The -I/-L matter only on the unaliased Debian seed.
+        install gmp
+        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+        install mpfr
+        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+        install mpc
+        gmp=$TOOL_DIR
+        mpfr=$TOOL_DIR
+        mpc=$TOOL_DIR
+        LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
+        export LDFLAGS
 
         glibc_version=$(version glibc) languages=c,c++ \
         shared=yes threads=yes libstdcxx=yes \
@@ -169,7 +193,7 @@ bootstrap_tools() {
     readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
     rm -f a.out
 
-    [ "${LFS_PHASE:-}" = guest ] || _bootstrap_stage_for_scratch
+    _os_is_build_host || _bootstrap_stage_for_scratch
 }
 
 # Part (1) of bootstrap_tools(): everything that turns an empty container
@@ -248,7 +272,7 @@ _bootstrap_build_host() {
     (
         readonly package_variant=pass1-$native_target
         readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
+        prefix=$TOOL_DIR
         readonly cross_target=$native_target
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
@@ -472,8 +496,8 @@ build_tools() {
     # docs/design/guest-cross-builder.md) — nothing to (re)build. A stray
     # invocation is a clean no-op, not an attempt to run patchelf-based
     # relocation (below) against a container that doesn't exist here.
-    if [ "${LFS_PHASE:-}" = guest ]; then
-        echo "tools build: guest already has its own tool set (skipping)"
+    if _os_is_build_host; then
+        echo "tools build: this system already carries its own tool set (skipping)"
         return 0
     fi
 
@@ -631,7 +655,7 @@ _tools_set_rtld_ldflags() {
     # glibc, and the native libstdc++/libgcc_s staged next to it after
     # pass1-native (see bootstrap_tools), all live there.
     #
-    # Deliberately no -L$TOOL_DIR/usr/lib here (tried it, reverted):
+    # Deliberately no -L$TOOL_DIR/lib here (tried it, reverted):
     # inside the *bootstrap* container specifically, that makes ld find
     # TOOL_DIR's own libc.so — a linker script whose internal references
     # are bare, root-relative paths (/usr/lib/libc.so.6), correct only

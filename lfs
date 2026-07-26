@@ -28,52 +28,30 @@ done
 
 #--[ Project ]
 
-# The guest build phase (LFS_PHASE=guest): heavy build state is
-# guest-LOCAL, not the 9p share — mirrors how docker-compose keeps the
-# I/O-hot dirs (source/work/tools/install) in named volumes instead of the
-# bind-mounted project tree, since compiling over 9p would be painfully
-# slow. Deliberately NOT ARCHIVE_DIR=$PROJECT_DIR/archive: the guest's own
-# natively-built tarballs must not collide with/overwrite the cross-built
-# ones already shared there (a later reproducibility comparison between
-# the two is a feature, not a bug). Checked here, ahead of the generic `:
-# ${VAR:=...}` defaults below, so those become no-ops for these three vars
-# in guest phase (first assignment wins) and untouched everywhere else.
-# DOWNLOAD_DIR is deliberately NOT overridden: it stays PROJECT_DIR-
-# relative even in guest phase (=/mnt/lfs/download, since PROJECT_DIR IS
-# /mnt/lfs when run from the guest's 9p mount) — the shared, hash-verified
-# source cache is exactly what a guest build wants to reuse, offline.
-# INSTALL_DIR/IMAGE_DIR join the three above for the same reason (the
-# in-guest system build): `system build`/`image build` need somewhere
-# guest-local to stage the system tree and the .img file while building —
-# INSTALL_DIR is a full native-built system tree (~GBs of churn), and the
-# not-yet-finished .img under IMAGE_DIR is actively attached to a loop
-# device mid-build, neither of which belongs on the 9p share. The finished
-# artifacts get copied back out to the shared image/ and work/boot/
-# explicitly once the build completes, so the host can boot them.
-if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
-    : ${SOURCE_DIR:=/var/lfs/source}
-    : ${WORK_DIR:=/var/lfs/work}
-    : ${ARCHIVE_DIR:=/var/lfs/archive}
-    : ${INSTALL_DIR:=/var/lfs/install}
-    : ${IMAGE_DIR:=/var/lfs/image}
-    # Where guest-phase `./lfs tools bootstrap` (lib/tools.sh's
-    # _bootstrap_build_host-skipping path — see docs/design/
-    # guest-cross-builder.md) lands the cross-toolchain it builds, seeded
-    # by the guest's own native gcc: $target-gcc et al end up at
-    # /var/lfs/tools/bin. Same guest-local reasoning as the vars above
-    # (I/O-hot, must not collide with the container's own $PROJECT_DIR/
-    # tools) and same first-assignment-wins ordering relative to the
-    # generic default below.
-    : ${TOOL_DIR:=/var/lfs/tools}
+# ONE layout everywhere (docs/design/build-phases.md): the CODE lives at
+# $PROJECT_DIR (a bind mount in the containers, the 9p share on a booted
+# guest) and heavy build STATE lives under /var/lfs (named volumes in the
+# containers, a local disk on a guest) — identical paths in both, so
+# nothing downstream ever needs to know which it is running on.
+# DOWNLOAD_DIR stays PROJECT_DIR-relative: the shared, hash-verified
+# source mirror is exactly what every build wants to reuse, offline.
+# The one detection: /var/lfs PRESENT means mounted build state (it is
+# where the containers mount their volumes and where a booted guest keeps
+# local state); absent means the development host, whose only role is
+# booting the bind-mounted artifacts (image/, work/boot/) from the
+# project tree itself.
+if [ -d /var/lfs ]; then
+    _state=/var/lfs
+else
+    _state=$PROJECT_DIR
 fi
-
 : ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
-: ${SOURCE_DIR:=$PROJECT_DIR/source}
-: ${WORK_DIR:=$PROJECT_DIR/work}
-: ${TOOL_DIR:=$PROJECT_DIR/tools}
-: ${INSTALL_DIR:=$PROJECT_DIR/install}
-: ${ARCHIVE_DIR:=$PROJECT_DIR/archive}
-: ${IMAGE_DIR:=$PROJECT_DIR/image}
+: ${SOURCE_DIR:=$_state/source}
+: ${WORK_DIR:=$_state/work}
+: ${TOOL_DIR:=$_state/tools}
+: ${INSTALL_DIR:=$_state/install}
+: ${ARCHIVE_DIR:=$_state/archive}
+: ${IMAGE_DIR:=$_state/image}
 
 # Small bind-mounted staging area for the few files Dockerfile.scratch needs at build time.
 : ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
@@ -103,12 +81,11 @@ readonly PLATFORM
 
 [ -f $PROJECT_DIR/package/bootable-$INIT.sh ] || bail "Unsupported init '$INIT'"
 
-# The default (systemd) keeps the bare $PLATFORM key so existing builds,
-# stamps and images are unaffected; other flavors get an $INIT- prefix.
-case $INIT in
-    systemd) SYSTEM_KEY=$PLATFORM ;;
-    *)       SYSTEM_KEY=$INIT-$PLATFORM ;;
-esac
+# The key ALWAYS includes the init component — systemd-virt exactly like
+# busybox-virt — one uniform naming rule, no special-cased default (image
+# names, archive dirs, install trees and stamps all read the flavor off
+# the name, and no consumer needs to know which flavor is the default).
+SYSTEM_KEY=$INIT-$PLATFORM
 
 #--[ Capabilities ]
 
@@ -151,74 +128,34 @@ export MAKEFLAGS=-j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 
 
 readonly LC_ALL MAKEFLAGS
 
-# Bootstrap phase: cross-compiler bin + host tools + toolchain usr/bin
-# LAST. Do NOT put toolchain usr/bin first — once glibc-linked binaries are
+# Toolchain usr/bin LAST. Do NOT put toolchain usr/bin first — once glibc-linked binaries are
 # installed there they shadow host tools and fail (wrong ELF interpreter).
 # It still needs to be on PATH somewhere, though: build-time tools that
 # only the toolchain itself provides (e.g. pkgconf, needed by wget's own
 # configure) aren't on the host at all, so they're only found as a
 # fallback after host tools are checked first.
-# Scratch phase: toolchain only, no host PATH.
-# Guest phase: append $TOOL_DIR/bin (=/var/lfs/tools/bin, see the
-# guest-phase dir defaults above) so `system build`/`install` for a
-# foreign PLATFORM finds the $target-prefixed cross-compiler guest-phase
-# `./lfs tools bootstrap` just built there (see docs/design/
-# guest-cross-builder.md) — that's the whole point of the guest building
-# its own cross-toolchain. Appended, not prepended: the guest's own
-# native /usr/bin (bison/make/gcc/...) must still be found first, exactly
-# as before this existed; no risk of shadowing either way, since every
-# tool TOOL_DIR/bin carries is $target-prefixed (e.g.
-# arm-scratch-linux-gnueabihf-gcc) and never collides with a bare host
-# name. A guest targeting its own arch (no cross-toolchain built, TOOL_DIR
-# empty or absent) is unaffected: nothing there to find, PATH lookup just
-# falls through to the entries that already exist.
-if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin:$TOOL_DIR/bin
-elif [ "${LFS_PHASE:-bootstrap}" = guest ]; then
-    PATH=$PATH:$TOOL_DIR/bin
-else
-    PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
-fi
+# One PATH everywhere: cross tools first (always $target-prefixed, never
+# colliding with a bare host name), then the inherited PATH (/usr/bin —
+# the tools volume in the scratch container, the real system elsewhere),
+# then TOOL_DIR's own usr tree (the Debian seed needs the temp tools it
+# is building to progressively shadow apt's). /usr/bin ahead of
+# TOOL_DIR/usr/bin also makes configure-time tool discovery bake
+# /usr/bin/... paths, valid on every layout (the old guest-only M4
+# override existed purely because this was not true).
+PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 
 readonly PATH
 export PATH
 
-# Guest phase only: bison (built as a target package in the CONTAINER,
-# then delivered/replayed onto the guest — never rebuilt there) bakes in
-# the M4 program path it found AT BUILD TIME in that container, which
-# does not match wherever the guest's own /usr/bin/m4 actually lands once
-# merged onto its live "/" — confirmed empirically ("bison: m4 subprocess
-# failed: No such file or directory") both by an earlier guest system
-# build and by this capability's own cross-toolchain build (glibc's intl/
-# subdir shells out to bison to generate plural.c). Bison honors the M4
-# env var to override that compiled-in default; setting it once here,
-# for every guest-phase command, means no individual caller (tools
-# bootstrap, system build, ...) has to remember it. No-op in every other
-# phase: bootstrap/scratch build bison and use it in the SAME container,
-# so its compiled-in path is already correct there.
-if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
-    : ${M4:=/usr/bin/m4}
-    export M4
-fi
 
 # CA bundle used to verify TLS on source downloads (see fetch_url in
-# lib/base.sh). Bootstrap runs in Debian, which ships one at the standard
-# path. The scratch container is FROM scratch: it verifies against OUR OWN
-# bundle, generated from Mozilla's certdata.txt by the ca-certificates
-# package and staged to $WORK_DIR/certs during bootstrap_tools (see there) —
-# present before the very first scratch download, so fetch_url always
-# verifies and never falls back to unverified transport. $WORK_DIR is the
-# shared `work` volume, so the bundle bootstrap staged is visible here.
-# Guest phase falls into the same "else" branch as bootstrap: the booted
-# system already has its own from-scratch bundle at the standard path
-# (installed target-side by the ca-certificates package — see
-# bootable-systemd.sh), so no override is needed; this only matters at all
-# on a download cache miss, since download/ is normally fully populated.
-if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
-    : ${SSL_CERT_FILE:=$WORK_DIR/certs/ca-certificates.crt}
-else
-    : ${SSL_CERT_FILE:=/etc/ssl/certs/ca-certificates.crt}
-fi
+# lib/base.sh): the SYSTEM path, everywhere. Debian ships one there; a
+# booted LFS has its own from-scratch bundle there (ca-certificates,
+# see bootable-systemd.sh); the FROM-scratch container gets the bundle
+# bootstrap staged into the work volume mounted read-only at this same
+# path (docker-compose.yaml) — so fetch_url always verifies against a
+# real bundle and never falls back to unverified transport.
+: ${SSL_CERT_FILE:=/etc/ssl/certs/ca-certificates.crt}
 export SSL_CERT_FILE
 
 #--[ Installation ]

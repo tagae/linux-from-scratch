@@ -1,5 +1,5 @@
 #!/usr/bin/expect -f
-# E2 + E3 driver: boot the virt+9p+loop builder guest and run the in-guest
+# E2 + E3 driver: boot the systemd-virt+9p+loop builder guest and run the in-guest
 # cross-build (tests/e2e/guest-build.sh) to completion. See
 # docs/design/e2e-cross.md. Invoked by tests/e2e/run.sh.
 #

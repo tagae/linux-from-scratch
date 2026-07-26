@@ -9,7 +9,7 @@ ARG HOST_GID
 # (and ownership) already exists at that path in the image, so baking this
 # empty, pre-owned directory into the layer is enough; no chown binary or
 # root user is needed inside this `FROM scratch` image at all.
-COPY --chown=$HOST_UID:$HOST_GID work/scratch-init/empty/ /mnt/lfs/install/
+COPY --chown=$HOST_UID:$HOST_GID work/scratch-init/empty/ /var/lfs/install/
 
 # Enable execution of #!/bin/sh scripts.
 # Invoking Bash as `sh` puts it in POSIX-compatible mode automatically.
@@ -18,14 +18,14 @@ COPY work/scratch-init/sh /bin/sh
 # Some scripts hardcode a #!/bin/bash shebang.
 COPY work/scratch-init/sh /bin/bash
 
-ENV PATH=/mnt/lfs/tools/usr/bin
+ENV PATH=/var/lfs/tools/usr/bin
 ENV LC_ALL=POSIX
 ENV HOME=/mnt/lfs
 # There is no /tmp in this image (nothing exists but what's mounted or
 # copied in above) and nothing here can create one at build time. Point
 # TMPDIR at an already-writable, already-existing directory in one of the
 # mounted volumes instead of fabricating a new top-level path.
-ENV TMPDIR=/mnt/lfs/work/tmp
+ENV TMPDIR=/var/lfs/work/tmp
 
 # No /etc/passwd exists in this image (there is nothing but the mounted
 # tools volume), so USER must be numeric — a name would require a passwd
