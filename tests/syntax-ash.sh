@@ -32,7 +32,10 @@ for c in \
     "$PROJECT_DIR/install/busybox-virt/usr/bin/busybox" \
     "$PROJECT_DIR"/install/*/usr/bin/busybox \
     ; do
-    if [ -x "$c" ]; then
+    # `-x` alone is not enough: the wildcard can hit a FOREIGN-arch tree
+    # (e.g. install/pi0's arm busybox in an aarch64 container — "Exec
+    # format error"), so require the candidate to actually RUN here.
+    if [ -x "$c" ] && "$c" true 2>/dev/null; then
         BB=$c
         break
     fi

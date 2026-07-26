@@ -20,14 +20,28 @@ package_source_dir=$SOURCE_DIR/btrfs-progs-v$package_version
 # vs. a target "virt" variant) — `make`'s own dependency tracking can see
 # already-compiled objects from the OTHER variant's run
 # and skip recompiling, silently installing stale, wrong-toolchain
-# binaries (confirmed the hard way: a target build produced a binary whose
-# ELF interpreter was still TOOL_DIR-relative). Every other package in
-# this project avoids this by building out-of-tree in its own variant-
-# scoped package_build_dir; this one can't (no out-of-tree support
-# upstream). `rm -rf source/btrfs-progs-v$package_version` before
-# switching scenarios is the workaround.
+# binaries (confirmed the hard way, TWICE: a target build produced a
+# binary whose ELF interpreter was still TOOL_DIR-relative — the second
+# time from-pristine in `make e2e-test`'s E1, where the payload's target
+# mkfs.btrfs shipped the container's rtld path into the builder image and
+# exec'd ENOENT in the guest). Every other package in this project avoids
+# this by building out-of-tree in its own variant-scoped
+# package_build_dir; this one can't (no out-of-tree support upstream), so
+# prepare() below cleans the tree before configuring — prepare is
+# per-variant (stamped in the variant's own work dir), which makes the
+# scenario switch self-healing instead of an operator-remembered rm.
 prepare() {
     cd $package_source_dir
+
+    # Purge the previous scenario's objects/binaries (see the in-tree
+    # build note above). Keyed on Makefile.inc — the file configure
+    # GENERATES — not the shipped top-level Makefile, which exists in the
+    # pristine tarball and stops with "please configure first" if run:
+    # Makefile.inc present is exactly "a prior configure ran here", the
+    # only case where stale artifacts can exist at all.
+    if [ -f Makefile.inc ]; then
+        make clean
+    fi
 
     # libuuid/libblkid (uuid/uuid.h, blkid.h) come from util-linux, already
     # installed into the target tree earlier in the same umbrella — needs

@@ -64,6 +64,15 @@ Automation (`make e2e-test`)
 
 `make e2e-test` runs `tests/e2e/run.sh`, which orchestrates:
 
+* **`tests/e2e/e1-builder-image.sh`** — runs only when `image/virt+9p+loop.
+  img` is absent (pristine state): container-side, it builds the tools
+  (Debian bootstrap + scratch), the builder system (`CAPS="9p loop"`),
+  bakes the full build tool payload into the image tree as ordinary target
+  packages (zlib/libffi, native-toolchain, the M3 tool set, python+
+  markupsafe/jinja2/meson/ninja, btrfs-progs/dosfstools), runs the
+  container pi0 baseline (system + GnuPG family — this populates the
+  `download/` source mirror the NO-NETWORK guest builds from), and builds
+  the 64g builder image. Against a warm builder image this is skipped.
 * **`tests/e2e/builder.exp`** — boots the `virt+9p+loop` builder guest
   (`QEMU_EXTRA="-smp 8 -m 8192"`, HVF) and runs the in-guest build to a
   sentinel.
@@ -87,13 +96,13 @@ escape); the keygen is one compound command ending in a `''`-split sentinel
 matched in OUTPUT, so no post-command prompt matching (bash bracketed-paste
 `\e[?2004h` after `# ` breaks that).
 
-E2→E4 are validated against a warm builder guest (fast-path, no rebuild).
-**E1 — assembling the builder image itself — is the deferred from-pristine
-step**: the container-side native-toolchain + tool-set archive builds and
-the base `virt+9p+loop` image (self-hosting.md M1–M3) are not yet scripted,
-so `run.sh` currently requires an already-built builder image. Wiring E1 in
-(then a full run from `make distclean`, keeping the hash-pinned `download/`
-mirror) completes the hands-off from-pristine target.
+The in-guest completions in `guest-build.sh` are probe-first: a fresh E1
+image bakes them all in (probes pass, nothing runs); an older or hand-grown
+builder image gets each missing capability overlaid from the target-built
+virt archives on the 9p share. `download/` is kept across `make distclean`
+as the hash-pinned source mirror by design — if it was wiped anyway, E1's
+container pi0 baseline repopulates every source the guest needs (the guest
+has no network: CAPS is `9p loop` only).
 
 Open risks
 ----------

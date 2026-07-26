@@ -16,17 +16,14 @@ BUILDER_IMG=image/$BUILDER_KEY.img
 reap() { pkill -TERM -f 'qemu-system' 2>/dev/null || true; }
 
 # ---- E1: the builder guest image ----------------------------------------
-# DEFERRED as a hands-off from-pristine step (see docs/design/e2e-cross.md
-# "Automation"). The builder image is a virt+9p+loop systemd system carrying
-# the native toolchain + full tool set, cross-built and delivered in the
-# container (self-hosting.md M1-M3). Until that assembly is scripted,
-# e2e-test requires an already-built builder image.
+# Absent (pristine state): assemble it container-side — Debian bootstrap ->
+# tools -> builder system + baked tool payload -> image, plus the pi0
+# baseline that populates the download/ mirror the no-network guest builds
+# from. Present (warm): skip straight to E2 (the in-guest steps fast-path).
 if [ ! -f "$BUILDER_IMG" ]; then
-    echo "e2e-test: builder image $BUILDER_IMG not found."
-    echo "  E1 (builder-image assembly) is the deferred from-pristine step."
-    echo "  Build a virt+9p+loop systemd builder guest carrying the native"
-    echo "  toolchain + full tool set, then re-run. See docs/design/e2e-cross.md."
-    exit 1
+    echo "e2e-test: E1 - no builder image; assembling from pristine"
+    echo "          (Debian bootstrap -> tools -> builder system -> image)..."
+    sh tests/e2e/e1-builder-image.sh
 fi
 
 # ---- E2 + E3: guest cross-builds the pi0 GnuPG image ---------------------

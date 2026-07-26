@@ -154,10 +154,11 @@ check-probe: .env
 # End-to-end self-host proof (docs/design/e2e-cross.md): the virt builder
 # guest cross-compiles a pi0 GnuPG image with its OWN aarch64->arm
 # cross-toolchain, and the host boots it and generates a keypair with
-# separate encryption + authentication subkeys. Hours from cold by design;
-# needs an already-built virt+9p+loop builder image (E1 is the deferred
-# from-pristine step -- see the script). Never runs as part of check/test.
-e2e-test:
+# separate encryption + authentication subkeys. From a pristine state it
+# first assembles the builder image (E1: Debian bootstrap -> tools ->
+# builder system + tool payload -> image) — hours by design; against a warm
+# builder image the in-guest steps fast-path. Never part of check/test.
+e2e-test: .env
 	@sh tests/e2e/run.sh
 
 clean:

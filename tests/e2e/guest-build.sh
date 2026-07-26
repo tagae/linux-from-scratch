@@ -19,26 +19,38 @@ trap 'st=$?; [ "$st" -eq 0 ] || echo "E2E_GUEST_BUILD_FAIL (exit $st)"' EXIT
 
 cd /mnt/lfs   # the project, mounted over 9p (mount_tag=lfs)
 
-echo "### e2e guest-build: builder-guest tool completions"
-# The base builder image's live tools are insufficient to cross-build the
-# pi0 system + image; overlay the correct target-built ones from the 9p
-# archive share (version-globbed so a package bump doesn't break this):
-#   zlib        - runtime dep of btrfs (below) and Python's zlib module
-#   python      - TOOL_DIR's build-time python has no zlib module; the virt
-#                 SYSTEM python does, and systemd's meson needs it
-#   kmod        - busybox's depmod stub has no `-b`, which the kernel's own
-#                 `make modules_install` requires
-#   btrfs-progs - mkfs.btrfs for `image build`
-for pkg in zlib python kmod btrfs-progs; do
-    f=$(ls archive/virt/${pkg}-virt-*.tar.xz 2>/dev/null | head -1)
-    [ -n "$f" ] || { echo "### missing target archive for $pkg"; exit 1; }
+echo "### e2e guest-build: builder-guest tool completions (probe-first)"
+# A freshly-assembled E1 builder image (tests/e2e/e1-builder-image.sh) bakes
+# all of these in, so every probe passes and nothing happens. Against an
+# older/hand-grown builder image, each missing capability is overlaid from
+# the target-built virt archive on the 9p share (or built natively for
+# dosfstools). Probes test the CAPABILITY, not the package:
+#   libz.so.1     - runtime dep of btrfs-progs and Python's zlib module
+#   python3+zlib  - systemd's meson imports zlib at build time
+#   real depmod   - busybox's stub has no `-b`, which the kernel's own
+#                   `make modules_install` requires
+#   mkfs.btrfs    - formats the root filesystem in `image build`
+#   mkfs.fat      - formats the pi FAT boot partition in `image build`
+overlay() {
+    # Prefer the builder's OWN key's archives (the only ones a from-pristine
+    # E1 produces), then plain virt (present on older/hand-grown setups).
+    f=$(ls "archive/virt+9p+loop/$1"-*.tar.xz archive/virt/$1-virt-*.tar.xz \
+        2>/dev/null | head -1)
+    if [ -z "$f" ]; then
+        echo "### FATAL: $1 capability missing and no archive fallback"
+        exit 1
+    fi
     echo "###   unarchive $f -> /"
-    LFS_PHASE=guest ./lfs unarchive "$f" /
-done
-# dosfstools has no delivered archive (mkfs.fat for the pi FAT boot
-# partition) - build it natively for the guest's own arch and merge into /.
-echo "###   native install dosfstools"
-LFS_PHASE=guest ./lfs install dosfstools
+    LFS_PHASE=guest ./lfs unarchive "$f" / || exit 1
+}
+[ -e /usr/lib/libz.so.1 ]             || overlay zlib
+python3 -c 'import zlib' 2>/dev/null  || overlay python
+depmod -V 2>/dev/null | grep -q kmod  || overlay kmod
+command -v mkfs.btrfs >/dev/null 2>&1 || overlay btrfs-progs
+if ! command -v mkfs.fat >/dev/null 2>&1; then
+    echo "###   native install dosfstools"
+    LFS_PHASE=guest ./lfs install dosfstools
+fi
 
 echo "### e2e guest-build: E2 - guest builds its own aarch64->arm cross-toolchain"
 LFS_PHASE=guest PLATFORM=pi0 ./lfs tools bootstrap

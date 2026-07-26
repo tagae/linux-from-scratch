@@ -115,6 +115,43 @@ prepare() {
                 ${cross_target:+--with-gxx-include-dir=/$cross_target/include/c++/$package_version}
             ;;
         *)
+            # Reconcile the bundled gmp/mpfr/mpc symlinks with THIS build's
+            # choice. fetch() above manages them, but fetch runs ONCE per
+            # shared source extraction — whichever caller fetched first
+            # imposes its choice on every later gcc build from the same
+            # tree. Empirically, from a pristine state: the cross passes
+            # (no gmp/mpfr/mpc vars) fetch first and symlink, so a later
+            # native-toolchain gcc (vars set) still configured+built
+            # in-tree mpc — whose toplevel-driven configure lacks mpc.sh's
+            # own libtool --with-sysroot, so linking the target tree's
+            # libmpfr.la chased its recorded /usr/lib/libgmp.la literally
+            # into the container's real /usr/lib and failed ("libgmp.la is
+            # not a valid libtool archive"; before pristine it resolved
+            # only by accident, against whatever the TOOL_DIR mount had
+            # accumulated there). prepare() is per-build (per-SYSTEM_KEY
+            # work dir), the correct lifecycle step for a per-build
+            # decision: external prebuilt copies (vars set) drop the
+            # symlinks, bundled builds (vars unset) restore them.
+            local dependency dependency_version wanted
+            for dependency in mpfr gmp mpc; do
+                case $dependency in
+                    gmp)  wanted=${gmp:-} ;;
+                    mpfr) wanted=${mpfr:-} ;;
+                    mpc)  wanted=${mpc:-} ;;
+                esac
+                if [ -n "$wanted" ]; then
+                    if [ -L $package_source_dir/$dependency ]; then
+                        rm $package_source_dir/$dependency
+                    fi
+                elif [ ! -e $package_source_dir/$dependency ]; then
+                    sh $PROJECT_DIR/lfs fetch $dependency
+                    dependency_version=$(sh $PROJECT_DIR/lfs version $dependency)
+                    ln -sfnv \
+                       $SOURCE_DIR/$dependency-$dependency_version \
+                       $package_source_dir/$dependency
+                fi
+            done
+
             # https://gcc.gnu.org/install/configure.html
             $package_source_dir/configure \
                 ${host:+--host=$host} \
