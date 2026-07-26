@@ -56,6 +56,15 @@ if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
     : ${ARCHIVE_DIR:=/var/lfs/archive}
     : ${INSTALL_DIR:=/var/lfs/install}
     : ${IMAGE_DIR:=/var/lfs/image}
+    # Where guest-phase `./lfs tools bootstrap` (lib/tools.sh's
+    # _bootstrap_build_host-skipping path — see docs/design/
+    # guest-cross-builder.md) lands the cross-toolchain it builds, seeded
+    # by the guest's own native gcc: $target-gcc et al end up at
+    # /var/lfs/tools/bin. Same guest-local reasoning as the vars above
+    # (I/O-hot, must not collide with the container's own $PROJECT_DIR/
+    # tools) and same first-assignment-wins ordering relative to the
+    # generic default below.
+    : ${TOOL_DIR:=/var/lfs/tools}
 fi
 
 : ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
@@ -150,21 +159,47 @@ readonly LC_ALL MAKEFLAGS
 # configure) aren't on the host at all, so they're only found as a
 # fallback after host tools are checked first.
 # Scratch phase: toolchain only, no host PATH.
-# Guest phase: PATH untouched, on purpose — there is no TOOL_DIR here at
-# all; the booted system's own /usr/bin already has everything a native
-# build needs (see native-toolchain.sh, which delivers the guest-native
-# toolchain as archive tarballs replayed on the guest rather than one
-# rebuilt there from source).
+# Guest phase: append $TOOL_DIR/bin (=/var/lfs/tools/bin, see the
+# guest-phase dir defaults above) so `system build`/`install` for a
+# foreign PLATFORM finds the $target-prefixed cross-compiler guest-phase
+# `./lfs tools bootstrap` just built there (see docs/design/
+# guest-cross-builder.md) — that's the whole point of the guest building
+# its own cross-toolchain. Appended, not prepended: the guest's own
+# native /usr/bin (bison/make/gcc/...) must still be found first, exactly
+# as before this existed; no risk of shadowing either way, since every
+# tool TOOL_DIR/bin carries is $target-prefixed (e.g.
+# arm-scratch-linux-gnueabihf-gcc) and never collides with a bare host
+# name. A guest targeting its own arch (no cross-toolchain built, TOOL_DIR
+# empty or absent) is unaffected: nothing there to find, PATH lookup just
+# falls through to the entries that already exist.
 if [ "${LFS_PHASE:-bootstrap}" = scratch ]; then
     PATH=$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin:$TOOL_DIR/bin
 elif [ "${LFS_PHASE:-bootstrap}" = guest ]; then
-    :
+    PATH=$PATH:$TOOL_DIR/bin
 else
     PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 fi
 
 readonly PATH
 export PATH
+
+# Guest phase only: bison (built as a target package in the CONTAINER,
+# then delivered/replayed onto the guest — never rebuilt there) bakes in
+# the M4 program path it found AT BUILD TIME in that container, which
+# does not match wherever the guest's own /usr/bin/m4 actually lands once
+# merged onto its live "/" — confirmed empirically ("bison: m4 subprocess
+# failed: No such file or directory") both by an earlier guest system
+# build and by this capability's own cross-toolchain build (glibc's intl/
+# subdir shells out to bison to generate plural.c). Bison honors the M4
+# env var to override that compiled-in default; setting it once here,
+# for every guest-phase command, means no individual caller (tools
+# bootstrap, system build, ...) has to remember it. No-op in every other
+# phase: bootstrap/scratch build bison and use it in the SAME container,
+# so its compiled-in path is already correct there.
+if [ "${LFS_PHASE:-bootstrap}" = guest ]; then
+    : ${M4:=/usr/bin/m4}
+    export M4
+fi
 
 # CA bundle used to verify TLS on source downloads (see fetch_url in
 # lib/base.sh). Bootstrap runs in Debian, which ships one at the standard

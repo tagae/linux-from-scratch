@@ -47,7 +47,15 @@ fi
 
 prepare() {
     : ${shared:=yes}
-    : ${optimizations:=yes}
+    # PGO (--enable-optimizations) RUNS the freshly-built interpreter to
+    # collect profile data — impossible for a cross/target build, where the
+    # target binary can't execute on the build host (fails at the
+    # profile-run-stamp step with "Error 127"). Default it OFF when
+    # cross-compiling (host set by target_build_env) and ON for a native
+    # build (host unset — tools phase / guest phase), so a bare
+    # `./lfs install python` for a target works without the caller needing
+    # to remember the knob.
+    : ${optimizations:=$([ -n "${host:-}" ] && echo no || echo yes)}
     : ${static_libpython:=no}
 
     # Same patch the LFS book applies for this exact package/version — the

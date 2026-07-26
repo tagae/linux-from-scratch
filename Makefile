@@ -15,6 +15,7 @@
 	network-system network-image network-qemu network-test \
 	reinstall-tools reinstall-system \
 	check check-probes check-probe \
+	e2e-test \
 	clean distclean \
 	FORCE
 
@@ -149,6 +150,15 @@ check-probes: .env
 # Run a single probe: make check-probe PROBE=network
 check-probe: .env
 	@PROBE=$(PROBE) sh tests/probes.sh
+
+# End-to-end self-host proof (docs/design/e2e-cross.md): the virt builder
+# guest cross-compiles a pi0 GnuPG image with its OWN aarch64->arm
+# cross-toolchain, and the host boots it and generates a keypair with
+# separate encryption + authentication subkeys. Hours from cold by design;
+# needs an already-built virt+9p+loop builder image (E1 is the deferred
+# from-pristine step -- see the script). Never runs as part of check/test.
+e2e-test:
+	@sh tests/e2e/run.sh
 
 clean:
 	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install

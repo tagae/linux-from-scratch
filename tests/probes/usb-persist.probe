@@ -1,0 +1,60 @@
+# tests/probes/usb-persist.probe -- proves the gpg-genkey appliance
+# script (package/gpg-genkey.sh) really does what its header comment
+# claims: a keypair generated entirely in RAM, exported to removable USB,
+# and left there after the guest is gone. The in-guest half (gpg-genkey
+# exiting 0) only proves it THOUGHT it succeeded; the real proof is
+# host-side, OFFLINE, after the guest has powered off and can no longer
+# lie about it: mount the stick image directly (never through the booted
+# guest) and check the three armored files are actually there with real
+# key material in them.
+PROBE_KEY=virt+usb
+PROBE_TIMEOUT=180
+
+PROBE_USB_EMAIL=probe@example.com
+
+probe_guest() {
+    printf '%s' \
+        'gpg-genkey -n "Probe User" -e probe@example.com -a ed25519 -p probepass123 && echo PROBE_OK_usb-persist'
+}
+
+# $PROBE_STICK (host path to the fresh vfat stick tests/probes.sh
+# attached as USB_DISK) is exported before this runs. run_in_scratch's
+# container only sees it under /mnt/lfs/image (the bind mount
+# docker-compose.yaml gives image/ -- see run_in_scratch's own comment in
+# tests/probes.sh), never at its host path, so translate to that mount
+# by basename rather than passing $PROBE_STICK through directly.
+probe_host_post() {
+    stick_rel=$(basename "$PROBE_STICK")
+    set +e
+    out=$(run_in_scratch "
+        set -e
+        PATH=/mnt/lfs/tools/usr/bin:/mnt/lfs/tools/usr/sbin:/mnt/lfs/tools/bin
+        DEVICE=\$(losetup -f)
+        losetup -fP /mnt/lfs/image/$stick_rel
+        mkdir -p /mnt/probe-stick
+        mount -t vfat -o ro \$DEVICE /mnt/probe-stick
+        status=0
+        for suffix in secret public revoke; do
+            f=/mnt/probe-stick/$PROBE_USB_EMAIL-\$suffix.asc
+            if [ -f \"\$f\" ]; then
+                echo \"present: \$f\"
+            else
+                echo \"MISSING: \$f\"
+                status=1
+            fi
+        done
+        if grep -q 'PGP PRIVATE KEY BLOCK' /mnt/probe-stick/$PROBE_USB_EMAIL-secret.asc 2>/dev/null; then
+            echo 'secret.asc is a PGP PRIVATE KEY BLOCK'
+        else
+            echo 'secret.asc is NOT a PGP PRIVATE KEY BLOCK'
+            status=1
+        fi
+        umount /mnt/probe-stick
+        losetup -d \$DEVICE
+        exit \$status
+    ")
+    rc=$?
+    set -e
+    printf '%s\n' "$out" | sed 's/^/# usb-persist: /'
+    return $rc
+}

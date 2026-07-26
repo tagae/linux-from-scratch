@@ -42,6 +42,19 @@ bootstrap_tools() {
         # Cross-assembler and linker.
         gprofng=no werror=no new_dtags=yes default_hash_style=gnu install binutils
 
+        # Guest phase only: sidestep a gcc/libtool sysroot-leak bug — see
+        # the identical guard on Cross Toolchain Pass 2 below for the full
+        # explanation (this is the same fix, needed here too since pass1
+        # ALSO builds gcc's own bundled gmp/mpfr/mpc).
+        if [ "${LFS_PHASE:-}" = guest ]; then
+            install gmp
+            install mpfr
+            install mpc
+            gmp=$TOOL_DIR
+            mpfr=$TOOL_DIR
+            mpc=$TOOL_DIR
+        fi
+
         # Minimal C cross-compiler to build glibc.
         glibc_version=$(version glibc) \
         newlib=yes headers=no \
@@ -53,6 +66,124 @@ bootstrap_tools() {
         install gcc
     )
 
+    [ "${LFS_PHASE:-}" = guest ] || _bootstrap_build_host
+
+    # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
+    # share one since they all use the same target triplet) ----------
+    # Never executed — only ever linked/read against by pass2 below — so
+    # deliberately does NOT inherit the native LDFLAGS set above: glibc's
+    # own build has its own internal linking conventions for the dynamic
+    # linker it's building, and the native rpath override would just be
+    # foreign noise at best.
+    (
+        readonly package_variant=$target
+        package_install_dir=$TOOL_DIR/$target
+        prefix=/usr
+        unset LDFLAGS
+
+        install linux#headers
+        nscd=no enable_kernel=5.10 werror=no install glibc
+    )
+
+    # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
+    # Genuine cross-compiler: no --host, only --target=$target (the
+    # default cross_target in gcc.sh/binutils.sh), so binaries are
+    # $target-prefixed (e.g. aarch64-scratch-linux-gnu-gcc) and execute on
+    # the build host (this scratch container, via the native glibc/
+    # libstdc++ above — inherited LDFLAGS bakes that in) while emitting
+    # $target code. --with-sysroot bakes in the per-target sysroot above,
+    # so $target-gcc alone finds the right target glibc/headers with no
+    # extra flags at build_system() time.
+    (
+        readonly package_variant=$target
+        readonly package_install_dir=/
+        readonly prefix=$TOOL_DIR
+        readonly sysroot=$TOOL_DIR/$target
+        readonly build_sysroot=$TOOL_DIR/$target
+
+        gprofng=no werror=no install binutils
+
+        # Guest phase only: the guest's own system already has real gmp/
+        # mpfr/mpc installed (needed elsewhere — the gnupg family, and
+        # native-toolchain.sh's own --with-gmp/mpfr/mpc for this guest's
+        # native compiler). GCC's toplevel build system unconditionally
+        # leaks --with-build-sysroot into gmp/mpfr/mpc's OWN bundled
+        # sub-configure (confirmed via config.log's host_configargs/
+        # target_configargs and the generated per-subdir libtool script's
+        # own lt_sysroot=$TOOL_DIR/$target), regardless of whether THOSE
+        # host-side helper libraries have anything to do with the actual
+        # cross target. Harmless in the container (nothing at the
+        # relevant absolute paths there, so nothing is ever discovered
+        # via them) — but on the guest, mpfr's/mpc's own sub-configure
+        # DOES discover the real, absolute-path system libs, and
+        # libtool's sysroot machinery then mis-resolves that dependency
+        # against the per-target sysroot (which doesn't even exist yet at
+        # pass1 time, and never contains gmp/mpfr/mpc at all even once
+        # populated) — confirmed empirically: "libgmp.la: No such file or
+        # directory" / "is not a valid libtool archive" aborting gcc's own
+        # bundled mpc build. Sidestepped entirely via this project's
+        # EXISTING gmp=/mpfr=/mpc= override (gcc.sh; the same mechanism
+        # package/native-toolchain.sh already relies on) pointing gcc at
+        # a plain, build-host-native gmp/mpfr/mpc built right here — no
+        # sysroot involved at all, so no leak to mis-resolve. These never
+        # ship; they exist only to satisfy gcc's own build. Container
+        # behavior is unaffected: LFS_PHASE isn't guest there, so gmp/
+        # mpfr/mpc below stay unset and gcc keeps building its own
+        # bundled copies exactly as before this fix existed.
+        #
+        # Plain assignments (not a "install gcc" prefix, unlike every
+        # knob below) — deliberately: a prefix token only works when its
+        # OWN literal, unexpanded source text already has the name=value
+        # shape (e.g. "gmp=$TOOL_DIR install gcc" would work); something
+        # like "${gmp:+gmp=$gmp} install gcc" does NOT (confirmed the hard
+        # way), since shell assignment-word recognition is purely lexical,
+        # on the token as WRITTEN, never on what a parameter expansion
+        # merely happens to PRODUCE — so a conditional, expansion-built
+        # "gmp=$TOOL_DIR"-shaped word is just an ordinary argument, and
+        # bash instead runs its expanded VALUE as a command name (hence a
+        # genuinely-hit "gmp=/var/lfs/tools: No such file or directory").
+        # Plain assignment sidesteps this entirely: gmp/mpfr/mpc, once set
+        # here, are ordinary variables of this subshell, and require()'s
+        # own per-package subshell (install gcc's) is a plain fork of
+        # it — which inherits every variable already set, exported or
+        # not — so gcc.sh's own "${gmp:+--with-gmp=$gmp}" (etc.) sees them
+        # with no extra plumbing needed on the "install gcc" line itself.
+        if [ "${LFS_PHASE:-}" = guest ]; then
+            install gmp
+            install mpfr
+            install mpc
+            gmp=$TOOL_DIR
+            mpfr=$TOOL_DIR
+            mpc=$TOOL_DIR
+        fi
+
+        glibc_version=$(version glibc) languages=c,c++ \
+        shared=yes threads=yes libstdcxx=yes \
+        fixincludes=no \
+        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
+        install gcc
+    )
+
+    # Verify the cross-compiler references our glibc dynamic linker.
+    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
+    readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
+    rm -f a.out
+
+    [ "${LFS_PHASE:-}" = guest ] || _bootstrap_stage_for_scratch
+}
+
+# Part (1) of bootstrap_tools(): everything that turns an empty container
+# into a usable build host — the native (build-host arch) runtime
+# toolchain/glibc, pass1-native, the bare-name toolchain symlinks, the
+# libstdc++/libgcc_s staging, the temp-tools userspace (bash/coreutils/
+# sed/tar/make/...), and the CA trust chain. A booted LFS guest already IS
+# this build host (it has its own native gcc, a full tool set, a real
+# /usr/lib on the loader path, and a system CA store — see
+# docs/design/guest-cross-builder.md), so bootstrap_tools() calls this
+# only outside guest phase; the target cross-toolchain blocks that stay
+# directly in bootstrap_tools() (Cross Toolchain Pass 1 above, the
+# per-target sysroot and Pass 2 below) run in both phases unchanged.
+_bootstrap_build_host() {
     # --- Native runtime toolchain
     # build-host arch, shared by every target platform
     (
@@ -296,54 +427,18 @@ bootstrap_tools() {
         install make-ca
         install ca-certificates
     )
+}
 
-    # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
-    # share one since they all use the same target triplet) ----------
-    # Never executed — only ever linked/read against by pass2 below — so
-    # deliberately does NOT inherit the native LDFLAGS set above: glibc's
-    # own build has its own internal linking conventions for the dynamic
-    # linker it's building, and the native rpath override would just be
-    # foreign noise at best.
-    (
-        readonly package_variant=$target
-        package_install_dir=$TOOL_DIR/$target
-        prefix=/usr
-        unset LDFLAGS
-
-        install linux#headers
-        nscd=no enable_kernel=5.10 werror=no install glibc
-    )
-
-    # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
-    # Genuine cross-compiler: no --host, only --target=$target (the
-    # default cross_target in gcc.sh/binutils.sh), so binaries are
-    # $target-prefixed (e.g. aarch64-scratch-linux-gnu-gcc) and execute on
-    # the build host (this scratch container, via the native glibc/
-    # libstdc++ above — inherited LDFLAGS bakes that in) while emitting
-    # $target code. --with-sysroot bakes in the per-target sysroot above,
-    # so $target-gcc alone finds the right target glibc/headers with no
-    # extra flags at build_system() time.
-    (
-        readonly package_variant=$target
-        readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
-        readonly sysroot=$TOOL_DIR/$target
-        readonly build_sysroot=$TOOL_DIR/$target
-
-        gprofng=no werror=no install binutils
-
-        glibc_version=$(version glibc) languages=c,c++ \
-        shared=yes threads=yes libstdcxx=yes \
-        fixincludes=no \
-        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
-        install gcc
-    )
-
-    # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
-    readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
-    rm -f a.out
-
+# Container-only post-processing once the cross-compiler is built:
+# patchelf-based rpath relocation (patchelf, like the rest of the build
+# host, only exists in the bootstrap container; a guest's pass2 gcc
+# already gets a correct rpath at link time from _tools_set_rtld_ldflags,
+# itself only exported inside _bootstrap_build_host above, so there is
+# nothing left to relocate in guest phase anyway) and staging the
+# toolchain/CA bundle where Dockerfile.scratch's build (work/certs,
+# SCRATCH_INIT_DIR) can reach them. A guest has no scratch container to
+# stage for, so bootstrap_tools() calls this only outside guest phase too.
+_bootstrap_stage_for_scratch() {
     _tools_relocate
 
     # Stage our own generated CA bundle (built by the cert chain above from
@@ -371,6 +466,17 @@ bootstrap_tools() {
 }
 
 build_tools() {
+    # Guest phase never calls this: the build_tools() output (bison/flex/
+    # perl/kmod/util-linux/btrfs-progs/kpartx/...) is exactly the tool set
+    # a booted LFS guest already carries as part of its own system (see
+    # docs/design/guest-cross-builder.md) — nothing to (re)build. A stray
+    # invocation is a clean no-op, not an attempt to run patchelf-based
+    # relocation (below) against a container that doesn't exist here.
+    if [ "${LFS_PHASE:-}" = guest ]; then
+        echo "tools build: guest already has its own tool set (skipping)"
+        return 0
+    fi
+
     # No _tools_relocate call here: it shells out to patchelf, which only
     # exists in the bootstrap container. Everything built in this phase
     # already gets a correct interpreter/rpath at link time from

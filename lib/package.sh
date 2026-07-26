@@ -22,7 +22,25 @@ install() {
     elif [ "${LFS_PHASE:-}" = scratch ]; then
         target_build_env
     elif [ "${LFS_PHASE:-}" = guest ]; then
-        guest_build_env
+        # Self vs foreign, decided the same way target_sysroot_cc's own
+        # kernel_headers guard decides it (see there): $TOOL_DIR/$target/
+        # usr/include only exists once guest-phase `./lfs tools bootstrap`
+        # (E2, docs/design/guest-cross-builder.md) has built a per-$target
+        # sysroot here — which only happens for a FOREIGN platform (the
+        # guest's own arch is served by the native-toolchain-delivered
+        # $target-gcc already on /usr/bin, no TOOL_DIR sysroot needed or
+        # ever built). Foreign target -> the target scenario (host=$target,
+        # stage+archive+merge into $INSTALL_DIR/$SYSTEM_KEY), exactly like
+        # a scratch-phase cross-install -- the gnupg family (and anything
+        # else with a target_sysroot_cc opt-in) hard-requires host=$target
+        # to configure at all. Self target -> guest_build_env's existing
+        # "ad-hoc install merges into the live /" behavior (self-hosting.md),
+        # completely unchanged for virt/pi4/pi5's own ad-hoc installs.
+        if [ -d "$TOOL_DIR/$target/usr/include" ]; then
+            target_build_env
+        else
+            guest_build_env
+        fi
     fi
 
     # DESTINATION (-d) picks an explicit, caller-chosen install location —
@@ -148,23 +166,60 @@ target_sysroot_cc() {
     [ "${host:-}" = "$target" ] || return 0
 
     # Kernel UAPI headers: normally the container's own per-target
-    # sysroot ($TOOL_DIR/$target/usr/include, see tools_bootstrap) — but
-    # that doesn't exist on the guest (LFS_PHASE=guest; there is no
-    # TOOL_DIR there at all, see lfs). The guest's own
-    # live /usr/include DOES have them (unarchived straight onto "/" —
-    # see native-toolchain.sh), but --sysroot below routes ALL
-    # *implicit* header search through $sysroot (=$INSTALL_DIR/
-    # $SYSTEM_KEY, a fresh per-build staging tree with no kernel
-    # headers of its own — the guest's own system build never
+    # sysroot ($TOOL_DIR/$target/usr/include, see tools_bootstrap). A
+    # guest-phase build of the guest's OWN arch (LFS_PHASE=guest, target ==
+    # the guest's own arch) never runs `./lfs tools bootstrap` at all — no
+    # TOOL_DIR sysroot exists there — but its own live /usr/include DOES
+    # have them (unarchived straight onto "/" — see native-toolchain.sh);
+    # --sysroot below routes ALL *implicit* header search through $sysroot
+    # (=$INSTALL_DIR/$SYSTEM_KEY, a fresh per-build staging tree with no
+    # kernel headers of its own — the guest's own system build never
     # require()s linux#headers into it), making those live headers
     # invisible unless explicitly re-added — confirmed empirically, not
     # "harmless when missing" as first assumed: util-linux's own
     # configure reported sys/mount.h, sys/ioctl.h, sys/socket.h, etc.
-    # all missing despite a real, populated guest /usr/include. Computed
-    # once, ahead of the CC/CXX branches below (both need it).
+    # all missing despite a real, populated guest /usr/include.
+    #
+    # A guest CROSS-building a FOREIGN platform (docs/design/guest-cross-
+    # builder.md's E2/E3) is different: `LFS_PHASE=guest ./lfs tools
+    # bootstrap` DOES build a genuine per-$target sysroot at
+    # $TOOL_DIR/$target (TOOL_DIR guest-local, /var/lfs/tools — see lfs's
+    # guest-phase dir defaults), seeded by the guest's own native gcc, and
+    # that sysroot's headers are the ONLY correct ones for $target (the
+    # guest's own live /usr/include is for the guest's own, DIFFERENT,
+    # arch). Existence, not phase alone, distinguishes the two guest
+    # scenarios — same check install()'s own guest-phase branch uses to
+    # pick target_build_env vs guest_build_env. Computed once, ahead of
+    # the CC/CXX branches below (both need it).
     local kernel_headers=$TOOL_DIR/$target/usr/include
-    if [ "${LFS_PHASE:-}" = guest ]; then
+    if [ "${LFS_PHASE:-}" = guest ] && [ ! -d "$kernel_headers" ]; then
         kernel_headers=/usr/include
+    fi
+
+    # Stage the cross-compiler's OWN shared libgcc_s.so.1 into the target
+    # tree, once, idempotently: nothing else ever installs it there —
+    # native-toolchain.sh's own copy is guest-self-hosting-only (host==
+    # target, an entirely different, opt-in scenario) — yet it's exactly
+    # the file the "-L/usr/lib" libtool quirk above falls through to when
+    # the explicit "-L$sysroot/usr/lib" doesn't have it (confirmed the
+    # hard way: util-linux's libmount relink on a genuine cross target,
+    # "/usr/lib/libgcc_s.so.1: file not recognized" — the SAME wrong-arch-
+    # /usr/lib story as that comment's libc case, just for libgcc_s
+    # instead, which nothing had staged into $sysroot/usr/lib yet to win
+    # the search before the fallback). `-print-file-name` asks the
+    # compiler itself, so this is right regardless of the target's own
+    # multilib libdir convention (lib vs lib64). Harmless where a same-
+    # arch target's own accidental /usr/lib fallback already "worked" —
+    # this just also places a correct, target-owned copy where the final
+    # image needs one anyway (any dynamically-linked target binary needs
+    # its own libgcc_s.so.1 at RUNTIME on the target, not just at link
+    # time). cp -n: never clobber a copy a later, more specific package
+    # (e.g. native-toolchain.sh, when explicitly installed) may prefer.
+    local target_libgcc_s=$($target-gcc -print-file-name=libgcc_s.so.1)
+    if [ -f "$target_libgcc_s" ] && [ ! -e "$INSTALL_DIR/$SYSTEM_KEY/usr/lib/libgcc_s.so.1" ]; then
+        mkdir -p "$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
+        cp -n "$target_libgcc_s" "$INSTALL_DIR/$SYSTEM_KEY/usr/lib/libgcc_s.so.1"
+        ln -sf libgcc_s.so.1 "$INSTALL_DIR/$SYSTEM_KEY/usr/lib/libgcc_s.so"
     fi
 
     if [ -z "${CC:-}" ]; then
@@ -512,17 +567,37 @@ _source() {
 
     patch_source() {
         local url=$1
+        # Expected hash "algo:hexdigest" (package_source_hash form).
+        # Required: patches come from the LFS book's *development* patch
+        # dir, whose contents are regenerated in place, so an unverified
+        # fetch here is the one download path that could silently apply
+        # changed bytes.
+        local hash=$2
         local file=${url##*/}
         mkdir -p $DOWNLOAD_DIR
         [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"
-        # Portable across GNU patch (container) and busybox's patch applet
-        # (the in-guest system build has no target-built GNU patch; see
-        # package/patch.sh, never a required guest tool): busybox's patch
-        # has no -d at all ("invalid option -- 'd'") and requires "-p N" as
-        # two tokens, not GNU's combined "-Np1" — a subshell cd achieves -d's
-        # effect portably without touching the caller's own CWD, and both
-        # patch implementations accept -N and -p 1 as separate flags.
-        ( cd $package_source_dir && patch -N -p 1 -i $DOWNLOAD_DIR/$file )
+        verify_hash "$DOWNLOAD_DIR/$file" "$hash"
+        # Idempotent per source extraction: apply once, stamp, skip on
+        # re-invocation. $package_source_dir is SHARED across SYSTEM_KEYs
+        # (not per-key), so without this a second key's build re-runs the
+        # patch against an already-patched tree — "Reversed (or previously
+        # applied) patch detected", which `patch -N` reports by EXITING
+        # NON-ZERO (hunks ignored), failing prepare(). The stamp lives
+        # with the extracted source, so a fresh re-extraction (new tarball)
+        # correctly re-patches.
+        local stamp=$package_source_dir/.patched-$file
+        if [ -f "$stamp" ]; then
+            echo "patch $file (done)"
+        else
+            # Portable across GNU patch (container) and busybox's patch
+            # applet (guest-phase builds use busybox patch; see
+            # package/patch.sh): busybox's patch has no -d and needs "-p N"
+            # as two tokens, not GNU's combined "-Np1" — a subshell cd
+            # achieves -d's effect portably, and both accept -N and -p 1
+            # as separate flags.
+            ( cd $package_source_dir && patch -N -p 1 -i $DOWNLOAD_DIR/$file )
+            touch "$stamp"
+        fi
     }
 
     . $PACKAGE_DIR/$package_name.sh
