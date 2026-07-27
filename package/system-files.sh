@@ -9,7 +9,8 @@ install() {
           usr/include usr/share \
           boot dev etc \
           proc root run sys tmp \
-          var/log var/tmp
+          var/log var/tmp \
+          var/lfs
 
     # Compatibility symlinks (merged-usr layout: /bin, /sbin, /lib -> usr/*)
     # These must be created BEFORE any package installs to /bin, /sbin, /lib.

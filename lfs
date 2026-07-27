@@ -147,6 +147,16 @@ PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 readonly PATH
 export PATH
 
+# bison bakes the m4 path its configure found — in the containers that is
+# the tools volume, a path no booted guest has. Wherever a real
+# /usr/bin/m4 exists (any booted LFS; the scratch container via its /usr
+# aliasing), prefer it — existence, not phase. On the Debian seed there
+# is no /usr/bin/m4 and the baked TOOL_DIR path is the correct one.
+if [ -x /usr/bin/m4 ]; then
+    : ${M4:=/usr/bin/m4}
+    export M4
+fi
+
 
 # CA bundle used to verify TLS on source downloads (see fetch_url in
 # lib/base.sh): the SYSTEM path, everywhere. Debian ships one there; a
