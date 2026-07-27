@@ -9,7 +9,6 @@ readonly abi=lp64
 readonly fpu=
 readonly float=
 
-readonly kernel=kernel8
 readonly defconfig=bcm2711_defconfig
 readonly DTB=broadcom/bcm2711-rpi-4-b.dtb
 

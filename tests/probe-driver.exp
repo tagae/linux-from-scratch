@@ -20,7 +20,7 @@
 #               interpolation never touches it, which sidesteps the
 #               \$-escaping trap entirely.
 #
-# PLATFORM/INIT/CAPS (and anything a capability's QEMU wiring needs, e.g.
+# PLATFORM/USERLAND/CAPS (and anything a capability's QEMU wiring needs, e.g.
 # USB_DISK -- see `lfs`'s qemu case) must already be exported by the
 # caller: `./lfs qemu` reads them itself, the same convention `test` uses.
 # PROBE_TIMEOUT (seconds) overrides the default per-phase timeout, same

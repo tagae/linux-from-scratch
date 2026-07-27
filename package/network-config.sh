@@ -8,7 +8,7 @@
 install() {
     cd $package_install_dir
 
-    case $INIT in
+    case $USERLAND in
         systemd)
             # package/systemd.sh's install() masks systemd-networkd with
             # /dev/null symlinks by default — but skips exactly those two

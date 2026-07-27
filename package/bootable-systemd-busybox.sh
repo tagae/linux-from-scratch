@@ -1,5 +1,5 @@
 # Umbrella meta-package: everything needed for a bootable systemd system.
-# `INIT=systemd-busybox ./lfs system build` installs this (bootable-$INIT); it
+# `USERLAND=systemd-busybox ./lfs system build` installs this (bootable-$USERLAND); it
 # pulls in the members below, in order, into the platform's target tree.
 # It has no payload of its own — package_meta=yes tells the framework
 # depends() is the whole recipe (see _install in lib/package.sh). The

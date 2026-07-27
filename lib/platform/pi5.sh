@@ -9,7 +9,6 @@ readonly abi=lp64
 readonly fpu=
 readonly float=
 
-readonly kernel=kernel_2712
 readonly defconfig=bcm2712_defconfig
 readonly DTB=broadcom/bcm2712-rpi-5-b.dtb
 

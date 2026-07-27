@@ -5,8 +5,13 @@ Build [Linux From Scratch with systemd](https://www.linuxfromscratch.org/lfs/vie
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
 Built images contain a minimal Linux system that boots cleanly and is accessible through the serial
-console. Two init flavors are available: **systemd** (the default) and a **BusyBox-only** system
-with BusyBox as PID 1. Everything is cross-compiled from source inside Docker.
+console. Three userland flavors are available, each naming its complete userspace — init system
+included — **systemd-busybox** (systemd init with a BusyBox userland, the default),
+**systemd-coreutils** (systemd with a BusyBox-free GNU userland),
+and **busybox** (BusyBox as PID 1) — plus opt-in **capabilities** (`CAPS`: networking, 9p file
+sharing, USB, loop devices, amnesia/read-only root) layered onto the base system. Everything is
+cross-compiled from source inside Docker, packaged into per-package tarballs (`archive/`), and the
+result can rebuild itself from inside one of its own booted images (see `docs/design/`).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
@@ -42,22 +47,24 @@ make test-pi0
 make test-pi4
 ```
 
-Build the BusyBox-init flavor instead of systemd with the `busybox-` prefix:
+Select another userland flavor with the `USERLAND` variable, and opt into capabilities with `CAPS`:
 
 ```shell
-make busybox-test         # virt
-make busybox-test-pi0
+make test USERLAND=busybox
+make test-pi0 USERLAND=systemd-coreutils
+make test CAPS="network 9p"
 ```
 
-Each platform/flavor lives in its own install tree and image, so they never clobber one another, and
-the cross-toolchain is a shared volume — building one platform only ever adds to it.
+Each platform/flavor/capability combination lives in its own install tree and image, so they never
+clobber one another, and the cross-toolchain is a shared volume — building one platform only ever
+adds to it.
 
 
 Building and booting by stage
 -----------------------------
 
 `test` runs the full chain and boots headless; the stages can also be run on their own. Each defaults
-to `virt`/systemd; suffix a platform and/or set the `INIT` variable:
+to `virt`/`systemd-busybox`; suffix a platform and/or set the `USERLAND` variable:
 
 ```shell
 make tools      # cross-toolchain + temporary build tools
@@ -66,9 +73,10 @@ make image      # produce a bootable disk image
 make qemu       # boot the image in QEMU (interactive serial console)
 ```
 
-For example `make system-pi0`, `make system-pi4 INIT=busybox`, `make qemu-pi0`, `make qemu INIT=busybox`.
-Per-platform images are the file targets `image/<init>-<platform>.img`
-(e.g. `make image/systemd-busybox-pi0.img`), and are built automatically by the matching `qemu`/`test` goal.
+For example `make system-pi0`, `make system-pi4 USERLAND=busybox`, `make qemu-pi0`, `make qemu USERLAND=busybox`.
+Images are the file targets `image/<userland>-<platform>[+<cap>...].img` (e.g.
+`make image/systemd-busybox-pi0.img`; `make image CAPS=network` produces
+`image/systemd-busybox-virt+network.img`), built automatically by the matching `qemu`/`test` goal.
 
 `make distclean` tears down the Docker volumes, `work/`, and `image/` for a clean rebuild.
 
@@ -76,7 +84,12 @@ Per-platform images are the file targets `image/<init>-<platform>.img`
 Testing
 -------
 
-`make test` (and `make test-<platform>`, optionally with `INIT=busybox`) boots the image in QEMU,
+`make test` (and `make test-<platform>`, with optional `USERLAND=`/`CAPS=`) boots the image in QEMU,
 logs in as root, runs `poweroff`, and verifies that QEMU exits cleanly. It drives the `./test` expect
-script, which takes the platform and init flavor as arguments (`./test pi0 busybox`) and reads the
-kernel and disk image the build staged out of the Docker volumes.
+script (`./test [PLATFORM] [USERLAND] [CAPS]`), which reads the kernel and disk image the build staged
+out of the Docker volumes.
+
+Faster and deeper checks live in `tests/`: `make check` (parse checks, framework unit tests and
+artifact assertions — seconds, no QEMU), `make check-probes` (functional in-guest probes against
+already-built images), and `make e2e-test` (the self-host proof: a builder guest cross-compiles a
+Pi Zero image, which the host then boots). See `tests/README.md`.

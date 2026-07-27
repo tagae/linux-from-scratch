@@ -1,5 +1,5 @@
 # Umbrella meta-package: a bootable Busybox-only system, with busybox as
-# PID 1 (its init applet). `INIT=busybox ./lfs system build` installs this.
+# PID 1 (its init applet). `USERLAND=busybox ./lfs system build` installs this.
 # Sibling of bootable-systemd-busybox.sh; see it and lib/package.sh for how umbrella
 # meta-packages work.
 #

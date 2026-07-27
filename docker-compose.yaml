@@ -59,7 +59,7 @@ services:
     privileged: true
     environment:
       PLATFORM:
-      INIT:
+      USERLAND:
       CAPS:
       LFS_RELEASE:
       VERSION_CODENAME:

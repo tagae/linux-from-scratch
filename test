@@ -1,20 +1,21 @@
 #!/usr/bin/expect -f
 # Boot the platform image in QEMU, log in as root, and poweroff.
 # Exits 0 on success, 1 on any failure.
-# Usage: [TEST_TIMEOUT=seconds] ./test [PLATFORM] [INIT] [CAPS]
+# Usage: [TEST_TIMEOUT=seconds] ./test [PLATFORM] [USERLAND] [CAPS]
 #
-# PLATFORM (virt/pi0/pi4), the optional INIT flavor (systemd/busybox), and
-# the optional CAPS capability set (see lfs) are passed through as env
-# vars, the same convention the Makefile uses, so ./lfs qemu picks the
-# matching kernel and image. The login/prompt/poweroff flow below is
-# identical for both flavors (busybox getty/login/ash present the same
-# "login:"/"Password:"/shell-prompt sequence as systemd's).
+# PLATFORM (virt/pi0/pi4), the optional USERLAND flavor (systemd-busybox/
+# systemd-coreutils/busybox), and the optional CAPS capability set (see
+# lfs) are passed through as env vars, the same convention the Makefile
+# uses, so ./lfs qemu picks the matching kernel and image. The login/
+# prompt/poweroff flow below is identical for every flavor (busybox
+# getty/login/ash present the same "login:"/"Password:"/shell-prompt
+# sequence as systemd's).
 
 if {[llength $argv] > 0} {
     set env(PLATFORM) [lindex $argv 0]
 }
 if {[llength $argv] > 1} {
-    set env(INIT) [lindex $argv 1]
+    set env(USERLAND) [lindex $argv 1]
 }
 if {[llength $argv] > 2} {
     set env(CAPS) [lindex $argv 2]

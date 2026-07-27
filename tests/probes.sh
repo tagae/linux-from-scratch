@@ -76,23 +76,23 @@ create_usb_stick() {
     " >/dev/null 2>&1
 }
 
-# ---- PROBE_KEY -> PLATFORM/INIT/CAPS, mirroring `lfs`'s own SYSTEM_KEY
-# grammar: ALWAYS INIT-PLATFORM, then +cap1+cap2... -- see `lfs`'s "Init
-# flavor"/"Capabilities" sections and docs/design/capabilities.md. Since
+# ---- PROBE_KEY -> PLATFORM/USERLAND/CAPS, mirroring `lfs`'s own SYSTEM_KEY
+# grammar: ALWAYS USERLAND-PLATFORM, then +cap1+cap2... -- see `lfs`'s
+# "Userland"/"Capabilities" sections and docs/design/capabilities.md. Since
 # every probe's PROBE_KEY below is literally the image's own filename
-# stem, this is the same string `lfs` folded INIT/CAPS into when the
+# stem, this is the same string `lfs` folded USERLAND/CAPS into when the
 # image was built, so splitting it back apart reconstructs the exact env
-# `./lfs qemu` needs. Platform names never contain a dash (init names
+# `./lfs qemu` needs. Platform names never contain a dash (userland names
 # may: systemd-coreutils), so the LAST dash always separates the two.
 
-derive_platform_init_caps() {
+derive_platform_userland_caps() {
     key=$1
     platform_part=${key%%+*}
     case $key in
         *+*) caps_part=${key#*+} ;;
         *)   caps_part= ;;
     esac
-    DERIVED_INIT=${platform_part%-*}
+    DERIVED_USERLAND=${platform_part%-*}
     DERIVED_PLATFORM=${platform_part##*-}
     DERIVED_CAPS=$(printf '%s' "$caps_part" | tr '+' ' ')
 }
@@ -128,9 +128,9 @@ run_one() {
         return 0
     fi
 
-    derive_platform_init_caps "$PROBE_KEY"
+    derive_platform_userland_caps "$PROBE_KEY"
     PLATFORM=$DERIVED_PLATFORM
-    INIT=$DERIVED_INIT
+    USERLAND=$DERIVED_USERLAND
     CAPS=$DERIVED_CAPS
 
     PROBE_IMAGE=$image
@@ -151,7 +151,7 @@ run_one() {
             ;;
     esac
 
-    export PLATFORM INIT CAPS PROBE_TIMEOUT PROBE_IMAGE PROBE_STICK
+    export PLATFORM USERLAND CAPS PROBE_TIMEOUT PROBE_IMAGE PROBE_STICK
     if [ -n "$PROBE_STICK" ]; then
         USB_DISK=$PROBE_STICK
         export USB_DISK
@@ -173,7 +173,7 @@ run_one() {
     printf '%s; sync; poweroff' "$chain" > "$chain_file"
 
     log=$(mktemp "${TMPDIR:-/tmp}/lfs-probe-$name-log.XXXXXX")
-    echo "# probe:$name booting PLATFORM=$PLATFORM INIT=$INIT CAPS='$CAPS' image=$(basename "$image") timeout=${PROBE_TIMEOUT}s"
+    echo "# probe:$name booting PLATFORM=$PLATFORM USERLAND=$USERLAND CAPS='$CAPS' image=$(basename "$image") timeout=${PROBE_TIMEOUT}s"
     set +e
     "$DRIVER" "$image" "$marker" "$chain_file" > "$log" 2>&1
     rc=$?

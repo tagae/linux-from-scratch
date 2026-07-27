@@ -27,7 +27,7 @@ echo "e1: [2/6] scratch container - temp tools + build tool set (tools build)"
 PLATFORM=virt docker compose run --build --rm scratch ./lfs tools build
 
 echo "e1: [3/6] builder system build (bootable-systemd-busybox, CAPS='9p loop')"
-PLATFORM=virt INIT=systemd-busybox CAPS="9p loop" \
+PLATFORM=virt USERLAND=systemd-busybox CAPS="9p loop" \
     docker compose run --rm scratch ./lfs system build
 
 echo "e1: [4/6] bake the builder tool payload into the image tree"
@@ -37,7 +37,7 @@ echo "e1: [4/6] bake the builder tool payload into the image tree"
 # real patch/gawk/coreutils/bash/kmod), python's build-time companions
 # (markupsafe/jinja2 for systemd's meson), and the image tools
 # (btrfs-progs/dosfstools).
-PLATFORM=virt INIT=systemd-busybox CAPS="9p loop" \
+PLATFORM=virt USERLAND=systemd-busybox CAPS="9p loop" \
     docker compose run --rm scratch ./lfs install \
     zlib libffi native-toolchain \
     m4 bison flex bc gperf pkgconf gettext tar xz \
@@ -54,8 +54,8 @@ echo "e1:       the no-network guest will build from: rpi kernel, gnupg family)"
 # aarch64 compiler and died on pointer width). The build-host env inside is
 # stamped, so this fast-paths straight to the arm pass1/sysroot/pass2.
 PLATFORM=pi0 docker compose run --build --rm bootstrap ./lfs tools bootstrap
-PLATFORM=pi0 INIT=systemd-busybox docker compose run --rm scratch ./lfs system build
-PLATFORM=pi0 INIT=systemd-busybox docker compose run --rm scratch ./lfs install \
+PLATFORM=pi0 USERLAND=systemd-busybox docker compose run --rm scratch ./lfs system build
+PLATFORM=pi0 USERLAND=systemd-busybox docker compose run --rm scratch ./lfs install \
     zlib libgpg-error npth libassuan libksba libgcrypt libusb gnupg pinentry
 
 echo "e1: [6/6] builder image build"
@@ -63,7 +63,7 @@ echo "e1: [6/6] builder image build"
 # a pi0 system tree, archives and a 4g output image on top of the baked
 # tool payload — the original hand-grown builder ended at 80g. Sparse file:
 # only actual usage costs disk.
-PLATFORM=virt INIT=systemd-busybox CAPS="9p loop" IMAGE_SIZE=64g \
+PLATFORM=virt USERLAND=systemd-busybox CAPS="9p loop" IMAGE_SIZE=64g \
     docker compose run --rm --user 0:0 scratch ./lfs image build
 
 echo "e1: builder image ready: image/systemd-busybox-virt+9p+loop.img"

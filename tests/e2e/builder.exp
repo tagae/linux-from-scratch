@@ -16,7 +16,7 @@ log_user 1
 # embedded spaces reach env as single CAPS= / QEMU_EXTRA= arguments.)
 set caps   "9p loop"
 set qextra "-smp 8 -m 8192"
-spawn env PLATFORM=virt INIT=systemd-busybox CAPS=$caps QEMU_EXTRA=$qextra ./lfs qemu
+spawn env PLATFORM=virt USERLAND=systemd-busybox CAPS=$caps QEMU_EXTRA=$qextra ./lfs qemu
 
 set timeout 600
 expect {

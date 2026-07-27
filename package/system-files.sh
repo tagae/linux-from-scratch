@@ -25,16 +25,17 @@ install() {
     ln -sfv /run var/run
     ln -sfv /run/lock var/lock
 
-    # Content shared by both init flavors (common/) plus whatever is
-    # specific to this one ($INIT/ — systemd/ ships its dozen systemd-*
-    # accounts and messagebus/uuidd; busybox/ ships just root + nobody).
-    # Flavor content is copied second so a same-named file (etc/passwd,
-    # etc/shadow, etc/group) is fully replaced by the flavor's own version
-    # rather than merged with common/ — those three differ too much between
-    # flavors to split further, so they live entirely under systemd/ or
-    # busybox/ and common/ only holds what is genuinely identical (etc/hosts).
+    # Content shared by every userland flavor (common/) plus whatever is
+    # specific to this one ($USERLAND/ — the systemd-* flavors ship their
+    # dozen systemd-* accounts and messagebus/uuidd; busybox/ ships just
+    # root + nobody). Flavor content is copied second so a same-named file
+    # (etc/passwd, etc/shadow, etc/group) is fully replaced by the flavor's
+    # own version rather than merged with common/ — those three differ too
+    # much between flavors to split further, so they live entirely under
+    # the per-flavor dirs and common/ only holds what is genuinely
+    # identical (etc/hosts).
     cp -rv $package_files_dir/common/* .
-    cp -rv $package_files_dir/$INIT/* .
+    cp -rv $package_files_dir/$USERLAND/* .
 
     touch var/log/btmp var/log/lastlog var/log/faillog var/log/wtmp
     chgrp -v 13 var/log/lastlog 2>/dev/null || true  # 13 is utmp

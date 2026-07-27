@@ -48,9 +48,7 @@ install() {
     # be actively wrong to archive a DESTDIR install meant for e.g. a
     # device or .img and then merge it into $INSTALL_DIR/$SYSTEM_KEY
     # instead), so unset whatever target_build_env just set above.
-    if [ -z "${DESTINATION:-}" ]; then
-        true
-    else
+    if [ -n "${DESTINATION:-}" ]; then
         unset package_merge_dir
         if [ -d "$DESTINATION" ]; then
             package_install_dir=$(realpath "$DESTINATION")

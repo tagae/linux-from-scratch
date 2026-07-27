@@ -34,7 +34,7 @@ install() {
 lfs /mnt/lfs 9p trans=virtio,version=9p2000.L,nofail 0 0
 EOF
 
-    case $INIT in
+    case $USERLAND in
         busybox)
             # systemd auto-generates a mount unit from fstab (see above);
             # busybox has no such generator, so rcS has to mount fstab

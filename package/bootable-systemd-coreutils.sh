@@ -1,12 +1,12 @@
 # bootable-systemd-coreutils: systemd init with a GNU userland — the busybox-
-# free flavor (INIT=systemd-coreutils). Identical to bootable-systemd-busybox.sh except
+# free flavor (USERLAND=systemd-coreutils). Identical to bootable-systemd-busybox.sh except
 # the "Shell and core utilities" block: bash/coreutils/grep/sed/gawk plus
 # libxcrypt+shadow (login/passwd) replace the single busybox package, and
 # util-linux additionally provides nologin (busybox's applet is gone).
 # No su in this flavor for now: util-linux's needs PAM, shadow's is
 # removed at source (see shadow.sh) — root logs in directly.
 # Umbrella meta-package: everything needed for a bootable systemd system.
-# `INIT=systemd-busybox ./lfs system build` installs this (bootable-$INIT); it
+# `USERLAND=systemd-busybox ./lfs system build` installs this (bootable-$USERLAND); it
 # pulls in the members below, in order, into the platform's target tree.
 # It has no payload of its own — package_meta=yes tells the framework
 # depends() is the whole recipe (see _install in lib/package.sh). The

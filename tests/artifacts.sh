@@ -14,7 +14,7 @@ PROJECT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 . "$PROJECT_DIR/tests/tap.sh"
 
 # This script intentionally doesn't go through `lfs` (there's no single
-# PLATFORM/INIT to select -- it surveys every SYSTEM_KEY that already
+# PLATFORM/USERLAND to select -- it surveys every SYSTEM_KEY that already
 # exists), so it re-derives just the directory defaults `lfs` itself would
 # apply.
 : "${ARCHIVE_DIR:=$PROJECT_DIR/archive}"
@@ -23,7 +23,7 @@ PROJECT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 
 # ---- helpers ----
 
-# Map a SYSTEM_KEY (ALWAYS INIT-PLATFORM, optionally +CAP...) back to its
+# Map a SYSTEM_KEY (ALWAYS USERLAND-PLATFORM, optionally +CAP...) back to its
 # bare PLATFORM by matching against the known lib/platform/*.sh names --
 # see `lfs` for the exact SYSTEM_KEY grammar this mirrors.
 platform_for_key() {

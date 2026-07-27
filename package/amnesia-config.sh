@@ -65,7 +65,7 @@ EOF
     # same reasoning as 9p-config.sh's own mkdir -pv mnt/lfs).
     mkdir -pv mnt/usb
 
-    case $INIT in
+    case $USERLAND in
         systemd)
             # tmp.mount's own mask (which would otherwise beat the fstab
             # generator and leave /tmp stuck on the ro root) is skipped at

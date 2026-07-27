@@ -4,15 +4,11 @@
 	image \
 	qemu qemu-% \
 	test test-% \
-	network-system network-image network-qemu network-test \
-	reinstall-tools reinstall-system \
+	reinstall-tools reinstall-tools-% reinstall-system reinstall-system-% \
 	check check-probes check-probe \
 	e2e-test \
 	clean distclean \
 	FORCE
-
-# Whatever depends on FORCE will be considered out of date, since it depends on nothing.
-FORCE:
 
 # Keep intermediate files, in particular image/*.img. Otherwise, they would be deleted.
 .SECONDARY:
@@ -21,17 +17,28 @@ FORCE:
 # tools, system, image, and emulation.
 .DEFAULT_GOAL := test
 
-# Flavor: ONE set of rules, parameterized by INIT — each value names an
-# umbrella (bootable-$INIT.sh) that fully describes init AND userland:
-# systemd-busybox (default), systemd-coreutils (busybox-free GNU
-# userland), busybox. SYSTEM_KEY always includes the flavor, so
-# image names are uniform (image/systemd-coreutils-virt.img) and the
-# rules below need no per-flavor cases.
-INIT ?= systemd-busybox
+# Whatever depends on FORCE will be considered out of date, since it depends on nothing.
+FORCE:
+
+# Flavor: ONE set of rules, parameterized by USERLAND — each value names an umbrella
+# (bootable-$USERLAND.sh) that fully describes init AND userland: systemd-busybox (default),
+# systemd-coreutils, busybox. SYSTEM_KEY always includes the flavor, so image names are uniform
+# (image/systemd-coreutils-virt.img) and the rules below need no per-flavor cases.
+USERLAND ?= systemd-busybox
+
+# Capabilities: the same interface as lfs (e.g. `make test CAPS="network 9p"`), folded into the one
+# rule set exactly like USERLAND above — no per-capability targets. CAPS_KEY mirrors lfs's own
+# SYSTEM_KEY folding: sorted, de-duplicated ($(sort) does both, matching `sort -u`), one +<cap> per
+# capability — so any spelling of the same set names the same image, and empty CAPS leaves every
+# no-caps name byte-identical.
+CAPS ?=
+empty :=
+space := $(empty) $(empty)
+CAPS_KEY := $(if $(strip $(CAPS)),+$(subst $(space),+,$(sort $(CAPS))))
 
 tools: tools-virt
 system: system-virt
-image: image/$(INIT)-virt.img
+image: image/$(USERLAND)-virt$(CAPS_KEY).img
 qemu: qemu-virt
 test: test-virt
 
@@ -52,46 +59,42 @@ tools-%: .env
 system-%: tools-%
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
-	PLATFORM=$* INIT=$(INIT) docker compose run --rm scratch ./lfs system build
+	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm scratch ./lfs system build
 
-image/$(INIT)-%.img: system-% FORCE
+image/$(USERLAND)-%$(CAPS_KEY).img: system-% FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* INIT=$(INIT) docker compose run --rm --user 0:0 scratch ./lfs image build
+	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm --user 0:0 scratch ./lfs image build
 
-test-%: image/$(INIT)-%.img
-	./test $* $(INIT)
+test-%: image/$(USERLAND)-%$(CAPS_KEY).img
+	./test $* $(USERLAND) "$(CAPS)"
 
-qemu-%: image/$(INIT)-%.img
-	PLATFORM=$* INIT=$(INIT) ./lfs qemu
+qemu-%: image/$(USERLAND)-%$(CAPS_KEY).img
+	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" ./lfs qemu
 
-# ---- opt-in "network" capability (CAPS=network; virt/systemd only for
-# now — capabilities are proven here first; folding CAPS into the
-# parameterized rules above the same way INIT was is the recorded
-# follow-on) ----
-network-system: tools-virt
-	PLATFORM=virt INIT=systemd-busybox CAPS=network docker compose run --rm scratch ./lfs system build
-
-image/systemd-busybox-virt+network.img: network-system FORCE
-	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=virt INIT=systemd-busybox CAPS=network docker compose run --rm --user 0:0 scratch ./lfs image build
-
-network-image: image/systemd-busybox-virt+network.img
-
-network-test: image/systemd-busybox-virt+network.img
-	./test virt systemd-busybox network
-
-network-qemu: image/systemd-busybox-virt+network.img
-	PLATFORM=virt INIT=systemd-busybox CAPS=network ./lfs qemu
-
-reinstall-tools:
-	docker compose run --rm scratch find work -name '.install-*' -delete
+# Re-run the install (and downstream) steps against fresh volumes without
+# a full from-source rebuild. Keyed per platform (and, for system, per
+# USERLAND/CAPS — the same variables as everywhere above), with stamp
+# deletion scoped to the phase actually being reinstalled:
+#  - reinstall-tools-%: the tools volume is shared by every platform, so
+#    dropping it is global, but only tools-phase install stamps (variants
+#    tools/pass1-*/<target triple>) are cleared — system-phase
+#    stamps stay, since their install trees are untouched.
+#  - reinstall-system-%: scoped entirely to one SYSTEM_KEY — its work
+#    stamps (install AND archive/merge: the merged tree is being wiped,
+#    so tarballs must re-extract), its install tree, and its archive dir
+#    (default_archive skips existing tarballs even unstamped).
+reinstall-tools-%:
+	docker compose run --rm scratch sh -c 'find /var/lfs/work \( -path "*-tools-*" -o -path "*-pass1-*" -o -path "*-scratch-linux-*" \) -name ".install-*" -delete'
 	docker volume rm -f linux-from-scratch_tools
-	$(MAKE) tools
+	$(MAKE) tools-$*
 
-reinstall-system:
-	docker compose run --rm scratch find work -name '.install-*' -delete
-	docker volume rm -f linux-from-scratch_install
-	$(MAKE) system
+reinstall-tools: reinstall-tools-virt
+
+reinstall-system-%:
+	docker compose run --rm scratch sh -c 'find /var/lfs/work -path "*-$(USERLAND)-$*$(CAPS_KEY)-*" \( -name ".install-*" -o -name ".archive-*" -o -name ".merge-*" \) -delete && rm -rf /var/lfs/install/$(USERLAND)-$*$(CAPS_KEY) /var/lfs/archive/$(USERLAND)-$*$(CAPS_KEY)'
+	$(MAKE) system-$*
+
+reinstall-system: reinstall-system-virt
 
 # Fast, deterministic regression suite (no QEMU, no package builds) -- see
 # tests/README.md. Separate from `test` above (the slow, real boot-matrix

@@ -1,21 +1,23 @@
-Init flavors and capabilities
-=============================
+Userland flavors and capabilities
+=================================
 
 Two orthogonal axes select what a built system contains, both folded
 into `SYSTEM_KEY` so every combination gets its own install tree,
 stamps, boot files and image, coexisting without clobbering.
 
-INIT flavor
------------
+USERLAND flavor
+---------------
 
-`INIT` (default `systemd`; also `busybox`) selects the umbrella
-(`bootable-$INIT`) and hence the whole member set, the per-flavor
-system-files content, and the per-flavor kernel fragment
-(`package/linux/$INIT.config` — busybox's PID 1 needs none of
-systemd's cgroups/namespaces/BPF, ~23% smaller kernels). Key: bare
-`$PLATFORM` for systemd (compatibility), `$INIT-$PLATFORM` otherwise.
-The busybox flavor is static — no glibc — so dynamically-linked
-optional packages (gnupg, native toolchain) require the systemd flavor.
+`USERLAND` (default `systemd-busybox`; also `systemd-coreutils`,
+`busybox`) names the complete userspace composition — the init system
+included, since PID 1 is itself a userland program. It selects the
+umbrella (`bootable-$USERLAND`) and hence the whole member set, the
+per-flavor system-files content, and the per-flavor kernel fragment
+(`package/linux/$USERLAND.config` — busybox's PID 1 needs none of
+systemd's cgroups/namespaces/BPF, ~23% smaller kernels). Key: always
+`$USERLAND-$PLATFORM`. The busybox flavor is static — no glibc — so
+dynamically-linked optional packages (gnupg, native toolchain) require
+a glibc flavor (`systemd-busybox`/`systemd-coreutils`).
 
 CAPS capabilities
 -----------------

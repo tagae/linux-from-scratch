@@ -6,7 +6,7 @@
 # target packages for binutils/gcc/make compile and run natively on the
 # guest, the same lineage as Debian seeding the original cross toolchain.
 #
-# Optional, like the gnupg family: not a member of any bootable-$INIT
+# Optional, like the gnupg family: not a member of any bootable-$USERLAND
 # umbrella, installed on demand via `./lfs install native-toolchain`
 # (target_build_env supplies the install scenario — host=$target,
 # package_install_dir=$INSTALL_DIR/$SYSTEM_KEY, ...). package_meta=yes:

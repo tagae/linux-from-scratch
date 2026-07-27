@@ -87,7 +87,7 @@ prepare() {
             # only build it as a module). Platforms without a machine config
             # fall back to their full defconfig.
             #
-            # The fragment after $ARCH is named after $INIT (systemd.config /
+            # The fragment after $ARCH is named after $USERLAND (systemd.config /
             # busybox.config): systemd needs cgroups/namespaces/BPF/POSIX MQ/
             # debugfs that busybox-init never touches, so each flavor's
             # kernel only carries what its own PID 1 actually uses (see
@@ -106,7 +106,7 @@ prepare() {
                     cat $package_files_dir/base.config \
                         $package_files_dir/$PLATFORM.config \
                         $package_files_dir/$ARCH.config \
-                        $package_files_dir/$INIT.config
+                        $package_files_dir/$USERLAND.config
                     for cap in ${CAPS:-}; do
                         cat $package_files_dir/$cap.config
                     done

@@ -12,12 +12,12 @@ Fragment composition
 
 `package/linux.sh` concatenates, in order:
 
-    base.config  $PLATFORM.config  $ARCH.config  $INIT.config  <cap>.config...
+    base.config  $PLATFORM.config  $ARCH.config  $USERLAND.config  <cap>.config...
 
 into `combined.config`, applied via `KCONFIG_ALLCONFIG=... allnoconfig`
 then `olddefconfig`. Each platform fragment is self-contained (no
 shared "pi" layer). `base` carries btrfs (=y, the root fs) and
-devtmpfs; `$INIT` carries what the flavor's PID 1 needs; capability
+devtmpfs; `$USERLAND` carries what the flavor's PID 1 needs; capability
 fragments are opt-in (capabilities.md). CAPS is pre-sorted, so the
 assembled config — and the kernel — is deterministic per SYSTEM_KEY.
 

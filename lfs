@@ -11,6 +11,7 @@ readonly PACKAGE_DIR=$PROJECT_DIR/package
 . $PROJECT_DIR/lib/tools.sh
 . $PROJECT_DIR/lib/system.sh
 . $PROJECT_DIR/lib/image.sh
+. $PROJECT_DIR/lib/qemu.sh
 
 #--[ Command line ]
 
@@ -69,23 +70,25 @@ readonly PLATFORM
 
 . $PROJECT_DIR/lib/platform/$PLATFORM.sh
 
-#--[ Init flavor ]
+#--[ Userland ]
 
-# Which init/unit system the built system uses. Selects the umbrella
-# package installed by `system build` (bootable-$INIT), and — via
-# SYSTEM_KEY below — keeps each flavor's install tree, stamps, boot files
-# and disk image separate so they coexist without clobbering (same
-# reasoning as the per-PLATFORM keying; see feedback-cross-platform-stamp-
-# contamination).
-: ${INIT:=systemd-busybox}
+# Which userland the built system runs: the complete userspace
+# composition, init system included — PID 1 (systemd, or busybox's init
+# applet) is a userland program like the shell and core utilities it
+# ships alongside. Selects the umbrella package installed by `system
+# build` (bootable-$USERLAND), and — via SYSTEM_KEY below — keeps each
+# flavor's install tree, stamps, boot files and disk image separate so
+# they coexist without clobbering (same reasoning as the per-PLATFORM
+# keying; see feedback-cross-platform-stamp-contamination).
+: ${USERLAND:=systemd-busybox}
 
-[ -f $PROJECT_DIR/package/bootable-$INIT.sh ] || bail "Unsupported init '$INIT'"
+[ -f $PROJECT_DIR/package/bootable-$USERLAND.sh ] || bail "Unsupported userland '$USERLAND'"
 
-# The key ALWAYS includes the init component — systemd-busybox-virt exactly like
-# busybox-virt — one uniform naming rule, no special-cased default (image
+# The key ALWAYS includes the userland component — systemd-busybox-virt exactly
+# like busybox-virt — one uniform naming rule, no special-cased default (image
 # names, archive dirs, install trees and stamps all read the flavor off
 # the name, and no consumer needs to know which flavor is the default).
-SYSTEM_KEY=$INIT-$PLATFORM
+SYSTEM_KEY=$USERLAND-$PLATFORM
 
 #--[ Capabilities ]
 
@@ -111,14 +114,14 @@ CAPS=$(printf '%s\n' $CAPS | sort -u | xargs)
 
 # Folded into SYSTEM_KEY so each capability combination gets its own
 # install tree, stamps, boot dir and image — same reasoning as the
-# PLATFORM/INIT keying above. CRITICAL: with CAPS empty (the default) this
+# PLATFORM/USERLAND keying above. CRITICAL: with CAPS empty (the default) this
 # loop doesn't execute, so SYSTEM_KEY — and every existing build, stamp and
 # image for the no-caps case — is untouched.
 for cap in $CAPS; do
     SYSTEM_KEY=$SYSTEM_KEY+$cap
 done
 
-readonly INIT SYSTEM_KEY CAPS
+readonly USERLAND SYSTEM_KEY CAPS
 
 #--[ Compilation ]
 
@@ -173,7 +176,7 @@ export SSL_CERT_FILE
 
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
-trap image_cleanup EXIT
+trap unmount_all EXIT
 
 #--[ Command ]
 
@@ -215,113 +218,12 @@ case "${1:-help}" in
         ;;
 
     qemu)
-        [ $# -le 2 ] || usage "$1 [IMAGE]"
-        IMAGE="${2:-$IMAGE_DIR/$SYSTEM_KEY.img}"
-        _kernel="$WORK_DIR/boot/$SYSTEM_KEY/kernel.img"
-        [ -f "$_kernel" ] || bail "Kernel not found: $_kernel (run './lfs system build' first)"
-        set -- -kernel "$_kernel"
-        if [ -n "${DTB:-}" ]; then
-            _dtb="$WORK_DIR/boot/$SYSTEM_KEY/$DTB"
-            [ -f "$_dtb" ] || bail "DTB not found: $_dtb (run './lfs system build' first)"
-            set -- "$@" -dtb "$_dtb"
-        fi
-        # Capability-gated QEMU devices. Both are virtio-pci, so they only
-        # make sense where there's a PCI bus (virt); the Pi machine models
-        # have none — real hardware support for these capabilities is
-        # separate future work, not something to guard against here.
-        if has_cap network; then
-            set -- "$@" -netdev user,id=net0 -device virtio-net-pci,netdev=net0
-        fi
-        if has_cap 9p; then
-            set -- "$@" \
-                -fsdev local,id=lfs,path=$PROJECT_DIR,security_model=mapped-xattr \
-                -device virtio-9p-pci,fsdev=lfs,mount_tag=lfs
-        fi
-        # Removable USB stick for the air-gapped GPG key-persist workflow
-        # (see package/gpg-genkey.sh). Two attach forms, chosen by
-        # $PLATFORM: virt has no dwc2 (only QEMU's PCI-attached qemu-xhci,
-        # itself needing a PCI bus, which only virt's machine model
-        # provides), while the Pi machine models (pi0 here; real hardware
-        # has no PCI bus at all) expose their SoC's own dwc2 OTG controller
-        # instead — QEMU's raspi0 machine models it as a plain usb-bus (id
-        # "usb-bus.0", confirmed empirically via `info qtree`/`info usb` on
-        # a bare `-M raspi0`: `dev: dwc2-usb ... bus: usb-bus.0`), so
-        # usb-storage attaches straight to it with no controller device of
-        # its own to instantiate first (unlike xhci, which needs one).
-        # USB_DISK must already exist (e.g. a blank vfat image created on
-        # the host); unset/empty is a no-op, so a usb-capable build with no
-        # stick attached still boots (just with no USB device present, same
-        # as the network/9p caps above only wiring up when the guarding env
-        # var/CAPS conditions hold). The virt root disk itself is
-        # virtio-blk (/dev/vda, see QEMU_DISK_IF above) and pi0's is the SD
-        # card (/dev/mmcblk0, QEMU_DISK_IF=sd) — either way this stick
-        # enumerates as the guest's first SCSI/USB-storage disk, /dev/sda.
-        if has_cap usb && [ -n "${USB_DISK:-}" ]; then
-            [ -f "$USB_DISK" ] || bail "USB_DISK not found: $USB_DISK"
-            # cache=writethrough: every guest write is committed to
-            # $USB_DISK on the host as soon as the guest's own
-            # sync()/umount() say it's durable, rather than trusting
-            # QEMU's own write-back cache to still be intact by the
-            # time this same file is read back later (e.g. the host-
-            # side verification step, or a later boot with a fresh
-            # guest that never issues its own flush). This stick
-            # models removable media a guest can yank at any time
-            # (that's the whole point of the appliance — see
-            # gpg-genkey.sh): its persistence contract should rest on
-            # the guest's own explicit sync, not on however cleanly
-            # this particular QEMU process happens to exit afterward.
-            set -- "$@" \
-                -drive if=none,id=usbstick,format=raw,file=$USB_DISK,cache=writethrough
-            case $PLATFORM in
-                pi0)
-                    set -- "$@" -device usb-storage,bus=usb-bus.0,drive=usbstick
-                    ;;
-                *)
-                    set -- "$@" \
-                        -device qemu-xhci,id=xhci \
-                        -device usb-storage,bus=xhci.0,drive=usbstick
-                    ;;
-            esac
-        fi
-        # Cap-conditional read-only root (CAPS=amnesia — increment #2 of the
-        # air-gapped GPG appliance; see package/amnesia-config.sh). Sets
-        # ROOTFLAGS's own DEFAULT here,
-        # rather than touching the "${ROOTFLAGS:-...}" fallback in the
-        # -append line below, so: (a) ROOTFLAGS's existing override contract
-        # (any caller can still set it directly) is untouched, and (b) the
-        # no-amnesia fallback text below stays byte-identical to what it was
-        # before this capability existed. rescue=nologreplay: btrfs replays
-        # its crash-consistency log tree at mount time even under `ro` —
-        # that replay writes to the device — so without this a "read-only"
-        # mount would still, occasionally, touch the boot medium;
-        # rescue=nologreplay is what actually makes the hash-identical proof
-        # hold (verified by comparing the image file's SHA-256 across a
-        # full boot->keygen->poweroff cycle: byte-identical, i.e. the boot
-        # medium really is never written). NOT the bare "nologreplay"
-        # spelling: this
-        # kernel's btrfs (7.1.2) rejects it outright ("Unknown parameter
-        # 'nologreplay'", a boot-time kernel panic — confirmed empirically)
-        # — the older standalone option was consolidated into the "rescue="
-        # namespace and the bare alias no longer parses.
-        if has_cap amnesia; then
-            : ${ROOTFLAGS:=rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME,rescue=nologreplay ro rootwait}
-        fi
-        # QEMU_EXTRA last: QEMU's own "last flag wins" rule for repeated
-        # options (-smp/-m/...) lets this override QEMU_FLAGS's defaults
-        # (e.g. the self-host builder guest needs more than virt's default
-        # -smp 1 -m 512 to build a whole system natively) without editing
-        # the platform file itself. Empty by default,
-        # so an unset QEMU_EXTRA changes nothing.
-        exec $QEMU -nodefaults -no-user-config ${QEMU_FLAGS:-} \
-            -no-reboot \
-            "$@" \
-            -append "${QEMU_APPEND:-} ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait}" \
-            -drive "file=$IMAGE,format=raw,if=${QEMU_DISK_IF:-sd}" \
-            ${QEMU_EXTRA:-}
+        shift
+        qemu "$@"
         ;;
 
     help)
-        echo "Usage: $(basename "$0") [-p PLATFORM] (tools|system|install|image|qemu)"
+        echo "Usage: $(basename "$0") [-p PLATFORM] (tools|system|install|unarchive|image|qemu)"
         echo ""
         echo "Commands:"
         echo "  tools            Build cross-compilation toolchain"
@@ -330,12 +232,22 @@ case "${1:-help}" in
         echo "  unarchive FILE [DEST]"
         echo "                   Extract a package tarball (DEST defaults to"
         echo "                   this system key's merged tree, e.g. / in a guest)"
-        echo "  image [FILE]     Create bootable disk image"
-        echo "  qemu [FILE]      Boot image in QEMU (creates image if needed)"
+        echo "  image build [IMAGE]"
+        echo "                   Create bootable disk image from the built system"
+        echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"
         echo ""
         echo "Options:"
-        echo "  -p PLATFORM      Target platform (pi0, pi4, pi5)"
+        echo "  -p PLATFORM      Target platform (virt (default), pi0, pi4, pi5)"
         echo "  -d DESTINATION   Install destination (dir, device, or .img file)"
+        echo ""
+        echo "Environment:"
+        echo "  USERLAND         Userland flavor, init system included"
+        echo "                   (systemd-busybox (default), systemd-coreutils,"
+        echo "                   busybox)"
+        echo "  CAPS             Capability set, e.g. \"network 9p\" (network, 9p,"
+        echo "                   usb, loop, amnesia)"
+        echo "  USB_DISK, QEMU_EXTRA, ROOT_VOLUME, IMAGE_SIZE"
+        echo "                   See lib/qemu.sh and lib/image.sh"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
         ;;
 

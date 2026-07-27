@@ -1,5 +1,0 @@
-Ideas:
-
-* /usr contains the OS
-  * for security / predictability, mount as a read-only BTRFS volume
-  * could OS upgrades be snapshotted, and previous snapshots be restored if an upgrade fails?
