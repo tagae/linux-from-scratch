@@ -1,20 +1,14 @@
 Linux From Scratch
 ==================
 
-Build [Linux From Scratch with systemd](https://www.linuxfromscratch.org/lfs/view/systemd/),
+Build [Linux From Scratch](https://www.linuxfromscratch.org/lfs/view/systemd/)
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
 Built images contain a minimal Linux system that boots cleanly and is accessible through the serial
-console. Three userland flavors are available, each naming its complete userspace — init system
-included — **systemd-busybox** (systemd init with a BusyBox userland, the default),
-**systemd-coreutils** (systemd with a BusyBox-free GNU userland),
-and **busybox** (BusyBox as PID 1) — plus opt-in **capabilities** (`CAPS`: networking, 9p file
-sharing, USB, loop devices, amnesia/read-only root) layered onto the base system. Everything is
-cross-compiled from source inside Docker, packaged into per-package tarballs (`archive/`), and the
-result can rebuild itself from inside one of its own booted images (see `docs/design/`).
+console. Further opt-in **capabilities** can be layered on top of the base system, for example to
+add networking support.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
-
 
 Supported Platforms
 -------------------
@@ -26,14 +20,38 @@ Supported Platforms
 | `pi4`    | Raspberry Pi 4               | ARMv8 (arm64) |
 | `pi5`    | Raspberry Pi 5               | ARMv8 (arm64) |
 
-`virt` is the default platform. (`pi5` is best-effort — QEMU has no Pi 5 machine model yet.)
+Userland Flavours
+------------------
 
+| Userland            | Init (PID 1) | Core utilities             |
+|---------------------|--------------|----------------------------|
+| `systemd-coreutils` | systemd      | GNU (coreutils, bash, …)   |
+| `systemd-busybox`   | systemd      | BusyBox                    |
+| `busybox`           | BusyBox      | BusyBox (static, no glibc) |
+
+The `busybox` flavour is fully static, without `glibc`, so dynamically-linked optional packages
+require a `systemd` flavour.
+
+Capabilities
+------------
+
+| Capability | What it enables                                                     |
+|------------|---------------------------------------------------------------------|
+| `network`  | Networking: DHCP + DNS (systemd-networkd/-resolved)                 |
+| `9p`       | Host file sharing: the project directory mounted over virtio-9p     |
+| `usb`      | Removable USB storage (attach a stick with `USB_DISK=<img>`)        |
+| `loop`     | Loop devices + partitioning tools, so a guest can build disk images |
+| `amnesia`  | Read-only root: the boot medium never written                       |
+
+Capabilities are off by default and combinable (`CAPS="network 9p"`); each combination gets its own
+kernel, install tree and image. The `network`/`9p` QEMU device wiring is virt-only. Details in
+`docs/design/capabilities.md`.
 
 Quick Start
 -----------
 
-Build the whole chain for the default system — cross-toolchain, packages, disk image — then boot it
-in QEMU, log in as root, and power off, asserting a clean exit:
+Build the whole chain for the default system, then boot it in QEMU, log in as root, and power off,
+asserting a clean exit:
 
 ```shell
 make test
