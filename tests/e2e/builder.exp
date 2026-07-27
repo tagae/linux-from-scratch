@@ -1,5 +1,5 @@
 #!/usr/bin/expect -f
-# E2 + E3 driver: boot the systemd-virt+9p+loop builder guest and run the in-guest
+# E2 + E3 driver: boot the systemd-busybox-virt+9p+loop builder guest and run the in-guest
 # cross-build (tests/e2e/guest-build.sh) to completion. See
 # docs/design/e2e-cross.md. Invoked by tests/e2e/run.sh.
 #
@@ -16,7 +16,7 @@ log_user 1
 # embedded spaces reach env as single CAPS= / QEMU_EXTRA= arguments.)
 set caps   "9p loop"
 set qextra "-smp 8 -m 8192"
-spawn env PLATFORM=virt INIT=systemd CAPS=$caps QEMU_EXTRA=$qextra ./lfs qemu
+spawn env PLATFORM=virt INIT=systemd-busybox CAPS=$caps QEMU_EXTRA=$qextra ./lfs qemu
 
 set timeout 600
 expect {

@@ -12,7 +12,7 @@
 # tests/probes/gnupg-keygen.probe) - keygen + subkey structure only.
 log_user 1
 
-# The guest-built kernel/dtb sit at the canonical work/boot/systemd-pi0/ (guest-
+# The guest-built kernel/dtb sit at the canonical work/boot/systemd-busybox-pi0/ (guest-
 # build.sh copies them there, superseding any container baseline), so the
 # default WORK_DIR just works.
 spawn env PLATFORM=pi0 ./lfs qemu image/e2e-pi0.img

@@ -21,12 +21,13 @@ FORCE:
 # tools, system, image, and emulation.
 .DEFAULT_GOAL := test
 
-# Init flavor: ONE set of rules, parameterized by INIT (default systemd) —
-# `make test-virt` builds/tests the systemd flavor, `make test-virt
-# INIT=busybox` the busybox one. SYSTEM_KEY (see lfs) always includes the
-# init component, so image names are uniform (image/systemd-virt.img,
-# image/busybox-virt.img) and the rules below need no per-flavor cases.
-INIT ?= systemd
+# Flavor: ONE set of rules, parameterized by INIT — each value names an
+# umbrella (bootable-$INIT.sh) that fully describes init AND userland:
+# systemd-busybox (default), systemd-coreutils (busybox-free GNU
+# userland), busybox. SYSTEM_KEY always includes the flavor, so
+# image names are uniform (image/systemd-coreutils-virt.img) and the
+# rules below need no per-flavor cases.
+INIT ?= systemd-busybox
 
 tools: tools-virt
 system: system-virt
@@ -68,19 +69,19 @@ qemu-%: image/$(INIT)-%.img
 # parameterized rules above the same way INIT was is the recorded
 # follow-on) ----
 network-system: tools-virt
-	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm scratch ./lfs system build
+	PLATFORM=virt INIT=systemd-busybox CAPS=network docker compose run --rm scratch ./lfs system build
 
-image/systemd-virt+network.img: network-system FORCE
+image/systemd-busybox-virt+network.img: network-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm --user 0:0 scratch ./lfs image build
+	PLATFORM=virt INIT=systemd-busybox CAPS=network docker compose run --rm --user 0:0 scratch ./lfs image build
 
-network-image: image/systemd-virt+network.img
+network-image: image/systemd-busybox-virt+network.img
 
-network-test: image/systemd-virt+network.img
-	./test virt systemd network
+network-test: image/systemd-busybox-virt+network.img
+	./test virt systemd-busybox network
 
-network-qemu: image/systemd-virt+network.img
-	PLATFORM=virt INIT=systemd CAPS=network ./lfs qemu
+network-qemu: image/systemd-busybox-virt+network.img
+	PLATFORM=virt INIT=systemd-busybox CAPS=network ./lfs qemu
 
 reinstall-tools:
 	docker compose run --rm scratch find work -name '.install-*' -delete

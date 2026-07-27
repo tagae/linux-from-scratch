@@ -82,8 +82,8 @@ create_usb_stick() {
 # every probe's PROBE_KEY below is literally the image's own filename
 # stem, this is the same string `lfs` folded INIT/CAPS into when the
 # image was built, so splitting it back apart reconstructs the exact env
-# `./lfs qemu` needs. Neither init names nor platform names contain a
-# dash, so the first dash always separates the two.
+# `./lfs qemu` needs. Platform names never contain a dash (init names
+# may: systemd-coreutils), so the LAST dash always separates the two.
 
 derive_platform_init_caps() {
     key=$1
@@ -92,8 +92,8 @@ derive_platform_init_caps() {
         *+*) caps_part=${key#*+} ;;
         *)   caps_part= ;;
     esac
-    DERIVED_INIT=${platform_part%%-*}
-    DERIVED_PLATFORM=${platform_part#*-}
+    DERIVED_INIT=${platform_part%-*}
+    DERIVED_PLATFORM=${platform_part##*-}
     DERIVED_CAPS=$(printf '%s' "$caps_part" | tr '+' ' ')
 }
 

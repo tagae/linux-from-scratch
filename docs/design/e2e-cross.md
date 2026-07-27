@@ -18,7 +18,7 @@ monopoly on.
 Stages (each independently verifiable)
 --------------------------------------
 
-**E1 — the builder guest.** A `systemd-virt+9p+loop` systemd image carrying the
+**E1 — the builder guest.** A `systemd-busybox-virt+9p+loop` systemd image carrying the
 native toolchain (native-toolchain) + the full build tool set
 (bison/flex/bc/gperf/pkgconf/gettext/m4/tar/xz/python/meson/ninja/perl +
 gawk/coreutils/bash/patch/kmod). Reuses the self-hosting.md M1–M3
@@ -45,7 +45,7 @@ containers. Guest-phase changes needed:
 
 **E3 — guest cross-compiles the pi0 GnuPG system + image.** With the arm
 cross-toolchain on the guest's PATH, `LFS_PHASE=guest PLATFORM=pi0 ./lfs
-system build` (bootable-systemd) then `install` the gnupg family, then
+system build` (bootable-systemd-busybox) then `install` the gnupg family, then
 `./lfs image build`. The kpartx→losetup fallback (self-hosting.md M4) and
 loop capability already handle in-guest imaging. The pi0 image is copied
 out over 9p to the host image/ dir.
@@ -64,7 +64,7 @@ Automation (`make e2e-test`)
 
 `make e2e-test` runs `tests/e2e/run.sh`, which orchestrates:
 
-* **`tests/e2e/e1-builder-image.sh`** — runs only when `image/systemd-virt+9p+loop.
+* **`tests/e2e/e1-builder-image.sh`** — runs only when `image/systemd-busybox-virt+9p+loop.
   img` is absent (pristine state): container-side, it builds the tools
   (Debian bootstrap + scratch), the builder system (`CAPS="9p loop"`),
   bakes the full build tool payload into the image tree as ordinary target
@@ -73,13 +73,13 @@ Automation (`make e2e-test`)
   container pi0 baseline (system + GnuPG family — this populates the
   `download/` source mirror the NO-NETWORK guest builds from), and builds
   the 64g builder image. Against a warm builder image this is skipped.
-* **`tests/e2e/builder.exp`** — boots the `systemd-virt+9p+loop` builder guest
+* **`tests/e2e/builder.exp`** — boots the `systemd-busybox-virt+9p+loop` builder guest
   (`QEMU_EXTRA="-smp 8 -m 8192"`, HVF) and runs the in-guest build to a
   sentinel.
 * **`tests/e2e/guest-build.sh`** — runs INSIDE the guest (POSIX sh): the E2
   cross-toolchain (`LFS_PHASE=guest PLATFORM=pi0 ./lfs tools bootstrap`),
   the E3 system + GnuPG family + image, then copies `pi0.img` + kernel/dtb
-  out over 9p to `image/e2e-pi0.img` and the canonical `work/boot/systemd-pi0/`
+  out over 9p to `image/e2e-pi0.img` and the canonical `work/boot/systemd-busybox-pi0/`
   (the guest-built kernel supersedes any container baseline's). It first
   applies the **builder-guest tool completions** — overlaying the correct
   target-built zlib/python(with-zlib)/kmod/btrfs-progs archives onto the

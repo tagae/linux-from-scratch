@@ -21,7 +21,7 @@
 # captive serial console with no interactive pinentry). Keygen of all
 # three algorithms, by contrast, is rock solid across repeated runs, so
 # that is what this probe asserts.
-PROBE_KEY=systemd-virt+usb
+PROBE_KEY=systemd-busybox-virt+usb
 PROBE_TIMEOUT=300
 
 probe_guest() {

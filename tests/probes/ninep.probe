@@ -8,7 +8,7 @@
 # build script, present because the whole PROJECT_DIR is what's shared
 # (see `lfs`'s qemu case, -fsdev local,path=$PROJECT_DIR) -- its presence
 # proves the share is really PROJECT_DIR, not an empty/wrong mount.
-PROBE_KEY=systemd-virt+9p
+PROBE_KEY=systemd-busybox-virt+9p
 PROBE_TIMEOUT=180
 
 probe_guest() {

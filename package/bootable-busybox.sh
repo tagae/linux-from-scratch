@@ -1,6 +1,6 @@
 # Umbrella meta-package: a bootable Busybox-only system, with busybox as
 # PID 1 (its init applet). `INIT=busybox ./lfs system build` installs this.
-# Sibling of bootable-systemd.sh; see it and lib/package.sh for how umbrella
+# Sibling of bootable-systemd-busybox.sh; see it and lib/package.sh for how umbrella
 # meta-packages work.
 #
 # Far shorter member list than the systemd flavor: busybox is built static
@@ -17,7 +17,7 @@ depends() {
     # members install through the /bin -> usr/bin etc. links it lays down.
     require system-files
 
-    # CA trust store — see bootable-systemd.sh for why this is safe and
+    # CA trust store — see bootable-systemd-busybox.sh for why this is safe and
     # cheap even in this static, glibc-less flavor (no runtime dependency
     # on the target at all, just PEM files).
     require ca-certificates
@@ -48,7 +48,7 @@ depends() {
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
     # shells out to bison, whose compiled-in default pkgdatadir is the
     # literal /usr/share/bison — this container's empty real root, not
-    # TOOL_DIR-relative (see bootable-systemd.sh's glibc install for the
+    # TOOL_DIR-relative (see bootable-systemd-busybox.sh's glibc install for the
     # same fixup).
     ( export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison; require linux )
 

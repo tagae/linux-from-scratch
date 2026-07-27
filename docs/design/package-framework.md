@@ -52,7 +52,7 @@ earlier package installed into the target tree: sets CC *and* CXX to
 Umbrellas and components
 ------------------------
 
-A bootable system is a meta-package (`bootable-systemd`,
+A bootable system is a meta-package (`bootable-systemd-busybox`,
 `bootable-busybox`): `package_meta=yes`, and `depends()` `require`s the
 members in order with their knob prefixes — the whole system recipe in
 one place, per init flavor. Optional features are plain packages

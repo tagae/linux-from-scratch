@@ -10,7 +10,7 @@
 set -eu
 cd "$(dirname "$0")/../.."   # project root
 
-BUILDER_KEY=systemd-virt+9p+loop
+BUILDER_KEY=systemd-busybox-virt+9p+loop
 BUILDER_IMG=image/$BUILDER_KEY.img
 
 reap() { pkill -TERM -f 'qemu-system' 2>/dev/null || true; }
@@ -36,7 +36,7 @@ expect -f tests/e2e/builder.exp
     echo "e2e-test: FAIL - the guest did not produce image/e2e-pi0.img"
     exit 1
 }
-[ -f work/boot/systemd-pi0/kernel.img ] || {
+[ -f work/boot/systemd-busybox-pi0/kernel.img ] || {
     echo "e2e-test: FAIL - the guest-built pi0 kernel was not copied out"
     exit 1
 }

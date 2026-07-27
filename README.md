@@ -68,7 +68,7 @@ make qemu       # boot the image in QEMU (interactive serial console)
 
 For example `make system-pi0`, `make system-pi4 INIT=busybox`, `make qemu-pi0`, `make qemu INIT=busybox`.
 Per-platform images are the file targets `image/<init>-<platform>.img`
-(e.g. `make image/systemd-pi0.img`), and are built automatically by the matching `qemu`/`test` goal.
+(e.g. `make image/systemd-busybox-pi0.img`), and are built automatically by the matching `qemu`/`test` goal.
 
 `make distclean` tears down the Docker volumes, `work/`, and `image/` for a clean rebuild.
 

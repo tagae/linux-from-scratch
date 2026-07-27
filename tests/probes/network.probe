@@ -18,7 +18,7 @@
 #   3. a real DNS lookup + HTTP fetch succeeds (systemd-resolved's stub
 #      resolver actually forwards to the DHCP-provided nameserver, and
 #      egress actually reaches the internet through QEMU's user-mode NAT).
-PROBE_KEY=systemd-virt+network
+PROBE_KEY=systemd-busybox-virt+network
 PROBE_TIMEOUT=180
 
 probe_guest() {

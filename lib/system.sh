@@ -32,7 +32,7 @@ build_system() {
     target_build_env
 
     # The package set that makes up a bootable system lives in an umbrella
-    # package — bootable-$INIT (bootable-systemd, bootable-busybox), which
+    # package — bootable-$INIT (bootable-systemd-busybox, bootable-busybox), which
     # depends on its members and sets each one's build knobs. install()
     # establishes the target build environment (host=$target,
     # package_install_dir=$INSTALL_DIR/$SYSTEM_KEY, package_variant=

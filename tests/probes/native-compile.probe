@@ -3,7 +3,7 @@
 # project's own natively-built system, can compile and run a program.
 #
 # Deliberately NOT image/selfhost-virt.img: that image is the OUTPUT of
-# the guest's `image build` -- a plain bootable-systemd rootfs, same
+# the guest's `image build` -- a plain bootable-systemd-busybox rootfs, same
 # package set as any other build, with no compiler on it at all (offline-
 # forensics-checked while writing this probe: no gcc/cc/ld/make anywhere
 # under its tree). The native toolchain lives on the BUILDER guest's own
@@ -14,7 +14,7 @@
 # self-hosting.md's "toolchain is delivered, not rebuilt"). PROBE_KEY
 # names it directly (virt+9p+loop derives PLATFORM=virt, CAPS="9p loop"
 # the same way every other probe's key does -- no special-casing needed).
-PROBE_KEY=systemd-virt+9p+loop
+PROBE_KEY=systemd-busybox-virt+9p+loop
 PROBE_TIMEOUT=240
 
 probe_guest() {

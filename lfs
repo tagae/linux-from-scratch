@@ -77,11 +77,11 @@ readonly PLATFORM
 # and disk image separate so they coexist without clobbering (same
 # reasoning as the per-PLATFORM keying; see feedback-cross-platform-stamp-
 # contamination).
-: ${INIT:=systemd}
+: ${INIT:=systemd-busybox}
 
 [ -f $PROJECT_DIR/package/bootable-$INIT.sh ] || bail "Unsupported init '$INIT'"
 
-# The key ALWAYS includes the init component — systemd-virt exactly like
+# The key ALWAYS includes the init component — systemd-busybox-virt exactly like
 # busybox-virt — one uniform naming rule, no special-cased default (image
 # names, archive dirs, install trees and stamps all read the flavor off
 # the name, and no consumer needs to know which flavor is the default).
@@ -161,7 +161,7 @@ fi
 # CA bundle used to verify TLS on source downloads (see fetch_url in
 # lib/base.sh): the SYSTEM path, everywhere. Debian ships one there; a
 # booted LFS has its own from-scratch bundle there (ca-certificates,
-# see bootable-systemd.sh); the FROM-scratch container gets the bundle
+# see bootable-systemd-busybox.sh); the FROM-scratch container gets the bundle
 # bootstrap staged into the work volume mounted read-only at this same
 # path (docker-compose.yaml) — so fetch_url always verifies against a
 # real bundle and never falls back to unverified transport.

@@ -7,7 +7,7 @@
 # lie about it: mount the stick image directly (never through the booted
 # guest) and check the three armored files are actually there with real
 # key material in them.
-PROBE_KEY=systemd-virt+usb
+PROBE_KEY=systemd-busybox-virt+usb
 PROBE_TIMEOUT=180
 
 PROBE_USB_EMAIL=probe@example.com
