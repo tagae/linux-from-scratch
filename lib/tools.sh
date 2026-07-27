@@ -42,28 +42,7 @@ bootstrap_tools() {
         # Cross-assembler and linker.
         gprofng=no werror=no new_dtags=yes default_hash_style=gnu install binutils
 
-        # Sidestep a gcc/libtool sysroot-leak bug by ALWAYS handing gcc
-        # prebuilt gmp/mpfr/mpc instead of its bundled copies — one code
-        # path on every build host (Debian seed, scratch, booted guest);
-        # gcc.sh's prepare() reconciles the bundled symlinks accordingly.
-        # The trio lives at $TOOL_DIR root ({include,lib}), NOT usr/ —
-        # $TOOL_DIR/usr/lib is the temp-tools RUNTIME whose libc.so linker
-        # script would shadow the seed's real libc if put on -L. cc1 links
-        # these SHARED, so gcc gets an explicit rpath to $TOOL_DIR/lib —
-        # an absolute path that resolves identically on every layout.
-        # The -I/-L matter only on the unaliased Debian seed.
-        install gmp
-        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
-        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
-        install mpfr
-        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
-        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
-        install mpc
-        gmp=$TOOL_DIR
-        mpfr=$TOOL_DIR
-        mpc=$TOOL_DIR
-        LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
-        export LDFLAGS
+        _tools_gcc_prereqs
 
         # Minimal C cross-compiler to build glibc.
         glibc_version=$(version glibc) \
@@ -113,79 +92,9 @@ bootstrap_tools() {
 
         gprofng=no werror=no install binutils
 
-        # Guest phase only: the guest's own system already has real gmp/
-        # mpfr/mpc installed (needed elsewhere — the gnupg family, and
-        # native-toolchain.sh's own --with-gmp/mpfr/mpc for this guest's
-        # native compiler). GCC's toplevel build system unconditionally
-        # leaks --with-build-sysroot into gmp/mpfr/mpc's OWN bundled
-        # sub-configure (confirmed via config.log's host_configargs/
-        # target_configargs and the generated per-subdir libtool script's
-        # own lt_sysroot=$TOOL_DIR/$target), regardless of whether THOSE
-        # host-side helper libraries have anything to do with the actual
-        # cross target. Harmless in the container (nothing at the
-        # relevant absolute paths there, so nothing is ever discovered
-        # via them) — but on the guest, mpfr's/mpc's own sub-configure
-        # DOES discover the real, absolute-path system libs, and
-        # libtool's sysroot machinery then mis-resolves that dependency
-        # against the per-target sysroot (which doesn't even exist yet at
-        # pass1 time, and never contains gmp/mpfr/mpc at all even once
-        # populated) — confirmed empirically: "libgmp.la: No such file or
-        # directory" / "is not a valid libtool archive" aborting gcc's own
-        # bundled mpc build. Sidestepped entirely via this project's
-        # EXISTING gmp=/mpfr=/mpc= override (gcc.sh; the same mechanism
-        # package/native-toolchain.sh already relies on) pointing gcc at
-        # a plain, build-host-native gmp/mpfr/mpc built right here — no
-        # sysroot involved at all, so no leak to mis-resolve. These never
-        # ship; they exist only to satisfy gcc's own build. Container
-        # behavior is unaffected: LFS_PHASE isn't guest there, so gmp/
-        # mpfr/mpc below stay unset and gcc keeps building its own
-        # bundled copies exactly as before this fix existed.
-        #
-        # Plain assignments (not a "install gcc" prefix, unlike every
-        # knob below) — deliberately: a prefix token only works when its
-        # OWN literal, unexpanded source text already has the name=value
-        # shape (e.g. "gmp=$TOOL_DIR install gcc" would work); something
-        # like "${gmp:+gmp=$gmp} install gcc" does NOT (confirmed the hard
-        # way), since shell assignment-word recognition is purely lexical,
-        # on the token as WRITTEN, never on what a parameter expansion
-        # merely happens to PRODUCE — so a conditional, expansion-built
-        # "gmp=$TOOL_DIR"-shaped word is just an ordinary argument, and
-        # bash instead runs its expanded VALUE as a command name (hence a
-        # genuinely-hit "gmp=/var/lfs/tools: No such file or directory").
-        # Plain assignment sidesteps this entirely: gmp/mpfr/mpc, once set
-        # here, are ordinary variables of this subshell, and require()'s
-        # own per-package subshell (install gcc's) is a plain fork of
-        # it — which inherits every variable already set, exported or
-        # not — so gcc.sh's own "${gmp:+--with-gmp=$gmp}" (etc.) sees them
-        # with no extra plumbing needed on the "install gcc" line itself.
-        # Sidestep a gcc/libtool sysroot-leak bug by ALWAYS handing gcc
-        # prebuilt gmp/mpfr/mpc instead of its bundled copies — one code
-        # path on every build host (Debian seed, scratch, booted guest);
-        # gcc.sh's prepare() reconciles the bundled symlinks accordingly.
-        # The trio lives at $TOOL_DIR root ({include,lib}), NOT usr/ —
-        # $TOOL_DIR/usr/lib is the temp-tools RUNTIME whose libc.so linker
-        # script would shadow the seed's real libc if put on -L. cc1 links
-        # these SHARED, so gcc gets an explicit rpath to $TOOL_DIR/lib —
-        # an absolute path that resolves identically on every layout.
-        # The -I/-L matter only on the unaliased Debian seed.
-        install gmp
-        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
-        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
-        install mpfr
-        CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
-        LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
-        install mpc
-        gmp=$TOOL_DIR
-        mpfr=$TOOL_DIR
-        mpc=$TOOL_DIR
-        LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
-        export LDFLAGS
+        _tools_gcc_prereqs
 
-        glibc_version=$(version glibc) languages=c,c++ \
-        shared=yes threads=yes libstdcxx=yes \
-        fixincludes=no \
-        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
-        install gcc
+        _tools_install_full_gcc
     )
 
     # Verify the cross-compiler references our glibc dynamic linker.
@@ -279,11 +188,7 @@ _bootstrap_build_host() {
 
         gprofng=no werror=no install binutils
 
-        glibc_version=$(version glibc) languages=c,c++ \
-        shared=yes threads=yes libstdcxx=yes \
-        fixincludes=no \
-        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
-        install gcc
+        _tools_install_full_gcc
     )
 
     # Bare "gcc"/"cc"/"as"/"ld"/etc: what the temporary tools further down,
@@ -640,6 +545,84 @@ build_tools() {
     install libaio
     install lvm2#device-mapper
     install multipath-tools#kpartx
+}
+
+# gcc's prerequisite math libraries: build a native gmp/mpfr/mpc right
+# before each cross pass's gcc build and hand them to it prebuilt (the
+# gmp=/mpfr=/mpc= variables set here feed gcc.sh's own
+# "${gmp:+--with-gmp=$gmp}" etc.), sidestepping a gcc/libtool
+# sysroot-leak bug in gcc's bundled copies — one code path on every
+# build host (Debian seed, scratch, booted guest); gcc.sh's prepare()
+# reconciles the bundled symlinks accordingly. Called by both cross
+# passes; their differing package_variant keeps the stamps separate.
+#
+# The leak this sidesteps (found on a booted guest, whose system has
+# real gmp/mpfr/mpc installed for the gnupg family and native-
+# toolchain.sh): GCC's toplevel build system unconditionally leaks
+# --with-build-sysroot into gmp/mpfr/mpc's OWN bundled sub-configure
+# (confirmed via config.log's host_configargs/target_configargs and the
+# generated per-subdir libtool script's own lt_sysroot=$TOOL_DIR/
+# $target), regardless of whether those host-side helper libraries have
+# anything to do with the actual cross target. Harmless in the
+# container (nothing at the relevant absolute paths there) — but on the
+# guest, mpfr's/mpc's own sub-configure DOES discover the real,
+# absolute-path system libs, and libtool's sysroot machinery then
+# mis-resolves that dependency against the per-target sysroot (which
+# never contains gmp/mpfr/mpc at all) — confirmed empirically:
+# "libgmp.la: No such file or directory" / "is not a valid libtool
+# archive" aborting gcc's own bundled mpc build. A plain, build-host-
+# native trio involves no sysroot at all, so there is no leak to
+# mis-resolve. These never ship; they exist only to satisfy gcc's own
+# build.
+#
+# The trio lives at $TOOL_DIR root ({include,lib}), NOT usr/ —
+# $TOOL_DIR/usr/lib is the temp-tools RUNTIME whose libc.so linker
+# script would shadow the seed's real libc if put on -L. cc1 links
+# these SHARED, so gcc gets an explicit rpath to $TOOL_DIR/lib — an
+# absolute path that resolves identically on every layout. The -I/-L
+# matter only on the unaliased Debian seed.
+#
+# gmp/mpfr/mpc are plain assignments, NOT "gmp=... install gcc" prefix
+# tokens at the call site — deliberately: a prefix token only works
+# when its OWN literal, unexpanded source text already has the
+# name=value shape; shell assignment-word recognition is purely
+# lexical, on the token as WRITTEN, never on what a parameter expansion
+# merely happens to PRODUCE — so an expansion-built "gmp=$TOOL_DIR"-
+# shaped word (e.g. "${gmp:+gmp=$gmp}", confirmed the hard way) is just
+# an ordinary argument, and bash instead runs its expanded VALUE as a
+# command name (a genuinely-hit "gmp=/var/lfs/tools: No such file or
+# directory"). Plain variables of the calling subshell sidestep this
+# entirely: require()'s own per-package subshell is a plain fork, which
+# inherits every variable already set, exported or not, so gcc.sh sees
+# them with no extra plumbing on the "install gcc" line itself.
+_tools_gcc_prereqs() {
+    install gmp
+    CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+    LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+    install mpfr
+    CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+    LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+    install mpc
+    gmp=$TOOL_DIR
+    mpfr=$TOOL_DIR
+    mpc=$TOOL_DIR
+    LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
+    export LDFLAGS
+}
+
+# The full, real gcc build — shared verbatim by Cross Toolchain Pass 2
+# (the shipped $target cross-compiler) and pass1-native (the build
+# host's own compiler, which deliberately mirrors pass 2 rather than
+# real pass 1's newlib/no-libc shape — see its call site for why).
+# Everything scenario-specific (package_variant, prefix, sysroot,
+# cross_target, the _tools_gcc_prereqs handoff) is the caller's own
+# subshell state.
+_tools_install_full_gcc() {
+    glibc_version=$(version glibc) languages=c,c++ \
+    shared=yes threads=yes libstdcxx=yes \
+    fixincludes=no \
+    libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
+    install gcc
 }
 
 # Every native binary from here on (the temporary tools, build_tools()'s

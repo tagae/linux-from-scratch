@@ -282,4 +282,39 @@ fi
 
 rm -rf "$ARCHIVE_ROOT"
 
+# ============================================================
+# Invariant: has_cap (lib/base.sh) -- exact-word membership in $CAPS.
+# The one shared guard behind every capability conditional (lfs's qemu
+# case, the bootable-* umbrellas' optional members), so its word-boundary
+# semantics are load-bearing: "net" must NOT match inside "network", and
+# an empty or unset CAPS must enable nothing.
+# ============================================================
+
+CAPS="9p network"
+if has_cap network && has_cap 9p; then
+    ok "has_cap: finds each enabled capability"
+else
+    not_ok "has_cap: finds each enabled capability"
+fi
+
+if has_cap net || has_cap work || has_cap usb; then
+    not_ok "has_cap: no substring or absent-cap false positives"
+else
+    ok "has_cap: no substring or absent-cap false positives"
+fi
+
+CAPS=
+if has_cap network; then
+    not_ok "has_cap: empty CAPS enables nothing"
+else
+    ok "has_cap: empty CAPS enables nothing"
+fi
+
+unset CAPS
+if has_cap network; then
+    not_ok "has_cap: unset CAPS enables nothing"
+else
+    ok "has_cap: unset CAPS enables nothing"
+fi
+
 tap_summary

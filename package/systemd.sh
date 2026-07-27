@@ -191,13 +191,10 @@ install() {
     # (resolved handles DNS from DHCP plus mDNS/.local — see there).
     # wait-online stays masked even with networking: it would gate boot
     # on network availability.
-    case " ${CAPS:-} " in
-        *" network "*) : ;;
-        *)
-            ln -sfv /dev/null etc/systemd/system/systemd-resolved.service
-            ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
-            ;;
-    esac
+    if ! has_cap network; then
+        ln -sfv /dev/null etc/systemd/system/systemd-resolved.service
+        ln -sfv /dev/null etc/systemd/system/systemd-networkd.service
+    fi
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-wait-online.service
 
     # Optional filesystem mounts and automounts — not needed for minimal boot.
@@ -219,10 +216,9 @@ install() {
     # one place that actually controls the merged tree's content, is the
     # only way to make it conditional (the networkd masks above/below are
     # gated the same way for the same reason).
-    case " ${CAPS:-} " in
-        *" amnesia "*) : ;;
-        *) ln -sfv /dev/null etc/systemd/system/tmp.mount ;;
-    esac
+    if ! has_cap amnesia; then
+        ln -sfv /dev/null etc/systemd/system/tmp.mount
+    fi
     ln -sfv /dev/null etc/systemd/system/dev-mqueue.mount
     ln -sfv /dev/null etc/systemd/system/sys-kernel-debug.mount
     ln -sfv /dev/null etc/systemd/system/sys-kernel-config.mount
@@ -235,14 +231,11 @@ install() {
     # a DHCP lease; resolved's varlink socket serves resolvectl); the
     # networkd varlink/metrics/resolve-hook sockets stay masked even with
     # networking — not needed to bring an interface up.
-    case " ${CAPS:-} " in
-        *" network "*) : ;;
-        *)
-            ln -sfv /dev/null etc/systemd/system/systemd-networkd.socket
-            ln -sfv /dev/null etc/systemd/system/systemd-resolved-varlink.socket
-            ln -sfv /dev/null etc/systemd/system/systemd-resolved-monitor.socket
-            ;;
-    esac
+    if ! has_cap network; then
+        ln -sfv /dev/null etc/systemd/system/systemd-networkd.socket
+        ln -sfv /dev/null etc/systemd/system/systemd-resolved-varlink.socket
+        ln -sfv /dev/null etc/systemd/system/systemd-resolved-monitor.socket
+    fi
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-varlink.socket
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-varlink-metrics.socket
     ln -sfv /dev/null etc/systemd/system/systemd-networkd-resolve-hook.socket

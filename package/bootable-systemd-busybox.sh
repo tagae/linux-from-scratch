@@ -103,12 +103,10 @@ depends() {
     # every other build (real Pi hardware images, the plain virt image,
     # busybox-init, …) exactly as lean as before.
     local fdisks=
-    case " ${CAPS:-} " in
-        *" loop "*)
-            fdisks=yes
-            ( widec=yes shared=yes normal=yes ada=no debug=no stripping=no require ncurses )
-            ;;
-    esac
+    if has_cap loop; then
+        fdisks=yes
+        ( widec=yes shared=yes normal=yes ada=no debug=no stripping=no require ncurses )
+    fi
     (
         bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
         chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no
@@ -136,18 +134,12 @@ depends() {
     # own install()-time masking, so it has to run after that masking exists
     # to reverse. Absent from CAPS (the default), neither require() below
     # ever runs, so a no-caps build is unaffected.
-    case " ${CAPS:-} " in
-        *" network "*) require network-config ;;
-    esac
-    case " ${CAPS:-} " in
-        *" 9p "*) require 9p-config ;;
-    esac
+    if has_cap network; then require network-config; fi
+    if has_cap 9p; then require 9p-config; fi
     # amnesia-config reverses part of systemd.sh's own install()-time
     # tmp.mount mask (same "must come after" reasoning as network-config
     # above), so it has to run after that masking exists to reverse.
-    case " ${CAPS:-} " in
-        *" amnesia "*) require amnesia-config ;;
-    esac
+    if has_cap amnesia; then require amnesia-config; fi
 
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())

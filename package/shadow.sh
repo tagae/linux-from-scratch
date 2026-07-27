@@ -64,7 +64,9 @@ install() {
     # Remove su (use util-linux's su instead)
     rm -fv $package_install_dir/usr/bin/su
 
-    # Create /etc/shadow and /etc/gshadow with proper permissions
-    touch $package_install_dir/etc/shadow $package_install_dir/etc/gshadow
-    chmod 640 $package_install_dir/etc/shadow $package_install_dir/etc/gshadow
+    # Do NOT stage /etc/shadow or /etc/gshadow: system-files owns the
+    # account database (root's password hash lives in ITS etc/shadow), and
+    # under additive last-wins merge an empty file staged here would
+    # clobber it — confirmed empirically: login silently rejected root
+    # because the merged /etc/shadow was this recipe's 0-byte touch.
 }

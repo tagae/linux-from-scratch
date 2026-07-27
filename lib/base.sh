@@ -96,3 +96,16 @@ _os_is_build_host() {
     gcc -dumpmachine 2>/dev/null | grep -q -- -scratch- \
         && [ ! -e "$TOOL_DIR/usr/bin/gcc" ]
 }
+
+# Is the capability named $1 enabled — present in the space-separated,
+# normalized $CAPS list (see lfs's Capabilities section)? The one shared
+# guard behind every capability conditional (lfs's qemu case, the
+# bootable-* umbrellas' optional members). Exact-word match: the padded
+# spaces mean "net" never matches inside "network". Unset/empty CAPS
+# enables nothing.
+has_cap() {
+    case " ${CAPS:-} " in
+        *" $1 "*) ;;
+        *) return 1 ;;
+    esac
+}

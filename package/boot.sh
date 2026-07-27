@@ -15,12 +15,10 @@ install() {
             # capability existed.
             local rootflags=subvol=root/$ROOT_VOLUME
             local rwmode=rw
-            case " ${CAPS:-} " in
-                *" amnesia "*)
-                    rootflags=$rootflags,rescue=nologreplay
-                    rwmode=ro
-                    ;;
-            esac
+            if has_cap amnesia; then
+                rootflags=$rootflags,rescue=nologreplay
+                rwmode=ro
+            fi
             printf '%s\n' \
                 "earlycon=pl011,0x20201000 console=ttyAMA0,115200" \
                 "root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=$rootflags" \

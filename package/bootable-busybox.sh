@@ -34,15 +34,9 @@ depends() {
     # script into the /etc/init.d it creates. Absent from CAPS (the
     # default), neither require() below ever runs, so a no-caps build is
     # unaffected.
-    case " ${CAPS:-} " in
-        *" network "*) require network-config ;;
-    esac
-    case " ${CAPS:-} " in
-        *" 9p "*) require 9p-config ;;
-    esac
-    case " ${CAPS:-} " in
-        *" amnesia "*) require amnesia-config ;;
-    esac
+    if has_cap network; then require network-config; fi
+    if has_cap 9p; then require 9p-config; fi
+    if has_cap amnesia; then require amnesia-config; fi
 
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
