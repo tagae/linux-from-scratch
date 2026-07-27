@@ -1,10 +1,10 @@
 .PHONY: \
-	tools tools-% \
-	system system-% \
+	tools %-tools \
+	system %-system \
 	image \
-	qemu qemu-% \
-	test test-% \
-	reinstall-tools reinstall-tools-% reinstall-system reinstall-system-% \
+	qemu %-qemu \
+	test %-test \
+	reinstall-tools %-reinstall-tools reinstall-system %-reinstall-system \
 	check check-probes check-probe \
 	e2e-test \
 	clean distclean \
@@ -36,11 +36,11 @@ empty :=
 space := $(empty) $(empty)
 CAPS_KEY := $(if $(strip $(CAPS)),+$(subst $(space),+,$(sort $(CAPS))))
 
-tools: tools-virt
-system: system-virt
+tools: virt-tools
+system: virt-system
 image: image/$(USERLAND)-virt$(CAPS_KEY).img
-qemu: qemu-virt
-test: test-virt
+qemu: virt-qemu
+test: virt-test
 
 .env:
 	echo HOST_UID=$$(id -u) >> $@
@@ -49,52 +49,55 @@ test: test-virt
 	echo DISTRIB_CODENAME=$$(id -un) >> $@
 	echo VERSION_CODENAME=$$(id -un) >> $@
 
-tools-%: .env
+# Platform-parameterized rules, named <platform>-<verb> (virt-tools, pi0-test) so they read
+# naturally. Each recipe passes its settings inline, so the environment handed to docker
+# compose/./lfs/./test is visible right where it is set (and in `make -n` output).
+%-tools: .env
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 6: Cross Compiling Temporary Tools
 	PLATFORM=$* docker compose run --build --rm bootstrap ./lfs tools bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	PLATFORM=$* docker compose run --build --rm scratch ./lfs tools build
 
-system-%: tools-%
+%-system: %-tools
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
 	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm scratch ./lfs system build
 
-image/$(USERLAND)-%$(CAPS_KEY).img: system-% FORCE
+image/$(USERLAND)-%$(CAPS_KEY).img: %-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
 	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm --user 0:0 scratch ./lfs image build
 
-test-%: image/$(USERLAND)-%$(CAPS_KEY).img
+%-test: image/$(USERLAND)-%$(CAPS_KEY).img
 	./test $* $(USERLAND) "$(CAPS)"
 
-qemu-%: image/$(USERLAND)-%$(CAPS_KEY).img
+%-qemu: image/$(USERLAND)-%$(CAPS_KEY).img
 	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" ./lfs qemu
 
 # Re-run the install (and downstream) steps against fresh volumes without
 # a full from-source rebuild. Keyed per platform (and, for system, per
 # USERLAND/CAPS — the same variables as everywhere above), with stamp
 # deletion scoped to the phase actually being reinstalled:
-#  - reinstall-tools-%: the tools volume is shared by every platform, so
+#  - %-reinstall-tools: the tools volume is shared by every platform, so
 #    dropping it is global, but only tools-phase install stamps (variants
 #    tools/pass1-*/<target triple>) are cleared — system-phase
 #    stamps stay, since their install trees are untouched.
-#  - reinstall-system-%: scoped entirely to one SYSTEM_KEY — its work
+#  - %-reinstall-system: scoped entirely to one SYSTEM_KEY — its work
 #    stamps (install AND archive/merge: the merged tree is being wiped,
 #    so tarballs must re-extract), its install tree, and its archive dir
 #    (default_archive skips existing tarballs even unstamped).
-reinstall-tools-%:
+%-reinstall-tools:
 	docker compose run --rm scratch sh -c 'find /var/lfs/work \( -path "*-tools-*" -o -path "*-pass1-*" -o -path "*-scratch-linux-*" \) -name ".install-*" -delete'
 	docker volume rm -f linux-from-scratch_tools
-	$(MAKE) tools-$*
+	$(MAKE) $*-tools
 
-reinstall-tools: reinstall-tools-virt
+reinstall-tools: virt-reinstall-tools
 
-reinstall-system-%:
+%-reinstall-system:
 	docker compose run --rm scratch sh -c 'find /var/lfs/work -path "*-$(USERLAND)-$*$(CAPS_KEY)-*" \( -name ".install-*" -o -name ".archive-*" -o -name ".merge-*" \) -delete && rm -rf /var/lfs/install/$(USERLAND)-$*$(CAPS_KEY) /var/lfs/archive/$(USERLAND)-$*$(CAPS_KEY)'
-	$(MAKE) system-$*
+	$(MAKE) $*-system
 
-reinstall-system: reinstall-system-virt
+reinstall-system: virt-reinstall-system
 
 # Fast, deterministic regression suite (no QEMU, no package builds) -- see
 # tests/README.md. Separate from `test` above (the slow, real boot-matrix

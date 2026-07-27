@@ -24,7 +24,7 @@ make test     # tools + system + image + boot, log in, poweroff, assert clean ex
 
 All default to `PLATFORM=virt`, `USERLAND=systemd-busybox`, empty `CAPS`;
 everything above runs inside Docker. For another platform use
-`<verb>-<platform>` (e.g. `make system-pi0`); select the flavor and
+`<platform>-<verb>` (e.g. `make pi0-system`); select the flavor and
 capability set with variables (`make test USERLAND=busybox`, `make test
 CAPS="network 9p"`). `make distclean` tears down the Docker volumes,
 `work/` and `image/`, for a clean rebuild.
@@ -123,12 +123,12 @@ Make targets
 ------------
 
 ```
-<verb>              == <verb>-virt      (default platform)
-<verb>-<platform>                       (any platform; USERLAND/CAPS via variables)
+<verb>              == virt-<verb>      (default platform)
+<platform>-<verb>                       (any platform; USERLAND/CAPS via variables)
 ```
 
 `<verb>` is `system`/`image`/`qemu`/`test`, plus `reinstall-tools`/
-`reinstall-system` (and their keyed `reinstall-*-<platform>` forms). One
+`reinstall-system` (and their keyed `<platform>-reinstall-*` forms). One
 rule set, parameterized by `USERLAND` and `CAPS` — no per-flavor or
 per-capability targets. `tools`/`tools-<platform>` is shared across
 flavors. Image targets are real files (`image/$SYSTEM_KEY.img`), not
@@ -172,7 +172,7 @@ Where things live
   tarballs + their `ORDER` manifest, finished disk images); the
   Docker-volume-backed ones are declared in `docker-compose.yaml`.
 * `Dockerfile.bootstrap` / `Dockerfile.scratch` — the two build containers.
-* `test` — the boot-matrix expect script `make test`/`test-<platform>` drive.
+* `test` — the boot-matrix expect script `make test`/`<platform>-test` drive.
 * `tests/` — the staged regression suite (`make check`/`check-probes`/
   `e2e-test`).
 

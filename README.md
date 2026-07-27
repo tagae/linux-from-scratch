@@ -43,15 +43,15 @@ Everything runs in Docker and the first build is slow. Target another platform b
 name; the whole chain rebuilds for it:
 
 ```shell
-make test-pi0
-make test-pi4
+make pi0-test
+make pi4-test
 ```
 
 Select another userland flavor with the `USERLAND` variable, and opt into capabilities with `CAPS`:
 
 ```shell
 make test USERLAND=busybox
-make test-pi0 USERLAND=systemd-coreutils
+make pi0-test USERLAND=systemd-coreutils
 make test CAPS="network 9p"
 ```
 
@@ -73,7 +73,7 @@ make image      # produce a bootable disk image
 make qemu       # boot the image in QEMU (interactive serial console)
 ```
 
-For example `make system-pi0`, `make system-pi4 USERLAND=busybox`, `make qemu-pi0`, `make qemu USERLAND=busybox`.
+For example `make pi0-system`, `make pi4-system USERLAND=busybox`, `make pi0-qemu`, `make qemu USERLAND=busybox`.
 Images are the file targets `image/<userland>-<platform>[+<cap>...].img` (e.g.
 `make image/systemd-busybox-pi0.img`; `make image CAPS=network` produces
 `image/systemd-busybox-virt+network.img`), built automatically by the matching `qemu`/`test` goal.
@@ -84,7 +84,7 @@ Images are the file targets `image/<userland>-<platform>[+<cap>...].img` (e.g.
 Testing
 -------
 
-`make test` (and `make test-<platform>`, with optional `USERLAND=`/`CAPS=`) boots the image in QEMU,
+`make test` (and `make <platform>-test`, with optional `USERLAND=`/`CAPS=`) boots the image in QEMU,
 logs in as root, runs `poweroff`, and verifies that QEMU exits cleanly. It drives the `./test` expect
 script (`./test [PLATFORM] [USERLAND] [CAPS]`), which reads the kernel and disk image the build staged
 out of the Docker volumes.
