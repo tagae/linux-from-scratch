@@ -1,4 +1,4 @@
-# tests/probes/usb-persist.probe -- proves the gpg-genkey appliance
+# tests/probes/usb-persist.sh -- proves the gpg-genkey appliance
 # script (package/gpg-genkey.sh) really does what its header comment
 # claims: a keypair generated entirely in RAM, exported to removable USB,
 # and left there after the guest is gone. The in-guest half (gpg-genkey

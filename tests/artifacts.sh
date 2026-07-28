@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # tests/artifacts.sh -- Tier 2: assertions over whatever archive/<key>/ and
 # install/<key>/ trees already exist. Never builds anything; SKIPs (not
 # fails) any SYSTEM_KEY that isn't present, so the suite stays useful
@@ -8,6 +9,7 @@
 # invisible on the host, and the per-target readelf binaries live in
 # `tools/`, also a named volume.
 #   docker compose run --rm scratch sh tests/artifacts.sh
+
 set -eu
 
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
@@ -16,10 +18,19 @@ PROJECT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 # This script intentionally doesn't go through `lfs` (there's no single
 # PLATFORM/USERLAND to select -- it surveys every SYSTEM_KEY that already
 # exists), so it re-derives just the directory defaults `lfs` itself would
-# apply.
-: "${ARCHIVE_DIR:=$PROJECT_DIR/archive}"
-: "${INSTALL_DIR:=$PROJECT_DIR/install}"
-: "${TOOL_DIR:=$PROJECT_DIR/tools}"
+# apply -- INCLUDING its /var/lfs-vs-$PROJECT_DIR detection (see `lfs`):
+# inside the scratch container archive/install/tools are mounted under
+# /var/lfs, never under $PROJECT_DIR (bare $PROJECT_DIR/archive doesn't
+# exist there at all) -- getting this wrong makes every check below
+# silently SKIP instead of running, which defeats the entire tier.
+if [ -d /var/lfs ]; then
+    _state=/var/lfs
+else
+    _state=$PROJECT_DIR
+fi
+: "${ARCHIVE_DIR:=$_state/archive}"
+: "${INSTALL_DIR:=$_state/install}"
+: "${TOOL_DIR:=$_state/tools}"
 
 # ---- helpers ----
 

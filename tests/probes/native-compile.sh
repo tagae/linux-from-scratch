@@ -1,4 +1,4 @@
-# tests/probes/native-compile.probe -- proves self-hosting's central claim
+# tests/probes/native-compile.sh -- proves self-hosting's central claim
 # (docs/design/self-hosting.md): a natively-built gcc, running on this
 # project's own natively-built system, can compile and run a program.
 #

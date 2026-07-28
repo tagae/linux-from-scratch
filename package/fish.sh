@@ -47,7 +47,17 @@ _rust_target_env=$(printf %s "$rust_target" | tr 'a-z-' 'A-Z_')
 export "CARGO_TARGET_${_rust_target_env}_LINKER=$target-gcc"
 export "CARGO_TARGET_${_rust_target_env}_RUSTFLAGS=-C link-arg=--sysroot=$INSTALL_DIR/$SYSTEM_KEY -C link-arg=-L$INSTALL_DIR/$SYSTEM_KEY/usr/lib"
 export TARGET_CC=$target-gcc
-export TARGET_CFLAGS="--sysroot=$INSTALL_DIR/$SYSTEM_KEY"
+
+# --sysroot alone doesn't reach the kernel UAPI headers (linux/limits.h
+# and friends): $INSTALL_DIR/$SYSTEM_KEY never gets its own linux#headers
+# install. Same fallback target_sysroot_cc's own (unexported) CC/CXX
+# already use: the per-target cross sysroot if `./lfs tools bootstrap`
+# built one (foreign platforms, e.g. pi0's arm-scratch-linux-gnueabihf),
+# else this container's own native /usr/include (same-arch targets,
+# e.g. virt on an aarch64 host, where no per-target sysroot exists).
+_kernel_headers=$TOOL_DIR/$target/usr/include
+[ -d "$_kernel_headers" ] || _kernel_headers=/usr/include
+export TARGET_CFLAGS="--sysroot=$INSTALL_DIR/$SYSTEM_KEY -idirafter $_kernel_headers"
 export HOST_CC=gcc
 export CARGO_HOME=$WORK_DIR/cargo-home
 export CARGO_HTTP_CAINFO=$SSL_CERT_FILE

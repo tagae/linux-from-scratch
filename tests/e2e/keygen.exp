@@ -9,7 +9,7 @@
 # so no post-command prompt matching (which bash bracketed-paste escapes
 # break). Login uses the glob "login:" ./test proved reliable. No detached
 # signing (that hangs gpg-agent on the serial console, see
-# tests/probes/gnupg-keygen.probe) - keygen + subkey structure only.
+# tests/probes/gnupg-keygen.sh) - keygen + subkey structure only.
 log_user 1
 
 # The guest-built kernel/dtb sit at the canonical work/boot/systemd-busybox-pi0/ (guest-

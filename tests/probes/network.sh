@@ -1,4 +1,4 @@
-# tests/probes/network.probe -- proves the "network" capability actually
+# tests/probes/network.sh -- proves the "network" capability actually
 # works end to end on a live guest, not just that its kernel fragment and
 # systemd-networkd/-resolved config landed on disk (Stage 1 can't see any
 # of this: it has no booted kernel to ask). Three layers, each guarding a

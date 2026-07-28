@@ -1,4 +1,4 @@
-# tests/probes/ninep.probe -- proves the "9p" capability's project share
+# tests/probes/ninep.sh -- proves the "9p" capability's project share
 # actually mounts and is actually readable from inside a booted guest.
 # Stage 1 can confirm 9p-config.sh shipped the fstab entry (etc/fstab
 # with the "lfs" mount tag), but only a live boot proves the fstab

@@ -1,4 +1,4 @@
-# tests/probes/amnesia.probe -- the strongest proof the "amnesia"
+# tests/probes/amnesia.sh -- the strongest proof the "amnesia"
 # capability has: not just that / *feels* read-only from inside the
 # guest, but that the boot medium's bytes are IDENTICAL before and after
 # a full boot -> use -> poweroff cycle (see docs/design/amnesia.md's

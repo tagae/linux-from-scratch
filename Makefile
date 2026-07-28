@@ -6,6 +6,7 @@
 	test %-test \
 	reinstall-tools %-reinstall-tools reinstall-system %-reinstall-system \
 	check check-probes check-probe \
+	cold-test %-cold-test \
 	e2e-test \
 	clean distclean \
 	FORCE
@@ -119,6 +120,22 @@ check-probes: .env
 # Run a single probe: make check-probe PROBE=network
 check-probe: .env
 	@PROBE=$(PROBE) sh tests/probes.sh
+
+# Periodic COLD build (tests/README.md): distclean wipes EVERY platform's
+# build-state volumes (source/work/tools/install) plus local work/image,
+# so `%-cold-test` rebuilds the whole tools->system->image->test chain
+# from scratch, from nothing but the hash-verified download/ cache --
+# warm stamps mask real bugs (see docs/design/packaging.md's own
+# gotchas), proven repeatedly. Slow by design (a full `make tools` from
+# an empty TOOL_DIR) and global blast radius (distclean is not scoped to
+# one platform) -- run occasionally by hand or in CI, never implicitly.
+# Clearing download/ too (forcing every source to be re-fetched from
+# upstream instead of just rebuilt) is a rarer, network-dependent variant
+# left as a manual `rm -rf download && make <platform>-cold-test`.
+%-cold-test: distclean
+	$(MAKE) $*-test
+
+cold-test: virt-cold-test
 
 # End-to-end self-host proof (docs/design/e2e-cross.md): the virt builder
 # guest cross-compiles a pi0 GnuPG image with its OWN aarch64->arm

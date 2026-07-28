@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # tests/unit.sh -- Tier 1: framework mechanics. Sources the REAL lib/base.sh
 # and lib/package.sh and drives them directly (plus, for _once, through a
 # throwaway fixture package under tests/fixtures/) rather than
@@ -10,6 +11,7 @@
 # It does not need anything ever built (tools/install/archive) -- only
 # lib/base.sh, lib/package.sh and a POSIX shell, both bind-mounted into that
 # container unconditionally.
+
 set -eu
 
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)

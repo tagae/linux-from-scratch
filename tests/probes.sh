@@ -8,8 +8,8 @@
 # already-built images (`./lfs system build` + `./lfs image build`), and
 # a single probe can take minutes, where Stage 1 is seconds.
 #
-#   make check-probes             # every tests/probes/*.probe
-#   make check-probe PROBE=name   # just tests/probes/name.probe
+#   make check-probes             # every tests/probes/*.sh
+#   make check-probe PROBE=name   # just tests/probes/name.sh
 #   sh tests/probes.sh            # same as check-probes, run directly
 #   PROBE=name sh tests/probes.sh # same as check-probe
 #
@@ -29,14 +29,14 @@ PROBES_DIR=$PROJECT_DIR/tests/probes
 DRIVER=$PROJECT_DIR/tests/probe-driver.exp
 
 # `make check-probe PROBE=<name>` (or `PROBE=<name> sh tests/probes.sh`)
-# runs just that one probe; unset/empty means "every *.probe".
+# runs just that one probe; unset/empty means "every *.sh".
 ONLY=${PROBE:-}
 
 # ---- shared helpers available to every probe's probe_host_pre/post() ----
 
 # sha256 FILE -- portable across this project's dev hosts: prefers
 # sha256sum (Linux, Homebrew coreutils) and falls back to macOS's
-# built-in shasum -a 256. Used by amnesia.probe's byte-identity proof.
+# built-in shasum -a 256. Used by amnesia.sh's byte-identity proof.
 sha256() {
     if command -v sha256sum >/dev/null 2>&1; then
         sha256sum "$1" | awk '{print $1}'
@@ -101,9 +101,9 @@ derive_platform_userland_caps() {
 
 run_one() {
     probe_file=$1
-    name=$(basename "$probe_file" .probe)
+    name=$(basename "$probe_file" .sh)
 
-    # Fresh state for every probe: a .probe file that forgets to define
+    # Fresh state for every probe: a .sh file that forgets to define
     # something (e.g. skips probe_host_post) must never silently inherit
     # the PREVIOUS probe's function/var of the same name.
     unset -f probe_guest probe_host_pre probe_host_post 2>/dev/null || true
@@ -199,9 +199,9 @@ run_one() {
 # ---- iterate ----
 
 found=0
-for probe_file in "$PROBES_DIR"/*.probe; do
+for probe_file in "$PROBES_DIR"/*.sh; do
     [ -e "$probe_file" ] || continue
-    n=$(basename "$probe_file" .probe)
+    n=$(basename "$probe_file" .sh)
     [ -z "$ONLY" ] || [ "$n" = "$ONLY" ] || continue
     found=$((found + 1))
     run_one "$probe_file"
@@ -209,9 +209,9 @@ done
 
 if [ "$found" -eq 0 ]; then
     if [ -n "$ONLY" ]; then
-        not_ok "probe:$ONLY exists (no tests/probes/$ONLY.probe)"
+        not_ok "probe:$ONLY exists (no tests/probes/$ONLY.sh)"
     else
-        skip "probes" "no tests/probes/*.probe found"
+        skip "probes" "no tests/probes/*.sh found"
     fi
 fi
 

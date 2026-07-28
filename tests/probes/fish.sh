@@ -1,4 +1,4 @@
-# tests/probes/fish.probe -- proves the optional fish package (fish.sh:
+# tests/probes/fish.sh -- proves the optional fish package (fish.sh:
 # fish 4.x, Rust, cross-compiled against our glibc with the bundled
 # static PCRE2; installed on demand with `./lfs install fish`) actually
 # RUNS on a live guest: the binary starts (its glibc link resolves and
@@ -17,7 +17,7 @@ PROBE_KEY=systemd-busybox-virt
 PROBE_TIMEOUT=120
 
 probe_guest() {
-    # Joined into one line by printf (same shape as network.probe): each
+    # Joined into one line by printf (same shape as network.sh): each
     # piece single-quoted, so nothing is host-shell-expanded before it
     # reaches the guest.
     printf '%s && %s && %s' \

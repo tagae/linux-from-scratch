@@ -56,7 +56,7 @@ AUTHENTICATION subkey (`--quick-generate-key` gives primary + encr;
 `--quick-add-key <fpr> <algo> auth` adds the auth subkey). Assert
 `gpg --list-keys --with-subkey-fingerprint` (or --with-colons) shows a
 subkey with capability `e` and one with capability `a`. Avoid the
-serial-console sign hang documented in gnupg-keygen.probe — this is
+serial-console sign hang documented in gnupg-keygen.sh — this is
 keygen + subkey structure, no detached-sign needed.
 
 Automation (`make e2e-test`)

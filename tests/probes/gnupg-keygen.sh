@@ -1,4 +1,4 @@
-# tests/probes/gnupg-keygen.probe -- proves the gnupg family
+# tests/probes/gnupg-keygen.sh -- proves the gnupg family
 # (zlib/libgpg-error/npth/libassuan/libksba/libgcrypt/gnupg/pinentry --
 # see docs/design/gnupg-appliance.md) works as a real cryptography stack
 # on the target: all THREE key algorithms the appliance supports
@@ -6,7 +6,7 @@
 # and land in the keyring. Reuses image/virt+usb.img (the only built
 # image carrying the gnupg family) but never touches the USB stick --
 # this is about the crypto stack, not the appliance's persistence story
-# (usb-persist.probe covers that, and exercises a real passphrase-
+# (usb-persist.sh covers that, and exercises a real passphrase-
 # protected keygen + export end to end).
 #
 # Scope note -- why no sign/verify here, deliberately: a sign -> verify
