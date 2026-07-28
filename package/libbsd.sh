@@ -4,7 +4,7 @@
 
 # BSD utility functions on glibc — here solely for readpassphrase(3),
 # which shadow's login/passwd hard-require and glibc doesn't provide
-# (see bootable-systemd-coreutils.sh).
+# (see bootable-systemd.sh).
 # build=: see gmp.sh's copy of this guard. target_sysroot_cc: links the
 # target tree's own libmd (installed just before this by the same
 # caller) — same opt-in the gnupg family carries.

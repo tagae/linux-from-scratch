@@ -8,7 +8,7 @@ stamps, boot files and image, coexisting without clobbering.
 USERLAND flavor
 ---------------
 
-`USERLAND` (default `systemd-busybox`; also `systemd-coreutils`,
+`USERLAND` (default `systemd-busybox`; also `systemd`,
 `busybox`) names the complete userspace composition — the init system
 included, since PID 1 is itself a userland program. It selects the
 umbrella (`bootable-$USERLAND`) and hence the whole member set, the
@@ -17,7 +17,7 @@ per-flavor system-files content, and the per-flavor kernel fragment
 systemd's cgroups/namespaces/BPF, ~23% smaller kernels). Key: always
 `$USERLAND-$PLATFORM`. The busybox flavor is static — no glibc — so
 dynamically-linked optional packages (gnupg, native toolchain) require
-a glibc flavor (`systemd-busybox`/`systemd-coreutils`).
+a glibc flavor (`systemd-busybox`/`systemd`).
 
 CAPS capabilities
 -----------------

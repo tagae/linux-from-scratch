@@ -4,7 +4,7 @@
 
 # Message-digest functions (md5/sha1/... in the classic BSD API) — here
 # solely as libbsd's own hard dependency (see libbsd.sh, pulled in for
-# shadow's readpassphrase in bootable-systemd-coreutils.sh).
+# shadow's readpassphrase in bootable-systemd.sh).
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \

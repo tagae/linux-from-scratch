@@ -28,7 +28,7 @@ Still open
    Kept deliberately for now.
 
 3. **The twin systemd umbrellas** (`bootable-systemd-busybox.sh` /
-   `bootable-systemd-coreutils.sh`) are ~95% identical, diverging only
+   `bootable-systemd.sh`) are ~95% identical, diverging only
    in the userland/login block. Deliberate explicitness (three explicit
    umbrellas was a considered decision) — revisit only if maintaining
    the shared parts twice starts biting.

@@ -4,7 +4,7 @@
 
 # build=: see gmp.sh's copy of this guard. target_sysroot_cc: login/passwd
 # link the target tree's own libxcrypt (installed just before this by
-# bootable-systemd-coreutils.sh) — same opt-in the gnupg family carries.
+# bootable-systemd.sh) — same opt-in the gnupg family carries.
 : ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 

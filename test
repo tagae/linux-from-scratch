@@ -4,7 +4,7 @@
 # Usage: [TEST_TIMEOUT=seconds] ./test [PLATFORM] [USERLAND] [CAPS]
 #
 # PLATFORM (virt/pi0/pi4), the optional USERLAND flavor (systemd-busybox/
-# systemd-coreutils/busybox), and the optional CAPS capability set (see
+# systemd/busybox), and the optional CAPS capability set (see
 # lfs) are passed through as env vars, the same convention the Makefile
 # uses, so ./lfs qemu picks the matching kernel and image. The login/
 # prompt/poweroff flow below is identical for every flavor (busybox

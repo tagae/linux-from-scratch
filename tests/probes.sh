@@ -83,7 +83,7 @@ create_usb_stick() {
 # stem, this is the same string `lfs` folded USERLAND/CAPS into when the
 # image was built, so splitting it back apart reconstructs the exact env
 # `./lfs qemu` needs. Platform names never contain a dash (userland names
-# may: systemd-coreutils), so the LAST dash always separates the two.
+# may: systemd), so the LAST dash always separates the two.
 
 derive_platform_userland_caps() {
     key=$1

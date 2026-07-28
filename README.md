@@ -50,15 +50,14 @@ kernel, install tree and image. The `network`/`9p` QEMU device wiring is virt-on
 Quick Start
 -----------
 
-Build the whole chain for the default system, then boot it in QEMU, log in as root, and power off,
-asserting a clean exit:
+Build the build tools through Docker, then the defaulth image, and boot boot it in QEMU, log in as
+root, and power off, asserting a clean exit:
 
 ```shell
 make test
 ```
 
-Everything runs in Docker and the first build is slow. Target another platform by suffixing its
-name; the whole chain rebuilds for it:
+Target another platform by suffixing its name; the whole chain rebuilds for it:
 
 ```shell
 make pi0-test

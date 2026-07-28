@@ -1,5 +1,5 @@
-# bootable-systemd-coreutils: systemd init with a GNU userland — the busybox-
-# free flavor (USERLAND=systemd-coreutils). Identical to bootable-systemd-busybox.sh except
+# bootable-systemd: systemd init with a GNU userland — the busybox-
+# free flavor (USERLAND=systemd). Identical to bootable-systemd-busybox.sh except
 # the "Shell and core utilities" block: bash/coreutils/grep/sed/gawk plus
 # libxcrypt+shadow (login/passwd) replace the single busybox package, and
 # util-linux additionally provides nologin (busybox's applet is gone).

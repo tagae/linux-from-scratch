@@ -242,7 +242,7 @@ case "${1:-help}" in
         echo ""
         echo "Environment:"
         echo "  USERLAND         Userland flavor, init system included"
-        echo "                   (systemd-busybox (default), systemd-coreutils,"
+        echo "                   (systemd-busybox (default), systemd,"
         echo "                   busybox)"
         echo "  CAPS             Capability set, e.g. \"network 9p\" (network, 9p,"
         echo "                   usb, loop, amnesia)"

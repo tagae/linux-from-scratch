@@ -22,8 +22,8 @@ FORCE:
 
 # Flavor: ONE set of rules, parameterized by USERLAND — each value names an umbrella
 # (bootable-$USERLAND.sh) that fully describes init AND userland: systemd-busybox (default),
-# systemd-coreutils, busybox. SYSTEM_KEY always includes the flavor, so image names are uniform
-# (image/systemd-coreutils-virt.img) and the rules below need no per-flavor cases.
+# systemd, busybox. SYSTEM_KEY always includes the flavor, so image names are uniform
+# (image/systemd-virt.img) and the rules below need no per-flavor cases.
 USERLAND ?= systemd-busybox
 
 # Capabilities: the same interface as lfs (e.g. `make test CAPS="network 9p"`), folded into the one

@@ -56,7 +56,7 @@ built kernel/image); `docker-compose.yaml` bind-mounts `work/boot` and
 (`lib/platform/$PLATFORM.sh`, default `virt`); `USERLAND` selects the
 userland umbrella — the complete userspace composition, init system
 included (`package/bootable-$USERLAND.sh`: `systemd-busybox`,
-`systemd-coreutils`, `busybox`); `CAPS` opts into capabilities
+`systemd`, `busybox`); `CAPS` opts into capabilities
 (`network`, `9p`, `usb`, `loop`, `amnesia` — each names a kernel config
 fragment `package/linux/<cap>.config`, plus optional `*-config` packages
 and QEMU devices; code tests membership with `has_cap`, `lib/base.sh`).
@@ -102,7 +102,7 @@ Two verbs drive everything:
 
 **Umbrellas** are meta-packages: `package_meta=yes` plus a `depends()`
 that just `require`s members with their knobs, nothing else. `bootable-
-$USERLAND` (`bootable-systemd-busybox.sh`/`bootable-systemd-coreutils.sh`/
+$USERLAND` (`bootable-systemd-busybox.sh`/`bootable-systemd.sh`/
 `bootable-busybox.sh`) is the package list for a bootable system;
 `build_system` (`lib/system.sh`) is just `install bootable-$USERLAND` plus
 staging the kernel for `./lfs qemu`. `ncdu.sh` shows the same `depends()`
