@@ -1,3 +1,17 @@
+# Canadian Cross
+# --------------
+#
+# The system on which the tools are being built is called the build system.
+# The system on which the tools will run is called the host system.
+# The system for which the resulting cross compiler generates code is called the target system.
+#
+# When build == host == target, we have a native toolchain.
+# When build == host != target, we have a cross toolchain.
+# When build != host == target, we have a cross-native toolchain.
+# When build != host != target, we have a canadian toolchain.
+
+# See https://www.airs.com/ian/configure/configure_5.html
+
 tools() {
     case "${1:-help}" in
         bootstrap) bootstrap_tools ;;
@@ -11,38 +25,39 @@ tools() {
 }
 
 bootstrap_tools() {
-
     readonly nls=no
     readonly multilib=no
 
-    # Kernel headers use this project's own $ARCH naming (arm64/arm/...),
-    # not uname -m's — same mapping virt.sh already uses to pick $ARCH for
-    # the (usually aarch64) build host, needed below for the native
-    # toolchain's own headers (see package/linux.sh's cross_arch). Also
-    # builds native_target below, the build host's own triple in the same
-    # $ARCH-$vendor-linux-gnu[eabihf] shape platform files use for $target.
     case "$(uname -m)" in
-        aarch64|arm64) readonly native_arch=arm64; readonly native_target=aarch64-native-linux-gnu ;;
-        armv6l|armv7l) readonly native_arch=arm;   readonly native_target=arm-native-linux-gnueabihf ;;
-        x86_64)        readonly native_arch=x86;   readonly native_target=x86_64-native-linux-gnu ;;
+        aarch64|arm64)
+            readonly native_arch=arm64
+            readonly native_target=aarch64-native-linux-gnu
+            ;;
+        armv6l)
+            readonly native_arch=arm
+            readonly native_target=arm-native-linux-gnueabihf
+            ;;
+        x86_64)
+            readonly native_arch=x86;
+            readonly native_target=x86_64-native-linux-gnu
+            ;;
         *) bail "Unsupported native architecture $(uname -m)" ;;
     esac
 
-    # --- Cross Toolchain Pass 1 (throwaway) ------------------
-    # Builds the per-target sysroot glibc below. Linked against the
-    # host's own (Debian) glibc —a throwaway tool that only ever runs here,
-    # never copied into the scratch image, so it needs no relocation.
+    # --- Cross Toolchain Pass 1 ------------------
+
     (
         readonly package_variant=pass1-$target
         readonly package_install_dir=/
-        prefix=$TOOL_DIR
+        readonly prefix=$TOOL_DIR
         readonly sysroot=$TOOL_DIR/$target
         readonly build_sysroot=$TOOL_DIR/$target
 
         # Cross-assembler and linker.
         gprofng=no werror=no new_dtags=yes default_hash_style=gnu install binutils
 
-        _tools_gcc_prereqs
+        _build_gcc_prereqs
+        exit 0
 
         # Minimal C cross-compiler to build glibc.
         glibc_version=$(version glibc) \
@@ -55,15 +70,11 @@ bootstrap_tools() {
         install gcc
     )
 
+    exit 0
     _os_is_build_host || _bootstrap_build_host
 
-    # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
-    # share one since they all use the same target triplet) ----------
-    # Never executed — only ever linked/read against by pass2 below — so
-    # deliberately does NOT inherit the native LDFLAGS set above: glibc's
-    # own build has its own internal linking conventions for the dynamic
-    # linker it's building, and the native rpath override would just be
-    # foreign noise at best.
+    # --- Per-target sysroot (one per distinct $target
+    # glibc: never executed —only ever linked/read against by pass2 below.
     (
         readonly package_variant=$target
         package_install_dir=$TOOL_DIR/$target
@@ -92,7 +103,7 @@ bootstrap_tools() {
 
         gprofng=no werror=no install binutils
 
-        _tools_gcc_prereqs
+        _build_gcc_prereqs
 
         _tools_install_full_gcc
     )
@@ -105,17 +116,24 @@ bootstrap_tools() {
     _os_is_build_host || _bootstrap_stage_for_scratch
 }
 
-# Part (1) of bootstrap_tools(): everything that turns an empty container
-# into a usable build host — the native (build-host arch) runtime
-# toolchain/glibc, pass1-native, the bare-name toolchain symlinks, the
-# libstdc++/libgcc_s staging, the temp-tools userspace (bash/coreutils/
-# sed/tar/make/...), and the CA trust chain. A booted LFS guest already IS
-# this build host (it has its own native gcc, a full tool set, a real
-# /usr/lib on the loader path, and a system CA store — see
-# docs/design/guest-cross-builder.md), so bootstrap_tools() calls this
-# only outside guest phase; the target cross-toolchain blocks that stay
-# directly in bootstrap_tools() (Cross Toolchain Pass 1 above, the
-# per-target sysroot and Pass 2 below) run in both phases unchanged.
+# Builds gcc's prerequisite math libraries.
+_build_gcc_prereqs() {
+    install gmp
+    exit 0
+    CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+    LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+    install mpfr
+    CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
+    LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
+    install mpc
+    # These variables feed gcc.sh's own "${gmp:+--with-gmp=$gmp}", etc.
+    gmp=$TOOL_DIR
+    mpfr=$TOOL_DIR
+    mpc=$TOOL_DIR
+    LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
+    export LDFLAGS
+}
+
 _bootstrap_build_host() {
     # --- Native runtime toolchain
     # build-host arch, shared by every target platform
@@ -427,7 +445,7 @@ build_tools() {
 
     # pkgconf's own compiled-in default search path is the literal
     # /usr/lib/pkgconfig — same story as GCONV_PATH above. This is a
-    # separate `./lfs tools build` invocation from tools_bootstrap, which
+    # separate `./lfs tools build` invocation from bootstrap_tools, which
     # sets the same export for its own process; it doesn't carry over.
     export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
 
@@ -547,75 +565,12 @@ build_tools() {
     install multipath-tools#kpartx
 }
 
-# gcc's prerequisite math libraries: build a native gmp/mpfr/mpc right
-# before each cross pass's gcc build and hand them to it prebuilt (the
-# gmp=/mpfr=/mpc= variables set here feed gcc.sh's own
-# "${gmp:+--with-gmp=$gmp}" etc.), sidestepping a gcc/libtool
-# sysroot-leak bug in gcc's bundled copies — one code path on every
-# build host (Debian seed, scratch, booted guest); gcc.sh's prepare()
-# reconciles the bundled symlinks accordingly. Called by both cross
-# passes; their differing package_variant keeps the stamps separate.
-#
-# The leak this sidesteps (found on a booted guest, whose system has
-# real gmp/mpfr/mpc installed for the gnupg family and native-
-# toolchain.sh): GCC's toplevel build system unconditionally leaks
-# --with-build-sysroot into gmp/mpfr/mpc's OWN bundled sub-configure
-# (confirmed via config.log's host_configargs/target_configargs and the
-# generated per-subdir libtool script's own lt_sysroot=$TOOL_DIR/
-# $target), regardless of whether those host-side helper libraries have
-# anything to do with the actual cross target. Harmless in the
-# container (nothing at the relevant absolute paths there) — but on the
-# guest, mpfr's/mpc's own sub-configure DOES discover the real,
-# absolute-path system libs, and libtool's sysroot machinery then
-# mis-resolves that dependency against the per-target sysroot (which
-# never contains gmp/mpfr/mpc at all) — confirmed empirically:
-# "libgmp.la: No such file or directory" / "is not a valid libtool
-# archive" aborting gcc's own bundled mpc build. A plain, build-host-
-# native trio involves no sysroot at all, so there is no leak to
-# mis-resolve. These never ship; they exist only to satisfy gcc's own
-# build.
-#
-# The trio lives at $TOOL_DIR root ({include,lib}), NOT usr/ —
-# $TOOL_DIR/usr/lib is the temp-tools RUNTIME whose libc.so linker
-# script would shadow the seed's real libc if put on -L. cc1 links
-# these SHARED, so gcc gets an explicit rpath to $TOOL_DIR/lib — an
-# absolute path that resolves identically on every layout. The -I/-L
-# matter only on the unaliased Debian seed.
-#
-# gmp/mpfr/mpc are plain assignments, NOT "gmp=... install gcc" prefix
-# tokens at the call site — deliberately: a prefix token only works
-# when its OWN literal, unexpanded source text already has the
-# name=value shape; shell assignment-word recognition is purely
-# lexical, on the token as WRITTEN, never on what a parameter expansion
-# merely happens to PRODUCE — so an expansion-built "gmp=$TOOL_DIR"-
-# shaped word (e.g. "${gmp:+gmp=$gmp}", confirmed the hard way) is just
-# an ordinary argument, and bash instead runs its expanded VALUE as a
-# command name (a genuinely-hit "gmp=/var/lfs/tools: No such file or
-# directory"). Plain variables of the calling subshell sidestep this
-# entirely: require()'s own per-package subshell is a plain fork, which
-# inherits every variable already set, exported or not, so gcc.sh sees
-# them with no extra plumbing on the "install gcc" line itself.
-_tools_gcc_prereqs() {
-    install gmp
-    CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
-    LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
-    install mpfr
-    CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" \
-    LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}" \
-    install mpc
-    gmp=$TOOL_DIR
-    mpfr=$TOOL_DIR
-    mpc=$TOOL_DIR
-    LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
-    export LDFLAGS
-}
-
 # The full, real gcc build — shared verbatim by Cross Toolchain Pass 2
 # (the shipped $target cross-compiler) and pass1-native (the build
 # host's own compiler, which deliberately mirrors pass 2 rather than
 # real pass 1's newlib/no-libc shape — see its call site for why).
 # Everything scenario-specific (package_variant, prefix, sysroot,
-# cross_target, the _tools_gcc_prereqs handoff) is the caller's own
+# cross_target, the _build_gcc_prereqs handoff) is the caller's own
 # subshell state.
 _tools_install_full_gcc() {
     glibc_version=$(version glibc) languages=c,c++ \
@@ -720,4 +675,10 @@ _tools_relocate() {
         || bail "Dynamic linker(s) were themselves relocated — this breaks them: $corrupted"
 
     return 0
+}
+
+# Tests whether the running system is an LFS build host.
+_os_is_build_host() {
+    gcc -dumpmachine 2>/dev/null | grep -q -- -scratch- \
+        && [ ! -e "$TOOL_DIR/usr/bin/gcc" ]
 }

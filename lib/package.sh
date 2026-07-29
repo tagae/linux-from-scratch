@@ -43,11 +43,8 @@ install() {
         fi
     fi
 
-    # DESTINATION (-d) picks an explicit, caller-chosen install location —
-    # this bypasses the stage->archive->merge inversion entirely (it would
-    # be actively wrong to archive a DESTDIR install meant for e.g. a
-    # device or .img and then merge it into $INSTALL_DIR/$SYSTEM_KEY
-    # instead), so unset whatever target_build_env just set above.
+    # DESTINATION (-d) picks an explicit, caller-chosen install location.  This bypasses
+    # stage->archive->merge entirely, so unset whatever target_build_env just set above.
     if [ -n "${DESTINATION:-}" ]; then
         unset package_merge_dir
         if [ -d "$DESTINATION" ]; then
@@ -70,14 +67,11 @@ install() {
     require "$@"
 }
 
-# Build and install one or more packages. Public: this is the worker
-# behind the `install` command, and an umbrella package's depends() calls
-# it to pull in its members (optionally with knob prefixes, e.g.
-# `manpages=no require kmod`) — exactly as build_tools()/a system build
-# drive installs. Each package builds in its own subshell with freshly
-# derived package_* paths (see _source); ambient knobs (host, prefix,
-# package_install_dir, package_variant, CC, …) are inherited from the
-# caller, so an umbrella sets a member's scenario simply by prefixing.
+# Build and install one or more packages. Public: this is the worker behind the `install` command,
+# and an umbrella package's depends() calls it to pull in its members. Each package builds in its
+# own subshell with freshly derived package_* paths (see _source); ambient knobs (host, prefix,
+# package_install_dir, package_variant, CC, …) are inherited from the caller, so an umbrella sets a
+# member's scenario simply by prefixing.
 require() {
     for pkg in "$@"; do
         (
@@ -88,11 +82,8 @@ require() {
     done
 }
 
-# The build environment shared by every package installed into a
-# platform's target system tree. Set once per install scenario (by
-# install() for a bare invocation; inherited by an umbrella's members),
-# so no package carries its own copy. Defaults only ( := ),
-# so a caller (or -d DESTINATION handling above) can still override.
+# The build environment shared by every package installed into a platform's target system tree. Set
+# once per install scenario. Defaults only ( := ), so a caller can still override.
 #
 # Sets package_merge_dir, NOT package_install_dir: every package under this
 # scenario DESTDIR-installs into its own framework-default per-package
@@ -298,18 +289,16 @@ unarchive() {
     tar xf "$file" -C "$dest"
 }
 
-# This function executes in the subshell that evaluates package scripts.
-# Hence, whatever it defines will be available only in the subshell.
-# Functions with a leading underscore denote private API that packages shouldn't invoke.
+# This function executes in the subshell that evaluates package scripts.  Hence, whatever it
+# defines will be available only in the subshell.  Functions with a leading underscore denote
+# private API that packages shouldn't invoke.
 _source() {
-    # Clear any package_* left over from an enclosing package: an umbrella
-    # calls require() for its members from within its own subshell, so
-    # without this the umbrella's own name/version/paths would be inherited
-    # and, being already set, shadow each member's own values (the defaults
-    # below only assign when unset). package_install_dir, package_variant
-    # and package_merge_dir are deliberately NOT cleared — they are the
-    # ambient install scenario, meant to carry from an umbrella (or
-    # build_tools / tools) down to every member.
+    # Clear any package_* left over from an enclosing package: an umbrella calls require() for its
+    # members from within its own subshell, so without this the umbrella's own name/version/paths
+    # would be inherited and, being already set, shadow each member's own values (the defaults
+    # below only assign when unset). package_install_dir, package_variant and package_merge_dir are
+    # deliberately NOT cleared —they are the ambient install scenario, meant to carry from an
+    # umbrella down to every member.
     unset package_name package_component package_version package_branch \
           package_source package_source_hash \
           package_release package_files_dir package_source_dir \
@@ -326,26 +315,6 @@ _source() {
         if [ -f $package_build_dir/.$step-$package_component ]; then
             echo "$step (done)"
         else
-            # NOT "$step && touch ..." (reverted — found while diagnosing
-            # the in-guest system build's 9p mount silently never working):
-            # bash's errexit exemption for the left side of "&&" applies to that
-            # command's ENTIRE execution, including everything a called
-            # shell FUNCTION does internally — so with $step on the left of
-            # &&, a failure anywhere inside e.g. install() (a plain shell
-            # function, not a subshell) was silently swallowed instead of
-            # aborting the build: the function kept running past the failed
-            # command, "touch" was correctly skipped (short-circuited, so
-            # the stamp wasn't wrongly created), but the overall build just
-            # carried on as if nothing had gone wrong (confirmed
-            # empirically — package/9p-config.sh's `cat > etc/fstab`
-            # failed with ENOENT on a from-scratch stage dir and the
-            # system build finished "successfully" regardless, silently
-            # producing a tarball with no fstab at all). Splitting into two
-            # statements makes $step a bare, untested command again, so
-            # errexit fires immediately on failure like everywhere else in
-            # this codebase; touch only runs at all if $step succeeded,
-            # since a failure aborts (via errexit) before reaching it —
-            # same stamp semantics as before, minus the silent swallow.
             $step
             touch $package_build_dir/.$step-$package_component
         fi

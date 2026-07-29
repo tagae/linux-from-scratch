@@ -7,18 +7,13 @@ case "$(uname -m)" in
     *) bail "Unsupported virt architecture" ;;
 esac
 
-# -cpu host requires a hardware accelerator to pass the host CPU through;
-# without one, QEMU defaults to TCG (software emulation), which rejects
-# "host" outright. HVF is macOS's accelerator (Apple Silicon aarch64 host,
-# matching this aarch64 guest); anywhere else, fall back to plain TCG with
-# "max" (the equivalent stand-in — full feature set, but software-only).
 case "$(uname -s)" in
-    Darwin) readonly QEMU_ACCEL="-accel hvf -cpu host" ;;
-    *)      readonly QEMU_ACCEL="-cpu max" ;;
+    Darwin) readonly QEMU_CPU="-accel hvf -cpu host" ;;
+    Linux)  readonly QEMU_CPU="-accel kvm -cpu host" ;;
 esac
 
 readonly QEMU_FLAGS="\
-    -M virt $QEMU_ACCEL -smp 1 -m 512 \
+    -M virt $QEMU_CPU -smp 1 -m 512 \
     -nographic \
     -device virtio-rng \
     -device virtio-serial \
@@ -26,15 +21,13 @@ readonly QEMU_FLAGS="\
     -device virtconsole,chardev=char0,id=console0 \
     -mon chardev=char0,mode=readline"
 
-# Kernel command line fragment specific to this platform (combined with the
-# filesystem-related fragment in `lfs`'s qemu case under a single -append).
+# Kernel command line fragment specific to this platform.
 readonly QEMU_APPEND="console=hvc0 root=/dev/vda1"
 
-# Serial console device the busybox-init flavor runs getty on (see
-# package/busybox-init.sh). The QEMU virtio-console above enumerates as hvc0.
+# Serial console device. The QEMU virtio-console above enumerates as hvc0.
 readonly CONSOLE=hvc0
 
 readonly QEMU_DISK_IF=virtio
 
-# Single btrfs partition — no FAT boot partition (QEMU loads kernel directly)
+# Single BTRFS partition. QEMU loads kernel directly, so no boot partition.
 readonly IMAGE_LAYOUT=single

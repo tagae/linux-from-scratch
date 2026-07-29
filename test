@@ -1,15 +1,12 @@
 #!/usr/bin/expect -f
+
 # Boot the platform image in QEMU, log in as root, and poweroff.
 # Exits 0 on success, 1 on any failure.
+#
 # Usage: [TEST_TIMEOUT=seconds] ./test [PLATFORM] [USERLAND] [CAPS]
 #
-# PLATFORM (virt/pi0/pi4), the optional USERLAND flavor (systemd-busybox/
-# systemd/busybox), and the optional CAPS capability set (see
-# lfs) are passed through as env vars, the same convention the Makefile
-# uses, so ./lfs qemu picks the matching kernel and image. The login/
-# prompt/poweroff flow below is identical for every flavor (busybox
-# getty/login/ash present the same "login:"/"Password:"/shell-prompt
-# sequence as systemd's).
+# PLATFORM, USERLAND, and CAPS are passed through as env vars, so ./lfs qemu picks the matching
+# kernel and image.
 
 if {[llength $argv] > 0} {
     set env(PLATFORM) [lindex $argv 0]
@@ -24,13 +21,10 @@ if {[llength $argv] > 2} {
 # TEST_TIMEOUT overrides the default per-phase timeout.
 set timeout [expr {[info exists env(TEST_TIMEOUT)] ? $env(TEST_TIMEOUT) : 120}]
 
-# Don't mirror the spawned process's raw output to our controlling
-# terminal. The guest (systemd's console-size probing, bash on login) sends
-# escape queries like cursor-position/window-size requests over the serial
-# console; with logging on, those reach the real terminal, which answers
-# them — but by the time the reply arrives the guest/qemu are already gone,
-# so it's left sitting as garbage input at the next shell prompt. Pattern
-# matching below still sees the full raw stream regardless of log_user.
+# Don't mirror the spawned process's raw output to our controlling terminal. The guest sends escape
+# queries like cursor-position/window-size requests over the serial console; with logging on, those
+# reach the real terminal, which answers them —but by the time the reply arrives the guest/qemu are
+# already gone, so it's left sitting as garbage input at the next shell prompt.
 log_user 0
 
 spawn ./lfs qemu

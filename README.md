@@ -40,7 +40,8 @@ Capabilities
 | `network`  | Networking: DHCP + DNS (systemd-networkd/-resolved)                 |
 | `9p`       | Host file sharing: the project directory mounted over virtio-9p     |
 | `usb`      | Removable USB storage (attach a stick with `USB_DISK=<img>`)        |
-| `loop`     | Loop devices + partitioning tools, so a guest can build disk images |
+| `loop`     | Loop devices |
+| `fat-fs`   | FAT filesystem support |
 | `amnesia`  | Read-only root: the boot medium never written                       |
 
 Capabilities are off by default and combinable (`CAPS="network 9p"`); each combination gets its own

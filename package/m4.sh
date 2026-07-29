@@ -1,5 +1,5 @@
 : ${package_version:=1.4.21}
-: ${package_source:=https://ftpmirror.gnu.org/m4/m4-$package_version.tar.xz}
+: ${package_source:=https://ftp.gnu.org/gnu/m4/m4-$package_version.tar.xz}
 : ${package_source_hash:=sha256:f25c6ab51548a73a75558742fb031e0625d6485fe5f9155949d6486a2408ab66}
 
 # build=: a target build (./lfs install m4 — delivering the guest's own

@@ -29,35 +29,19 @@ done
 
 #--[ Project ]
 
-# ONE layout everywhere (docs/design/build-phases.md): the CODE lives at
-# $PROJECT_DIR (a bind mount in the containers, the 9p share on a booted
-# guest) and heavy build STATE lives under /var/lfs (named volumes in the
-# containers, a local disk on a guest) — identical paths in both, so
-# nothing downstream ever needs to know which it is running on.
-# DOWNLOAD_DIR stays PROJECT_DIR-relative: the shared, hash-verified
-# source mirror is exactly what every build wants to reuse, offline.
-# The one detection: /var/lfs PRESENT means mounted build state (it is
-# where the containers mount their volumes and where a booted guest keeps
-# local state); absent means the development host, whose only role is
-# booting the bind-mounted artifacts (image/, work/boot/) from the
-# project tree itself.
-if [ -d /var/lfs ]; then
-    _state=/var/lfs
-else
-    _state=$PROJECT_DIR
-fi
 : ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
-: ${SOURCE_DIR:=$_state/source}
-: ${WORK_DIR:=$_state/work}
-: ${TOOL_DIR:=$_state/tools}
-: ${INSTALL_DIR:=$_state/install}
-: ${ARCHIVE_DIR:=$_state/archive}
-: ${IMAGE_DIR:=$_state/image}
+: ${STATE_DIR:=$PROJECT_DIR}
+: ${SOURCE_DIR:=$STATE_DIR/source}
+: ${WORK_DIR:=$STATE_DIR/work}
+: ${TOOL_DIR:=$STATE_DIR/tools}
+: ${INSTALL_DIR:=$STATE_DIR/install}
+: ${ARCHIVE_DIR:=$STATE_DIR/archive}
+: ${IMAGE_DIR:=$STATE_DIR/image}
 
 # Small bind-mounted staging area for the few files Dockerfile.scratch needs at build time.
 : ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
 
-readonly DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
+readonly DOWNLOAD_DIR STATE_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
          INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
 
 #--[ Target platform ]
@@ -72,105 +56,61 @@ readonly PLATFORM
 
 #--[ Userland ]
 
-# Which userland the built system runs: the complete userspace
-# composition, init system included — PID 1 (systemd, or busybox's init
-# applet) is a userland program like the shell and core utilities it
-# ships alongside. Selects the umbrella package installed by `system
-# build` (bootable-$USERLAND), and — via SYSTEM_KEY below — keeps each
-# flavor's install tree, stamps, boot files and disk image separate so
-# they coexist without clobbering (same reasoning as the per-PLATFORM
-# keying; see feedback-cross-platform-stamp-contamination).
+# Which userland the built system runs, including init system.
 : ${USERLAND:=systemd-busybox}
 
 [ -f $PROJECT_DIR/package/bootable-$USERLAND.sh ] || bail "Unsupported userland '$USERLAND'"
 
-# The key ALWAYS includes the userland component — systemd-busybox-virt exactly
-# like busybox-virt — one uniform naming rule, no special-cased default (image
-# names, archive dirs, install trees and stamps all read the flavor off
-# the name, and no consumer needs to know which flavor is the default).
-SYSTEM_KEY=$USERLAND-$PLATFORM
+readonly USERLAND
 
 #--[ Capabilities ]
 
-# Opt-in features layered on top of the base system (space-separated,
-# e.g. CAPS="network 9p"). Each capability <cap> names a kernel config
-# fragment (package/linux/<cap>.config, folded into the kernel build by
-# package/linux.sh's prepare()) plus, optionally, packages the bootable-*
-# umbrellas require() when enabled (see network-config.sh/9p-config.sh) and
-# QEMU flags (see the qemu case below). Empty by default, so a build with
-# CAPS unset is byte-for-byte what existed before capabilities were added —
-# this project's own network-less Pi Zero depends on that staying true.
-# Consumers test membership with has_cap (lib/base.sh).
-: ${CAPS:=}
+# Set of opt-in features layered on top of the base system.
+readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
 
-for cap in $CAPS; do
-    [ -f $PROJECT_DIR/package/linux/$cap.config ] || bail "Unknown capability '$cap' (no package/linux/$cap.config)"
-done
+#--[ System key ]
 
-# Sorted + de-duplicated so any ordering of the same set of caps (e.g.
-# "9p network" vs "network 9p") lands on the identical SYSTEM_KEY below —
-# same install tree, stamps and image either way.
-CAPS=$(printf '%s\n' $CAPS | sort -u | xargs)
+# Helps differentiate the deliverables for each platform/userland combination.
+SYSTEM_KEY=$USERLAND-$PLATFORM
 
-# Folded into SYSTEM_KEY so each capability combination gets its own
-# install tree, stamps, boot dir and image — same reasoning as the
-# PLATFORM/USERLAND keying above. CRITICAL: with CAPS empty (the default) this
-# loop doesn't execute, so SYSTEM_KEY — and every existing build, stamp and
-# image for the no-caps case — is untouched.
+# Fold CAPS into SYSTEM_KEY so each capability combination gets its own deliverables.
 for cap in $CAPS; do
     SYSTEM_KEY=$SYSTEM_KEY+$cap
 done
 
-readonly USERLAND SYSTEM_KEY CAPS
+readonly SYSTEM_KEY
 
 #--[ Compilation ]
 
 export LC_ALL=POSIX
 
-# Support both Linux (nproc) and macOS (sysctl).
-export MAKEFLAGS=-j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+if command -v nproc >/dev/null 2>&1; then
+    export MAKEFLAGS=-j$(nproc)
+fi
 
 readonly LC_ALL MAKEFLAGS
 
-# Toolchain usr/bin LAST. Do NOT put toolchain usr/bin first — once glibc-linked binaries are
-# installed there they shadow host tools and fail (wrong ELF interpreter).
-# It still needs to be on PATH somewhere, though: build-time tools that
-# only the toolchain itself provides (e.g. pkgconf, needed by wget's own
-# configure) aren't on the host at all, so they're only found as a
-# fallback after host tools are checked first.
-# One PATH everywhere: cross tools first (always $target-prefixed, never
-# colliding with a bare host name), then the inherited PATH (/usr/bin —
-# the tools volume in the scratch container, the real system elsewhere),
-# then TOOL_DIR's own usr tree (the Debian seed needs the temp tools it
-# is building to progressively shadow apt's). /usr/bin ahead of
-# TOOL_DIR/usr/bin also makes configure-time tool discovery bake
-# /usr/bin/... paths, valid on every layout (the old guest-only M4
-# override existed purely because this was not true).
-PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
+# Toolchain usr/bin LAST. Do NOT put toolchain usr/bin first: once glibc-linked binaries are
+# installed there they shadow host tools and fail (wrong ELF interpreter).  It still needs to be on
+# PATH somewhere, though: build-time tools that only the toolchain itself provides (e.g. pkgconf)
+# aren't on the host at all, so they're only found as a fallback after host tools are checked
+# first.
+export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 
 readonly PATH
-export PATH
 
-# bison bakes the m4 path its configure found — in the containers that is
-# the tools volume, a path no booted guest has. Wherever a real
-# /usr/bin/m4 exists (any booted LFS; the scratch container via its /usr
-# aliasing), prefer it — existence, not phase. On the Debian seed there
-# is no /usr/bin/m4 and the baked TOOL_DIR path is the correct one.
+# bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists (any booted LFS;
+# the scratch container via its /usr aliasing), prefer it — existence, not phase. On the Debian
+# seed there is no /usr/bin/m4 and the baked TOOL_DIR path is the correct one.
 if [ -x /usr/bin/m4 ]; then
     : ${M4:=/usr/bin/m4}
     export M4
 fi
 
-
-# CA bundle used to verify TLS on source downloads (see fetch_url in
-# lib/base.sh): the SYSTEM path, everywhere. Debian ships one there; a
-# booted LFS has its own from-scratch bundle there (ca-certificates,
-# see bootable-systemd-busybox.sh); the FROM-scratch container gets the bundle
-# bootstrap staged into the work volume mounted read-only at this same
-# path (docker-compose.yaml) — so fetch_url always verifies against a
-# real bundle and never falls back to unverified transport.
+# CA bundle used to verify TLS on source downloads.
 : ${SSL_CERT_FILE:=/etc/ssl/certs/ca-certificates.crt}
 export SSL_CERT_FILE
+readonly SSL_CERT_FILE
 
 #--[ Installation ]
 
@@ -242,10 +182,7 @@ case "${1:-help}" in
         echo ""
         echo "Environment:"
         echo "  USERLAND         Userland flavor, init system included"
-        echo "                   (systemd-busybox (default), systemd,"
-        echo "                   busybox)"
-        echo "  CAPS             Capability set, e.g. \"network 9p\" (network, 9p,"
-        echo "                   usb, loop, amnesia)"
+        echo "  CAPS             Capability set"
         echo "  USB_DISK, QEMU_EXTRA, ROOT_VOLUME, IMAGE_SIZE"
         echo "                   See lib/qemu.sh and lib/image.sh"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi

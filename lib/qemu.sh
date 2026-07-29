@@ -1,11 +1,9 @@
-# Boot the built system's image in QEMU: `lfs qemu [IMAGE]`, IMAGE
-# defaulting to this SYSTEM_KEY's own image. Runs directly on the
-# development host (not in a container) — the kernel/DTB come from
-# WORK_DIR/boot, bind-mounted to the host precisely so this command can
-# read them (see docker-compose.yaml and lib/system.sh); the machine
-# model, console and disk wiring come from the platform file (QEMU,
-# QEMU_FLAGS, QEMU_APPEND, QEMU_DISK_IF), and the capability set (CAPS)
-# gates the optional devices below.
+# Boot the built system's image in QEMU.
+#
+# The kernel/DTB come from $WORK_DIR/boot, bind-mounted to the host precisely so this command can
+# read them; the machine model, console and disk wiring come from the platform file (QEMU,
+# QEMU_FLAGS, QEMU_APPEND, QEMU_DISK_IF), and the capability set (CAPS) gates the optional devices
+# below.
 qemu() {
     [ $# -le 1 ] || usage "qemu [IMAGE]"
     IMAGE="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}"

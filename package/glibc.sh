@@ -1,7 +1,7 @@
 # https://sourceware.org/glibc/manual/latest/html_node/Configuring-and-compiling.html
 
 : ${package_version:=2.43}
-: ${package_source:=https://ftpmirror.gnu.org/glibc/glibc-$package_version.tar.xz}
+: ${package_source:=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar.xz}
 : ${package_source_hash:=sha256:d9c86c6b5dbddb43a3e08270c5844fc5177d19442cf5b8df4be7c07cd5fa3831}
 
 prepare() {
