@@ -1,7 +1,7 @@
-# Install order for the whole optional gnupg family (see GNUPG-YUBIKEY.md
-# section 1) — nothing enforces this automatically, since these are all
-# invoked ad hoc via `./lfs install <pkg>` rather than from a dependency-
-# ordered build phase like build_system():
+# Install order for the whole optional gnupg family — nothing enforces
+# this automatically, since these are all invoked ad hoc via `./lfs
+# install <pkg>` rather than from a dependency-ordered build phase like
+# build_system():
 #
 #   zlib -> libgpg-error -> npth -> libassuan -> libksba -> libgcrypt ->
 #   libusb -> gmp -> nettle -> libtasn1 -> gnutls -> gnupg -> pinentry
@@ -25,20 +25,22 @@
 #
 # --disable-dirmngr was DROPPED, and dirmngr now genuinely builds. dirmngr
 # is the daemon gpg shells out to for keyserver access; the goal was
-# reaching it eventually reaching hkps:// (HTTPS) keyservers (see GNUPG-
-# YUBIKEY.md). gnupg-2.5.17's own configure.ac hard-requires a TLS backend
-# (NTBTLS or GnuTLS) to build dirmngr AT ALL — there is no "build it, just
-# skip HTTPS" middle ground; dirmngr's networking layer needs one even for
-# plain hkp://. Without either, configure prints "*** Neither NTBTLS nor
-# GNUTLS available - not building dirmngr." and simply omits it (not a
-# fatal error — confirmed empirically before GnuTLS was added: gpg/gpg-
-# agent/scdaemon/pinentry-tty all still built and ran fine; no dirmngr
-# binary existed in the install tree at all). GnuTLS (package/gnutls.sh)
-# is now built ahead of gnupg in the install order above, and configure.ac
-# detects it automatically via pkg-config (PKG_CHECK_MODULES([LIBGNUTLS],
-# [gnutls >= 3.2]) — see NEED_GNUTLS_VERSION in gnupg's own configure.ac),
-# the same PKG_CONFIG_LIBDIR/_SYSROOT_DIR mechanism package/systemd.sh
-# already established for cross pkg-config lookups — see prepare() below.
+# reaching hkps:// (HTTPS) keyservers — proven end-to-end against
+# keys.openpgp.org through the project's own from-scratch CA store, on a
+# network-capability guest. gnupg-2.5.17's own configure.ac hard-requires
+# a TLS backend (NTBTLS or GnuTLS) to build dirmngr AT ALL — there is no
+# "build it, just skip HTTPS" middle ground; dirmngr's networking layer
+# needs one even for plain hkp://. Without either, configure prints "***
+# Neither NTBTLS nor GNUTLS available - not building dirmngr." and simply
+# omits it (not a fatal error — confirmed empirically before GnuTLS was
+# added: gpg/gpg-agent/scdaemon/pinentry-tty all still built and ran fine;
+# no dirmngr binary existed in the install tree at all). GnuTLS
+# (package/gnutls.sh) is now built ahead of gnupg in the install order
+# above, and configure.ac detects it automatically via pkg-config
+# (PKG_CHECK_MODULES([LIBGNUTLS], [gnutls >= 3.2]) — see
+# NEED_GNUTLS_VERSION in gnupg's own configure.ac), the same
+# PKG_CONFIG_LIBDIR/_SYSROOT_DIR mechanism package/systemd.sh already
+# established for cross pkg-config lookups — see prepare() below.
 : ${package_version:=2.5.17}
 : ${package_source:=https://gnupg.org/ftp/gcrypt/gnupg/gnupg-$package_version.tar.bz2}
 : ${package_source_hash:=sha256:2c1fbe20e2958fd8fb53cf37d7c38e84a900edc0d561a1c4af4bc3a10888685d}

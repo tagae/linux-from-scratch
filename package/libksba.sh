@@ -2,9 +2,9 @@
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libksba/libksba-$package_version.tar.bz2}
 : ${package_source_hash:=sha256:cf72510b8ebb4eb6693eef765749d83677a03c79291a311040a5bfd79baab763}
 
-# X.509/CMS support, required to build gnupg (see GNUPG-YUBIKEY.md). Links
-# against libgpg-error — see libassuan.sh for why target_sysroot_cc and the
-# explicit --with-libgpg-error-prefix are both needed.
+# X.509/CMS support, required to build gnupg. Links against libgpg-error —
+# see libassuan.sh for why target_sysroot_cc and the explicit
+# --with-libgpg-error-prefix are both needed.
 : ${build:=$(gcc -dumpmachine)}
 target_sysroot_cc
 

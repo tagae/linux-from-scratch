@@ -1,4 +1,28 @@
+# Build Toolchain
+# ---------------
+#
+# This file contains all the utilities needed to build a build toolchain.
+# The toolchain can then be used to build Linux systems for different platforms.
+#
+# The system on which the tools are being built is called the build system.
+# The system on which the tools will run is called the host system.
+# The system for which the resulting cross compiler generates code is called the target system.
+#
+# When build == host == target, we have a native toolchain.
+# When build == host != target, we have a cross toolchain.
+# When build != host == target, we have a cross-native toolchain.
+# When build != host != target, we have a Canadian toolchain.
+
+# See https://www.airs.com/ian/configure/configure_5.html
+
 tools() {
+    : ${target_arch:=$(uname -m)}
+    : ${target_vendor:=scratch}
+    : ${target_kernel:=linux}
+    : ${target_abi:=gnu}
+    readonly target_arch target_vendor target_kernel target_abi
+    readonly target_triplet=$target_arch-$target_vendor-$target_kernel-$target_abi
+
     case "${1:-help}" in
         bootstrap) bootstrap_tools ;;
         build)     build_tools ;;
@@ -11,27 +35,27 @@ tools() {
 }
 
 bootstrap_tools() {
-
     readonly nls=no
     readonly multilib=no
 
-    # Kernel headers use this project's own $ARCH naming (arm64/arm/...),
-    # not uname -m's — same mapping virt.sh already uses to pick $ARCH for
-    # the (usually aarch64) build host, needed below for the native
-    # toolchain's own headers (see package/linux.sh's cross_arch). Also
-    # builds native_target below, the build host's own triple in the same
-    # $ARCH-$vendor-linux-gnu[eabihf] shape platform files use for $target.
     case "$(uname -m)" in
-        aarch64|arm64) readonly native_arch=arm64; readonly native_target=aarch64-native-linux-gnu ;;
-        armv6l|armv7l) readonly native_arch=arm;   readonly native_target=arm-native-linux-gnueabihf ;;
-        x86_64)        readonly native_arch=x86;   readonly native_target=x86_64-native-linux-gnu ;;
+        aarch64|arm64)
+            readonly native_arch=arm64
+            readonly native_target=aarch64-native-linux-gnu
+            ;;
+        armv6l)
+            readonly native_arch=arm
+            readonly native_target=arm-native-linux-gnueabihf
+            ;;
+        x86_64)
+            readonly native_arch=x86;
+            readonly native_target=x86_64-native-linux-gnu
+            ;;
         *) bail "Unsupported native architecture $(uname -m)" ;;
     esac
 
-    # --- Cross Toolchain Pass 1 (throwaway) ------------------
-    # Builds the per-target sysroot glibc below. Linked against the
-    # host's own (Debian) glibc —a throwaway tool that only ever runs here,
-    # never copied into the scratch image, so it needs no relocation.
+    # --- Cross Toolchain Pass 1 ------------------
+
     (
         readonly package_variant=pass1-$target
         readonly package_install_dir=/
@@ -40,31 +64,95 @@ bootstrap_tools() {
         readonly build_sysroot=$TOOL_DIR/$target
 
         # Cross-assembler and linker.
-        gprofng=no werror=no new_dtags=yes default_hash_style=gnu install binutils
+        ( gprofng=no werror=no new_dtags=yes default_hash_style=gnu; install binutils )
+        _build_gcc_prereqs
 
         # Minimal C cross-compiler to build glibc.
-        glibc_version=$(version glibc) \
-        newlib=yes headers=no \
-        default_pie=yes default_ssp=yes \
-        fixincludes=no \
-        shared=no threads=no \
-        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no\
-        languages=c,c++ \
-        install gcc
+        (
+            glibc_version=$(version glibc)
+            newlib=yes headers=no
+            default_pie=yes default_ssp=yes
+            fixincludes=no shared=no threads=no
+            libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no
+            languages=c,c++
+            install gcc
+        )
     )
 
-    # --- Native runtime toolchain
-    # build-host arch, shared by every target platform
-    (
-        readonly package_variant=tools
-        readonly cross_target=
-        package_install_dir=$TOOL_DIR
-        prefix=/usr
+   _bootstrap_build_host
+    exit 0
 
-        cross_arch=$native_arch install linux#headers
+    # --- Per-target sysroot (one per distinct $target
+    # glibc: never executed —only ever linked/read against by pass2 below.
+    (
+        readonly package_variant=$target
+        package_install_dir=$TOOL_DIR/$target
+        prefix=/usr
+        unset LDFLAGS
+
+        install linux#headers
         nscd=no enable_kernel=5.10 werror=no install glibc
     )
 
+    # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
+    # Genuine cross-compiler: no --host, only --target=$target (the
+    # default cross_target in gcc.sh/binutils.sh), so binaries are
+    # $target-prefixed (e.g. aarch64-scratch-linux-gnu-gcc) and execute on
+    # the build host (this scratch container, via the native glibc/
+    # libstdc++ above — inherited LDFLAGS bakes that in) while emitting
+    # $target code. --with-sysroot bakes in the per-target sysroot above,
+    # so $target-gcc alone finds the right target glibc/headers with no
+    # extra flags at build_system() time.
+    (
+        readonly package_variant=$target
+        readonly package_install_dir=/
+        prefix=$TOOL_DIR
+        readonly sysroot=$TOOL_DIR/$target
+        readonly build_sysroot=$TOOL_DIR/$target
+
+        gprofng=no werror=no install binutils
+
+        _build_gcc_prereqs
+
+        _tools_install_full_gcc
+    )
+
+    # Verify the cross-compiler references our glibc dynamic linker.
+    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
+    readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
+    rm -f a.out
+
+    _bootstrap_stage_for_scratch
+}
+
+_build_gcc_prereqs() {
+    install gmp
+    (
+        export CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}"
+        install mpfr
+        install mpc
+    )
+
+    # These variables feed gcc.sh's "${gmp:+--with-gmp=$gmp}", etc.
+    gmp=$TOOL_DIR
+    mpfr=$TOOL_DIR
+    mpc=$TOOL_DIR
+    export LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
+}
+
+_bootstrap_build_host() {
+    # --- Native toolchain
+    (
+        readonly package_variant=tools
+        package_install_dir=$TOOL_DIR
+        prefix=/usr
+
+        install linux#headers
+        exit 0
+        nscd=no enable_kernel=5.10 werror=no install glibc
+    )
+
+    exit 0
     # Bake the real (TOOL_DIR-relative) dynamic linker path and rpath into
     # every remaining native binary at link time. Exported here in the outer
     # (non-subshell) scope, *before* pass1-native builds below, so it
@@ -117,18 +205,14 @@ bootstrap_tools() {
     (
         readonly package_variant=pass1-$native_target
         readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
+        prefix=$TOOL_DIR
         readonly cross_target=$native_target
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
 
         gprofng=no werror=no install binutils
 
-        glibc_version=$(version glibc) languages=c,c++ \
-        shared=yes threads=yes libstdcxx=yes \
-        fixincludes=no \
-        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
-        install gcc
+        _tools_install_full_gcc
     )
 
     # Bare "gcc"/"cc"/"as"/"ld"/etc: what the temporary tools further down,
@@ -147,8 +231,8 @@ bootstrap_tools() {
     # is simpler and just as correct: anything that would have configured
     # a genuinely native gcc anyway just gets its bare names for free.
     for _tool in gcc cc g++ c++ cpp gcov gcov-tool gcc-ar gcc-nm gcc-ranlib \
-                 as ld ld.bfd ar nm objcopy objdump ranlib strip \
-                 addr2line readelf size strings; do
+                     as ld ld.bfd ar nm objcopy objdump ranlib strip \
+                     addr2line readelf size strings; do
         [ -x "$TOOL_DIR/bin/$native_target-$_tool" ] || continue
         ln -sfv "$TOOL_DIR/bin/$native_target-$_tool" "$TOOL_DIR/usr/bin/$_tool"
     done
@@ -167,8 +251,8 @@ bootstrap_tools() {
     # compiles ./ninja and then executes it. cp -a preserves the soname
     # symlink chain (libstdc++.so.6 -> libstdc++.so.6.0.NN).
     cp -av $TOOL_DIR/$native_target/lib64/libstdc++.so.6* \
-           $TOOL_DIR/$native_target/lib64/libgcc_s.so.1 \
-           $TOOL_DIR/usr/lib/
+       $TOOL_DIR/$native_target/lib64/libgcc_s.so.1 \
+       $TOOL_DIR/usr/lib/
 
     # --- Temporary tools (glibc-linked, native, relocatable) --------
     #
@@ -250,26 +334,8 @@ bootstrap_tools() {
         install wget
     )
 
-    # --- CA trust store: build our own bundle here, in bootstrap -------
-    # Generate the CA certificate bundle from Mozilla's certdata.txt now, in
-    # the bootstrap (Debian) container, so it exists BEFORE the scratch phase
-    # runs — letting that phase verify TLS against OUR OWN trust store from
-    # its very first download (eating our own dog food) instead of a copy of
-    # Debian's bundle. The chain's own sources download verified by Debian's
-    # bundle (this phase's SSL_CERT_FILE), exactly as every other bootstrap
-    # source already does — Debian's certs authenticate the downloads, but
-    # Debian's bundle *file* is never used as the scratch phase's trust anchor.
-    #
-    # openssl (make-ca's crypto backend) and pkgconf (p11-kit's meson
-    # dependency probe) come from the temp-tools subshell above; python3 for
-    # meson/ninja is the Debian container's own (it ships no ninja/meson, so
-    # build them here — they are also build_tools() members, stamp-shared, so
-    # that later call fast-paths). CC/CXX are pointed explicitly at the native
-    # cross-compiler: unlike the scratch phase, bare `gcc` here resolves to
-    # Debian's own (PATH order), which would link p11-kit's `trust` against
-    # Debian glibc and leave it unable to run in the FROM-scratch container.
-    # meson/ninja honor CC/CXX from the environment; autoconf (libffi/
-    # libtasn1) via --host below.
+    # Generate the CA certificate bundle from Mozilla's certdata.txt as part of bootstrap, for use
+    # during the scratch phase.
     (
         readonly package_variant=tools
         package_install_dir=$TOOL_DIR
@@ -296,67 +362,21 @@ bootstrap_tools() {
         install make-ca
         install ca-certificates
     )
+}
 
-    # --- Per-target sysroot (one per distinct $target; virt/pi4/pi5
-    # share one since they all use the same target triplet) ----------
-    # Never executed — only ever linked/read against by pass2 below — so
-    # deliberately does NOT inherit the native LDFLAGS set above: glibc's
-    # own build has its own internal linking conventions for the dynamic
-    # linker it's building, and the native rpath override would just be
-    # foreign noise at best.
-    (
-        readonly package_variant=$target
-        package_install_dir=$TOOL_DIR/$target
-        prefix=/usr
-        unset LDFLAGS
-
-        install linux#headers
-        nscd=no enable_kernel=5.10 werror=no install glibc
-    )
-
-    # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
-    # Genuine cross-compiler: no --host, only --target=$target (the
-    # default cross_target in gcc.sh/binutils.sh), so binaries are
-    # $target-prefixed (e.g. aarch64-scratch-linux-gnu-gcc) and execute on
-    # the build host (this scratch container, via the native glibc/
-    # libstdc++ above — inherited LDFLAGS bakes that in) while emitting
-    # $target code. --with-sysroot bakes in the per-target sysroot above,
-    # so $target-gcc alone finds the right target glibc/headers with no
-    # extra flags at build_system() time.
-    (
-        readonly package_variant=$target
-        readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
-        readonly sysroot=$TOOL_DIR/$target
-        readonly build_sysroot=$TOOL_DIR/$target
-
-        gprofng=no werror=no install binutils
-
-        glibc_version=$(version glibc) languages=c,c++ \
-        shared=yes threads=yes libstdcxx=yes \
-        fixincludes=no \
-        libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
-        install gcc
-    )
-
-    # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
-    readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
-    rm -f a.out
-
+# Container-only post-processing once the cross-compiler is built:
+# patchelf-based rpath relocation (patchelf, like the rest of the build
+# host, only exists in the bootstrap container; a guest's pass2 gcc
+# already gets a correct rpath at link time from _tools_set_rtld_ldflags,
+# itself only exported inside _bootstrap_build_host above, so there is
+# nothing left to relocate in guest phase anyway) and staging the
+# toolchain/CA bundle where Dockerfile.scratch's build (work/certs,
+# SCRATCH_INIT_DIR) can reach them. A guest has no scratch container to
+# stage for, so bootstrap_tools() calls this only outside guest phase too.
+_bootstrap_stage_for_scratch() {
     _tools_relocate
 
-    # Stage our own generated CA bundle (built by the cert chain above from
-    # Mozilla's certdata.txt, never Debian's) where the scratch phase's
-    # SSL_CERT_FILE points (see lfs). $WORK_DIR is the shared `work` volume —
-    # mounted in both the bootstrap and scratch containers — so a copy here
-    # reaches the scratch phase with no extra mount, the same way the toolchain
-    # itself does. Kept separate from the in-tree $TOOL_DIR/etc/ssl store the
-    # ca-certificates package installs, so the build's trust anchor is one
-    # explicit, dedicated file (cf. the staged bash in $SCRATCH_INIT_DIR).
-    # -f: make-ca leaves the bundle read-only (0444), so a re-run (another
-    # `make tools`) must be able to replace an existing, unwritable copy —
-    # cp -f removes it and retries rather than failing with EACCES.
+    # Stage our own generated CA bundle.
     mkdir -p $WORK_DIR/certs
     cp -fv $TOOL_DIR/etc/ssl/certs/ca-certificates.crt $WORK_DIR/certs/ca-certificates.crt
 
@@ -392,7 +412,7 @@ build_tools() {
 
     # pkgconf's own compiled-in default search path is the literal
     # /usr/lib/pkgconfig — same story as GCONV_PATH above. This is a
-    # separate `./lfs tools build` invocation from tools_bootstrap, which
+    # separate `./lfs tools build` invocation from bootstrap_tools, which
     # sets the same export for its own process; it doesn't carry over.
     export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
 
@@ -512,6 +532,21 @@ build_tools() {
     install multipath-tools#kpartx
 }
 
+# The full, real gcc build — shared verbatim by Cross Toolchain Pass 2
+# (the shipped $target cross-compiler) and pass1-native (the build
+# host's own compiler, which deliberately mirrors pass 2 rather than
+# real pass 1's newlib/no-libc shape — see its call site for why).
+# Everything scenario-specific (package_variant, prefix, sysroot,
+# cross_target, the _build_gcc_prereqs handoff) is the caller's own
+# subshell state.
+_tools_install_full_gcc() {
+    glibc_version=$(version glibc) languages=c,c++ \
+    shared=yes threads=yes libstdcxx=yes \
+    fixincludes=no \
+    libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no \
+    install gcc
+}
+
 # Every native binary from here on (the temporary tools, build_tools()'s
 # own output, and the cross-compilers' own executables) should carry a
 # correct, TOOL_DIR-relative interpreter/rpath pointing at the native
@@ -525,7 +560,7 @@ _tools_set_rtld_ldflags() {
     # glibc, and the native libstdc++/libgcc_s staged next to it after
     # pass1-native (see bootstrap_tools), all live there.
     #
-    # Deliberately no -L$TOOL_DIR/usr/lib here (tried it, reverted):
+    # Deliberately no -L$TOOL_DIR/lib here (tried it, reverted):
     # inside the *bootstrap* container specifically, that makes ld find
     # TOOL_DIR's own libc.so — a linker script whose internal references
     # are bare, root-relative paths (/usr/lib/libc.so.6), correct only

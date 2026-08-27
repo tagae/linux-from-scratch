@@ -2,8 +2,9 @@
 .env
 /.idea/
 /archive/
+/download/
+/image/
 /install/
 /source/
-/sysroot/
 /tools/
 /work/

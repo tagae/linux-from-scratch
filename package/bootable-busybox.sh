@@ -1,6 +1,6 @@
 # Umbrella meta-package: a bootable Busybox-only system, with busybox as
-# PID 1 (its init applet). `INIT=busybox ./lfs system build` installs this.
-# Sibling of bootable-systemd.sh; see it and lib/package.sh for how umbrella
+# PID 1 (its init applet). `USERLAND=busybox ./lfs system build` installs this.
+# Sibling of bootable-systemd-busybox.sh; see it and lib/package.sh for how umbrella
 # meta-packages work.
 #
 # Far shorter member list than the systemd flavor: busybox is built static
@@ -17,7 +17,7 @@ depends() {
     # members install through the /bin -> usr/bin etc. links it lays down.
     require system-files
 
-    # CA trust store — see bootable-systemd.sh for why this is safe and
+    # CA trust store — see bootable-systemd-busybox.sh for why this is safe and
     # cheap even in this static, glibc-less flavor (no runtime dependency
     # on the target at all, just PEM files).
     require ca-certificates
@@ -34,28 +34,28 @@ depends() {
     # script into the /etc/init.d it creates. Absent from CAPS (the
     # default), neither require() below ever runs, so a no-caps build is
     # unaffected.
-    case " ${CAPS:-} " in
-        *" network "*) require network-config ;;
-    esac
-    case " ${CAPS:-} " in
-        *" 9p "*) require 9p-config ;;
-    esac
-    case " ${CAPS:-} " in
-        *" amnesia "*) require amnesia-config ;;
-    esac
+    if has_cap network; then require network-config; fi
+    if has_cap 9p; then require 9p-config; fi
+    if has_cap amnesia; then require amnesia-config; fi
 
     # Kernel image, DTBs and modules. BISON_PKGDATADIR: the kernel's kconfig
     # parser generation (allnoconfig/olddefconfig, in linux.sh's prepare())
     # shells out to bison, whose compiled-in default pkgdatadir is the
     # literal /usr/share/bison — this container's empty real root, not
-    # TOOL_DIR-relative (see bootable-systemd.sh's glibc install for the
+    # TOOL_DIR-relative (see bootable-systemd-busybox.sh's glibc install for the
     # same fixup).
     ( export BISON_PKGDATADIR=$TOOL_DIR/usr/share/bison; require linux )
 
     # Boot partition files (cmdline.txt + config.txt) — Pi platforms only,
     # for real hardware; QEMU loads the kernel directly and ignores them.
+    # Also the GPU/bootloader firmware (bootcode.bin/start.elf/fixup.dat +
+    # overlays — package/firmware.sh): real hardware's boot ROM can't start
+    # the kernel without these on the FAT partition; QEMU ignores them too
+    # (same reasoning as boot#cmdline/#config above), so this is
+    # regression-neutral for every existing QEMU-only Pi boot.
     if [ -n "${DTB:-}" ]; then
         require boot#cmdline
         require boot#config
+        require firmware
     fi
 }

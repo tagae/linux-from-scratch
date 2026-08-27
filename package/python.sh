@@ -4,7 +4,8 @@
 
 package_source_dir=$SOURCE_DIR/Python-$package_version
 
-# build=: see m4.sh's copy of this guard (SELF-HOST.md M3 target build).
+# build=: see m4.sh's copy of this guard (the target build that ships this
+# tool to the guest as an archive tarball).
 # build_python: the native python3 CPython's own cross-build process needs
 # to run at BUILD time (freezing importlib, running Parser/pgen, deriving
 # platform constants it can't cross-derive by static analysis alone) —
@@ -46,7 +47,15 @@ fi
 
 prepare() {
     : ${shared:=yes}
-    : ${optimizations:=yes}
+    # PGO (--enable-optimizations) RUNS the freshly-built interpreter to
+    # collect profile data — impossible for a cross/target build, where the
+    # target binary can't execute on the build host (fails at the
+    # profile-run-stamp step with "Error 127"). Default it OFF when
+    # cross-compiling (host set by target_build_env) and ON for a native
+    # build (host unset — tools phase / guest phase), so a bare
+    # `./lfs install python` for a target works without the caller needing
+    # to remember the knob.
+    : ${optimizations:=$([ -n "${host:-}" ] && echo no || echo yes)}
     : ${static_libpython:=no}
 
     # Same patch the LFS book applies for this exact package/version — the
@@ -54,7 +63,8 @@ prepare() {
     # sidestep (Python 3.14's _ssl.c referenced TLSv1_method, which OpenSSL
     # 4.0 dropped); it also carries a few unrelated upstream CVE fixes
     # bundled into the same "consolidated_fixes" patch.
-    patch_source https://www.linuxfromscratch.org/patches/lfs/development/Python-$package_version-consolidated_fixes-1.patch
+    patch_source https://www.linuxfromscratch.org/patches/lfs/development/Python-$package_version-consolidated_fixes-1.patch \
+        sha256:2b10cd96a07e8c45de3ac5d5f4c7e24c10df720c529fd2de3ffec809e559d311
 
     # ac_cv_buggy_getaddrinfo: cross-compiling can't run Python's own
     # getaddrinfo(3) behavior probe (needs to compile-AND-run a test

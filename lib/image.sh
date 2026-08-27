@@ -110,10 +110,10 @@ find_partitions() {
             [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
         fi
     else
-        # Guest phase fallback (SELF-HOST.md M4): kpartx is container-only
-        # build-time tooling (see lib/tools.sh's build_tools(), never a
-        # member of any bootable-$INIT umbrella) and genuinely absent on
-        # the guest. But the container-only problem above doesn't apply
+        # Guest phase fallback: kpartx is container-only build-time tooling
+        # (see lib/tools.sh's build_tools(), never a member of any
+        # bootable-$USERLAND umbrella) and genuinely absent on the guest. But
+        # the container-only problem above doesn't apply
         # here — the guest boots a real kernel with a real, working
         # devtmpfs (CONFIG_DEVTMPFS_MOUNT=y, see package/linux/base.config),
         # so losetup -P's own kernel-level partition scanning (attach_image,
@@ -167,19 +167,6 @@ populate_image() {
     fi
 }
 
-unmount_all() {
-    if [ -n "${BASE_DIR:-}" ]; then
-        if [ -d "${BOOT_DIR:-}" ] && mountpoint -q "$BOOT_DIR" 2>/dev/null; then
-            umount -v $BOOT_DIR
-        fi
-        if [ -d "$BASE_DIR" ] && mountpoint -q "$BASE_DIR" 2>/dev/null; then
-            umount -v $BASE_DIR
-        fi
-    fi
-    detach_image
-    unset BASE_DIR ROOT_DIR BOOT_DIR DEVICE BOOT_DEVICE BASE_DEVICE
-}
-
 unmount_partitions() {
     if [ -n "${BASE_DIR:-}" ]; then
         if [ -d "${BOOT_DIR:-}" ] && mountpoint -q "$BOOT_DIR" 2>/dev/null; then
@@ -191,7 +178,11 @@ unmount_partitions() {
     fi
 }
 
-image_cleanup() {
+# The one cleanup chain: called explicitly at the end of build_image, and
+# as lfs's EXIT trap (where the unset is harmless and the guards above
+# make every step a no-op if nothing is mounted/attached).
+unmount_all() {
     unmount_partitions
     detach_image
+    unset BASE_DIR ROOT_DIR BOOT_DIR DEVICE BOOT_DEVICE BASE_DEVICE
 }

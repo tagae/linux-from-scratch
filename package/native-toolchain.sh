@@ -1,60 +1,17 @@
-# Guest-native toolchain: binutils, gcc and make built as TARGET packages —
-# host=$target (not the usual host=build cross-compiler these scripts
-# normally produce), so the resulting binaries RUN on $target and EMIT
-# $target code, i.e. they execute inside the booted system itself, rather
-# than in the build container (see SELF-HOST.md milestone M1: "target
-# packages for binutils/gcc/make ... compile and run hello.c natively").
-#
-# Optional, like the gnupg family: not a member of any bootable-$INIT
-# umbrella, installed on demand via `./lfs install native-toolchain`
-# (target_build_env supplies the install scenario — host=$target,
-# package_install_dir=$INSTALL_DIR/$SYSTEM_KEY, ...). package_meta=yes:
-# depends() below is the whole recipe (see _install in lib/package.sh),
-# same shape as bootable-systemd.sh/bootable-busybox.sh.
-#
-# gcc needs gmp/mpfr/mpc as HOST libraries (gcc's own "host" = $target
-# here — the same build/host/target three-way split every gcc build
-# already goes through, see gcc.sh's cross_target comment). gcc.sh's
-# fetch() always symlinks gmp/mpfr/mpc source into the gcc tree so its own
-# build can bundle them, but building those bundled copies this way (host=
-# $target, build=container, a "Canadian cross") would hit the exact same
-# cross_compiling=maybe ambiguity gmp.sh's own comment describes, with no
-# knob to fix it from outside gcc's own submodule build. So instead they
-# are built here as their own already-proven target packages first (gmp.sh
-# already supports this — nettle.sh already pulls in a target gmp the same
-# way) and handed to gcc via --with-gmp/--with-mpfr/--with-mpc (see
-# gcc.sh), which makes gcc's own configure skip its bundled copies
-# entirely and link these instead.
+# Native toolchain: `binutils`, `gcc` and `make` built as TARGET packages, with host=$target (not
+# the usual host=build cross-compiler), so the resulting binaries RUN on $target and EMIT $target
+# code.
 #
 # A version is required only because the framework derives every package's
-# own work/stamp paths from it (there is no source to download) — see
-# bootable-systemd.sh's identical comment.
+# own work/stamp paths from it (there is no source to download).
 : ${package_version:=0.1.0}
+
 package_meta=yes
 
 depends() {
-    # Kernel UAPI headers: deliberately absent from the target tree (every
-    # package script that touches this says so) — the system's own glibc
-    # build only ever used $TOOL_DIR/$target's copy at ITS build time,
-    # never installing them into $INSTALL_DIR/$SYSTEM_KEY (glibc's own
-    # install() copies only its own headers there). This coexists fine
-    # with glibc's headers already in that tree: kernel headers own only
-    # linux/, asm/, asm-generic/, etc. — namespaces glibc never installs
-    # into. cross_arch defaults to $ARCH (linux.sh), already right for
-    # this platform's own headers.
+    # Kernel UAPI headers.
     require linux#headers
 
-    # gmp/mpfr/mpc, host=$target — see the header comment. mpfr.sh/mpc.sh
-    # carry their own build=/target_sysroot_cc guards now (mirroring
-    # nettle.sh); gmp.sh already had a build= guard of its own too, BUT it
-    # (like every other package's copy of this idiom) derives it from
-    # `cc -dumpmachine`, and no package here ever installs a bare "cc"
-    # (only "gcc" — see mpfr.sh's comment on its own copy of this guard)
-    # — so gmp.sh's own fallback silently resolves to an empty build=,
-    # defeating its purpose. Set it explicitly here instead of editing
-    # gmp.sh itself (shared with the gnupg family, unrelated to this
-    # package) — an already-set build= short-circuits gmp.sh's own `:
-    # ${build:=...}` no-op.
     (
         build=$(gcc -dumpmachine)
         require gmp
@@ -62,17 +19,6 @@ depends() {
     require mpfr
     require mpc
 
-    # Binutils, host=$target: no different from any other target package
-    # build (see the gnupg family) — binutils itself links nothing
-    # installed into the target tree, so no target_sysroot_cc is needed;
-    # plain --host=$target already resolves (via bare PATH lookup) to the
-    # existing $target-gcc cross-compiler (pass2, from $TOOL_DIR/bin) to
-    # build it, the same compiler pass2 itself was built with. cross_target
-    # defaults to $target already (binutils.sh), so host=target=target — a
-    # native binutils, just cross-built. gprofng=no/werror=no mirrors
-    # pass2's own choice in lib/tools.sh (gprofng needs a native perl/bison
-    # setup on the *host*, irrelevant/untested here; werror=no as a general
-    # new-compiler-vs-old-source safety margin).
     (
         build=$(gcc -dumpmachine)
         gprofng=no werror=no \

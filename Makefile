@@ -1,137 +1,65 @@
 .PHONY: \
-	tools tools-% \
-	system system-% \
+	tools %-tools \
+	system %-system \
 	image \
-	qemu qemu-% \
-	test test-% \
-	systemd-system systemd-system-% \
-	systemd-image \
-	systemd-qemu systemd-qemu-% \
-	systemd-test systemd-test-% \
-	busybox-system busybox-system-% \
-	busybox-image \
-	busybox-qemu busybox-qemu-% \
-	busybox-test busybox-test-% \
-	network-system network-image network-qemu network-test \
-	reinstall-tools reinstall-system \
+	qemu %-qemu \
+	test %-test \
 	clean distclean \
 	FORCE
 
-# Whatever depends on FORCE will be considered out of date, since it depends on nothing.
-FORCE:
-
-# Keep intermediate files, in particular image/%.img. Otherwise, they would be deleted.
+# Keep all intermediate files, in particular image/*.img. Otherwise, make deletes them.
 .SECONDARY:
 
 # The `test` goal covers the whole chain for the `virt` platform:
 # tools, system, image, and emulation.
 .DEFAULT_GOAL := test
 
-tools: tools-virt
-system: systemd-system-virt
-image: image/virt.img
-qemu: systemd-qemu-virt
-test: systemd-test-virt
+# Whatever depends on FORCE will be considered out of date, since it depends on nothing.
+FORCE:
 
-systemd-system: systemd-system-virt
-systemd-image:  image/virt.img
-systemd-qemu:   systemd-qemu-virt
-systemd-test:   systemd-test-virt
+USERLAND ?= systemd
 
-# Busybox-init flavor (INIT=busybox): the same chain, a separate install
-# tree / boot dir / image (image/busybox-<platform>.img) so it coexists
-# with the default systemd flavor.
-busybox-system: busybox-system-virt
-busybox-image:  image/busybox-virt.img
-busybox-qemu:   busybox-qemu-virt
-busybox-test:   busybox-test-virt
+CAPS ?=
+empty :=
+space := $(empty) $(empty)
+CAPS_KEY := $(if $(strip $(CAPS)),+$(subst $(space),+,$(sort $(CAPS))))
 
 .env:
-	echo HOST_UID=$$(id -u) >> $@
-	echo HOST_GID=$$(id -g) >> $@
-	echo LFS_RELEASE=r13.0-143-systemd >> $@
-	echo DISTRIB_CODENAME=$$(id -un) >> $@
-	echo VERSION_CODENAME=$$(id -un) >> $@
+	@echo HOST_UID=$$(id -u) >> $@
+	@echo HOST_GID=$$(id -g) >> $@
+	@echo LFS_RELEASE=r13.0-143-systemd >> $@
 
-tools-%: .env
+%-tools: .env
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 6: Cross Compiling Temporary Tools
 	PLATFORM=$* docker compose run --build --rm bootstrap ./lfs tools bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	PLATFORM=$* docker compose run --build --rm scratch ./lfs tools build
 
-# ---- systemd flavor (the default; image is bare image/<platform>.img) ----
-systemd-system-%: tools-%
+%-system: %-tools
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
-	PLATFORM=$* INIT=systemd docker compose run --rm scratch ./lfs system build
+	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm scratch ./lfs system build
 
-image/%.img: systemd-system-% FORCE
+image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img: %-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* INIT=systemd docker compose run --rm --user 0:0 scratch ./lfs image build
+	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm --user 0:0 scratch ./lfs image build
 
-systemd-test-%: image/%.img
-	./test $* systemd
+%-test: image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img
+	./test $* $(USERLAND) "$(CAPS)"
 
-systemd-qemu-%: image/%.img
-	PLATFORM=$* INIT=systemd ./lfs qemu
+%-qemu: image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img
+	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" ./lfs qemu
 
-# ---- busybox-init flavor (image is image/busybox-<platform>.img) ----
-# Same shape as the systemd rules above; shares the toolchain (tools-%).
-busybox-system-%: tools-%
-	PLATFORM=$* INIT=busybox docker compose run --rm scratch ./lfs system build
-
-image/busybox-%.img: busybox-system-% FORCE
-	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* INIT=busybox docker compose run --rm --user 0:0 scratch ./lfs image build
-
-busybox-test-%: image/busybox-%.img
-	./test $* busybox
-
-busybox-qemu-%: image/busybox-%.img
-	PLATFORM=$* INIT=busybox ./lfs qemu
-
-# ---- opt-in "network" capability (CAPS=network; virt/systemd only for
-# now — capabilities are proven here first; a %-pattern version can follow
-# once a Pi platform actually has a NIC driver, see network.config) ----
-network-system: tools-virt
-	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm scratch ./lfs system build
-
-image/virt+network.img: network-system FORCE
-	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=virt INIT=systemd CAPS=network docker compose run --rm --user 0:0 scratch ./lfs image build
-
-network-image: image/virt+network.img
-
-network-test: image/virt+network.img
-	./test virt systemd network
-
-network-qemu: image/virt+network.img
-	PLATFORM=virt INIT=systemd CAPS=network ./lfs qemu
-
-# ---- unprefixed shortcuts for the default (systemd) flavor ----
-# A recipe-less pattern rule can't act as an alias (make then reports "no
-# rule to make target"), so these delegate to the systemd-<verb>-% rule via
-# a sub-make. Bare `system`/`qemu`/`test` alias the systemd goals directly
-# (above), so only the per-platform pattern forms need this.
-system-%: ; @$(MAKE) systemd-system-$*
-test-%:   ; @$(MAKE) systemd-test-$*
-qemu-%:   ; @$(MAKE) systemd-qemu-$*
-
-reinstall-tools:
-	docker compose run --rm scratch find work -name '.install-*' -delete
-	docker volume rm -f linux-from-scratch_tools
-	$(MAKE) tools
-
-reinstall-system:
-	docker compose run --rm scratch find work -name '.install-*' -delete
-	docker volume rm -f linux-from-scratch_install
-	$(MAKE) system
+tools: virt-systemd-tools
+system: virt-systemd-system
+image: image/virt-systemd.img
+qemu: virt-systemd-qemu
+test: virt-systemd-test
 
 clean:
-	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install
+	docker volume rm -f $(CURDIR)_source $(CURDIR)_work $(CURDIR)_install
 
-distclean:
+distclean: .env
 	docker compose down -v
-	rm -rf work/
-	rm -f image/*
+	rm -rf .env archive/ download/ image/ source/ tools/ work/

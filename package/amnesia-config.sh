@@ -1,7 +1,7 @@
 # Opt-in "amnesia" capability (CAPS=amnesia): a genuinely read-only root
 # filesystem with targeted tmpfs mounts for the state that must still be
 # writable at runtime — increment #2 of the air-gapped GPG key-generation
-# appliance (see SELF-HOST.md, GNUPG-YUBIKEY.md, package/gpg-genkey.sh).
+# appliance (see package/gpg-genkey.sh).
 # Design C: no overlayfs, no initrd. The root DEVICE itself is mounted ro
 # (see lfs's qemu case and package/boot.sh's cmdline component, both
 # cap-conditional on "amnesia" in $CAPS — package/linux/amnesia.config is
@@ -10,7 +10,7 @@
 # the userspace half: the fstab entries that put /var, /tmp and /root on
 # tmpfs instead, plus the couple of fixups a ro root needs elsewhere.
 # Proof of the whole thing: the disk image's hash is byte-identical before
-# and after a full boot+use+poweroff cycle (see SELF-HOST.md).
+# and after a full boot+use+poweroff cycle.
 # Only ever require()d when CAPS contains "amnesia" (see the bootable-*.sh
 # umbrellas), so a build with CAPS unset installs none of this.
 : ${package_version:=0.1.0}
@@ -19,8 +19,8 @@ install() {
     cd $package_install_dir
 
     # mkdir -p etc: this package's own stage dir starts empty (the stage->
-    # archive->merge inversion, PACKAGING.md — see 9p-config.sh's own
-    # comment on the same gotcha). /var and /root themselves are NOT
+    # archive->merge inversion — see 9p-config.sh's own comment on the
+    # same gotcha). /var and /root themselves are NOT
     # recreated here on purpose: system-files.sh already created them
     # (var/log, var/tmp, and root chmod 0750) in the tree these tmpfs
     # mounts land on top of at runtime — re-declaring them in this
@@ -65,14 +65,14 @@ EOF
     # same reasoning as 9p-config.sh's own mkdir -pv mnt/lfs).
     mkdir -pv mnt/usb
 
-    case $INIT in
+    case $USERLAND in
         systemd)
             # tmp.mount's own mask (which would otherwise beat the fstab
             # generator and leave /tmp stuck on the ro root) is skipped at
             # the SOURCE, in package/systemd.sh's own install(), not
             # reversed here. A package's package_install_dir is its own
             # fresh, empty per-package stage dir (the stage->archive->merge
-            # inversion, PACKAGING.md) — an `rm -fv` in THIS package's
+            # inversion) — an `rm -fv` in THIS package's
             # install() only ever removes a path from THIS package's own
             # (never populated) stage, so it can never reach back and
             # delete something an earlier package (systemd) already merged;
