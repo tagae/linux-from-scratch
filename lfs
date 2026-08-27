@@ -44,7 +44,7 @@ done
 readonly DOWNLOAD_DIR STATE_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
          INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
 
-#--[ Target platform ]
+#--[ Platform ]
 
 : ${PLATFORM:=virt}
 
@@ -57,7 +57,7 @@ readonly PLATFORM
 #--[ Userland ]
 
 # Which userland the built system runs, including init system.
-: ${USERLAND:=systemd-busybox}
+: ${USERLAND:=systemd}
 
 [ -f $PROJECT_DIR/package/bootable-$USERLAND.sh ] || bail "Unsupported userland '$USERLAND'"
 
@@ -70,25 +70,18 @@ readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
 
 #--[ System key ]
 
-# Helps differentiate the deliverables for each platform/userland combination.
-SYSTEM_KEY=$USERLAND-$PLATFORM
-
-# Fold CAPS into SYSTEM_KEY so each capability combination gets its own deliverables.
-for cap in $CAPS; do
-    SYSTEM_KEY=$SYSTEM_KEY+$cap
-done
-
-readonly SYSTEM_KEY
+# Differentiates the deliverables for each platform/userland/capabilities combination.
+readonly SYSTEM_KEY=$PLATFORM-$USERLAND+$(set -- $CAPS; IFS=+; echo "$*")
 
 #--[ Compilation ]
 
 export LC_ALL=POSIX
+readonly LC_ALL
 
 if command -v nproc >/dev/null 2>&1; then
     export MAKEFLAGS=-j$(nproc)
+    readonly MAKEFLAGS
 fi
-
-readonly LC_ALL MAKEFLAGS
 
 # Toolchain usr/bin LAST. Do NOT put toolchain usr/bin first: once glibc-linked binaries are
 # installed there they shadow host tools and fail (wrong ELF interpreter).  It still needs to be on
@@ -96,7 +89,6 @@ readonly LC_ALL MAKEFLAGS
 # aren't on the host at all, so they're only found as a fallback after host tools are checked
 # first.
 export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
-
 readonly PATH
 
 # bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists (any booted LFS;
@@ -108,9 +100,9 @@ if [ -x /usr/bin/m4 ]; then
 fi
 
 # CA bundle used to verify TLS on source downloads.
-: ${SSL_CERT_FILE:=/etc/ssl/certs/ca-certificates.crt}
-export SSL_CERT_FILE
-readonly SSL_CERT_FILE
+if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+    readonly ssl_cert_file=/etc/ssl/certs/ca-certificates.crt
+fi
 
 #--[ Installation ]
 

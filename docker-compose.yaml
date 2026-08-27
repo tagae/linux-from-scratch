@@ -49,13 +49,14 @@ services:
       PLATFORM:
       USERLAND:
       CAPS:
+      INSTALL_DIR:
+      IMAGE_SIZE:
       LFS_RELEASE:
       VERSION_CODENAME:
-      DISTRIB_CODENAME:
-      DISTRIB_RELEASE:
       RELEASE_TYPE:
-      IMAGE_SIZE:
-      INSTALL_DIR:
+      DISTRIB_RELEASE:
+      DISTRIB_CODENAME:
+      DISTRIB_DESCRIPTION:
     volumes:
       - type: bind
         source: lfs
@@ -104,8 +105,7 @@ services:
         read_only: true
         volume:
           subpath: usr/bin
-      # The from-scratch CA bundle bootstrap staged into the work volume, surfaced at the SYSTEM
-      # path so fetch_url's single SSL_CERT_FILE default works here too.
+      # The from-scratch CA bundle bootstrap staged into the work volume.
       - type: volume
         source: work
         target: /etc/ssl/certs

@@ -46,7 +46,7 @@ install() {
 DISTRIB_ID="Linux From Scratch"
 DISTRIB_RELEASE="${LFS_RELEASE:-local}"
 DISTRIB_CODENAME="${DISTRIB_CODENAME:-local}"
-DISTRIB_DESCRIPTION="Linux From Scratch"
+DISTRIB_DESCRIPTION="${DISTRIB_DESCRIPTION:-Linux From Scratch}"
 EOF
 
     cat > etc/os-release <<EOF

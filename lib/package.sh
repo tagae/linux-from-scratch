@@ -7,35 +7,11 @@ install() {
             ;;
     esac
 
-    # Guard on package_install_dir, NOT package_merge_dir: lib/tools.sh
-    # calls this SAME install() function directly (bare `install <pkg>`
-    # inside build_tools()/bootstrap_tools()) with package_install_dir
-    # already explicitly pre-set (e.g. =$TOOL_DIR) — that pre-set value is
-    # what must suppress target_build_env there, exactly as before this
-    # feature existed. target_build_env no longer sets package_install_dir
-    # itself (it sets package_merge_dir instead — see there), so guarding
-    # on package_merge_dir would fire target_build_env even for those
-    # tools-phase calls, wrongly handing them a package_merge_dir and
-    # making _install archive/merge $TOOL_DIR itself.
     if [ -n "${package_install_dir:-}" ]; then
-        : # lib/tools.sh already pre-set an explicit scenario — leave it alone.
+        : # Already set.
     elif ! _os_is_build_host; then
         target_build_env
     else
-        # Self vs foreign, decided the same way target_sysroot_cc's own
-        # kernel_headers guard decides it (see there): $TOOL_DIR/$target/
-        # usr/include only exists once guest-phase `./lfs tools bootstrap`
-        # (E2, docs/design/guest-cross-builder.md) has built a per-$target
-        # sysroot here — which only happens for a FOREIGN platform (the
-        # guest's own arch is served by the native-toolchain-delivered
-        # $target-gcc already on /usr/bin, no TOOL_DIR sysroot needed or
-        # ever built). Foreign target -> the target scenario (host=$target,
-        # stage+archive+merge into $INSTALL_DIR/$SYSTEM_KEY), exactly like
-        # a scratch-phase cross-install -- the gnupg family (and anything
-        # else with a target_sysroot_cc opt-in) hard-requires host=$target
-        # to configure at all. Self target -> guest_build_env's existing
-        # "ad-hoc install merges into the live /" behavior (self-hosting.md),
-        # completely unchanged for virt/pi4/pi5's own ad-hoc installs.
         if [ -d "$TOOL_DIR/$target/usr/include" ]; then
             target_build_env
         else
@@ -68,10 +44,7 @@ install() {
 }
 
 # Build and install one or more packages. Public: this is the worker behind the `install` command,
-# and an umbrella package's depends() calls it to pull in its members. Each package builds in its
-# own subshell with freshly derived package_* paths (see _source); ambient knobs (host, prefix,
-# package_install_dir, package_variant, CC, …) are inherited from the caller, so an umbrella sets a
-# member's scenario simply by prefixing.
+# and an umbrella package's depends() calls it to pull in its members.
 require() {
     for pkg in "$@"; do
         (
@@ -84,22 +57,9 @@ require() {
 
 # The build environment shared by every package installed into a platform's target system tree. Set
 # once per install scenario. Defaults only ( := ), so a caller can still override.
-#
-# Sets package_merge_dir, NOT package_install_dir: every package under this
-# scenario DESTDIR-installs into its own framework-default per-package
-# staging dir instead (package_install_dir's own default, further down in
-# _source) and is archived + merged into package_merge_dir afterwards (see
-# _install) — the stage->archive->merge inversion. Tools-phase scenarios
-# (lib/tools.sh) set package_install_dir explicitly themselves and never
-# call target_build_env, so they never set package_merge_dir and
-# _install's archive/merge steps stay a no-op there.
 target_build_env() {
     : ${host:=$target}
     : ${prefix:=/usr}
-    # SYSTEM_KEY, not bare $PLATFORM: it carries the init flavor too (see
-    # lfs), so a busybox tree and a systemd tree for the same platform get
-    # separate stamps and install dirs. Equal to $PLATFORM for the default
-    # (systemd) flavor, so existing builds are unaffected.
     : ${package_variant:=$SYSTEM_KEY}
     : ${package_merge_dir:=$INSTALL_DIR/$SYSTEM_KEY}
 }
@@ -154,32 +114,7 @@ _guest_has_archive_tools() {
 target_sysroot_cc() {
     [ "${host:-}" = "$target" ] || return 0
 
-    # Kernel UAPI headers: normally the container's own per-target
-    # sysroot ($TOOL_DIR/$target/usr/include, see tools_bootstrap). A
-    # guest-phase build of the guest's OWN arch (LFS_PHASE=guest, target ==
-    # the guest's own arch) never runs `./lfs tools bootstrap` at all — no
-    # TOOL_DIR sysroot exists there — but its own live /usr/include DOES
-    # have them (unarchived straight onto "/" — see native-toolchain.sh);
-    # --sysroot below routes ALL *implicit* header search through $sysroot
-    # (=$INSTALL_DIR/$SYSTEM_KEY, a fresh per-build staging tree with no
-    # kernel headers of its own — the guest's own system build never
-    # require()s linux#headers into it), making those live headers
-    # invisible unless explicitly re-added — confirmed empirically, not
-    # "harmless when missing" as first assumed: util-linux's own
-    # configure reported sys/mount.h, sys/ioctl.h, sys/socket.h, etc.
-    # all missing despite a real, populated guest /usr/include.
-    #
-    # A guest CROSS-building a FOREIGN platform (docs/design/guest-cross-
-    # builder.md's E2/E3) is different: `LFS_PHASE=guest ./lfs tools
-    # bootstrap` DOES build a genuine per-$target sysroot at
-    # $TOOL_DIR/$target (TOOL_DIR guest-local, /var/lfs/tools — see lfs's
-    # guest-phase dir defaults), seeded by the guest's own native gcc, and
-    # that sysroot's headers are the ONLY correct ones for $target (the
-    # guest's own live /usr/include is for the guest's own, DIFFERENT,
-    # arch). Existence, not phase alone, distinguishes the two guest
-    # scenarios — same check install()'s own guest-phase branch uses to
-    # pick target_build_env vs guest_build_env. Computed once, ahead of
-    # the CC/CXX branches below (both need it).
+    # Kernel UAPI headers.
     local kernel_headers=$TOOL_DIR/$target/usr/include
     if [ ! -d "$kernel_headers" ]; then
         kernel_headers=/usr/include
@@ -275,12 +210,7 @@ archive() {
 }
 
 # Extract a package tarball anywhere: FILE [DEST], DEST defaulting to this
-# system key's own merged tree. DEST deliberately never defaults to bare
-# "/" — inside the build containers /usr/{bin,lib} are read-only bind
-# mounts of the toolchain itself (see docker-compose.yaml), so extracting
-# there would be wrong at best and fail outright at worst. A live guest
-# (which has a real, writable "/" and no such mounts) passes "/" itself,
-# explicitly.
+# system key's own merged tree.
 unarchive() {
     local file=$1
     local dest=${2:-$INSTALL_DIR/$SYSTEM_KEY}
@@ -451,95 +381,27 @@ _source() {
     }
 
     default_archive() {
-        local out=$ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
-        ! [ -f $out ] || return 0
+        local archive=$ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
+        ! [ -f $archive ] || return 0
         mkdir -p $ARCHIVE_DIR/$SYSTEM_KEY
         stage "Archiving $package_archive"
-        tar --owner=0 --group=0 --numeric-owner -cJf $out -C $package_install_dir .
-        # Merge-order manifest: extraction order matters for the handful of
-        # files more than one package installs (busybox's symlink farm vs.
-        # util-linux/systemd's real binaries overwriting it) — record each
-        # package's tarball once, in the order it was archived, so a from-
-        # scratch reconstruction (or a guest doing its own unarchiving) can
-        # reproduce that order with no other bookkeeping.
-        grep -qxF "$package_archive" $ARCHIVE_DIR/$SYSTEM_KEY/ORDER 2>/dev/null \
-            || echo "$package_archive" >> $ARCHIVE_DIR/$SYSTEM_KEY/ORDER
+        tar --owner=0 --group=0 --numeric-owner -cJf $archive -C $package_install_dir .
     }
 
     default_merge() {
         stage "Merging $package_archive"
-        # A prior merge's own output can be read-only by design (e.g.
-        # ca-certificates' 0444 trust bundle, util-linux's 0444 man pages)
-        # — plain `tar x` opens the destination for writing, which a
-        # read-only file refuses even to its own owning uid, breaking the
-        # ROLLOUT/re-run case specifically (an already-merged tree). chmod
-        # always succeeds for files we own regardless of their current
-        # mode, so this reliably clears the way; the tarball's own mode
-        # bits (also 0444) are reapplied right after by the extraction
-        # itself, so the end state is identical to a from-empty extraction.
-        #
-        # Scoped to exactly the paths this package is about to (re-)write,
-        # NOT a blanket recursive chmod of the whole merge dir: with
-        # package_merge_dir=/ (guest phase — see guest_build_env) an
-        # unscoped `chmod -R u+w /` would walk the ENTIRE guest
-        # filesystem, including the 9p-mounted host project at /mnt/lfs —
-        # silently altering host file modes as a side effect of installing
-        # one package. List the package's own paths — from the archive
-        # normally, or from the stage dir itself in a tool-less guest,
-        # where no archive exists (see the merge step below) — and chmod
-        # only the ones that already exist in the merge dir; paths the
-        # tarball is about to newly introduce need no chmod at all. Also
-        # better for the container case: a full-tree chmod was always more
-        # than any single package needed.
-        if ! _guest_has_archive_tools; then
-            (cd $package_install_dir && find . -mindepth 1)
+        local archive=$ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
+        if command -v xz >/dev/null 2>&1 || [ "${file%.xz}" == "$file" ] ; then
+            tar xf $archive -C $package_merge_dir
         else
-            tar tf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
-        fi | while IFS= read -r path; do
-            path=${path#./}
-            path=${path%/}
-            # Skip both "" and "." (the top-level dir entry itself, spelled
-            # either way depending on tar/find implementation) — never
-            # chmod package_merge_dir's own root; only its contents.
-            if [ -n "$path" ] && [ "$path" != "." ] && [ -e "$package_merge_dir/$path" ]; then
-                chmod u+w "$package_merge_dir/$path" 2>/dev/null || true
-            fi
-        done
-
-        if ! _guest_has_archive_tools; then
-            # Tool-less-guest fallback (before the delivered tar+xz
-            # tarballs are unarchived into it): no tarball exists to
-            # extract (the archive step above was skipped too — see
-            # _install), so copy the stage dir straight into the live
-            # system with a plain tar pipe instead — busybox tar handles
-            # plain (uncompressed) tar fine as both source and sink. Full
-            # parity with the archive-extracting path below — and the
-            # continuous self-test an extracted tarball ordinarily proves —
-            # returns once the guest has a real tar+xz.
+            # Copy the stage dir straight into the live system.
             tar -C $package_install_dir -cf - . | tar -C $package_merge_dir -xf -
-        else
-            # Extract the just-created tarball itself, rather than cp-ing
-            # the stage dir directly: every build then continuously proves
-            # the tarball is complete and correct, since it's literally
-            # what lands in the merged tree. tar overwrites existing files
-            # by default, so merging in package order reproduces the
-            # pre-inversion tree exactly (see the ORDER manifest above for
-            # why order matters). Guest phase reaches here too once
-            # _guest_has_archive_tools is true — the guest's own GNU tar
-            # extracts its own guest-local ARCHIVE_DIR tarball exactly like
-            # the container extracts archive/$SYSTEM_KEY's.
-            tar xf $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive -C $package_merge_dir
         fi
     }
 
     patch_source() {
         local url=$1
-        # Expected hash "algo:hexdigest" (package_source_hash form).
-        # Required: patches come from the LFS book's *development* patch
-        # dir, whose contents are regenerated in place, so an unverified
-        # fetch here is the one download path that could silently apply
-        # changed bytes.
-        local hash=$2
+        local hash=$2 # Expected to be in "algo:hexdigest" form.
         local file=${url##*/}
         mkdir -p $DOWNLOAD_DIR
         [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"

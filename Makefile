@@ -28,8 +28,6 @@ CAPS_KEY := $(if $(strip $(CAPS)),+$(subst $(space),+,$(sort $(CAPS))))
 	@echo HOST_UID=$$(id -u) >> $@
 	@echo HOST_GID=$$(id -g) >> $@
 	@echo LFS_RELEASE=r13.0-143-systemd >> $@
-	@echo DISTRIB_CODENAME=$$(id -un) >> $@
-	@echo VERSION_CODENAME=$$(id -un) >> $@
 
 %-tools: .env
 	# Chapter 5: Compiling a Cross-Toolchain
@@ -43,25 +41,25 @@ CAPS_KEY := $(if $(strip $(CAPS)),+$(subst $(space),+,$(sort $(CAPS))))
 	# Chapter 9: System Configuration
 	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm scratch ./lfs system build
 
-image/$(USERLAND)-%$(CAPS_KEY).img: %-system FORCE
+image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img: %-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
 	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm --user 0:0 scratch ./lfs image build
 
-%-test: image/$(USERLAND)-%$(CAPS_KEY).img
+%-test: image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img
 	./test $* $(USERLAND) "$(CAPS)"
 
-%-qemu: image/$(USERLAND)-%$(CAPS_KEY).img
+%-qemu: image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img
 	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" ./lfs qemu
 
-tools: virt-tools
-system: virt-system
-image: image/$(USERLAND)-virt$(CAPS_KEY).img
-qemu: virt-qemu
-test: virt-test
+tools: virt-systemd-tools
+system: virt-systemd-system
+image: image/virt-systemd.img
+qemu: virt-systemd-qemu
+test: virt-systemd-test
 
 clean:
 	docker volume rm -f $(CURDIR)_source $(CURDIR)_work $(CURDIR)_install
 
 distclean: .env
 	docker compose down -v
-	rm -rf .env archive/* download/* image/* work/
+	rm -rf .env archive/ download/ image/ source/ tools/ work/

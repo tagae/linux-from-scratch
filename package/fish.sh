@@ -1,29 +1,12 @@
-# fish — the friendly interactive shell. Optional add-on package like
-# ncdu/the gnupg family: not part of any bootable-* umbrella, installed
-# on demand into a platform's target tree with `./lfs install fish` (a
-# systemd flavor — fish is dynamically linked against glibc, which the
-# static busybox flavor lacks).
-#
-# fish 4.x is Rust. cargo compiles the crates with the pinned prebuilt
-# SEED toolchain (package/rust.sh — build tooling only, like cmake); all
-# C compilation (pcre2-sys's bundled PCRE2, build-script feature probes)
-# and the final link go through OUR cross gcc with the target sysroot,
-# so the shipped binary runs against this project's own glibc. CMake
-# (fish's official build orchestrator) drives cargo and installs the
-# share/ tree. Crate dependencies are fetched by cargo at build time and
-# verified against the sha256 pins in the release tarball's committed
-# Cargo.lock — the same integrity contract as package_source_hash, with
-# upstream holding the pin list.
+# Fish — the friendly interactive shell.
+
 : ${package_version:=4.8.1}
 : ${package_source:=https://github.com/fish-shell/fish-shell/releases/download/$package_version/fish-$package_version.tar.xz}
 : ${package_source_hash:=sha256:0eb86a851e865e934a7c2091a73d7695225e78f0e00a7bb96d5f877d76c65782}
 
 : ${build:=$(gcc -dumpmachine)}
-target_sysroot_cc
 
-# Rust spells the cross target its own way (lib/platform's $ARCH names
-# ours): pi0's armv6+vfpv2 hard-float is exactly Rust's
-# arm-unknown-linux-gnueabihf.
+# Rust spells the cross target its own way.
 case $ARCH in
     arm64) rust_target=aarch64-unknown-linux-gnu ;;
     arm)   rust_target=arm-unknown-linux-gnueabihf ;;

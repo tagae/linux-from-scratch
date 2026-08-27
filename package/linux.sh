@@ -91,9 +91,7 @@ install() {
                 INSTALL_MOD_PATH=$package_install_dir \
                 ${DTB:+dtbs_install} modules_install
             mkdir -pv $package_install_dir/boot
-            # Install kernel image with a consistent name.
-            cp -v $package_source_dir/arch/$$ARCH/boot/zImage \
-               $package_install_dir/boot/kernel.img
+            cp -v $package_source_dir/arch/$ARCH/boot/zImage $package_install_dir/boot/kernel.img
             ;;
         *)
             default_install
@@ -102,20 +100,10 @@ install() {
 }
 
 _make() {
-    # cross_arch defaults to $ARCH (the platform's real target architecture
-    # — every existing caller keeps working unchanged), but the build-host-
-    # native toolchain's own kernel headers (needed to build a glibc that
-    # runs *in the scratch container*, as opposed to the per-platform
-    # target sysroot's headers) need the build host's own architecture
-    # instead — genuinely different from $ARCH for pi0 (32-bit ARM) on an
-    # aarch64 build host. $ARCH itself is globally readonly and can't be
-    # reassigned even via a prefix assignment, hence this separate var.
-    : ${cross_arch:=$ARCH}
-    make -C $package_source_dir ARCH=$cross_arch CROSS_COMPILE=$target- "$@"
+    make -C $package_source_dir ${ARCH:+ARCH=$ARCH} ${target:+CROSS_COMPILE=$target-} "$@"
 }
 
 _set_kernel_config() {
     local key="$1" value="$2"
-    sed -i 's/CONFIG_'"$key"'="[^"]*"/CONFIG_'"$key"'="'"$value"'"/g' \
-        $package_source_dir/.config
+    sed -i 's/CONFIG_'"$key"'="[^"]*"/CONFIG_'"$key"'="'"$value"'"/g' $package_source_dir/.config
 }
