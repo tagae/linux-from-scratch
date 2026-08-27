@@ -2,7 +2,7 @@
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-$package_version.tar.bz2}
 : ${package_source_hash:=sha256:0311454e678189bad62a7e9402a9dd793025efff6e7449898616e2fc75e0f4f5}
 
-# Crypto primitives (see GNUPG-YUBIKEY.md). Links against libgpg-error —
+# Crypto primitives for the gnupg family. Links against libgpg-error —
 # see libassuan.sh for why target_sysroot_cc and the explicit
 # --with-libgpg-error-prefix are both needed.
 : ${build:=$(gcc -dumpmachine)}

@@ -10,6 +10,7 @@ prepare() {
         ${hashes:+--enable-hashes=$hashes} \
         ${obsolete_api:+--enable-obsolete-api=$obsolete_api} \
         --disable-static \
+        --disable-werror \
         ${failure_tokens:+--enable-failure-tokens=$failure_tokens}
 }
 

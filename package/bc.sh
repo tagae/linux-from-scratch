@@ -5,9 +5,10 @@
 # Custom build system (configure.sh, not autoconf) — no --host/--build, so
 # no build= guard (nothing here to disambiguate). But it also has no
 # cross-compiler knob of its own, unlike autoconf's --host: CC is
-# hardcoded, so a target-scenario build (SELF-HOST.md M3, host=$target set
-# by target_build_env) would otherwise silently compile+link with THIS
-# build host's own bare "gcc" instead of $target-gcc — same-arch (virt is
+# hardcoded, so a target-scenario build (host=$target set by
+# target_build_env, shipping this tool to the guest as an archive tarball)
+# would otherwise silently compile+link with THIS build host's own bare
+# "gcc" instead of $target-gcc — same-arch (virt is
 # aarch64, same as this build host), so it wouldn't fail outright, just
 # link the wrong runtime. ${host:+$host-} is a no-op wherever host stays
 # unset (every existing caller, including build_tools()'s own native

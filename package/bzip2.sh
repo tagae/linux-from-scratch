@@ -1,5 +1,5 @@
 : ${package_version:=1.0.8}
-: ${package_source:=https://sourceware.org/pub/bzip2/bzip2-$package_version.tar.gz}
+: ${package_source:=https://www.sourceware.org/pub/bzip2/bzip2-$package_version.tar.gz}
 : ${package_source_hash:=sha256:ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269}
 
 prepare() {

@@ -10,9 +10,10 @@
 # binary to rebuild itself properly. Plain c++/g++ on PATH already resolves
 # to our own toolchain here (same convention as gettext/bison/python).
 #
-# CXX/AR: a target-scenario build (SELF-HOST.md M3, host=$target set by
-# target_build_env) needs configure.py routed to the CROSS C++ compiler
-# ($target-g++) instead — left alone, its own default ('c++'/'ar', both
+# CXX/AR: a target-scenario build (host=$target set by target_build_env,
+# shipping this tool to the guest as an archive tarball) needs configure.py
+# routed to the CROSS C++ compiler ($target-g++) instead — left alone, its
+# own default ('c++'/'ar', both
 # respected via env per configure.py's own env_keys) would resolve to this
 # build host's bare native toolchain instead, producing a binary linked for
 # the WRONG runtime (same architecture as virt, so this wouldn't fail

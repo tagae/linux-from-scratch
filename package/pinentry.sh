@@ -2,7 +2,7 @@
 : ${package_source:=https://gnupg.org/ftp/gcrypt/pinentry/pinentry-$package_version.tar.bz2}
 : ${package_source_hash:=sha256:8e986ed88561b4da6e9efe0c54fa4ca8923035c99264df0b0464497c5fb94e9e}
 
-# Passphrase/PIN prompting (see GNUPG-YUBIKEY.md). Links against
+# Passphrase/PIN prompting for the gnupg family. Links against
 # libgpg-error/libassuan, already installed into $INSTALL_DIR/$SYSTEM_KEY —
 # see libassuan.sh for why target_sysroot_cc and the explicit --with-*-prefix
 # flags are both needed.

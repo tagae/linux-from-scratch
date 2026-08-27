@@ -7,18 +7,18 @@ install() {
             # Cap-conditional read-only root (CAPS=amnesia, ambient here —
             # see lfs's qemu case for the QEMU-side twin of this same
             # substitution, and package/amnesia-config.sh for the rest of
-            # the capability). nologreplay: see lfs's qemu case for why
-            # even a `ro` mount needs it. Defaults (rootflags/rwmode) match
-            # the pre-amnesia text exactly, so a no-amnesia build's
-            # cmdline.txt is byte-identical to before this capability existed.
+            # the capability). rescue=nologreplay, NOT bare "nologreplay":
+            # see lfs's qemu case for why even a `ro` mount needs it, and
+            # why the bare spelling panics this kernel. Defaults (rootflags/
+            # rwmode) match the pre-amnesia text exactly, so a no-amnesia
+            # build's cmdline.txt is byte-identical to before this
+            # capability existed.
             local rootflags=subvol=root/$ROOT_VOLUME
             local rwmode=rw
-            case " ${CAPS:-} " in
-                *" amnesia "*)
-                    rootflags=$rootflags,nologreplay
-                    rwmode=ro
-                    ;;
-            esac
+            if has_cap amnesia; then
+                rootflags=$rootflags,rescue=nologreplay
+                rwmode=ro
+            fi
             printf '%s\n' \
                 "earlycon=pl011,0x20201000 console=ttyAMA0,115200" \
                 "root=/dev/mmcblk0p2 rootfstype=btrfs rootflags=$rootflags" \

@@ -2,8 +2,9 @@
 : ${package_source:=https://github.com/westes/flex/releases/download/v$package_version/flex-$package_version.tar.gz}
 : ${package_source_hash:=sha256:e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995}
 
-# build=: see m4.sh's copy of this guard (SELF-HOST.md M3 target build). No
-# target_sysroot_cc: flex links nothing from the target tree.
+# build=: see m4.sh's copy of this guard (the target build that ships this
+# tool to the guest as an archive tarball). No target_sysroot_cc: flex
+# links nothing from the target tree.
 : ${build:=$(gcc -dumpmachine)}
 
 prepare() {

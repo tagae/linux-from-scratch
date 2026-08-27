@@ -4,33 +4,25 @@ FROM scratch
 ARG HOST_UID
 ARG HOST_GID
 
-# The install volume is only ever mounted here, never in the bootstrap
-# image — Docker seeds a freshly created named volume from whatever content
-# (and ownership) already exists at that path in the image, so baking this
-# empty, pre-owned directory into the layer is enough; no chown binary or
-# root user is needed inside this `FROM scratch` image at all.
-COPY --chown=$HOST_UID:$HOST_GID work/scratch-init/empty/ /mnt/lfs/install/
+# Bake these empty directories.
+#COPY --chown=$HOST_UID:$HOST_GID work/scratch-init/empty/ /mnt/lfs/install/
 
-# Enable execution of #!/bin/sh scripts.
-# Invoking Bash as `sh` puts it in POSIX-compatible mode automatically.
-COPY work/scratch-init/sh /bin/sh
+# Enable execution of the #!/bin/sh and #!/bin/bash shebangs.
+COPY work/scratch-init/bash /bin/sh
+COPY work/scratch-init/bash /bin/bash
 
-# Some scripts hardcode a #!/bin/bash shebang.
-COPY work/scratch-init/sh /bin/bash
-
-ENV PATH=/mnt/lfs/tools/usr/bin
 ENV LC_ALL=POSIX
+ENV PATH=/mnt/lfs/tools/usr/bin
 ENV HOME=/mnt/lfs
-# There is no /tmp in this image (nothing exists but what's mounted or
-# copied in above) and nothing here can create one at build time. Point
-# TMPDIR at an already-writable, already-existing directory in one of the
-# mounted volumes instead of fabricating a new top-level path.
+
+# There is no /tmp in this image, and nothing can create one at build time, so TMPDIR at an
+# already-existing writable directory.
 ENV TMPDIR=/mnt/lfs/work/tmp
 
-# No /etc/passwd exists in this image (there is nothing but the mounted
-# tools volume), so USER must be numeric — a name would require a passwd
-# lookup. Match the bootstrap container's lfs user so file ownership on
-# the shared volumes lines up.
+# No /etc/passwd exists in this image, so USER must be numeric —a name would require a passwd
+# lookup. Match the bootstrap user UID/GID so file ownership on the shared volumes lines up.
 USER $HOST_UID:$HOST_GID
 WORKDIR /mnt/lfs
+
+# Once the container starts, mounted paths can be used.
 CMD ["/mnt/lfs/tools/usr/bin/bash"]

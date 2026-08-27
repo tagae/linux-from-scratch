@@ -2,7 +2,7 @@
 : ${package_source:=https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$package_version.tar.bz2}
 : ${package_source_hash:=sha256:a19bc5087fd97026d93cb4b45d51638d1a25202a5e1fbc3905799f424cfa6134}
 
-# Base of the gnupg family (see GNUPG-YUBIKEY.md) — install this first.
+# Base of the gnupg family — install this first.
 #
 # Bumped 1.51 -> 1.59 alongside the rest of the family's BLFS gnupg-2.5.17
 # alignment: BLFS's own gnupg page doesn't pin this one, but libgcrypt-1.12.0

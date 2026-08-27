@@ -1,6 +1,8 @@
 # Air-gapped GPG keypair generation + USB persistence helper — increment #1
-# of the amnesiac, air-gapped GPG appliance objective (see SELF-HOST.md and
-# GNUPG-YUBIKEY.md). NOT part of any bootable-* umbrella: installed on
+# of the amnesiac, air-gapped GPG appliance objective (keys are born in
+# RAM, leave only on removable USB, and the boot medium is discardable
+# because it is provably never written). NOT part of any bootable-*
+# umbrella: installed on
 # demand, like ncdu, via `./lfs install gpg-genkey`. Requires the "usb"
 # capability's kernel fragment (package/linux/usb.config) to actually have
 # a stick to mount at runtime, but that's a runtime concern, not a build
@@ -26,7 +28,7 @@ depends() {
     # userland with one command. Order matters only where a later member's
     # own configure probes an earlier one at configure time (zlib ahead of
     # gnupg, which auto-detects it via pkg-config) — this is the same
-    # order GNUPG-YUBIKEY.md's own family table lists.
+    # order gnupg.sh's own header comment lists.
     require libgpg-error
     require npth
     require libassuan
@@ -42,8 +44,8 @@ install() {
     cd $package_install_dir
 
     # This package's own stage dir starts empty (the stage->archive->merge
-    # inversion, PACKAGING.md — see 9p-config.sh's own comment on the same
-    # gotcha), so the destination directory must be created before writing
+    # inversion — see 9p-config.sh's own comment on the same gotcha), so
+    # the destination directory must be created before writing
     # into it.
     mkdir -pv usr/bin
 
@@ -56,11 +58,11 @@ install() {
 # gpg-genkey — generate a GPG keypair with secret material living ONLY in
 # RAM, then export it (passphrase-protected) to a mounted USB stick.
 #
-# THE WHOLE POINT (see SELF-HOST.md / GNUPG-YUBIKEY.md): GNUPGHOME is a
-# fresh directory under /run — tmpfs under systemd, so it never touches the
-# boot disk — and every bit of secret key material gpg writes (the secret
-# keyring, the random pool, the auto-generated revocation cert) lives
-# there and NOWHERE else. The only place the secret key survives past this
+# THE WHOLE POINT: GNUPGHOME is a fresh directory under /run — tmpfs under
+# systemd, so it never touches the boot disk — and every bit of secret key
+# material gpg writes (the secret keyring, the random pool, the
+# auto-generated revocation cert) lives there and NOWHERE else. The only
+# place the secret key survives past this
 # process's exit is the removable USB stick, passphrase-encrypted. The
 # boot medium itself stays discardable: on real hardware (pi0, a later
 # increment) that's a read-only/wipeable SD card holding no secrets at

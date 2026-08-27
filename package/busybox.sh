@@ -7,12 +7,23 @@ prepare() {
     # Answer all new Kconfig prompts with defaults first
     yes "" | make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- oldconfig
     # Then apply our overrides so they are not overridden by oldconfig defaults
+    #
+    # DEPMOD: every bootable umbrella ships the real kmod (require kmod in
+    # bootable-systemd.sh/bootable-busybox.sh), whose depmod symlink lands
+    # at usr/bin — but busybox's own stub applet lands at usr/sbin, which
+    # root's default login PATH searches FIRST, so the stub shadows the
+    # real tool on every booted system. The stub has no `-b`, which the
+    # kernel's own `make modules_install` (scripts/depmod.sh) requires —
+    # empirically broke the e2e builder guest's in-guest kernel build.
+    # Nothing ever needs busybox's stub: modules.dep is generated at
+    # image-build time by the real kmod, never at runtime on a target.
     sed -i \
         -e 's|^# CONFIG_STATIC is not set$|CONFIG_STATIC=y|' \
         -e 's|^CONFIG_STATIC=.*$|CONFIG_STATIC=y|' \
         -e 's|^CONFIG_TC=y|# CONFIG_TC is not set|' \
         -e 's|^CONFIG_SHA1_HWACCEL=y|# CONFIG_SHA1_HWACCEL is not set|' \
         -e 's|^CONFIG_SHA256_HWACCEL=y|# CONFIG_SHA256_HWACCEL is not set|' \
+        -e 's|^CONFIG_DEPMOD=y|# CONFIG_DEPMOD is not set|' \
         $package_source_dir/.config
     make -C $package_source_dir ARCH=$ARCH CROSS_COMPILE=$target- silentoldconfig </dev/null
 }

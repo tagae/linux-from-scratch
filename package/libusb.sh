@@ -3,7 +3,7 @@
 : ${package_source_hash:=sha256:ffaa41d741a8a3bee244ac8e54a72ea05bf2879663c098c82fc5757853441575}
 
 # scdaemon's internal CCID driver talks to a YubiKey directly over USB
-# through this (see GNUPG-YUBIKEY.md) — no pcscd/libccid stack needed.
+# through this — no pcscd/libccid stack needed.
 # host/prefix/install-dir come from target_build_env (applied by install()
 # for a standalone `./lfs install`); build= forces autoconf to treat a
 # same-arch target (virt/pi4) as a cross build; target_sysroot_cc compiles

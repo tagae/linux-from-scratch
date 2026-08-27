@@ -3,8 +3,9 @@
 : ${package_source_hash:=sha256:0a585eeb9e363c0f80482ddb3571625250c2c86aeb408853e8ea50805cfb14bb}
 
 # Custom build system (Configure, not autoconf) — native only by default,
-# no --host/--build. A target-scenario build (SELF-HOST.md M3) instead
-# opts into Configure's OWN -Dusecrosscompile mechanism: it derives
+# no --host/--build. A target-scenario build (shipping perl to the guest
+# as an archive tarball) instead opts into Configure's OWN
+# -Dusecrosscompile mechanism: it derives
 # ar/nm/ranlib from $cc by substituting "-gcc" (matching this project's own
 # $target-prefixed binutils names — see binutils.sh's install()) and, since
 # no -Dtargethost is given (nothing to SSH compiled test programs to at

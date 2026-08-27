@@ -3,8 +3,8 @@ services:
     build:
       dockerfile: Dockerfile.bootstrap
       args:
-        HOST_UID: $HOST_UID
-        HOST_GID: $HOST_GID
+        HOST_UID:
+        HOST_GID:
     tty: true
     stdin_open: true
     privileged: true
@@ -32,11 +32,7 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
-      # Bind mount: Dockerfile.scratch needs to COPY our own already-built
-      # bash out of here at image build time. TOOL_DIR itself stays a named
-      # volume (not visible to `docker build` at all); tools_bootstrap
-      # stages just this one file here instead.
-      - type: bind
+      - type: bind # Holds artefacts Dockerfile.scratch needs to COPY at image build time.
         source: $PWD/work/scratch-init
         target: /mnt/lfs/work/scratch-init
 
@@ -44,37 +40,23 @@ services:
     build:
       dockerfile: Dockerfile.scratch
       args:
-        HOST_UID: $HOST_UID
-        HOST_GID: $HOST_GID
+        HOST_UID:
+        HOST_GID:
     tty: true
     stdin_open: true
     privileged: true
     environment:
       PLATFORM:
-      INIT:
+      USERLAND:
       CAPS:
-      LFS_RELEASE:
-      LFS_PHASE: scratch
-      VERSION_CODENAME:
-      DISTRIB_CODENAME:
-      DISTRIB_RELEASE:
-      RELEASE_TYPE:
-      # `image build` (lib/image.sh) reads this to size the created .img
-      # (default 4g) — the self-host builder guest needs headroom for its
-      # own guest-local build state on top of its own output image, hence
-      # a bigger builder image (SELF-HOST.md M4: IMAGE_SIZE=16g).
-      IMAGE_SIZE:
-      # SELF-HOST.md M6 (pi0 capstone): populate_image() always reads
-      # $INSTALL_DIR/$SYSTEM_KEY (lib/image.sh) — overriding this lets an
-      # `image build` run against a throwaway staged copy of install/pi0
-      # (base system + the baked /srv payload) instead of the canonical
-      # install/pi0 itself, so producing image/selfhost-pi0.img doesn't
-      # require permanently polluting the real install tree. Without this
-      # entry `docker compose run` silently drops the override (it only
-      # forwards vars explicitly listed here), and the image build falls
-      # back to the real install/pi0 — confirmed the hard way (a first
-      # attempt at this image was missing the entire /srv payload).
       INSTALL_DIR:
+      IMAGE_SIZE:
+      LFS_RELEASE:
+      VERSION_CODENAME:
+      RELEASE_TYPE:
+      DISTRIB_RELEASE:
+      DISTRIB_CODENAME:
+      DISTRIB_DESCRIPTION:
     volumes:
       - type: bind
         source: lfs
@@ -94,68 +76,54 @@ services:
       - type: volume
         source: work
         target: /mnt/lfs/work
-      # Bind mount, nested inside the `work` volume mount above: `./lfs qemu`
-      # runs directly on the host (not in a container), so the kernel needs
-      # to land somewhere the host can actually see — named volumes aren't
-      # visible outside Docker at all.
-      - type: bind
+      - type: bind # So that the kernel lands on the host for consumption by QEMU.
         source: $PWD/work/boot
         target: /mnt/lfs/work/boot
       - type: volume
         source: tools
         target: /mnt/lfs/tools
-      # Binaries linked for INSTALL_DIR correctly get /lib/ld-linux-*.so.*
-      # baked in as their interpreter (right for eventual deployment, since
-      # system-files sets up /lib -> usr/lib there). But some package
-      # builds also compile and immediately run a native codegen helper as
-      # part of the build itself (e.g. libcap's _makenames), which needs
-      # that same /lib path to resolve right now, in this container, where
-      # / is otherwise empty. Mounting the same tools volume's usr/lib a
-      # second and third time at /lib and /usr/lib (read-only: nothing
-      # should ever write here) makes that resolve without needing a
-      # symlink baked into the image at build time — which isn't possible
-      # anyway, since nothing in this `FROM scratch` image can execute
-      # until TOOL_DIR (a named volume) is actually mounted.
+      # Avoids baking a /lib symlink into the image, which isn't possible since the `scratch` base
+      # image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
       - type: volume
         source: tools
         target: /lib
         read_only: true
         volume:
           subpath: usr/lib
+      # Avoids baking a /usr/lib symlink into the image, which isn't possible since the `scratch`
+      # base image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
       - type: volume
         source: tools
         target: /usr/lib
         read_only: true
         volume:
           subpath: usr/lib
-      # Same story for scripts with a #!/usr/bin/env-style shebang (a very
-      # common convention, e.g. meson.py) — /usr/bin/env needs to resolve
-      # to a real, executable file right now, same as /lib above.
+      # Enables resolution of the #!/usr/bin/env shebang.
       - type: volume
         source: tools
         target: /usr/bin
         read_only: true
         volume:
           subpath: usr/bin
+      # The from-scratch CA bundle bootstrap staged into the work volume.
+      - type: volume
+        source: work
+        target: /etc/ssl/certs
+        read_only: true
+        volume:
+          subpath: certs
       # Docker seeds a freshly created named volume with whatever content
       # (and ownership) already exists at that path in the image. Dockerfile
       # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly
       # into its own layer via COPY --chown, so this mount only needs to
-      # exist here — no other service needs to touch it first.
+      # exist here —no other service needs to touch it first.
       - type: volume
         source: install
         target: /mnt/lfs/install
-      # Bind mount, not a named volume: the built image needs to land
-      # somewhere reachable outside the container (e.g. for QEMU), and
-      # named volumes aren't visible on the host at all.
-      - type: bind
+      - type: bind # So that built images are available on the host (e.g., for QEMU to run).
         source: $PWD/image
         target: /mnt/lfs/image
-      # Same reasoning as image/ above: per-package tarballs (lib/package.sh's
-      # archive/merge, see PACKAGING.md) need to survive the --rm container
-      # and be readable outside it — by a from-scratch reconstruction on the
-      # host, and (over the 9p share) by the guest's own unarchive path.
-      - type: bind
+      - type: bind # So that built archives can be consumed where needed outside the container.
         source: $PWD/archive
         target: /mnt/lfs/archive
 
