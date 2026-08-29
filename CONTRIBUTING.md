@@ -40,9 +40,6 @@ Building the System
 * The `./lfs image build` command formats a disk image from a built system tree.
 * The `./lfs qemu` command runs the built image.
 
-No documentation is built (man pages, info pages, etc.). This might change in the future, making it
-optional (opt in or opt out: to be decided).
-
 
 Package Model
 -------------

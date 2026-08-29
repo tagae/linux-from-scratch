@@ -16,6 +16,13 @@
 # See https://www.airs.com/ian/configure/configure_5.html
 
 tools() {
+    : ${host_arch:=$(uname -m)}
+    : ${host_vendor:=native}
+    : ${host_kernel:=linux}
+    : ${host_abi:=gnu}
+    readonly host_arch host_vendor host_kernel host_abi
+    readonly host_triplet=$host_arch-$host_vendor-$host_kernel-$host_abi
+
     : ${target_arch:=$(uname -m)}
     : ${target_vendor:=scratch}
     : ${target_kernel:=linux}
@@ -38,25 +45,12 @@ bootstrap_tools() {
     readonly nls=no
     readonly multilib=no
 
-    case "$(uname -m)" in
-        aarch64|arm64)
-            readonly native_arch=arm64
-            readonly native_target=aarch64-native-linux-gnu
-            ;;
-        armv6l)
-            readonly native_arch=arm
-            readonly native_target=arm-native-linux-gnueabihf
-            ;;
-        x86_64)
-            readonly native_arch=x86;
-            readonly native_target=x86_64-native-linux-gnu
-            ;;
-        *) bail "Unsupported native architecture $(uname -m)" ;;
-    esac
-
     # --- Cross Toolchain Pass 1 ------------------
 
     (
+        #readonly host=$host_triplet
+        readonly target=$target_triplet
+
         readonly package_variant=pass1-$target
         readonly package_install_dir=/
         readonly prefix=$TOOL_DIR
@@ -65,6 +59,7 @@ bootstrap_tools() {
 
         # Cross-assembler and linker.
         ( gprofng=no werror=no new_dtags=yes default_hash_style=gnu; install binutils )
+        exit 0
         _build_gcc_prereqs
 
         # Minimal C cross-compiler to build glibc.
@@ -78,9 +73,9 @@ bootstrap_tools() {
             install gcc
         )
     )
+    exit 0
 
    _bootstrap_build_host
-    exit 0
 
     # --- Per-target sysroot (one per distinct $target
     # glibc: never executed —only ever linked/read against by pass2 below.

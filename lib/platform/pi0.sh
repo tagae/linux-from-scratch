@@ -1,6 +1,5 @@
-readonly ARCH=arm
-
-readonly target=arm-scratch-linux-gnueabihf
+readonly target_arch=arm
+readonly target_abi=gnueabihf
 
 # https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
 readonly arch=armv6kz
