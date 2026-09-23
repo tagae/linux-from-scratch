@@ -1,14 +1,6 @@
-# bootable-systemd: systemd init with a GNU userland.  Umbrella meta-package: everything needed for
-# a bootable systemd system.  It has no payload of its own.
-#
-# The install scenario (host/prefix/package_variant/package_install_dir) is set once by
-# install()/target_build_env and inherited by every member; only the per-member settings that
-# differ from a package's upstream defaults are set here.
+# systemd init with a GNU userland
 
-: ${package_version:=0.1.0}
-package_meta=yes
-
-depends() {
+_TODO() {
     # Base layout and merged-usr symlinks.
     require system-files
 

@@ -1,21 +1,13 @@
 #!/usr/bin/expect -f
 
-# Boot the platform image in QEMU, log in as root, and poweroff.
+# Boot the image in QEMU, log in as root, and power off.
+#
 # Exits 0 on success, 1 on any failure.
 #
-# Usage: [TEST_TIMEOUT=seconds] ./test [PLATFORM] [USERLAND] [CAPS]
-#
-# PLATFORM, USERLAND, and CAPS are passed through as env vars, so ./lfs qemu picks the matching
-# kernel and image.
+# Usage: [TEST_TIMEOUT=seconds] ./test [SYSTEM_KEY]
 
 if {[llength $argv] > 0} {
-    set env(PLATFORM) [lindex $argv 0]
-}
-if {[llength $argv] > 1} {
-    set env(USERLAND) [lindex $argv 1]
-}
-if {[llength $argv] > 2} {
-    set env(CAPS) [lindex $argv 2]
+    set env(SYSTEM_KEY) [lindex $argv 0]
 }
 
 # TEST_TIMEOUT overrides the default per-phase timeout.
