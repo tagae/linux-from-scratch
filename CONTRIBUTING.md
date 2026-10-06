@@ -19,18 +19,30 @@ Overview
 
 The `lfs` CLI frontend invokes the sub-commands implemented in `lib/*.sh`.
 
-The `package/*.sh` files are the build recipes.
-
 
 Building the Toolchain
 ----------------------
 
-1. **`bootstrap`** Relies on the host for the initial set of tools used to bootstrap our own. The
-   `./lfs tools bootstrap` command builds a cross-compiler plus a native, relocatable set of
-   temporary tools (bash, coreutils, make, wget, ...) into the `tools` directory.
-2. **`scratch`** Self-hosted using only what `bootstrap` staged. The `./lfs tools build` command
-   adds build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...) into the `tools`
-   directory.
+### Bootstrap
+
+Relies on the host for the initial set of tools used to bootstrap our own. The following command
+builds a cross-compiler plus a native, relocatable set of temporary tools (bash, coreutils, make,
+wget, ...) into the `tools` directory.
+
+```shell
+./lfs tools bootstrap
+```
+
+### Scratch
+
+Self-hosted using only what `tools bootstrap` staged. The following command adds
+build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...) into the `tools` directory:
+
+```shell
+`./lfs tools build
+```
+
+With this the tools are fully functional and can be used to build packages.
 
 
 Building the System
@@ -40,9 +52,6 @@ Building the System
 * The `./lfs image build` command formats a disk image from a built system tree.
 * The `./lfs qemu` command runs the built image.
 
-No documentation is built (man pages, info pages, etc.). This might change in the future, making it
-optional (opt in or opt out: to be decided).
-
 
 Package Model
 -------------
@@ -50,21 +59,35 @@ Package Model
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
 `fetch`/`prepare`/`build`/ `install`/`depends` with sane defaults.
 
-See `package/`{`bash.sh`,`make.sh`} for a minimal example, `util-linux.sh` for heavy knob use.
-
 
 Conventions
 -----------
 
-- All shell code should be POSIX compliant.
-- Non-exported variables should be in lowercase (e.g., `package_version`)..
-- Exported variables should be in uppercase (e.g., `PATH`).
+All shell code should be POSIX compliant.
+
+### External API
+
+Shell variables are part of the **external API** if they are used to parameterise `lfs`.
+
+External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `CAPS`)
+
+External API variables might be exported in invocations of `lfs`, but are never exported internally
+as part of internal logic.
+
+### Internal API
+
+Shell variables are part of the **internal API** if they are used by functions, and are not part of
+the external API (e,g. `package_version`, `prefix`).
+
+Internal API variables have lowercase names.
+
+Internal API variables must not be exported.
 
 
 Gotchas
 -------
 
-- Mind that ash/dash's `A | B` does not fail the pipeline if `A` fails.
+Mind that ash/dash's `A | B` does not fail the pipeline if `A` fails.
 
 
 Pointers

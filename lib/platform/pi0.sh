@@ -1,16 +1,15 @@
-readonly ARCH=arm
-
-readonly target=arm-scratch-linux-gnueabihf
+readonly target_arch=arm
+readonly target_abi=gnueabihf
 
 # https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
-readonly arch=armv6kz
-readonly tune=arm1176jzf-s
-readonly abi=aapcs-linux
-readonly fpu=vfpv2
-readonly float=hard
+readonly target_gcc_arch=armv6kz
+readonly target_gcc_tune=arm1176jzf-s
+readonly target_gcc_abi=aapcs-linux
+readonly target_gcc_fpu=vfpv2
+readonly target_gcc_float=hard
 
 readonly defconfig=bcmrpi_defconfig
-readonly DTB=bcm2835-rpi-zero.dtb
+readonly dev_tree_blob=bcm2835-rpi-zero.dtb
 
 readonly QEMU=qemu-system-arm
 

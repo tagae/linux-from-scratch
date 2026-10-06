@@ -3,77 +3,117 @@
 set -o errexit -o nounset
 umask 022
 
-readonly PROJECT_DIR=$(dirname $(realpath "$0"))
-readonly PACKAGE_DIR=$PROJECT_DIR/package
+#===[ Framework ]===
 
-. $PROJECT_DIR/lib/base.sh
-. $PROJECT_DIR/lib/package.sh
-. $PROJECT_DIR/lib/tools.sh
-. $PROJECT_DIR/lib/system.sh
-. $PROJECT_DIR/lib/image.sh
-. $PROJECT_DIR/lib/qemu.sh
+readonly lfs_version=13.1
 
-#--[ Command line ]
+readonly project_dir=$(dirname $(realpath "$0"))
+readonly package_dir=$project_dir/package
 
-while getopts ":p:d:h" opt; do
-    case "$opt" in
-        p) PLATFORM="$OPTARG" ;;
-        d) DESTINATION="$OPTARG" ;;
-        h) set -- help; break ;;
-        :) bail "Option -$OPTARG requires an argument" ;;
-        \?) bail "Could not parse options" ;;
-    esac
-done
+. $project_dir/lib/base.sh
+. $project_dir/lib/package.sh
+. $project_dir/lib/tools.sh
+. $project_dir/lib/system.sh
+. $project_dir/lib/image.sh
+. $project_dir/lib/qemu.sh
 
-[ "${1:-}" = help ] || shift $((OPTIND - 1))
+#===[ State Storage ]===
 
-#--[ Project ]
+# Override if you wish to store artefacts in a custom dir.
+: ${STATE_DIR:=$project_dir}
 
-: ${DOWNLOAD_DIR:=$PROJECT_DIR/download}
-: ${STATE_DIR:=$PROJECT_DIR}
+# Contains fetched archives. Allows offline work once all needed artefacts have been fetched.
+: ${DOWNLOAD_DIR:=$STATE_DIR/download}
+
+# Contains unarchived package sources.
 : ${SOURCE_DIR:=$STATE_DIR/source}
+
+# Build state.
 : ${WORK_DIR:=$STATE_DIR/work}
+
+# Build toolchains.
 : ${TOOL_DIR:=$STATE_DIR/tools}
+
+# Root filesystem being built.
 : ${INSTALL_DIR:=$STATE_DIR/install}
+
+# Built package archives.
 : ${ARCHIVE_DIR:=$STATE_DIR/archive}
+
+# Built images to be used on actual hardware, or emulators.
 : ${IMAGE_DIR:=$STATE_DIR/image}
 
-# Small bind-mounted staging area for the few files Dockerfile.scratch needs at build time.
-: ${SCRATCH_INIT_DIR:=$WORK_DIR/scratch-init}
+# Artefacts produced by bootstrap, needed to build a system from scratch.
+: ${BOOTSTRAP_DIR:=$WORK_DIR/bootstrap}
 
-readonly DOWNLOAD_DIR STATE_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
-         INSTALL_DIR ARCHIVE_DIR IMAGE_DIR SCRATCH_INIT_DIR
+readonly STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
+         INSTALL_DIR ARCHIVE_DIR IMAGE_DIR BOOTSTRAP_DIR
 
-#--[ Platform ]
+#===[ System Characteristics ]===
+
+# Parse the given system key, when provided.
+if [ -n "${SYSTEM_KEY:-}" ]; then
+    _platform_userland=${SYSTEM_KEY%%+*}
+    _platform=${_platform_userland%%-*}
+    _plus_caps=${SYSTEM_KEY#"$_platform_userland"} # "" or "+cap1+cap2..."
+    : ${PLATFORM:=$_platform}
+    if [ "$_platform" != "$_platform_userland" ]; then
+        : ${USERLAND:=${_platform_userland#*-}}
+    fi
+    : ${CAPS=$(echo "$_plus_caps" | tr '+' ' ')}
+    unset _platform_userland _platform _plus_caps
+fi
+
+#-- Platform: machine on which the built system will run.
 
 : ${PLATFORM:=virt}
 
-[ -f $PROJECT_DIR/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
+[ -f $project_dir/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
 
 readonly PLATFORM
 
-. $PROJECT_DIR/lib/platform/$PLATFORM.sh
+. $project_dir/lib/platform/$PLATFORM.sh
 
-#--[ Userland ]
+#-- Userland: init system and toolset.
 
-# Which userland the built system runs, including init system.
-: ${USERLAND:=systemd}
+: ${USERLAND:=systemd-gnu}
 
-[ -f $PROJECT_DIR/package/bootable-$USERLAND.sh ] || bail "Unsupported userland '$USERLAND'"
+[ -f $project_dir/lib/userland/$USERLAND.sh ] || bail "Unsupported userland '$USERLAND'"
 
 readonly USERLAND
 
-#--[ Capabilities ]
+#-- Capabilities: set of opt-in features layered on top of the base system.
 
-# Set of opt-in features layered on top of the base system.
 readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
 
-#--[ System key ]
+#-- System key: canonical marker for the platform/userland/caps combination.
 
-# Differentiates the deliverables for each platform/userland/capabilities combination.
-readonly SYSTEM_KEY=$PLATFORM-$USERLAND+$(set -- $CAPS; IFS=+; echo "$*")
+readonly SYSTEM_KEY=$PLATFORM-$USERLAND${CAPS:++$(set -- $CAPS; IFS=+; echo "$*")}
 
-#--[ Compilation ]
+#===[ Security ]===
+
+# CA bundle used to verify TLS on source downloads.
+if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+    readonly ssl_cert_file=/etc/ssl/certs/ca-certificates.crt
+fi
+
+#===[ Compilation ]===
+
+: ${build_vendor:=scratch}
+: ${build_kernel:=linux}
+if [ -n "${build_arch:-}" ]; then
+    : ${build_abi:=gnu}
+    readonly build_arch build_vendor build_kernel build_abi
+    readonly build_triplet=$build_arch-$build_vendor-$build_kernel-$build_abi
+fi
+
+: ${target_vendor:=$build_vendor}
+: ${target_kernel:=$build_kernel}
+if [ -n "${target_arch:-}" ]; then
+    : ${target_abi:=$build_abi}
+    readonly target_arch target_vendor target_kernel target_abi
+    readonly target_triplet=$target_arch-$target_vendor-$target_kernel-$target_abi
+fi
 
 export LC_ALL=POSIX
 readonly LC_ALL
@@ -91,57 +131,60 @@ fi
 export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 readonly PATH
 
-# bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists (any booted LFS;
-# the scratch container via its /usr aliasing), prefer it — existence, not phase. On the Debian
-# seed there is no /usr/bin/m4 and the baked TOOL_DIR path is the correct one.
+# Bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists, prefer it.
 if [ -x /usr/bin/m4 ]; then
     : ${M4:=/usr/bin/m4}
     export M4
 fi
 
-# CA bundle used to verify TLS on source downloads.
-if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-    readonly ssl_cert_file=/etc/ssl/certs/ca-certificates.crt
-fi
+#===[ Installation ]===
 
-#--[ Installation ]
-
+# BTRFS subvolume name to use as root filesystem.
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
 trap unmount_all EXIT
 
-#--[ Command ]
+# DESTINATION picks an install location.
+if [ -n "${DESTINATION:-}" ]; then
+    if [ -d "$DESTINATION" ]; then
+        package_install_dir=$(realpath "$DESTINATION")
+    elif [ -f "$DESTINATION" ]; then
+        IMAGE="$DESTINATION" image
+        package_install_dir=$ROOT_DIR
+    elif [ -b "$DESTINATION" ]; then
+        DEVICE="$DESTINATION" device
+        package_install_dir=$ROOT_DIR
+    elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
+        IMAGE="$DESTINATION" image
+        package_install_dir=$ROOT_DIR
+    else
+        mkdir -pv "$DESTINATION"
+        package_install_dir=$(realpath "$DESTINATION")
+    fi
+fi
+unset DESTINATION
+
+#===[ Command Execution ]===
 
 case "${1:-help}" in
-    version)
-        shift
-        version "$@"
+    pack)
+        [ $# -eq 2 ] || usage "$1 <PACKAGE>"
+        lfs_archive_package "$2"
         ;;
 
-    fetch)
-        shift
-        fetch "$@"
+    install)
+        [ $# -eq 2 ] || usage "$1 <PACKAGE>"
+        lfs_install_package "$2"
         ;;
 
     tools)
         shift
-        tools "$@"
+        lfs_tools "$@"
         ;;
 
     system)
         shift
         system "$@"
-        ;;
-
-    install)
-        shift
-        install "$@"
-        ;;
-
-    unarchive)
-        shift
-        [ $# -ge 1 ] || usage "unarchive FILE [DEST]"
-        unarchive "$@"
         ;;
 
     image)
@@ -155,7 +198,7 @@ case "${1:-help}" in
         ;;
 
     help)
-        echo "Usage: $(basename "$0") [-p PLATFORM] (tools|system|install|unarchive|image|qemu)"
+        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|system|install|unarchive|image|qemu)"
         echo ""
         echo "Commands:"
         echo "  tools            Build cross-compilation toolchain"
@@ -169,14 +212,12 @@ case "${1:-help}" in
         echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"
         echo ""
         echo "Options:"
-        echo "  -p PLATFORM      Target platform (virt (default), pi0, pi4, pi5)"
         echo "  -d DESTINATION   Install destination (dir, device, or .img file)"
         echo ""
         echo "Environment:"
+        echo "  PLATFORM         Target platform"
         echo "  USERLAND         Userland flavor, init system included"
         echo "  CAPS             Capability set"
-        echo "  USB_DISK, QEMU_EXTRA, ROOT_VOLUME, IMAGE_SIZE"
-        echo "                   See lib/qemu.sh and lib/image.sh"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
         ;;
 

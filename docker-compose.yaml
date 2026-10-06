@@ -9,7 +9,7 @@ services:
     stdin_open: true
     privileged: true
     environment:
-      PLATFORM:
+      SYSTEM_KEY:
     volumes:
       - type: bind
         source: lfs
@@ -32,6 +32,9 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
+      - type: bind # So that built archives can be consumed where needed outside the container.
+        source: $PWD/archive
+        target: /mnt/lfs/archive
       - type: bind # Holds artefacts Dockerfile.scratch needs to COPY at image build time.
         source: $PWD/work/scratch-init
         target: /mnt/lfs/work/scratch-init
@@ -46,9 +49,7 @@ services:
     stdin_open: true
     privileged: true
     environment:
-      PLATFORM:
-      USERLAND:
-      CAPS:
+      SYSTEM_KEY:
       INSTALL_DIR:
       IMAGE_SIZE:
       LFS_RELEASE:
