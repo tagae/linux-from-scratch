@@ -15,9 +15,9 @@
 
 # See https://www.airs.com/ian/configure/configure_5.html
 
-tools() {
+lfs_tools() {
     case "${1:-help}" in
-        bootstrap) shift && bootstrap_tools ;;
+        bootstrap) shift && lfs_tools_bootstrap ;;
         build) shift && build_tools ;;
         help)
             echo "Usage: $(basename "$0") tools <bootstrap|build>"
@@ -26,11 +26,11 @@ tools() {
     esac
 }
 
-bootstrap_tools() {
+lfs_tools_bootstrap() {
     readonly nls=no
     readonly multilib=no
 
-    bootstrap_native_tools
+    lfs_tools_bootstrap_native
 
     exit 0
 
@@ -120,17 +120,16 @@ bootstrap_tools() {
 }
 
 # Builds a cross toolchain for the current platform.
-bootstrap_native_tools() {
+lfs_tools_bootstrap_native() {
     (
         readonly package_variant=tools
-        readonly package_install_dir=$TOOL_DIR
-        readonly prefix=/usr
-
-        install linux#headers
-        exit 0
-        ( nscd=no; enable_kernel=5.10; install glibc )
+        package_install_dir=$TOOL_DIR
+#        readonly prefix=/usr
+        lfs_install_package linux#headers
+        ( nscd=no; enable_kernel=5.10; lfs_install_package glibc )
     )
-    exit 0
+    echo barrier reached
+    exit 1
 
     _tools_set_rtld_ldflags
 

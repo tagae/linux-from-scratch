@@ -5,6 +5,8 @@ umask 022
 
 #===[ Framework ]===
 
+readonly lfs_version=13.1
+
 readonly project_dir=$(dirname $(realpath "$0"))
 readonly package_dir=$project_dir/package
 
@@ -142,22 +144,42 @@ readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
 trap unmount_all EXIT
 
+# DESTINATION picks an install location.
+if [ -n "${DESTINATION:-}" ]; then
+    if [ -d "$DESTINATION" ]; then
+        package_install_dir=$(realpath "$DESTINATION")
+    elif [ -f "$DESTINATION" ]; then
+        IMAGE="$DESTINATION" image
+        package_install_dir=$ROOT_DIR
+    elif [ -b "$DESTINATION" ]; then
+        DEVICE="$DESTINATION" device
+        package_install_dir=$ROOT_DIR
+    elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
+        IMAGE="$DESTINATION" image
+        package_install_dir=$ROOT_DIR
+    else
+        mkdir -pv "$DESTINATION"
+        package_install_dir=$(realpath "$DESTINATION")
+    fi
+fi
+unset DESTINATION
+
 #===[ Command Execution ]===
 
 case "${1:-help}" in
-    build)
-        shift
-        build_package "$@"
+    pack)
+        [ $# -eq 2 ] || usage "$1 <PACKAGE>"
+        lfs_archive_package "$2"
         ;;
 
     install)
-        shift
-        install_package "$@"
+        [ $# -eq 2 ] || usage "$1 <PACKAGE>"
+        lfs_install_package "$2"
         ;;
 
     tools)
         shift
-        tools "$@"
+        lfs_tools "$@"
         ;;
 
     system)

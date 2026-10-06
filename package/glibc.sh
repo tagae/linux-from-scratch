@@ -5,10 +5,10 @@ readonly package_source=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar
 readonly package_source_hash=sha256:37f600f2bef3c5e8300147059568b2a2e40a7ad6ccc65ce942556d49429cc667
 
 prepare() {
-    patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-fhs-1.patch \
-        sha256:643552db030e2f2d7ffde4f558e0f5f83d3fabf34a2e0e56ebdb49750ac27b0d
-    patch_source https://www.linuxfromscratch.org/patches/lfs/development/glibc-${package_version}-upstream_fixes-1.patch \
-        sha256:500567ff0a22e295bfe3b55e9b397796f71a19f01e1ff7fb29c9189482ee1809
+    patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/glibc-fhs-1.patch \
+                 sha256:643552db030e2f2d7ffde4f558e0f5f83d3fabf34a2e0e56ebdb49750ac27b0d
+    patch_source  https://www.linuxfromscratch.org/patches/lfs/$lfs_version/glibc-${package_version}-upstream_fixes-1.patch \
+                 sha256:500567ff0a22e295bfe3b55e9b397796f71a19f01e1ff7fb29c9189482ee1809
 
     # Ensure that the ldconfig and sln utilities are installed alongside the
     # rest of this glibc, rather than glibc's default rootsbindir=/sbin.
