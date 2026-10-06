@@ -65,9 +65,18 @@ Opt into capabilities with `CAPS`:
 make test CAPS="network 9p"
 ```
 
+Restrictions
+------------
 
-Building and booting by stage
------------------------------
+No documentation is built (man pages, info pages, etc.). This might become an opt-in feature in the
+future.
+
+Localisation and native language support (NLS) are unsupported. This might become an opt-in feature
+in the future.
+
+
+Building The System
+-------------------
 
 The stages can be run individually:
 
@@ -79,32 +88,34 @@ make qemu     # boot the image in QEMU (interactive serial console)
 make test     # checks that the image boots and root can login/poweroff
 ```
 
-Each stage takes the same three variables, defaulting to the `virt` platform, the `systemd`
-userland, and no capabilities:
+Each stage defaults to the `virt` platform, the `systemd` userland, and no capabilities.
+
+The defaults can be changed through variables:
 
 ```shell
-make system PLATFORM=pi0 USERLAND=busybox CAPS="network 9p"
+make system PLATFORM=pi0 USERLAND=systemd CAPS="network 9p"
 ```
 
-Those three make up a *system key*, `<platform>-<userland>+[<cap>+...]`, which names every
-deliverable: the install tree, the boot files, and the image. Capabilities are sorted, and the `+`
-is always present, so one combination has exactly one key however you spell the request.
+Currently, only the `systemd` userland is supported.
 
-A stage can also be named by its key directly, which is how you build several combinations from one
-command line:
+Those three variables make up a *system key*, `<platform>-<userland>[+<caps>]`, which names
+every deliverable: the install tree, the boot files, and the image.
+
+A stage can be named by its system key directly:
 
 ```shell
-make pi0-busybox+9p+network-test virt-systemd+-test
+make pi0-systemd+9p+network-test
 ```
 
-Images are file targets under that same key, so `make image/pi0-busybox+9p+network.img` produces
-exactly what the first of those two would boot.
+Images are file targets under that same key, so `make image/pi0-systemd+9p+network.img` produces an
+image for the `pi0` platform, using the `systemd` userland, and featuring the `9p` and `network`
+capabilities.
 
 The `distclean` target tears down all built files, and downloaded files.
 
 
-Testing
--------
+Testing The System
+------------------
 
 `make test` (with optional `PLATFORM=`, `USERLAND=` and `CAPS=`) boots the image in QEMU, logs in as
 root, runs `poweroff`, and verifies that QEMU exits cleanly. It drives the `./test` expect script

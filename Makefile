@@ -17,49 +17,52 @@
 # Whatever depends on FORCE will be considered out of date, since it depends on nothing.
 FORCE:
 
-USERLAND ?= systemd
-
-CAPS ?=
-empty :=
-space := $(empty) $(empty)
-CAPS_KEY := $(if $(strip $(CAPS)),+$(subst $(space),+,$(sort $(CAPS))))
-
+# Environment variables picked up automatically by Docker Compose.
 .env:
 	@echo HOST_UID=$$(id -u) >> $@
 	@echo HOST_GID=$$(id -g) >> $@
-	@echo LFS_RELEASE=r13.0-143-systemd >> $@
+	@echo LFS_RELEASE=r13.0-143 >> $@
 
+# Default targets.
+tools: virt-systemd-gnu-tools
+system: virt-systemd-gnu-system
+image: image/virt-systemd-gnu.img
+qemu: virt-systemd-gnu-qemu
+test: virt-systemd-gnu-test
+
+%-tools %-system image/%.img %-qemu: export SYSTEM_KEY = $*
+
+# Toolchain.
 %-tools: .env
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 6: Cross Compiling Temporary Tools
-	PLATFORM=$* docker compose run --build --rm bootstrap ./lfs tools bootstrap
+	docker compose run --build --rm bootstrap ./lfs tools bootstrap
 	# Chapter 7: Building Additional Temporary Tools
-	PLATFORM=$* docker compose run --build --rm scratch ./lfs tools build
+	docker compose run --build --rm scratch ./lfs tools build
 
 %-system: %-tools
 	# Chapter 8: Installing Basic System Software
 	# Chapter 9: System Configuration
-	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm scratch ./lfs system build
+	docker compose run --rm scratch ./lfs system build
 
-image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img: %-system FORCE
+image/%.img: %-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
-	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" docker compose run --rm --user 0:0 scratch ./lfs image build
+	docker compose run --rm --user 0:0 scratch ./lfs image build
 
-%-test: image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img
-	./test $* $(USERLAND) "$(CAPS)"
+%-test: image/%.img
+	./test $*
 
-%-qemu: image/$(PLATFORM)-$(USERLAND)$(CAPS_KEY).img
-	PLATFORM=$* USERLAND=$(USERLAND) CAPS="$(CAPS)" ./lfs qemu
-
-tools: virt-systemd-tools
-system: virt-systemd-system
-image: image/virt-systemd.img
-qemu: virt-systemd-qemu
-test: virt-systemd-test
+%-qemu: image/%.img
+	./lfs qemu
 
 clean:
-	docker volume rm -f $(CURDIR)_source $(CURDIR)_work $(CURDIR)_install
+	rm -rf source/ work/ install/
+	docker volume rm -f linux-from-scratch_source linux-from-scratch_work linux-from-scratch_install
 
-distclean: .env
+distclean: clean
+	rm -rf tools/
+	docker volume rm -f linux-from-scratch_tools
+
+pristine: distclean
+	rm -rf .env archive/ download/ image/
 	docker compose down -v
-	rm -rf .env archive/ download/ image/ source/ tools/ work/
