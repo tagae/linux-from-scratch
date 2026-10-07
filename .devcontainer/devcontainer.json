@@ -1,0 +1,34 @@
+// See https://containers.dev/implementors/json_reference
+{
+  name: "Default",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  customizations: {
+    jetbrains: {
+      backend: "IntelliJ",
+      settings: {
+        /* IDE settings can be added via “Add currently modified settings from IDE”.
+         * A complete list of supported settings is also available through auto-completion */
+      },
+      plugins: [
+        // A set of plugin IDs.
+        // Plugin ID can be found on the corresponding plugin’s page at https://plugins.jetbrains.com.
+      ]
+    }
+  },
+  "mounts": [
+    // Keeps the Claude Code login across container rebuilds.
+    "source=lfs-claude-config,target=/home/dev/.claude,type=volume",
+    // Fish and Emacs configs live in the dotfiles repo; the image links them into place.
+    "source=${localEnv:HOME}/.dotfiles,target=/home/dev/.dotfiles,type=bind,readonly"
+  ],
+  "containerEnv": {
+    // Also relocates .claude.json (onboarding and account state) into the volume.
+    "CLAUDE_CONFIG_DIR": "/home/dev/.claude"
+  },
+  "features": {
+    // Add additional features to your project using auto-completion.
+  },
+  remoteUser: "dev"
+}
