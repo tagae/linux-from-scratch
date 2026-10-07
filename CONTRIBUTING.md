@@ -184,7 +184,3 @@ https://www.raspberrypi.com/documentation/computers/processors.html
 http://www.dettus.net/detLFS/
 https://www.linux-magazine.com/Issues/2021/245/detLFS
 https://blog.jgosmann.de/posts/2021/02/07/a-guide-to-crosscompiling-applications/
-
-Architecture records: `docs/design/` (package framework, packaging,
-build phases, capabilities, kernel config, trust, self-hosting, the
-GnuPG appliance). Open cleanups: `SIMPLIFICATIONS.md`.
