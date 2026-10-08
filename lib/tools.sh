@@ -76,6 +76,8 @@ lfs_tools_bootstrap() {
         lfs_install_package pkgconf
         lfs_install_package openssl
         lfs_install_package wget
+        lfs_install_package meson
+        lfs_install_package p11-kit
         lfs_install_package make-ca
         lfs_install_package ca-certificates
     )
@@ -106,7 +108,6 @@ lfs_tools_build() {
     lfs_install_package bison
     ( optimizations=no; lfs_install_package python )
     lfs_install_package ninja
-    lfs_install_package meson
     lfs_install_package gperf
     lfs_install_package markupsafe
     lfs_install_package jinja2
