@@ -18,7 +18,7 @@
 lfs_tools() {
     case "${1:-help}" in
         bootstrap) shift && lfs_tools_bootstrap ;;
-        build) shift && build_tools ;;
+        build) shift && lfs_tools_build ;;
         help)
             echo "Usage: $(basename "$0") tools <bootstrap|build>"
             if [ $# -eq 1 ]; then exit 0; else exit 1; fi ;;
@@ -26,23 +26,15 @@ lfs_tools() {
     esac
 }
 
+# Builds the tools needed to run from scratch.
 lfs_tools_bootstrap() {
     readonly nls=no
     readonly multilib=no
 
-    lfs_tools_bootstrap_native
-
-    # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
-    # Dockerfile.scratch can COPY it.
-    mkdir -pv $BOOTSTRAP_DIR
-    cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/bash
-}
-
-# Builds a native toolchain, and the shell the scratch image starts with.
-lfs_tools_bootstrap_native() (
-    readonly package_variant=bootstrap-native
-    package_install_dir=$TOOL_DIR
+    readonly package_variant=bootstrap
     readonly prefix=/usr
+
+    package_install_dir=$TOOL_DIR
 
     lfs_install_package linux#headers
     ( nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
@@ -67,7 +59,55 @@ lfs_tools_bootstrap_native() (
 
     # Compiled by the native toolchain above, rather than by the build host's.
     ( export CC=$TOOL_DIR/usr/bin/gcc; curses=no; lfs_install_package bash )
-)
+
+    # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
+    # Dockerfile.scratch can COPY it.
+    mkdir -pv $BOOTSTRAP_DIR
+    cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/bash
+}
+
+lfs_tools_build() {
+    lfs_tools_set_rtld_ldflags
+
+    mkdir -p ${TMPDIR:-/tmp}
+
+    # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
+    export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
+
+    # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig
+    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+
+    readonly package_variant=tools
+    readonly package_install_dir=$TOOL_DIR
+    readonly prefix=/usr
+    readonly nls=no
+
+    lfs_install_package gettext
+    lfs_install_package bison
+    ( optimizations=no; lfs_install_package python )
+    lfs_install_package ninja
+    lfs_install_package meson
+    lfs_install_package gperf
+    lfs_install_package markupsafe
+    lfs_install_package jinja2
+    lfs_install_package flex
+    lfs_install_package bc
+    lfs_install_package perl
+    ( manpages=no; lfs_install_package kmod )
+    (
+        libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin
+        makeinstall_chown=no makeinstall_setuid=no
+        all_programs=no
+        libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes
+        mount=yes fdisks=yes losetup=yes fallocate=yes mountpoint=yes
+        lfs_install_package util-linux
+    )
+    lfs_install_package btrfs-progs
+    lfs_install_package dosfstools
+    lfs_install_package libaio
+    lfs_install_package lvm2#device-mapper
+    lfs_install_package multipath-tools#kpartx
+}
 
 # Exports LDFLAGS so that native binaries carry a TOOL_DIR-relative interpreter/rpath
 # pointing at the native glibc/libstdc++ under TOOL_DIR/usr.
@@ -76,416 +116,4 @@ lfs_tools_set_rtld_ldflags() {
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
     # A single rpath at $TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough.
     export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
-}
-
-_define_target_gcc_flags() {
-    arch=${target_gcc_arch:-}
-    tune=${target_gcc_tune:-}
-    abi=${target_gcc_abi:-}
-    fpu=${target_gcc_fpu:-}
-    float=${target_gcc_float:-}
-}
-
-_build_gcc_prereqs() {
-    install gmp
-    (
-        export CPPFLAGS="-I$TOOL_DIR/include ${CPPFLAGS:-}" LDFLAGS="-L$TOOL_DIR/lib ${LDFLAGS:-}"
-        install mpfr
-        install mpc
-    )
-
-    # These variables feed gcc.sh's "${gmp:+--with-gmp=$gmp}", etc.
-    readonly gmp=$TOOL_DIR
-    readonly mpfr=$TOOL_DIR
-    readonly mpc=$TOOL_DIR
-    export LDFLAGS="-Wl,-rpath,$TOOL_DIR/lib ${LDFLAGS:-}"
-}
-
-_bootstrap_build_host() {
-    # Bare "gcc"/"cc"/"as"/"ld"/etc: what the temporary tools further down,
-    # build_tools(), and every hand-rolled-Makefile package elsewhere
-    # (btrfs-progs, kpartx, libaio, ...) that hardcodes a bare CC=gcc
-    # actually compile with. Without this, nothing in the (otherwise
-    # completely empty) scratch container could compile anything at all.
-    #
-    # Symlinked to pass1-native's own $native_target-prefixed tools
-    # (already a genuine, fully-capable, working compiler, built above)
-    # rather than building a whole second, separately-named "native"
-    # gcc/binutils from scratch — a plain native build (host=build=target,
-    # all the same string, no --host/--target override at all) makes
-    # gcc's own top-level configure auto-select a multi-stage bootstrap
-    # build instead of the single, already-sufficient compile above. This
-    # is simpler and just as correct: anything that would have configured
-    # a genuinely native gcc anyway just gets its bare names for free.
-    for _tool in gcc cc g++ c++ cpp gcov gcov-tool gcc-ar gcc-nm gcc-ranlib \
-                     as ld ld.bfd ar nm objcopy objdump ranlib strip \
-                     addr2line readelf size strings; do
-        [ -x "$TOOL_DIR/bin/$native_target-$_tool" ] || continue
-        ln -sfv "$TOOL_DIR/bin/$native_target-$_tool" "$TOOL_DIR/usr/bin/$_tool"
-    done
-    unset _tool
-
-    # Stage the native C++/GCC runtime into $TOOL_DIR/usr/lib. pass1-native
-    # is built with --target=$native_target, so gcc installs its target
-    # runtime (libstdc++.so.6, libgcc_s.so.1) under $TOOL_DIR/$native_target/
-    # lib64 — a compiler-internal path found at *link* time but on nobody's
-    # *runtime* search path. The scratch container is FROM scratch (no
-    # /etc/ld.so.conf, no default /usr/lib population), so every binary
-    # there resolves its libraries purely via the rpath baked in by
-    # _tools_set_rtld_ldflags, which points at $TOOL_DIR/usr/lib. Copying
-    # the C++ runtime there (next to glibc) is what lets a just-built C++
-    # program actually run in scratch — e.g. ninja's bootstrap, which
-    # compiles ./ninja and then executes it. cp -a preserves the soname
-    # symlink chain (libstdc++.so.6 -> libstdc++.so.6.0.NN).
-    cp -av $TOOL_DIR/$native_target/lib64/libstdc++.so.6* \
-       $TOOL_DIR/$native_target/lib64/libgcc_s.so.1 \
-       $TOOL_DIR/usr/lib/
-
-    # --- Temporary tools (glibc-linked, native, relocatable) --------
-    #
-    # The scratch container's own userspace (bash as /bin/sh, coreutils,
-    # sed, tar, ...) — build-host-native by definition, same reasoning as
-    # the native toolchain above. Built here rather than in build_tools()
-    # because Dockerfile.scratch needs bash already staged in
-    # SCRATCH_INIT_DIR before build_tools() can even run (it executes
-    # inside the scratch container, which needs a working /bin/sh first).
-    (
-        readonly package_variant=tools
-        package_install_dir=$TOOL_DIR
-        prefix=/usr
-
-        # Compiled through pass1-native's own $native_target-gcc (sysroot=
-        # $TOOL_DIR), NOT this Debian container's bare "gcc". host=
-        # $native_target routes every autoconf package's compiler to it;
-        # zlib/openssl/bzip2 (hand-rolled Makefiles, no --host) read
-        # cross_target/cross_arch for the same prefixed names. Going
-        # through the sysroot'd compiler is what makes $TOOL_DIR/usr/
-        # {include,lib} its *own* system paths, so headers and libraries
-        # installed here (zlib.h, libssl, ...) resolve with no extra -I/-L,
-        # and glibc's ld-script stubs (libc.so/libm.so, whose internal refs
-        # are bare /usr/lib/... paths) get sysroot-prefixed to $TOOL_DIR
-        # automatically — none of which holds for Debian's bare gcc, which
-        # is what forced the pkg-config/ldscript/-I workarounds this
-        # replaces. Same shape as the per-target cross build below, just
-        # aimed at the build host's own triple.
-        #
-        # build must be explicit: with only --host, autoconf sets
-        # cross_compiling=maybe and falls back to running a test binary,
-        # which (same arch as build) runs fine against the host libc and
-        # wrongly resolves cross_compiling=no — packages then execute their
-        # freshly-built (newer-glibc) binaries directly, e.g. coreutils'
-        # help2man man-page generation.
-        readonly build=$(cc -dumpmachine)
-        readonly host=$native_target
-        readonly cross_target=$native_target
-        readonly cross_arch=$native_arch
-
-        # pkgconf's own compiled-in default search path is the literal
-        # /usr/lib/pkgconfig (from its own --prefix=/usr at build time — it
-        # has no notion of TOOL_DIR as a DESTDIR), so left alone it looks
-        # in this container's real /usr instead of TOOL_DIR/usr. Needed by
-        # e.g. wget's configure to find openssl.
-        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
-
-        install m4
-        package_install_dir=/ prefix=$TOOL_DIR install ncurses#tic
-        shared=yes normal=no cxx_shared=yes debug=no ada=no stripping=no install ncurses
-        curses=no install bash
-        install_program=hostname no_install_program=kill,uptime install coreutils
-        install diffutils
-        install file#native
-        install file
-        localstatedir=$TOOL_DIR/var/lib/locate install findutils
-        install gawk
-        install grep
-        install gzip
-        install make
-        install patch
-        install sed
-        install tar
-        install xz
-        # tar shells out to this to decompress .tar.bz2 sources (e.g. busybox).
-        install bzip2
-
-        # Needed by the kernel's own `make headers_install` — it shells out
-        # to rsync to copy sanitized headers, and the scratch phase has no
-        # host PATH fallback to borrow one from.
-        install rsync
-
-        # wget (and its openssl/zlib deps), so the self-hosted scratch/system
-        # phases can fetch their own package sources over HTTPS — bootstrap
-        # stays minimal and never pre-fetches anything on their behalf.
-        install zlib
-        install openssl
-        install pkgconf
-        install wget
-    )
-
-    # Generate the CA certificate bundle from Mozilla's certdata.txt as part of bootstrap, for use
-    # during the scratch phase.
-    (
-        readonly package_variant=tools
-        package_install_dir=$TOOL_DIR
-        prefix=/usr
-
-        # Debian's own build triple — computed via bare `cc` BEFORE the CC
-        # override below (which would otherwise make it report $native_target).
-        readonly build=$(cc -dumpmachine)
-        readonly host=$native_target
-        export CC=$native_target-gcc CXX=$native_target-g++
-        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
-        # Mirror build_tools()' env: glibc's compiled-in gconv path is this
-        # container's real /usr/lib/gconv; point it at our own. (No modules are
-        # actually installed there, so make-ca's UTF-8 cert labels resolve via
-        # glibc's built-in converters — this only prevents a stray lookup in
-        # the wrong tree.)
-        export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
-
-        install ninja
-        install meson
-        install libffi
-        install libtasn1
-        install p11-kit
-        install make-ca
-        install ca-certificates
-    )
-}
-
-# Container-only post-processing once the cross-compiler is built:
-# patchelf-based rpath relocation (patchelf, like the rest of the build
-# host, only exists in the bootstrap container; a guest's pass2 gcc
-# already gets a correct rpath at link time from _tools_set_rtld_ldflags,
-# itself only exported inside _bootstrap_build_host above, so there is
-# nothing left to relocate in guest phase anyway) and staging the
-# toolchain/CA bundle where Dockerfile.scratch's build (work/certs,
-# SCRATCH_INIT_DIR) can reach them. A guest has no scratch container to
-# stage for, so bootstrap_tools() calls this only outside guest phase too.
-_bootstrap_stage_for_scratch() {
-    _tools_relocate
-
-    # Stage our own generated CA bundle.
-    mkdir -p $WORK_DIR/certs
-    cp -fv $TOOL_DIR/etc/ssl/certs/ca-certificates.crt $WORK_DIR/certs/ca-certificates.crt
-
-    # TOOL_DIR is a named volume, invisible to `docker build`; stage our
-    # own already-built bash where Dockerfile.scratch's COPY can reach it.
-    mkdir -p $BOOTSTRAP_DIR
-    cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/sh
-
-    # Empty placeholder Dockerfile.scratch's COPY --chown uses to seed the
-    # install volume's ownership.
-    mkdir -p $BOOTSTRAP_DIR/empty
-}
-
-build_tools() {
-    # No _tools_relocate call here: it shells out to patchelf, which only
-    # exists in the bootstrap container. Everything built in this phase
-    # already gets a correct interpreter/rpath at link time from
-    # _tools_set_rtld_ldflags, so the patchelf safety net isn't needed.
-    _tools_set_rtld_ldflags
-
-    # The scratch image has no /tmp (see Dockerfile.scratch); TMPDIR points
-    # here instead, but nothing else creates it.
-    mkdir -p "${TMPDIR:-/tmp}"
-
-    # glibc's own compiled-in default gconv module path is the literal
-    # /usr/lib/gconv (this container's real root, not TOOL_DIR-relative) —
-    # same story as PKG_CONFIG_LIBDIR and BISON_PKGDATADIR. Without this,
-    # iconv_open() fails for anything beyond a few built-in fast-path
-    # charsets (plain ASCII/UTF-8 works, ISO-8859-1 etc. doesn't), which
-    # in turn makes gettext's own configure conclude iconv is broken and
-    # build msgfmt without iconv support at all.
-    export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
-
-    # pkgconf's own compiled-in default search path is the literal
-    # /usr/lib/pkgconfig — same story as GCONV_PATH above. This is a
-    # separate `./lfs tools build` invocation from bootstrap_tools, which
-    # sets the same export for its own process; it doesn't carry over.
-    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
-
-    readonly package_variant=tools
-    readonly package_install_dir=$TOOL_DIR
-    readonly prefix=/usr
-    readonly nls=no
-
-    install gettext
-    install bison
-    # optimizations=no: --enable-optimizations (PGO) fails at the profiling
-    # run here (libpython3.14.so's gcov instrumentation doesn't resolve
-    # __gcov_indirect_call under our _tools_set_rtld_ldflags-injected
-    # LDFLAGS) — moot anyway, since Python is only build-time tooling here
-    # and never actually runs as the shipped system's own interpreter.
-    optimizations=no install python
-
-    # Needed to build systemd itself in the later `system build` step. Real
-    # LFS builds these inside its chroot as ordinary chapter 8 packages
-    # (alongside systemd, using its own chroot's Python) since it doesn't
-    # strip build-only tooling back out of the final system; this project
-    # does, so they get the same build-time-only treatment as bison/gettext
-    # /python above instead of landing in INSTALL_DIR.
-    # Also built (earlier) by bootstrap_tools' cert chain, so these fast-path
-    # here; kept because the later systemd build genuinely depends on them.
-    install ninja
-    install meson
-
-    # NOTE: the CA trust store (libffi → libtasn1 → p11-kit → make-ca →
-    # ca-certificates) is built in bootstrap_tools(), not here — our own
-    # bundle must exist before this phase's very first download so fetch_url
-    # (lib/base.sh) can verify TLS against it from the start. See the cert
-    # chain comment there. bootable-{systemd,busybox}.sh separately require()
-    # ca-certificates into each target tree.
-
-    install gperf
-
-    # systemd's meson.build itself requires python3's jinja2 module (used
-    # to generate some templated files at build time). Our python3 has no
-    # ssl module (no openssl support configured in), so pip can't fetch
-    # from PyPI — these are pure Python, so just place them directly like
-    # meson above.
-    install markupsafe
-    install jinja2
-
-    # Needed by the kernel's own Kconfig tooling (lexer.lex.c generation)
-    # and kernel/bounds.s's timeconst.h generation, when building linux for
-    # the system phase.
-    install flex
-    install bc
-
-    # Needed by the kernel's own PERLASM steps (e.g. lib/crypto/arm64/
-    # sha256-core.S) when building linux for the system phase.
-    install perl
-
-    # depmod: the kernel's own `make modules_install` (linux.sh, system
-    # phase) runs it automatically via scripts/depmod.sh whenever one is
-    # found on PATH, to index the modules it just installed (modules.dep/
-    # modules.alias/etc — without them modprobe/systemd can't resolve a
-    # module by name even though the .ko file is right there on disk).
-    # Genuinely build-host-native here, same reasoning as libblkid/btrfs-
-    # progs/kpartx below: depmod only ever *reads* the target's .ko files
-    # to build the index, it doesn't need to run on the target itself, and
-    # INSTALL_DIR's own kmod is target-native (built with host=$target in
-    # build_system()) so it can't run here.
-    manpages=no install kmod
-
-    # libblkid (for btrfs-progs below) plus fallocate/losetup/sfdisk/mount
-    # /umount/mountpoint, needed by `image build` — genuinely build-host-
-    # native here (unlike reusing INSTALL_DIR's own copies, which would be
-    # target-native and break on any platform whose target architecture
-    # isn't the build host's, e.g. pi0). package_variant=tools (set above)
-    # already keeps this build's work dir/markers separate from
-    # build_system()'s own `install util-linux` (which targets INSTALL_DIR,
-    # no variant set).
-    #
-    # --disable-all-programs defaults *everything* (including libraries)
-    # to disabled, only overridable by explicitly naming what to re-enable.
-    # bindir/sbindir: TOOL_DIR has no merged-usr symlinks (that's an
-    # INSTALL_DIR/system-files thing), so without these the programs would
-    # land under plain bin/sbin, which isn't on PATH here.
-    # makeinstall_chown=no: same as build_system()'s own util-linux call —
-    # `chown root:root` on mount for setuid fails outright, no /etc/passwd
-    # for "root" to resolve against.
-    # makeinstall_setuid=no: without also disabling this, `make install`
-    # still chmod u+s's mount/umount despite the chown above being skipped —
-    # leaving them setuid to the *build* UID (not root). Executing a
-    # setuid-to-non-root binary as real root then drops the effective UID
-    # to that owner, so mount(2) genuinely runs unprivileged and fails with
-    # "must be superuser" (confirmed via the file's owner/mode: mount was
-    # -rwsr-xr-x owned by the build UID, not 0). We always invoke these
-    # tools as genuine root already, so setuid serves no purpose here.
-    all_programs=no libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin \
-    makeinstall_chown=no makeinstall_setuid=no \
-    libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes \
-    mount=yes fdisks=yes losetup=yes fallocate=yes mountpoint=yes \
-        install util-linux
-
-    # mkfs.btrfs and the btrfs CLI, needed by `image build` to format and
-    # populate the root filesystem — never shipped, build/test-time only.
-    install btrfs-progs
-
-    # mkfs.fat, needed by `image build` to format the FAT boot partition of
-    # the Pi image layout (the virt `single` layout has no boot partition
-    # and never calls it) — never shipped, build/test-time only.
-    install dosfstools
-
-    # kpartx, needed by `image build` to expose the loop device's
-    # partitions: losetup -P's own kernel-level partition scanning doesn't
-    # reliably create the /dev/loopNpM device nodes inside a container (no
-    # working udev/devtmpfs auto-population there), so we fall back to
-    # kpartx's explicit device-mapper nodes instead. It only needs
-    # libdevmapper, so build that (via lvm2, its own required dependency
-    # is libaio) rather than the rest of LVM2's tools/daemon.
-    install libaio
-    install lvm2#device-mapper
-    install multipath-tools#kpartx
-}
-
-# Safety net for anything under TOOL_DIR/usr that didn't pick up
-# tools_set_rtld_ldflags at link time (e.g. it was built before that call,
-# or its build system drops LDFLAGS) and so still has the bootstrap
-# container's default rpath. Only ever adds an rpath — never touches
-# PT_INTERP after the fact, since growing it is what corrupts segment
-# layout (see tools_set_rtld_ldflags).
-#
-# Must be idempotent AND non-destructive: bootstrap_tools() runs it on
-# every `make tools` (there's no marker gating the function itself), over a
-# persistent volume that a *prior* run's build_tools() already populated —
-# and a bare `--set-rpath X` *replaces*, so re-running would collapse
-# already-correct richer rpaths down to just $lib_dir. That silently broke
-# real binaries: perl (libperl.so lives in .../CORE, not $lib_dir) and
-# kpartx/anything with a legitimately multi-dir rpath. So: skip files that
-# already resolve via $lib_dir, and otherwise *append* $lib_dir to the
-# existing rpath rather than overwriting it.
-#
-# TOOL_DIR/bin isn't scanned at all (only TOOL_DIR/usr is): pass1's
-# binutils/gcc there are a throwaway toolchain used only to bootstrap the
-# per-target sysroot glibc in the bootstrap container, linked against the
-# host's own (Debian) glibc — relocating them would break them for no
-# benefit, since they're not part of the self-contained toolchain the
-# `scratch` image runs. Pass2's binutils/gcc also land in TOOL_DIR/bin,
-# but need no relocation either: they're built after _tools_set_rtld_
-# ldflags is already active, so they get the correct rpath baked in at
-# link time already.
-_tools_relocate() {
-    stage "Relocating toolchain binaries under $TOOL_DIR/usr"
-
-    local ld_so=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
-    [ -n "$ld_so" ] || bail "Cannot find dynamic linker to relocate against"
-    local lib_dir=$(dirname $ld_so)
-
-    # Excluded by name pattern directly in find: the dynamic linker itself
-    # (both the soname in usr/lib and the usr/bin/ld.so convenience copy)
-    # is self-referential and patchelf reliably corrupts it.
-    # The `|| true` on each loop matters under `set -o errexit -o nounset`:
-    # without it, the EOF-triggered nonzero return from the final `read`
-    # aborts the whole script right there, silently (no error, no bail) —
-    # even though a `while read` condition's exit status is normally
-    # exempt from errexit.
-    find $TOOL_DIR/usr \( -type f -perm -u+x -o -name '*.so' -o -name '*.so.*' \) \
-        -not -name 'ld-linux-*.so.*' -not -name 'ld.so' -print |
-    while IFS= read -r f; do
-        [ "$(head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 7f454c46 ] || continue
-        readelf -d "$f" 2>/dev/null | grep -q 'Dynamic section' || continue
-        # Already reachable via $lib_dir? Leave it exactly as-is — this is
-        # what makes re-runs idempotent and preserves richer rpaths.
-        local cur=$(patchelf --print-rpath "$f" 2>/dev/null)
-        case ":$cur:" in *":$lib_dir:"*) continue ;; esac
-        # This tree also holds files build_tools() installed in a later,
-        # separate invocation (TOOL_DIR is one persistent volume) — some of
-        # those are deliberately read-only by their own package's
-        # convention (e.g. perl's XS .so modules), which patchelf can't
-        # open for writing otherwise.
-        chmod -f u+w "$f"
-        # Append, don't replace: keep any existing entries (e.g. perl's CORE).
-        patchelf --set-rpath "${cur:+$cur:}$lib_dir" "$f"
-    done || true
-
-    # bail runs in this (non-subshell) context, not inside a `while read`
-    # piped from find, so its exit actually stops the script — calling it
-    # from inside such a subshell only exits that subshell.
-    local corrupted=$(find $TOOL_DIR/usr \( -name 'ld-linux-*.so.*' -o -name 'ld.so' \) \
-        -exec sh -c 'readelf -d "$1" 2>/dev/null | grep -q RUNPATH && echo "$1"' _ {} \;)
-    [ -z "$corrupted" ] \
-        || bail "Dynamic linker(s) were themselves relocated — this breaks them: $corrupted"
-
-    return 0
 }
