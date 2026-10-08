@@ -58,6 +58,10 @@ lfs_tools_bootstrap() {
 
     (
         export CC=$TOOL_DIR/usr/bin/gcc
+
+        # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig
+        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+
         ( curses=no; lfs_install_package bash )
         lfs_install_package coreutils
         lfs_install_package findutils
@@ -70,6 +74,7 @@ lfs_tools_bootstrap() {
         lfs_install_package tar
         lfs_install_package xz
         lfs_install_package pkgconf
+        lfs_install_package openssl
         lfs_install_package wget
     )
 
