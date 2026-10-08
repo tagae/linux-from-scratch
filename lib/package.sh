@@ -5,7 +5,7 @@ lfs_install_package() {
 
 lfs_archive_package() (
     archive=$(lfs_package_archive "$1")
-    ! [ -f $archive ] || exit 0
+    ! [ -s $archive ] || exit 0
 
     lfs_fetch_dependencies "$1"
     lfs_source_package "$1"
