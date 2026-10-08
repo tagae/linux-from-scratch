@@ -32,13 +32,10 @@ lfs_tools_bootstrap() {
 
     lfs_tools_bootstrap_native
 
-    exit 0
-
     # --- Cross Toolchain, Pass 1 ------------------
 
     (
         readonly target=$target_triplet
-
         readonly package_variant=pass1-$target
         readonly package_install_dir=/
         readonly prefix=$TOOL_DIR
@@ -48,7 +45,7 @@ lfs_tools_bootstrap() {
         _define_target_gcc_flags
 
         # Cross-assembler and linker.
-        ( gprofng=no werror=no new_dtags=yes default_hash_style=gnu; install binutils )
+        ( gprofng=no werror=no new_dtags=yes default_hash_style=gnu; lfs_install_package binutils )
 
         exit 0
         _build_gcc_prereqs
@@ -64,8 +61,6 @@ lfs_tools_bootstrap() {
             install gcc
         )
     )
-
-
 
     # --- Cross Toolchain Pass 1, native (throwaway) ------------------
 
@@ -120,14 +115,12 @@ lfs_tools_bootstrap() {
 }
 
 # Builds a cross toolchain for the current platform.
-lfs_tools_bootstrap_native() {
+lfs_tools_bootstrap_native() (
     readonly package_variant=bootstrap-native
     package_install_dir=$TOOL_DIR
 
-    (
-        lfs_install_package linux#headers
-        ( nscd=no; enable_kernel=5.10; headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
-    )
+    lfs_install_package linux#headers
+    ( nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
 
     lfs_tools_set_rtld_ldflags
 
@@ -135,7 +128,7 @@ lfs_tools_bootstrap_native() {
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
 
-        ( gprofng=no; werror=no; lfs_install_package binutils )
+        ( gprofng=no werror=no; lfs_install_package binutils )
 
         (
             glibc_version=$(lfs_package_version glibc)
@@ -146,7 +139,7 @@ lfs_tools_bootstrap_native() {
             lfs_install_package gcc
         )
     )
-}
+)
 
 # Exports LDFLAGS so that native binaries carry a TOOL_DIR-relative interpreter/rpath
 # pointing at the native glibc/libstdc++ under TOOL_DIR/usr.
