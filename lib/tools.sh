@@ -121,26 +121,26 @@ lfs_tools_bootstrap() {
 
 # Builds a cross toolchain for the current platform.
 lfs_tools_bootstrap_native() {
+    readonly package_variant=bootstrap-native
+
     (
-        readonly package_variant=tools
         package_install_dir=$TOOL_DIR
-#        readonly prefix=/usr
         lfs_install_package linux#headers
-        ( nscd=no; enable_kernel=5.10; lfs_install_package glibc )
+        ( nscd=no; enable_kernel=5.10; headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
     )
-    echo barrier reached
-    exit 1
 
-    _tools_set_rtld_ldflags
+    lfs_tools_set_rtld_ldflags
 
     (
-        readonly package_variant=pass1-$build_triplet
-        readonly package_install_dir=/
+        package_install_dir=/
         readonly prefix=$TOOL_DIR
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
 
-        ( gprofng=no; werror=no; install binutils )
+        ( gprofng=no; werror=no; lfs_install_package binutils )
+
+        echo barrier reached
+        exit 0
 
         (
             glibc_version=$(version glibc)
@@ -153,6 +153,14 @@ lfs_tools_bootstrap_native() {
     )
 }
 
+# Exports LDFLAGS so that native binaries carry a TOOL_DIR-relative interpreter/rpath
+# pointing at the native glibc/libstdc++ under TOOL_DIR/usr.
+lfs_tools_set_rtld_ldflags() {
+    local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
+    [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
+    # A single rpath at $TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough.
+    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
+}
 
 _define_target_gcc_flags() {
     arch=${target_gcc_arch:-}
@@ -493,15 +501,6 @@ build_tools() {
     install libaio
     install lvm2#device-mapper
     install multipath-tools#kpartx
-}
-
-# Exports LDFLAGS so that every native binary carries a TOOL_DIR-relative interpreter/rpath
-# pointing at the native glibc/libstdc++ under TOOL_DIR/usr.
-_tools_set_rtld_ldflags() {
-    local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
-    [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
-    # A single rpath at $TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough.
-    export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
 }
 
 # Safety net for anything under TOOL_DIR/usr that didn't pick up
