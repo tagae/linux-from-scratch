@@ -11,6 +11,7 @@ prepare() {
         ${prefix:+--prefix=$prefix} \
         ${install_program:+--enable-install-program=$install_program} \
         ${no_install_program:+--enable-no-install-program=$no_install_program} \
+        ${nls:+--enable-nls=$nls} \
         HELP2MAN=true
 }
 

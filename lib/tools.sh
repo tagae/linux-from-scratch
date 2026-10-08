@@ -30,10 +30,9 @@ lfs_tools() {
 lfs_tools_bootstrap() {
     readonly nls=no
     readonly multilib=no
-
-    readonly package_variant=bootstrap
     readonly prefix=/usr
 
+    readonly package_variant=bootstrap
     package_install_dir=$TOOL_DIR
 
     lfs_install_package linux#headers
@@ -58,7 +57,11 @@ lfs_tools_bootstrap() {
     )
 
     # Compiled by the native toolchain above, rather than by the build host's.
-    ( export CC=$TOOL_DIR/usr/bin/gcc; curses=no; lfs_install_package bash )
+    (
+        export CC=$TOOL_DIR/usr/bin/gcc
+        ( curses=no; lfs_install_package bash )
+        lfs_install_package coreutils
+    )
 
     # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
     # Dockerfile.scratch can COPY it.
@@ -67,8 +70,6 @@ lfs_tools_bootstrap() {
 }
 
 lfs_tools_build() {
-    lfs_tools_set_rtld_ldflags
-
     mkdir -p ${TMPDIR:-/tmp}
 
     # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
@@ -77,10 +78,13 @@ lfs_tools_build() {
     # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig
     export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
 
-    readonly package_variant=tools
-    readonly package_install_dir=$TOOL_DIR
     readonly prefix=/usr
     readonly nls=no
+
+    readonly package_variant=tools
+    readonly package_install_dir=$TOOL_DIR
+
+    lfs_tools_set_rtld_ldflags
 
     lfs_install_package gettext
     lfs_install_package bison
