@@ -44,7 +44,7 @@ lfs_tools_bootstrap() {
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
 
-        ( gprofng=no werror=no; lfs_install_package binutils )
+        ( shared=yes gprofng=no werror=no; lfs_install_package binutils )
 
         (
             glibc_version=$(lfs_package_version glibc)
@@ -58,6 +58,7 @@ lfs_tools_bootstrap() {
 
     (
         export CC=$TOOL_DIR/usr/bin/gcc
+        export CXX=$TOOL_DIR/usr/bin/g++
 
         # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig
         export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
@@ -77,6 +78,7 @@ lfs_tools_bootstrap() {
         lfs_install_package openssl
         lfs_install_package wget
         lfs_install_package meson
+        lfs_install_package ninja
         lfs_install_package libtasn1
         lfs_install_package p11-kit
         lfs_install_package make-ca
@@ -106,9 +108,11 @@ lfs_tools_build() {
     lfs_tools_set_rtld_ldflags
 
     lfs_install_package gettext
+    lfs_install_package m4
     lfs_install_package bison
+    lfs_install_package patch
+    lfs_install_package zlib
     ( optimizations=no; lfs_install_package python )
-    lfs_install_package ninja
     lfs_install_package gperf
     lfs_install_package markupsafe
     lfs_install_package jinja2
@@ -116,6 +120,7 @@ lfs_tools_build() {
     lfs_install_package bc
     lfs_install_package perl
     ( manpages=no; lfs_install_package kmod )
+    ( shared=yes normal=no debug=no cxx_shared=yes; lfs_install_package ncurses )
     (
         libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin
         makeinstall_chown=no makeinstall_setuid=no

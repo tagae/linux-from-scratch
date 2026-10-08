@@ -67,6 +67,11 @@ build() {
 }
 
 install() {
+    # Some architectures install the runtime libraries (libstdc++, libgcc_s, ...) into lib64; keep
+    # them next to glibc's, in lib.
+    mkdir -pv $package_install_dir$prefix/lib
+    ln -sfnv lib $package_install_dir$prefix/lib64
+
     case $package_component in
         libstdc++)
             make install DESTDIR=$package_install_dir

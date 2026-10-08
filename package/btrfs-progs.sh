@@ -43,13 +43,6 @@ prepare() {
         make clean
     fi
 
-    # libuuid/libblkid (uuid/uuid.h, blkid.h) come from util-linux, already
-    # installed into the target tree earlier in the same umbrella — needs
-    # the sysroot CC (target_sysroot_cc) to find them, same reasoning as
-    # util-linux's own script; a no-op in the build-host-native reuse
-    # (build_tools()), where host != $target.
-    target_sysroot_cc
-
     ./configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \

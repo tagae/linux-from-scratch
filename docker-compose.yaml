@@ -106,13 +106,13 @@ services:
         read_only: true
         volume:
           subpath: usr/bin
-      # The from-scratch CA bundle bootstrap staged into the work volume.
-      #- type: volume
-      #  source: work
-      #  target: /etc/ssl/certs
-      #  read_only: true
-      #  volume:
-      #    subpath: certs
+      # The from-scratch CA trust store built by bootstrap, at openssl's default location.
+      - type: volume
+        source: tools
+        target: /etc/ssl
+        read_only: true
+        volume:
+          subpath: etc/ssl
       # Docker seeds a freshly created named volume with whatever content
       # (and ownership) already exists at that path in the image. Dockerfile
       # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly

@@ -24,7 +24,7 @@ stage() {
 fetch_url() {
     local url=$1 dest=$2
     mkdir -p "$dest"
-    wget ${ssl_cert_file:+--ca-certificate="$ssl_cert_file"} -P "$dest" "$url"
+    wget -P "$dest" "$url"
 }
 
 # Verify a file against an expected algo:hexdigest pair (e.g., sha256:abc...).
