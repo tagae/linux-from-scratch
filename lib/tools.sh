@@ -138,7 +138,7 @@ lfs_tools_bootstrap_native() {
         ( gprofng=no; werror=no; lfs_install_package binutils )
 
         (
-            glibc_version=$(version glibc)
+            glibc_version=$(lfs_package_version glibc)
             languages=c,c++
             shared=yes threads=yes libstdcxx=yes
             fixincludes=no

@@ -1,5 +1,6 @@
 lfs_archive_package() {
     (
+        lfs_fetch_dependencies "$1"
         lfs_source_package "$1"
         if ! is_archived; then
             fetch
@@ -28,11 +29,30 @@ lfs_install_package() {
     )
 }
 
-version() {
+lfs_package_version() {
     (
         lfs_source_package $1
         echo $package_version
     )
+}
+
+# Fetches a package's source and prints its location.
+lfs_fetch_package() {
+    (
+        lfs_source_package "$1"
+        fetch >&2
+        echo $package_source_dir
+    )
+}
+
+# Fetches the sources from a package's `package_fetch_dependencies`,
+# exposing each one's location as `<dependency>_source_dir`.
+lfs_fetch_dependencies() {
+    local dependency source_dir
+    for dependency in $(lfs_source_package "$1"; echo ${package_fetch_dependencies:-}); do
+        source_dir=$(lfs_fetch_package $dependency)
+        eval "${dependency}_source_dir=\$source_dir"
+    done
 }
 
 # Executes in the subshell that evaluates package scripts.
@@ -179,7 +199,7 @@ lfs_source_package() {
     # `package_install_dir` is the only writable var from the package API.
     readonly package_name package_component \
              package_version package_branch package_release \
-             package_source package_source_hash \
+             package_source package_source_hash package_fetch_dependencies \
              package_files_dir package_source_dir \
              package_work_dir package_build_dir \
              package_archive \
