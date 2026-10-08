@@ -68,6 +68,7 @@ lfs_tools_bootstrap() {
         lfs_install_package diffutils
         lfs_install_package gzip
         lfs_install_package tar
+        lfs_install_package xz
     )
 
     # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
