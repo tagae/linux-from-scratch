@@ -77,6 +77,7 @@ lfs_tools_bootstrap() {
         lfs_install_package openssl
         lfs_install_package wget
         lfs_install_package meson
+        lfs_install_package libtasn1
         lfs_install_package p11-kit
         lfs_install_package make-ca
         lfs_install_package ca-certificates
