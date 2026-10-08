@@ -13,6 +13,7 @@ prepare() {
         ${prefix:+--prefix=$prefix} \
         ${sysroot:+--with-sysroot=$sysroot} \
         ${nls:+--enable-nls=$nls} \
+        ${shared:+--enable-shared=$shared} \
         ${gprofng:+--enable-gprofng=$gprofng} \
         ${werror:+--enable-werror=$werror} \
         ${new_dtags:+--enable-new-dtags=$new_dtags} \

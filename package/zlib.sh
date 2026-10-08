@@ -1,20 +1,9 @@
 : ${package_version:=1.3.2}
-: ${package_source:=https://zlib.net/fossils/zlib-$package_version.tar.xz}
+: ${package_source:=https://github.com/madler/zlib/releases/download/v$package_version/zlib-$package_version.tar.xz}
 : ${package_source_hash:=sha256:d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3}
 
 prepare() {
-    # cross_target defaults to $target (the platform's real cross target),
-    # but callers building this host-native (e.g. for the build host's own
-    # wget, as opposed to a copy shipped to a target system) explicitly
-    # pass cross_target="" for a plain "gcc"/"ar"/"ranlib". $target itself
-    # is globally readonly and can't be reassigned even via a prefix
-    # assignment, hence this separate var.
-    : ${cross_target=$target}
-
-    CC=${cross_target:+$cross_target-}gcc \
-    AR=${cross_target:+$cross_target-}ar \
-    RANLIB=${cross_target:+$cross_target-}ranlib \
-        $package_source_dir/configure ${prefix:+--prefix=$prefix}
+    $package_source_dir/configure ${prefix:+--prefix=$prefix}
 }
 
 build() {

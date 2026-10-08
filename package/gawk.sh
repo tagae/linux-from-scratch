@@ -6,7 +6,8 @@ prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
-        ${prefix:+--prefix=$prefix}
+        ${prefix:+--prefix=$prefix} \
+        ${nls:+--enable-nls=$nls}
 }
 
 build() {

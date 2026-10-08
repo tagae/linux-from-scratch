@@ -3,15 +3,6 @@
 : ${package_source_hash:=sha256:03a05d3adf9602ef128f2da05b84b3205ce60c351e5737c0370f74000679ce8a}
 
 prepare() {
-    # `make install` DESTDIR-installs several interdependent libtool
-    # libraries (libmount needs libblkid, …) and relinks them, adding
-    # -L$INSTALL_DIR/$PLATFORM/usr/lib ahead of gcc's default search path;
-    # the implicit -lc then resolves against the target tree's own libc.so
-    # ld-script, which only works under an active --sysroot (see
-    # project-system-sysroot). No-op in the build-host-native reuse
-    # (build_tools), where host != $target.
-    target_sysroot_cc
-
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \

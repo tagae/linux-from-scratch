@@ -42,7 +42,7 @@ install() {
             env install progs/tic $prefix/bin
             ;;
         *)
-            make install DESTDIR=$package_install_dir cross_compiling=yes
+            make install DESTDIR=$package_install_dir
             ;;
     esac
 }

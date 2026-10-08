@@ -44,15 +44,17 @@ prepare() {
     # scratch container, which has no ld.so.cache to fall back on (the cold-
     # build failure; a warm tree only worked because an older non-multiarch
     # libp11-kit lingered on the rpath). Force the plain, single libdir every
-    # other package here uses (cf. libffi.sh's --disable-multi-os-directory,
-    # openssl.sh's --libdir=lib).
+    # other package here uses (cf. openssl.sh's --libdir=lib).
+    #
+    # libffi=disabled: libffi only lifts p11-kit's fixed cap on how many modules
+    # it can wrap at once; `trust extract` loads a single one.
     meson setup $package_source_dir \
         ${prefix:+--prefix=$prefix} \
         --libdir=lib \
         --buildtype=release \
         -D trust_paths=/etc/pki/anchors \
         -D trust_module=enabled \
-        -D libffi=enabled \
+        -D libffi=disabled \
         -D hash_impl=internal \
         -D env_override_paths=enabled \
         -D systemd=disabled \

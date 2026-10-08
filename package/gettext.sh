@@ -4,10 +4,7 @@
 
 # build=: see m4.sh's copy of this guard (the target build that ships this
 # tool to the guest as an archive tarball — msgfmt for later
-# target-scenario builds, e.g. a guest rebuild of systemd). No
-# target_sysroot_cc: --disable-shared --disable-static below
-# already means no libintl.so/.a is built to link against; nothing from
-# the target tree is linked.
+# target-scenario builds, e.g. a guest rebuild of systemd).
 : ${build:=$(gcc -dumpmachine)}
 
 prepare() {
@@ -16,7 +13,6 @@ prepare() {
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
         --disable-static \
-        --disable-shared \
         --docdir=/usr/share/doc/gettext-$package_version
 }
 

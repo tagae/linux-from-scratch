@@ -59,6 +59,10 @@ Package Model
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
 `fetch`/`prepare`/`build`/ `install`/`depends` with sane defaults.
 
+A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
+The framework fetches them before building the package, and exposes their locations as
+`<dependency>_source_dir`.
+
 
 Conventions
 -----------
