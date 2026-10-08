@@ -32,92 +32,17 @@ lfs_tools_bootstrap() {
 
     lfs_tools_bootstrap_native
 
-    # --- Cross Toolchain, Pass 1 ------------------
-
-    (
-        readonly target=$target_triplet
-        readonly package_variant=pass1-$target
-        readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
-        readonly sysroot=$TOOL_DIR/$target
-        readonly build_sysroot=$TOOL_DIR/$target
-
-        _define_target_gcc_flags
-
-        # Cross-assembler and linker.
-        ( gprofng=no werror=no new_dtags=yes default_hash_style=gnu; lfs_install_package binutils )
-
-        exit 0
-        _build_gcc_prereqs
-
-        # Minimal C cross-compiler to build glibc.
-        (
-            glibc_version=$(version glibc)
-            newlib=yes headers=no
-            default_pie=yes default_ssp=yes
-            fixincludes=no shared=no threads=no
-            libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no
-            languages=c,c++
-            install gcc
-        )
-    )
-
-    # --- Cross Toolchain Pass 1, native (throwaway) ------------------
-
-    # This is NOT a pass-1-style (newlib, no libc) build, despite the name: it mirrors Pass 2 below
-    # instead (real libc, shared=yes, libstdcxx=yes), just targeting the build's own triple instead
-    # of the target's.
-
-    exit 0
-
-   _bootstrap_build_host
-
-    # --- Per-target sysroot
-    # glibc: never executed —only ever linked/read against by pass2 below.
-    (
-        readonly package_variant=$target
-        readonly package_install_dir=$TOOL_DIR/$target
-        readonly prefix=/usr
-        unset LDFLAGS
-
-        install linux#headers
-        nscd=no enable_kernel=5.10 werror=no install glibc
-    )
-
-    # --- Cross Toolchain Pass 2 (the real, shipped cross-compiler) --
-    (
-        readonly package_variant=$target
-        readonly package_install_dir=/
-        readonly prefix=$TOOL_DIR
-        readonly sysroot=$TOOL_DIR/$target
-        readonly build_sysroot=$TOOL_DIR/$target
-
-        gprofng=no werror=no install binutils
-
-        _build_gcc_prereqs
-
-        (
-            glibc_version=$(version glibc)
-            languages=c,c++
-            shared=yes threads=yes libstdcxx=yes
-            fixincludes=no
-            libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no
-            install gcc
-        )
-    )
-
-    # Verify the cross-compiler references our glibc dynamic linker.
-    echo 'int main(){}' | $TOOL_DIR/bin/$target-gcc -x c - -v -Wl,--verbose
-    readelf -l a.out | grep -q ld-linux || bail "Cross-compiler does not use glibc ld"
-    rm -f a.out
-
-    _bootstrap_stage_for_scratch
+    # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
+    # Dockerfile.scratch can COPY it.
+    mkdir -pv $BOOTSTRAP_DIR
+    cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/bash
 }
 
-# Builds a cross toolchain for the current platform.
+# Builds a native toolchain, and the shell the scratch image starts with.
 lfs_tools_bootstrap_native() (
     readonly package_variant=bootstrap-native
     package_install_dir=$TOOL_DIR
+    readonly prefix=/usr
 
     lfs_install_package linux#headers
     ( nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
@@ -139,6 +64,9 @@ lfs_tools_bootstrap_native() (
             lfs_install_package gcc
         )
     )
+
+    # Compiled by the native toolchain above, rather than by the build host's.
+    ( export CC=$TOOL_DIR/usr/bin/gcc; curses=no; lfs_install_package bash )
 )
 
 # Exports LDFLAGS so that native binaries carry a TOOL_DIR-relative interpreter/rpath

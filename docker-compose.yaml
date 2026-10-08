@@ -36,8 +36,8 @@ services:
         source: $PWD/archive
         target: /mnt/lfs/archive
       - type: bind # Holds artefacts Dockerfile.scratch needs to COPY at image build time.
-        source: $PWD/work/scratch-init
-        target: /mnt/lfs/work/scratch-init
+        source: $PWD/work/bootstrap
+        target: /mnt/lfs/work/bootstrap
 
   scratch:
     build:
@@ -107,12 +107,12 @@ services:
         volume:
           subpath: usr/bin
       # The from-scratch CA bundle bootstrap staged into the work volume.
-      - type: volume
-        source: work
-        target: /etc/ssl/certs
-        read_only: true
-        volume:
-          subpath: certs
+      #- type: volume
+      #  source: work
+      #  target: /etc/ssl/certs
+      #  read_only: true
+      #  volume:
+      #    subpath: certs
       # Docker seeds a freshly created named volume with whatever content
       # (and ownership) already exists at that path in the image. Dockerfile
       # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly
