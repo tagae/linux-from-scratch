@@ -76,14 +76,15 @@ lfs_tools_bootstrap() {
         lfs_install_package pkgconf
         lfs_install_package openssl
         lfs_install_package wget
+        lfs_install_package make-ca
+        lfs_install_package ca-certificates
     )
 
-    # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
-    # Dockerfile.scratch can COPY it.
     mkdir -pv $BOOTSTRAP_DIR
     cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/bash
 }
 
+# Builds the remainder of the toolchain starting from the bootstrapped state.
 lfs_tools_build() {
     mkdir -p ${TMPDIR:-/tmp}
 
