@@ -1,4 +1,3 @@
-# Linux From Scratch
 FROM scratch
 
 ARG HOST_UID

@@ -66,6 +66,7 @@ lfs_tools_bootstrap() {
         lfs_install_package grep
         lfs_install_package make
         lfs_install_package diffutils
+        lfs_install_package gzip
     )
 
     # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
@@ -87,7 +88,7 @@ lfs_tools_build() {
     readonly nls=no
 
     readonly package_variant=tools
-    readonly package_install_dir=$TOOL_DIR
+    package_install_dir=$TOOL_DIR
 
     lfs_tools_set_rtld_ldflags
 
