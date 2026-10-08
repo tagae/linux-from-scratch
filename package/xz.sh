@@ -15,6 +15,7 @@ prepare() {
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
         ${static:+--enable-static=$static} \
+        ${nls:+--enable-nls=$nls} \
         --docdir=/usr/share/doc/xz-$package_version
 }
 

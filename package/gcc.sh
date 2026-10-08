@@ -3,6 +3,7 @@
 : ${package_version:=16.1.0}
 : ${package_source:=https://ftp.gnu.org/gnu/gcc/gcc-$package_version/gcc-$package_version.tar.xz}
 : ${package_source_hash:=sha256:50efb4d94c3397aff3b0d61a5abd748b4dd31d9d3f2ab7be05b171d36a510f79}
+: ${package_fetch_dependencies:=gmp mpfr mpc}
 
 prepare() {
     case $package_component in
@@ -18,20 +19,10 @@ prepare() {
                 ${target:+--with-gxx-include-dir=/$target/include/c++/$package_version}
             ;;
         *)
-            # Link requisite packages into GCC's source.
-            local dependency
-            for dependency in mpfr gmp mpc; do
-                case $dependency in
-                    gmp)  [ -n "${gmp:-}" ]  && continue ;;
-                    mpfr) [ -n "${mpfr:-}" ] && continue ;;
-                    mpc)  [ -n "${mpc:-}" ]  && continue ;;
-                esac
-                sh $PROJECT_DIR/lfs fetch $dependency
-                    dependency_version=$(sh $PROJECT_DIR/lfs version $dependency)
-                    ln -sfnv \
-                       $SOURCE_DIR/$dependency-$dependency_version \
-                       $package_source_dir/$dependency
-            done
+            # Fetch dependencies are built in-tree, as part of GCC itself.
+            ln -sfnv $gmp_source_dir $package_source_dir/gmp
+            ln -sfnv $mpfr_source_dir $package_source_dir/mpfr
+            ln -sfnv $mpc_source_dir $package_source_dir/mpc
 
             # https://gcc.gnu.org/install/configure.html
             $package_source_dir/configure \
@@ -76,6 +67,11 @@ build() {
 }
 
 install() {
+    # Some architectures install the runtime libraries (libstdc++, libgcc_s, ...) into lib64; keep
+    # them next to glibc's, in lib.
+    mkdir -pv $package_install_dir$prefix/lib
+    ln -sfnv lib $package_install_dir$prefix/lib64
+
     case $package_component in
         libstdc++)
             make install DESTDIR=$package_install_dir

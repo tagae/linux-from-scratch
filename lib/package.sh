@@ -1,38 +1,62 @@
-lfs_archive_package() {
-    (
-        lfs_source_package "$1"
-        if ! is_archived; then
-            fetch
-
-            mkdir -pv $package_build_dir
-            cd $package_build_dir
-            prepare
-            build
-
-            package_install_dir=$package_stage_dir
-            mkdir -pv $package_install_dir
-            install
-
-            archive
-        fi
-        local archive=$(archive_filename)
-        echo "${archive#"$ARCHIVE_DIR"/}"
-    )
-}
-
 lfs_install_package() {
     lfs_archive_package "$1"
-    (
-        lfs_source_package "$1"
-        unarchive
-    )
+    lfs_unarchive_package "$1"
 }
 
-version() {
-    (
-        source_package $1
-        echo $package_version
-    )
+lfs_archive_package() (
+    archive=$(lfs_package_archive "$1")
+    ! [ -s $archive ] || exit 0
+
+    lfs_fetch_dependencies "$1"
+    lfs_source_package "$1"
+
+    fetch
+
+    mkdir -pv $package_build_dir
+    cd $package_build_dir
+    prepare
+    build
+
+    package_install_dir=$package_stage_dir
+    mkdir -pv $package_install_dir
+    install
+
+    archive
+
+    echo ${archive#"$ARCHIVE_DIR"/}
+)
+
+lfs_unarchive_package() (
+    lfs_source_package "$1"
+    unarchive
+)
+
+lfs_package_version() (
+    lfs_source_package $1
+    echo $package_version
+)
+
+# Prints the location of a package's archive.
+lfs_package_archive() (
+    lfs_source_package "$1"
+    archive_filename
+)
+
+# Fetches a package's source and prints its location.
+lfs_fetch_package() (
+    lfs_source_package "$1"
+    fetch >&2
+    echo $package_source_dir
+)
+
+# Fetches the sources from a package's `package_fetch_dependencies`,
+# exposing each one's location as `<dependency>_source_dir`.
+lfs_fetch_dependencies() {
+    local dependency source_dir
+    for dependency in $(lfs_source_package "$1"; echo ${package_fetch_dependencies:-}); do
+        source_dir=$(lfs_fetch_package $dependency)
+        eval "${dependency}_source_dir=\$source_dir"
+    done
 }
 
 # Executes in the subshell that evaluates package scripts.
@@ -107,10 +131,6 @@ lfs_source_package() {
         tar --owner=0 --group=0 --numeric-owner -cJf $archive -C $package_install_dir .
     }
 
-    is_archived() {
-        test -f "$(archive_filename)"
-    }
-
     default_unarchive() {
         local archive=$(archive_filename)
         mkdir -pv $package_install_dir
@@ -179,7 +199,7 @@ lfs_source_package() {
     # `package_install_dir` is the only writable var from the package API.
     readonly package_name package_component \
              package_version package_branch package_release \
-             package_source package_source_hash \
+             package_source package_source_hash package_fetch_dependencies \
              package_files_dir package_source_dir \
              package_work_dir package_build_dir \
              package_archive \

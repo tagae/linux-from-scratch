@@ -1,6 +1,6 @@
 : ${package_version:=0.3.113}
-: ${package_source:=https://pagure.io/libaio/archive/libaio-$package_version/libaio-$package_version.tar.gz}
-: ${package_source_hash:=sha256:1c561c20670c5c09cc8437a622008c0693c6a7816c1f30332da3796953b2f454}
+: ${package_source:=https://releases.pagure.org/libaio/libaio-$package_version.tar.gz}
+: ${package_source_hash:=sha256:2c44d1c5fd0d43752287c9ae1eb9c023f04ef848ea8d4aafa46e9aedb678200b}
 
 # Plain Makefile project, no configure script.
 prepare() {

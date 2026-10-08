@@ -1,5 +1,5 @@
 /download/
 /image/
 /work/**
-!/work/scratch-init/sh
-!/work/scratch-init/empty
+!/work/bootstrap/bash
+!/work/bootstrap/empty

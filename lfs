@@ -90,13 +90,6 @@ readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
 
 readonly SYSTEM_KEY=$PLATFORM-$USERLAND${CAPS:++$(set -- $CAPS; IFS=+; echo "$*")}
 
-#===[ Security ]===
-
-# CA bundle used to verify TLS on source downloads.
-if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-    readonly ssl_cert_file=/etc/ssl/certs/ca-certificates.crt
-fi
-
 #===[ Compilation ]===
 
 : ${build_vendor:=scratch}
