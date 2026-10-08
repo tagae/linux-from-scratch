@@ -30,7 +30,7 @@ lfs_install_package() {
 
 version() {
     (
-        source_package $1
+        lfs_source_package $1
         echo $package_version
     )
 }

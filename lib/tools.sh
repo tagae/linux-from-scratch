@@ -122,9 +122,9 @@ lfs_tools_bootstrap() {
 # Builds a cross toolchain for the current platform.
 lfs_tools_bootstrap_native() {
     readonly package_variant=bootstrap-native
+    package_install_dir=$TOOL_DIR
 
     (
-        package_install_dir=$TOOL_DIR
         lfs_install_package linux#headers
         ( nscd=no; enable_kernel=5.10; headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
     )
@@ -132,15 +132,10 @@ lfs_tools_bootstrap_native() {
     lfs_tools_set_rtld_ldflags
 
     (
-        package_install_dir=/
-        readonly prefix=$TOOL_DIR
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
 
         ( gprofng=no; werror=no; lfs_install_package binutils )
-
-        echo barrier reached
-        exit 0
 
         (
             glibc_version=$(version glibc)
@@ -148,7 +143,7 @@ lfs_tools_bootstrap_native() {
             shared=yes threads=yes libstdcxx=yes
             fixincludes=no
             libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no
-            install gcc
+            lfs_install_package gcc
         )
     )
 }

@@ -27,10 +27,10 @@ prepare() {
                     mpc)  [ -n "${mpc:-}" ]  && continue ;;
                 esac
                 sh $PROJECT_DIR/lfs fetch $dependency
-                    dependency_version=$(sh $PROJECT_DIR/lfs version $dependency)
-                    ln -sfnv \
-                       $SOURCE_DIR/$dependency-$dependency_version \
-                       $package_source_dir/$dependency
+                dependency_version=$(sh $PROJECT_DIR/lfs version $dependency)
+                ln -sfnv \
+                   $SOURCE_DIR/$dependency-$dependency_version \
+                   $package_source_dir/$dependency
             done
 
             # https://gcc.gnu.org/install/configure.html
