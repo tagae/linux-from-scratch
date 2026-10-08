@@ -7,7 +7,8 @@ prepare() {
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
-        ${localstatedir:+--localstatedir=$localstatedir}
+        ${localstatedir:+--localstatedir=$localstatedir} \
+        ${nls:+--enable-nls=$nls}
 }
 
 build() {

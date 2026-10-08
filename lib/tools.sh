@@ -61,6 +61,8 @@ lfs_tools_bootstrap() {
         export CC=$TOOL_DIR/usr/bin/gcc
         ( curses=no; lfs_install_package bash )
         lfs_install_package coreutils
+        lfs_install_package findutils
+        lfs_install_package sed
     )
 
     # TOOL_DIR is a named volume, invisible to `docker build`: stage the scratch image's shell where
