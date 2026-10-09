@@ -183,11 +183,12 @@ case "${1:-help}" in
         ;;
 
     help)
-        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|install|image|qemu)"
+        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|pack|install|image|qemu)"
         echo ""
         echo "Commands:"
         echo "  tools            Build cross-compilation toolchain"
-        echo "  install <PKG>... Install one or more packages"
+        echo "  pack <PKG>       Build a package's archive"
+        echo "  install <PKG>    Install a package"
         echo "  image build [IMAGE]"
         echo "                   Create bootable disk image from the built system"
         echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"
