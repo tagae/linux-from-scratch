@@ -4,10 +4,6 @@
 : ${package_source:=https://ftp.gnu.org/gnu/libtasn1/libtasn1-$package_version.tar.gz}
 : ${package_source_hash:=sha256:1d8a444a223cc5464240777346e125de51d8e6abf0b8bac742ac84609167dc87}
 
-# build=: see gmp.sh's copy of this guard for why a target build (unlike
-# this script's original native/tools-phase use) needs it.
-: ${build:=$(gcc -dumpmachine)}
-
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \

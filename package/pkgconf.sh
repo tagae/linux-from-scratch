@@ -2,9 +2,6 @@
 : ${package_source:=https://distfiles.ariadne.space/pkgconf/pkgconf-$package_version.tar.xz}
 : ${package_source_hash:=sha256:cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243}
 
-# build=: see m4.sh's copy of this guard.
-: ${build:=$(gcc -dumpmachine)}
-
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \

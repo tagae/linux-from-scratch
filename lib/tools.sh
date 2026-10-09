@@ -60,8 +60,9 @@ lfs_tools_bootstrap() {
         export CC=$TOOL_DIR/usr/bin/gcc
         export CXX=$TOOL_DIR/usr/bin/g++
 
-        # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig
-        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+        # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig, and the
+        # .pc files there record /usr paths that live under TOOL_DIR.
+        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$TOOL_DIR
 
         ( curses=no; lfs_install_package bash )
         lfs_install_package coreutils
@@ -96,8 +97,9 @@ lfs_tools_build() {
     # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
     export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
 
-    # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig
-    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig
+    # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig, and the
+    # .pc files there record /usr paths that live under TOOL_DIR.
+    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$TOOL_DIR
 
     readonly prefix=/usr
     readonly nls=no
