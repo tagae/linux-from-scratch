@@ -1,4 +1,6 @@
 : ${package_version:=0.1.0}
+: ${package_description:=Base filesystem layout and system configuration files.}
+: ${package_license:=MIT}
 
 install() {
     cd $package_install_dir
@@ -20,6 +22,7 @@ install() {
 
     chmod -v 0750 root
     chmod -v 1777 tmp var/tmp
+    chmod -v 0600 etc/shadow
 
     ln -sfv /proc/self/mounts etc/mtab
     ln -sfv /run var/run
@@ -31,11 +34,6 @@ install() {
     # replace rather than merge with any common/ version.
     cp -rv $package_files_dir/common/* .
     cp -rv $package_files_dir/$USERLAND/* .
-
-    touch var/log/btmp var/log/lastlog var/log/faillog var/log/wtmp
-    chgrp -v 13 var/log/lastlog 2>/dev/null || true  # 13 is utmp
-    chmod -v 0664 var/log/lastlog
-    chmod -v 0600 var/log/btmp
 
     cat > etc/lsb-release <<EOF
 DISTRIB_ID="Linux From Scratch"

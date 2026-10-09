@@ -116,8 +116,11 @@ lfs_tools_build() {
     lfs_install_package zlib
     ( optimizations=no; lfs_install_package python )
     lfs_install_package gperf
-    lfs_install_package markupsafe
-    lfs_install_package jinja2
+    (
+        python_version=$(lfs_package_version python)
+        lfs_install_package markupsafe
+        lfs_install_package jinja2
+    )
     lfs_install_package flex
     lfs_install_package bc
     lfs_install_package perl

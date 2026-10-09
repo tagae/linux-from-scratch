@@ -11,6 +11,9 @@ case $PLATFORM in
         ;;
 esac
 
+: ${package_description:=Linux kernel.}
+: ${package_license:=GPL-2.0-only WITH Linux-syscall-note}
+
 prepare() {
     case $package_component in
         linux)

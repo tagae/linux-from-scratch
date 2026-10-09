@@ -1,6 +1,8 @@
 : ${package_version:=5.3}
 : ${package_source:=https://ftp.gnu.org/gnu/bash/bash-$package_version.tar.gz}
 : ${package_source_hash:=sha256:0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba}
+: ${package_description:=GNU Bourne-Again shell.}
+: ${package_license:=GPL-3.0-or-later}
 
 prepare() {
     $package_source_dir/configure \

@@ -3,6 +3,8 @@
 readonly package_version=2.44
 readonly package_source=https://ftp.gnu.org/gnu/glibc/glibc-$package_version.tar.xz
 readonly package_source_hash=sha256:37f600f2bef3c5e8300147059568b2a2e40a7ad6ccc65ce942556d49429cc667
+readonly package_description='GNU C Library.'
+readonly package_license='LGPL-2.1-or-later AND GPL-2.0-or-later'
 
 prepare() {
     patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/glibc-fhs-1.patch \

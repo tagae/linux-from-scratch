@@ -1,6 +1,8 @@
 : ${package_version:=1.3.2}
 : ${package_source:=https://github.com/madler/zlib/releases/download/v$package_version/zlib-$package_version.tar.xz}
 : ${package_source_hash:=sha256:d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3}
+: ${package_description:=Deflate compression library.}
+: ${package_license:=Zlib}
 
 prepare() {
     $package_source_dir/configure ${prefix:+--prefix=$prefix}

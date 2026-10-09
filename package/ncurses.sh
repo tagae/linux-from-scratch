@@ -1,6 +1,8 @@
 : ${package_version:=6.6}
 : ${package_source:=https://invisible-mirror.net/archives/ncurses/ncurses-$package_version.tar.gz}
 : ${package_source_hash:=sha256:355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11}
+: ${package_description:=Terminal-independent text user interface library.}
+: ${package_license:=X11-distribute-modifications-variant}
 
 prepare() {
     case $package_component in
