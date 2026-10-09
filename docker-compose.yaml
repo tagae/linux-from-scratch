@@ -55,7 +55,6 @@ services:
       LFS_RELEASE:
       VERSION_CODENAME:
       RELEASE_TYPE:
-      DISTRIB_RELEASE:
       DISTRIB_CODENAME:
       DISTRIB_DESCRIPTION:
     volumes:

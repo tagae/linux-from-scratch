@@ -1,9 +1,7 @@
 # p11-kit — provides the `trust` command make-ca shells out to (see
 # package/make-ca.sh) to turn per-certificate PKCS#11 anchor files into the
 # openssl-directory / pem-bundle trust store outputs. Always a build-host-
-# native tool (never shipped to a target tree — see package/ca-certificates.sh
-# for how the resulting PEM bundle alone gets copied there instead), so this
-# is a plain native meson build: no cross-file, unlike systemd.sh's.
+# native tool, so this is a plain native meson build: no cross-file.
 : ${package_version:=0.26.4}
 : ${package_source:=https://github.com/p11-glue/p11-kit/releases/download/$package_version/p11-kit-$package_version.tar.xz}
 : ${package_source_hash:=sha256:89c3ffb10e076ee036e14732bf6547a1e1c4fb48699a5dee7ceb5ce4f7c0c462}
