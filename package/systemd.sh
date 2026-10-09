@@ -30,13 +30,9 @@ prepare() {
         needs_exe_wrapper='needs_exe_wrapper = false'
     fi
 
-    # Kernel UAPI headers for c_args below: normally the container's own
-    # per-target sysroot ($TOOL_DIR/$target/usr/include) — doesn't exist on
-    # the guest (no TOOL_DIR there at all, see lfs). The guest's own live
-    # /usr/include has them instead (unarchived straight onto "/" — see
-    # native-toolchain.sh) — same fixup, and same "confirmed empirically,
-    # not harmless when missing" story, as target_sysroot_cc's own copy of
-    # this in lib/package.sh; see there for the full account.
+    # Kernel UAPI headers for c_args below: the container's per-target sysroot
+    # ($TOOL_DIR/$target/usr/include), or a guest's own /usr/include, where
+    # there is no TOOL_DIR.
     local kernel_headers=$TOOL_DIR/$target/usr/include
     if [ ! -d "$kernel_headers" ]; then
         kernel_headers=/usr/include

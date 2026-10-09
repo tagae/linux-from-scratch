@@ -5,7 +5,6 @@
 : ${package_source_hash:=sha256:b88cc9163d0c652aaf39a99991d974ddba1c3a9711db8f1b5838af2a14731014}
 
 : ${build:=$(gcc -dumpmachine)}
-target_sysroot_cc
 
 prepare() {
     $package_source_dir/configure \

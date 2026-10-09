@@ -5,7 +5,7 @@
 # config.txt — see package/boot.sh's #config component) — QEMU needs none
 # of this (it loads -kernel/-dtb directly), so this package only matters
 # for real hardware, but is regression-neutral to install unconditionally
-# wherever DTB is set (see bootable-systemd.sh/bootable-busybox.sh).
+# wherever DTB is set.
 #
 # Pinned to an immutable GitHub release TAG tarball, not the floating
 # "stable" branch this package used before: same reasoning as linux.sh's

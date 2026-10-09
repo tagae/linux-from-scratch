@@ -113,11 +113,6 @@ services:
         read_only: true
         volume:
           subpath: etc/ssl
-      # Docker seeds a freshly created named volume with whatever content
-      # (and ownership) already exists at that path in the image. Dockerfile
-      # .scratch bakes /mnt/lfs/install pre-owned by the lfs user directly
-      # into its own layer via COPY --chown, so this mount only needs to
-      # exist here —no other service needs to touch it first.
       - type: volume
         source: install
         target: /mnt/lfs/install

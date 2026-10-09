@@ -3,9 +3,6 @@ FROM scratch
 ARG HOST_UID
 ARG HOST_GID
 
-# Bake these empty directories.
-#COPY --chown=$HOST_UID:$HOST_GID work/bootstrap/empty/ /mnt/lfs/install/
-
 # Enable execution of the #!/bin/sh and #!/bin/bash shebangs.
 COPY work/bootstrap/bash /bin/sh
 COPY work/bootstrap/bash /bin/bash

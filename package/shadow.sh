@@ -2,11 +2,8 @@
 : ${package_source:=https://github.com/shadow-maint/shadow/releases/download/$package_version/shadow-$package_version.tar.xz}
 : ${package_source_hash:=sha256:ce57a313e315a0a7cb04a8f50cc20753e994e487bbe9b78a2a824ca75cb486c0}
 
-# build=: see gmp.sh's copy of this guard. target_sysroot_cc: login/passwd
-# link the target tree's own libxcrypt (installed just before this by
-# bootable-systemd.sh) — same opt-in the gnupg family carries.
+# build=: see gmp.sh's copy of this guard.
 : ${build:=$(gcc -dumpmachine)}
-target_sysroot_cc
 
 # --with-libbsd probes libbsd-overlay via pkg-config; point it at the
 # TARGET tree's .pc files (see the cross pkg-config LIBDIR gotcha and
@@ -45,12 +42,10 @@ build() {
 
 install() {
     # Reproduce system-files' merged-usr layout in this stage BEFORE make
-    # install (same trick and reasoning as busybox.sh): shadow's own
-    # Makefiles write the classic split-usr /sbin and /lib, which — staged
-    # as REAL directories — would clobber the merged tree's sbin/lib
-    # symlinks on merge (tar replaces a symlink with a directory), leaving
-    # the kernel's /sbin/init lookup dangling (confirmed empirically:
-    # "Kernel panic - not syncing: No working init found").
+    # install: shadow's own Makefiles write the classic split-usr /sbin and
+    # /lib, which — staged as REAL directories — would clobber the merged
+    # tree's sbin/lib symlinks on merge (tar replaces a symlink with a
+    # directory), leaving the kernel's /sbin/init lookup dangling.
     mkdir -p $package_install_dir/usr/bin $package_install_dir/usr/sbin $package_install_dir/usr/lib
     ln -sfn usr/bin $package_install_dir/bin
     ln -sfn usr/sbin $package_install_dir/sbin
