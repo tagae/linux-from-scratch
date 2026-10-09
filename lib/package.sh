@@ -128,7 +128,10 @@ lfs_source_package() {
     default_archive() {
         local archive=$(archive_filename)
         mkdir -pv $(dirname $archive)
-        tar --owner=0 --group=0 --numeric-owner -cJf $archive -C $package_install_dir .
+        # Moved into place only once complete, so an interrupted run never leaves an archive behind
+        # that looks finished.
+        tar --owner=0 --group=0 --numeric-owner -cJf $archive.tmp -C $package_install_dir .
+        mv $archive.tmp $archive
     }
 
     default_unarchive() {

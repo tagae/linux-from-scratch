@@ -21,10 +21,8 @@ prepare() {
                         ${arch:+$package_files_dir/$arch.config} \
                         $package_files_dir/$USERLAND.config
                     for cap in $CAPS; do
-                        [ -f $PROJECT_DIR/package/linux/$cap.config ] \
+                        [ -f $package_files_dir/$cap.config ] \
                             || bail "Unknown capability '$cap' (no package/linux/$cap.config)"
-                    done
-                    for cap in ${CAPS:-}; do
                         cat $package_files_dir/$cap.config
                     done
                 } > $package_build_dir/$package_name.config
