@@ -50,6 +50,7 @@ services:
     privileged: true
     environment:
       SYSTEM_KEY:
+      DESTINATION:
       INSTALL_DIR:
       IMAGE_SIZE:
       LFS_RELEASE:
