@@ -1,2 +1,0 @@
-# Route log output from systemd CLI tools to the journal, not the terminal
-export SYSTEMD_LOG_TARGET=journal

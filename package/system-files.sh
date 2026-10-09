@@ -26,14 +26,9 @@ install() {
     ln -sfv /run/lock var/lock
 
     # Content shared by every userland flavor (common/) plus whatever is
-    # specific to this one ($USERLAND/ — the systemd-* flavors ship their
-    # dozen systemd-* accounts and messagebus/uuidd; busybox/ ships just
-    # root + nobody). Flavor content is copied second so a same-named file
-    # (etc/passwd, etc/shadow, etc/group) is fully replaced by the flavor's
-    # own version rather than merged with common/ — those three differ too
-    # much between flavors to split further, so they live entirely under
-    # the per-flavor dirs and common/ only holds what is genuinely
-    # identical (etc/hosts).
+    # specific to this one ($USERLAND/, e.g. systemd's accounts). Flavor
+    # content is copied second, so its etc/passwd, etc/shadow and etc/group
+    # replace rather than merge with any common/ version.
     cp -rv $package_files_dir/common/* .
     cp -rv $package_files_dir/$USERLAND/* .
 

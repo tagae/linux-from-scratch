@@ -13,7 +13,6 @@ readonly package_dir=$project_dir/package
 . $project_dir/lib/base.sh
 . $project_dir/lib/package.sh
 . $project_dir/lib/tools.sh
-. $project_dir/lib/system.sh
 . $project_dir/lib/image.sh
 . $project_dir/lib/qemu.sh
 
@@ -77,8 +76,6 @@ readonly PLATFORM
 #-- Userland: init system and toolset.
 
 : ${USERLAND:=systemd-gnu}
-
-[ -f $project_dir/lib/userland/$USERLAND.sh ] || bail "Unsupported userland '$USERLAND'"
 
 readonly USERLAND
 
@@ -175,11 +172,6 @@ case "${1:-help}" in
         lfs_tools "$@"
         ;;
 
-    system)
-        shift
-        system "$@"
-        ;;
-
     image)
         shift
         image "$@"
@@ -191,15 +183,11 @@ case "${1:-help}" in
         ;;
 
     help)
-        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|system|install|unarchive|image|qemu)"
+        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|install|image|qemu)"
         echo ""
         echo "Commands:"
         echo "  tools            Build cross-compilation toolchain"
-        echo "  system           Build all final system packages"
         echo "  install <PKG>... Install one or more packages"
-        echo "  unarchive FILE [DEST]"
-        echo "                   Extract a package tarball (DEST defaults to"
-        echo "                   this system key's merged tree, e.g. / in a guest)"
         echo "  image build [IMAGE]"
         echo "                   Create bootable disk image from the built system"
         echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"

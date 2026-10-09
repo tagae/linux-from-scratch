@@ -110,9 +110,8 @@ find_partitions() {
             [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
         fi
     else
-        # Guest phase fallback: kpartx is container-only build-time tooling
-        # (see lib/tools.sh's build_tools(), never a member of any
-        # bootable-$USERLAND umbrella) and genuinely absent on the guest. But
+        # Guest phase fallback: kpartx is container-only build-time tooling,
+        # absent on the guest. But
         # the container-only problem above doesn't apply
         # here — the guest boots a real kernel with a real, working
         # devtmpfs (CONFIG_DEVTMPFS_MOUNT=y, see package/linux/base.config),
@@ -151,10 +150,9 @@ mount_partitions() {
 
 populate_image() {
     [ -n "${ROOT_DIR:-}" ] || bail "No root directory — call 'image' first"
-    # $INSTALL_DIR/$SYSTEM_KEY: the system build installs per platform-and-
-    # init-flavor under here (see lib/system.sh), not into a shared $INSTALL_DIR.
+    # One install tree per system key, not a shared $INSTALL_DIR.
     local platform_install_dir=$INSTALL_DIR/$SYSTEM_KEY
-    [ -d "$platform_install_dir" ] || bail "Install directory not found: $platform_install_dir — run './lfs system' first"
+    [ -d "$platform_install_dir" ] || bail "Install directory not found: $platform_install_dir"
     stage "Populating image from $platform_install_dir"
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
         # All files including boot go into the btrfs subvolume
