@@ -2,9 +2,7 @@
 : ${package_source:=https://github.com/westes/flex/releases/download/v$package_version/flex-$package_version.tar.gz}
 : ${package_source_hash:=sha256:e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995}
 
-# build=: see m4.sh's copy of this guard (the target build that ships this
-# tool to the guest as an archive tarball). No target_sysroot_cc: flex
-# links nothing from the target tree.
+# build=: see m4.sh's copy of this guard.
 : ${build:=$(gcc -dumpmachine)}
 
 prepare() {
@@ -34,7 +32,7 @@ prepare() {
     # ();`, empty parens meaning "unspecified arguments") is legal pre-C23
     # but a hard "too many arguments" error once empty parens mean "takes
     # no arguments" instead — the same new-GCC-vs-old-source break as
-    # gmp.sh's/gnupg.sh's own identical-cause CFLAGS=-std=gnu17. Pinned for
+    # gmp.sh's own identical-cause CFLAGS=-std=gnu17. Pinned for
     # both variables (CFLAGS for the main cross-target build, CFLAGS_FOR_
     # BUILD for stage1) since either one alone still leaves the other half
     # compiled with GCC 16's newer default standard.

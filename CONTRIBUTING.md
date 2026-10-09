@@ -45,11 +45,11 @@ build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...) into the `
 With this the tools are fully functional and can be used to build packages.
 
 
-Building the System
--------------------
+Images
+------
 
-* The `./lfs system build` command cross-compiles the target system into `install/$SYSTEM_KEY`.
-* The `./lfs image build` command formats a disk image from a built system tree.
+* The `./lfs image build` command formats a disk image from the install tree at
+  `install/$SYSTEM_KEY`, which nothing populates at the moment.
 * The `./lfs qemu` command runs the built image.
 
 
@@ -57,7 +57,7 @@ Package Model
 -------------
 
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
-`fetch`/`prepare`/`build`/ `install`/`depends` with sane defaults.
+`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
