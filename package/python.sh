@@ -4,8 +4,6 @@
 
 package_source_dir=$SOURCE_DIR/Python-$package_version
 
-# build=: see m4.sh's copy of this guard (the target build that ships this
-# tool to the guest as an archive tarball).
 # build_python: the native python3 CPython's own cross-build process needs
 # to run at BUILD time (freezing importlib, running Parser/pgen, deriving
 # platform constants it can't cross-derive by static analysis alone) —
@@ -16,7 +14,6 @@ package_source_dir=$SOURCE_DIR/Python-$package_version
 # on host (${host:+...} below): a no-op wherever host stays unset (every
 # existing native caller, including build_tools()'s own `install python`),
 # since --with-build-python only makes sense once actually cross-building.
-: ${build:=$(gcc -dumpmachine)}
 : ${build_python:=$TOOL_DIR/usr/bin/python3}
 
 prepare() {

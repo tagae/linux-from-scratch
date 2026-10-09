@@ -2,10 +2,7 @@
 : ${package_source:=https://ftp.gnu.org/gnu/bison/bison-$package_version.tar.xz}
 : ${package_source_hash:=sha256:9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2}
 
-# build=: see m4.sh's copy of this guard. bison runs m4 at run time, so
-# m4 must be installed wherever bison is.
-: ${build:=$(gcc -dumpmachine)}
-
+# bison runs m4 at run time, so m4 must be installed wherever bison is.
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \

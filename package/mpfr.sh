@@ -2,8 +2,6 @@
 : ${package_source:=https://ftp.gnu.org/gnu/mpfr/mpfr-$package_version.tar.xz}
 : ${package_source_hash:=sha256:b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01}
 
-: ${build:=$(gcc -dumpmachine)}
-
 prepare() {
     $package_source_dir/configure \
         ${host:+--host=$host} \

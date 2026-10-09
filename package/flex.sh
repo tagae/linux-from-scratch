@@ -2,13 +2,9 @@
 : ${package_source:=https://github.com/westes/flex/releases/download/v$package_version/flex-$package_version.tar.gz}
 : ${package_source_hash:=sha256:e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995}
 
-# build=: see m4.sh's copy of this guard.
-: ${build:=$(gcc -dumpmachine)}
-
 prepare() {
     # ac_cv_func_{malloc,realloc}_0_nonnull: gnulib's AC_FUNC_MALLOC/
     # AC_FUNC_REALLOC can't execute a test program while cross-compiling
-    # (cross_compiling=yes, now correctly detected thanks to build= above)
     # and conservatively assume malloc(0)/realloc(p,0) might return NULL,
     # substituting a wrapping rpl_malloc/rpl_realloc that config.h then
     # #defines malloc/realloc to — but flex's own sources never declare
