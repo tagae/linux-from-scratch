@@ -4,6 +4,8 @@
 : ${package_version:=NSS_3_126_RTM}
 : ${package_source:=https://raw.githubusercontent.com/nss-dev/nss/$package_version/lib/ckfw/builtins/certdata.txt}
 : ${package_source_hash:=sha256:81b7f2576333a2e360e673f912d7b0b7a765d836c731003e348a46cac5d37198}
+: ${package_description:=CA trust store built from Mozilla root certificates.}
+: ${package_license:=MPL-2.0}
 
 package_certdata_file=$DOWNLOAD_DIR/certdata-$package_version.txt
 

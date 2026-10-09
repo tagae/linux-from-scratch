@@ -63,6 +63,8 @@ A package may list other packages in `package_fetch_dependencies`, whose sources
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir`.
 
+The `package_license` list the package's license in [SPDX format][SPDX License List].
+
 
 Conventions
 -----------
@@ -101,3 +103,6 @@ Pointers
 - http://www.dettus.net/detLFS/
 - https://www.linux-magazine.com/Issues/2021/245/detLFS
 - https://blog.jgosmann.de/posts/2021/02/07/a-guide-to-crosscompiling-applications/
+
+
+[SPDX License List]: https://spdx.org/licenses/

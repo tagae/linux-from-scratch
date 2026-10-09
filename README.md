@@ -35,11 +35,11 @@ Supported Platforms
 Capabilities
 ------------
 
-| Capability | What it enables                                                     |
-|------------|---------------------------------------------------------------------|
-| `usb`      | Removable USB storage (attach a stick with `USB_DISK=<img>`)        |
-| `loop`     | Loop devices                                                        |
-| `fat-fs`   | FAT filesystem support                                              |
+| Capability | Enables                                                            |
+|------------|--------------------------------------------------------------------|
+| `usb`      | Removable USB storage (attach a stick with `USB_DISK=<img>`)       |
+| `loop`     | Loop devices                                                       |
+| `fat-fs`   | FAT filesystem support                                             |
 
 Capabilities can be combined.
 

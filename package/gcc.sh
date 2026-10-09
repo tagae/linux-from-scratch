@@ -4,6 +4,8 @@
 : ${package_source:=https://ftp.gnu.org/gnu/gcc/gcc-$package_version/gcc-$package_version.tar.xz}
 : ${package_source_hash:=sha256:50efb4d94c3397aff3b0d61a5abd748b4dd31d9d3f2ab7be05b171d36a510f79}
 : ${package_fetch_dependencies:=gmp mpfr mpc}
+: ${package_description:=GNU Compiler Collection.}
+: ${package_license:=GPL-3.0-or-later AND GPL-3.0-or-later WITH GCC-exception-3.1}
 
 prepare() {
     case $package_component in
