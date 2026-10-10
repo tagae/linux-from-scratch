@@ -7,7 +7,10 @@
 package_source_dir=$SOURCE_DIR/btrfs-progs-v$package_version
 
 prepare() {
-    $package_source_dir/configure \
+    # The Makefile only builds in the tree configure ran in, so build from a copy of the source.
+    cp -Rp $package_source_dir/. .
+
+    ./configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
@@ -21,9 +24,9 @@ prepare() {
 }
 
 build() {
-    make -C $package_source_dir
+    make
 }
 
 install() {
-    make -C $package_source_dir install DESTDIR=$package_install_dir
+    make install DESTDIR=$package_install_dir
 }
