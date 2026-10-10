@@ -1,3 +1,4 @@
+readonly kernel_arch=arm
 readonly target_arch=arm
 readonly target_abi=gnueabihf
 

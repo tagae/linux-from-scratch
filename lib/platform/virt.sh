@@ -1,10 +1,25 @@
+# The guest has the build machine's architecture, so that the accelerator can run it.
+case "$(uname -m)" in
+    arm64|aarch64)
+        readonly kernel_arch=arm64
+        readonly QEMU=qemu-system-aarch64
+        readonly qemu_machine=virt
+        ;;
+    x86_64)
+        readonly kernel_arch=x86_64
+        readonly QEMU=qemu-system-x86_64
+        readonly qemu_machine=q35
+        ;;
+    *) bail "Unsupported virt architecture '$(uname -m)'" ;;
+esac
+
 case "$(uname -s)" in
     Darwin) readonly qemu_accel="-accel hvf" ;;
     Linux)  readonly qemu_accel="-accel kvm" ;;
 esac
 
 readonly QEMU_FLAGS="\
-    -M virt -cpu host $qemu_accel -smp 1 -m 512 \
+    -M $qemu_machine -cpu host $qemu_accel -smp 1 -m 512 \
     -nographic \
     -device virtio-rng \
     -device virtio-serial \
