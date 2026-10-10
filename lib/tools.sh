@@ -111,7 +111,7 @@ lfs_tools_build() {
 
     lfs_install_package gettext
     lfs_install_package m4
-    lfs_install_package bison
+    ( relocatable=yes; lfs_install_package bison )
     lfs_install_package patch
     lfs_install_package zlib
     ( optimizations=no; lfs_install_package python )

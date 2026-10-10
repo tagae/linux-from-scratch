@@ -11,6 +11,14 @@ case $PLATFORM in
         ;;
 esac
 
+# Where the kernel builds its image, whose name is also the make target for it.
+case $kernel_arch in
+    arm)    kernel_image=arch/arm/boot/zImage ;;
+    arm64)  kernel_image=arch/arm64/boot/Image ;;
+    x86_64) kernel_image=arch/x86/boot/bzImage ;;
+    *)      bail "Unsupported kernel architecture '$kernel_arch'" ;;
+esac
+
 : ${package_description:=Linux kernel.}
 : ${package_license:=GPL-2.0-only WITH Linux-syscall-note}
 
@@ -21,7 +29,7 @@ prepare() {
                 {
                     cat $package_files_dir/base.config \
                         $package_files_dir/$PLATFORM.config \
-                        ${arch:+$package_files_dir/$arch.config} \
+                        $package_files_dir/$kernel_arch.config \
                         $package_files_dir/$USERLAND.config
                     for cap in $CAPS; do
                         [ -f $package_files_dir/$cap.config ] \
@@ -29,13 +37,13 @@ prepare() {
                         cat $package_files_dir/$cap.config
                     done
                 } > $package_build_dir/$package_name.config
-                _make KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig
+                _make_target KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig
             else
-                _make $defconfig
+                _make_target $defconfig
             fi
             ${MACHINE:+_set_kernel_config DEFAULT_HOSTNAME "$MACHINE"}
             ${PLATFORM:+_set_kernel_config LOCALVERSION "-$PLATFORM"}
-            _make olddefconfig
+            _make_target olddefconfig
             ;;
         *)
             default_prepare
@@ -49,10 +57,7 @@ build() {
             _make headers
             ;;
         linux)
-            case $arch in
-                arm) _make zImage modules ${dev_tree_blob:+dtbs} ;;
-                *) _make Image modules ${dev_tree_blob:+dtbs} ;;
-            esac
+            _make_target ${kernel_image##*/} modules ${dev_tree_blob:+dtbs}
             ;;
         *)
             default_build
@@ -72,12 +77,12 @@ install() {
             ln -sfn usr/lib $package_install_dir/lib
 
             # modules_install runs depmod *if* it can find a depmod on PATH.
-            _make \
+            _make_target \
                 INSTALL_DTBS_PATH=$package_install_dir/boot \
                 INSTALL_MOD_PATH=$package_install_dir \
                 ${dev_tree_blob:+dtbs_install} modules_install
             mkdir -pv $package_install_dir/boot
-            cp -v $package_source_dir/arch/$kernel_arch/boot/zImage \
+            cp -v $package_build_dir/$kernel_image \
                $package_install_dir/boot/kernel.img
             ;;
         *)
@@ -86,12 +91,17 @@ install() {
     esac
 }
 
+# Builds natively. The headers belong to the toolchain, which runs on the build machine.
 _make() {
-    make -C $package_source_dir \
-         ${arch:+ARCH=$arch} ${target_triple:+CROSS_COMPILE=$target_triple-} "$@"
+    make -C $package_source_dir O=$package_build_dir "$@"
+}
+
+# Builds for the platform's architecture.
+_make_target() {
+    _make ARCH=$kernel_arch ${target_triplet:+CROSS_COMPILE=$target_triplet-} "$@"
 }
 
 _set_kernel_config() {
     local key="$1" value="$2"
-    sed -i 's/CONFIG_'"$key"'="[^"]*"/CONFIG_'"$key"'="'"$value"'"/g' $package_source_dir/.config
+    sed -i 's/CONFIG_'"$key"'="[^"]*"/CONFIG_'"$key"'="'"$value"'"/g' $package_build_dir/.config
 }

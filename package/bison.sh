@@ -9,7 +9,8 @@ prepare() {
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
-        ${nls:+--enable-nls=$nls}
+        ${nls:+--enable-nls=$nls} \
+        ${relocatable:+--enable-relocatable=$relocatable}
 }
 
 build() {

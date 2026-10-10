@@ -1,4 +1,4 @@
-readonly ARCH=arm64
+readonly kernel_arch=arm64
 
 readonly target=aarch64-scratch-linux-gnu
 
@@ -8,7 +8,7 @@ readonly tune=cortex-a72
 readonly abi=lp64
 
 readonly defconfig=bcm2711_defconfig
-readonly DTB=broadcom/bcm2711-rpi-4-b.dtb
+readonly dev_tree_blob=broadcom/bcm2711-rpi-4-b.dtb
 
 readonly QEMU=qemu-system-aarch64
 

@@ -6,8 +6,8 @@ qemu() {
     local kernel="$WORK_DIR/boot/$SYSTEM_KEY/kernel.img"
     [ -f "$kernel" ] || bail "Kernel not found: $kernel"
     set -- -kernel "$kernel"
-    if [ -n "${DTB:-}" ]; then
-        local dtb="$WORK_DIR/boot/$SYSTEM_KEY/$DTB"
+    if [ -n "${dev_tree_blob:-}" ]; then
+        local dtb="$WORK_DIR/boot/$SYSTEM_KEY/$dev_tree_blob"
         [ -f "$dtb" ] || bail "DTB not found: $dtb"
         set -- "$@" -dtb "$dtb"
     fi
