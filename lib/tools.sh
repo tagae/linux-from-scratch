@@ -131,6 +131,9 @@ lfs_tools_build() {
     ( manpages=no; lfs_install_package kmod )
     # The kernel's headers_install copies the headers with rsync.
     lfs_install_package rsync
+    # The x86-64 kernel's objtool links libelf, from elfutils, whose sources come as .tar.bz2.
+    lfs_install_package bzip2
+    lfs_install_package elfutils
     ( shared=yes normal=no debug=no cxx_shared=yes; lfs_install_package ncurses )
     (
         libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin
