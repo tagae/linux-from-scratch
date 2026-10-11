@@ -20,6 +20,9 @@ prepare() {
                 ${libstdcxx_pch:+--enable-libstdcxx-pch=$libstdcxx_pch} \
                 ${target:+--with-gxx-include-dir=/$target/include/c++/$package_version}
             ;;
+        runtime)
+            default_prepare
+            ;;
         *)
             # Fetch dependencies are built in-tree, as part of GCC itself.
             ln -sfnv $gmp_source_dir $package_source_dir/gmp
@@ -65,28 +68,46 @@ prepare() {
 }
 
 build() {
-    make
+    case $package_component in
+        runtime)
+            default_build
+            ;;
+        *)
+            make
+            ;;
+    esac
 }
 
 install() {
-    # Some architectures install the runtime libraries (libstdc++, libgcc_s, ...) into lib64; keep
-    # them next to glibc's, in lib.
-    mkdir -pv $package_install_dir$prefix/lib
-    ln -sfnv lib $package_install_dir$prefix/lib64
-
     case $package_component in
+        runtime)
+            # glibc loads libgcc_s at run time, to unwind stacks.
+            mkdir -pv $package_install_dir$prefix/lib
+            cp -v $($host-gcc -print-file-name=libgcc_s.so.1) $package_install_dir$prefix/lib/
+            ;;
         libstdc++)
+            _link_lib64
             make install DESTDIR=$package_install_dir
             ;;
         *)
+            _link_lib64
             make install DESTDIR=$package_install_dir
             case ${package_variant:-} in
                 pass1)
+                    # The compiler just staged, not one already installed.
+                    local gcc=$package_install_dir$prefix/bin/$target-gcc
                     cat $package_source_dir/gcc/limitx.h \
                         $package_source_dir/gcc/glimits.h \
                         $package_source_dir/gcc/limity.h \
-                        > $($target-gcc -print-file-name=include)/limits.h
+                        > $($gcc -print-file-name=include)/limits.h
                     ;;
             esac
     esac
+}
+
+# Some architectures install the runtime libraries (libstdc++, libgcc_s, ...) into lib64; keep them
+# next to glibc's, in lib.
+_link_lib64() {
+    mkdir -pv $package_install_dir$prefix/lib
+    ln -sfnv lib $package_install_dir$prefix/lib64
 }

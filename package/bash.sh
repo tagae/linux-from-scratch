@@ -5,20 +5,45 @@
 : ${package_license:=GPL-3.0-or-later}
 
 prepare() {
-    $package_source_dir/configure \
-        ${host:+--host=$host} \
-        ${build:+--build=$build} \
-        ${prefix:+--prefix=$prefix} \
-        ${bash_malloc:+--with-bash-malloc=$bash_malloc} \
-        ${curses:+--with-curses=$curses} \
-        ${nls:+--enable-nls=$nls}
+    case $package_component in
+        bash)
+            $package_source_dir/configure \
+                ${host:+--host=$host} \
+                ${build:+--build=$build} \
+                ${prefix:+--prefix=$prefix} \
+                ${bash_malloc:+--with-bash-malloc=$bash_malloc} \
+                ${curses:+--with-curses=$curses} \
+                ${nls:+--enable-nls=$nls}
+            ;;
+        *)
+            default_prepare
+            ;;
+    esac
 }
 
 build() {
-    make
+    case $package_component in
+        bash)
+            make
+            ;;
+        *)
+            default_build
+            ;;
+    esac
 }
 
 install() {
-    make install DESTDIR=$package_install_dir
-    ln -sfv bash $package_install_dir$prefix/bin/sh
+    case $package_component in
+        bash)
+            make install DESTDIR=$package_install_dir
+            ln -sfv bash $package_install_dir$prefix/bin/sh
+            split_dev_files
+            ;;
+        dev)
+            install_split
+            ;;
+        *)
+            default_install
+            ;;
+    esac
 }

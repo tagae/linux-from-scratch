@@ -154,12 +154,15 @@ populate_image() {
     local platform_install_dir=$INSTALL_DIR/$SYSTEM_KEY
     [ -d "$platform_install_dir" ] || bail "Install directory not found: $platform_install_dir"
     stage "Populating image from $platform_install_dir"
+    # The install tree belongs to the build user, but the system's files belong to root.
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
         # All files including boot go into the btrfs subvolume
-        tar -C $platform_install_dir -cf - . | tar -C $ROOT_DIR -xf -
+        tar -C $platform_install_dir --owner=0 --group=0 --numeric-owner -cf - . \
+            | tar -C $ROOT_DIR -xpf -
     else
         # Rootfs to btrfs subvolume (exclude boot — it lives on the FAT partition)
-        tar -C $platform_install_dir -cf - --exclude=./boot . | tar -C $ROOT_DIR -xf -
+        tar -C $platform_install_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
+            | tar -C $ROOT_DIR -xpf -
         # Boot files to FAT partition (ownership not supported by FAT)
         cp -r $platform_install_dir/boot/. $ROOT_DIR/boot/
     fi

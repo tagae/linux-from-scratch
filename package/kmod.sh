@@ -5,26 +5,52 @@
 : ${package_license:=GPL-2.0-or-later AND LGPL-2.1-or-later}
 
 prepare() {
-    $package_source_dir/configure \
-        ${host:+--host=$host} \
-        ${build:+--build=$build} \
-        ${prefix:+--prefix=$prefix} \
-        ${openssl:+--with-openssl=$openssl} \
-        ${xz:+--with-xz=$xz} \
-        ${zstd:+--with-zstd=$zstd} \
-        ${zlib:+--with-zlib=$zlib} \
-        ${manpages:+--enable-manpages=$manpages}
+    case $package_component in
+        kmod)
+            $package_source_dir/configure \
+                ${host:+--host=$host} \
+                ${build:+--build=$build} \
+                ${prefix:+--prefix=$prefix} \
+                ${openssl:+--with-openssl=$openssl} \
+                ${xz:+--with-xz=$xz} \
+                ${zstd:+--with-zstd=$zstd} \
+                ${zlib:+--with-zlib=$zlib} \
+                ${manpages:+--enable-manpages=$manpages}
+            ;;
+        *)
+            default_prepare
+            ;;
+    esac
 }
 
 build() {
-    make
+    case $package_component in
+        kmod)
+            make
+            ;;
+        *)
+            default_build
+            ;;
+    esac
 }
 
 install() {
-    make install DESTDIR=$package_install_dir
+    case $package_component in
+        kmod)
+            make install DESTDIR=$package_install_dir
 
-    for tool in depmod insmod modinfo modprobe rmmod; do
-        ln -sfv kmod $package_install_dir/$prefix/bin/$tool
-    done
-    ln -sfv kmod $package_install_dir/$prefix/bin/lsmod
+            for tool in depmod insmod modinfo modprobe rmmod; do
+                ln -sfv kmod $package_install_dir/$prefix/bin/$tool
+            done
+            ln -sfv kmod $package_install_dir/$prefix/bin/lsmod
+
+            split_dev_files
+            ;;
+        dev)
+            install_split
+            ;;
+        *)
+            default_install
+            ;;
+    esac
 }

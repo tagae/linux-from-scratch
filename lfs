@@ -12,7 +12,9 @@ readonly package_dir=$project_dir/package
 
 . $project_dir/lib/base.sh
 . $project_dir/lib/package.sh
+. $project_dir/lib/split.sh
 . $project_dir/lib/tools.sh
+. $project_dir/lib/system.sh
 . $project_dir/lib/image.sh
 . $project_dir/lib/qemu.sh
 
@@ -91,8 +93,8 @@ readonly SYSTEM_KEY=$PLATFORM-$USERLAND${CAPS:++$(set -- $CAPS; IFS=+; echo "$*"
 
 : ${build_vendor:=scratch}
 : ${build_kernel:=linux}
+: ${build_abi:=gnu}
 if [ -n "${build_arch:-}" ]; then
-    : ${build_abi:=gnu}
     readonly build_arch build_vendor build_kernel build_abi
     readonly build_triplet=$build_arch-$build_vendor-$build_kernel-$build_abi
 fi
@@ -172,6 +174,11 @@ case "${1:-help}" in
         lfs_tools "$@"
         ;;
 
+    system)
+        shift
+        lfs_system "$@"
+        ;;
+
     image)
         shift
         image "$@"
@@ -183,10 +190,11 @@ case "${1:-help}" in
         ;;
 
     help)
-        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|pack|install|image|qemu)"
+        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|system|pack|install|image|qemu)"
         echo ""
         echo "Commands:"
-        echo "  tools            Build cross-compilation toolchain"
+        echo "  tools            Build the build tools"
+        echo "  system build     Build the system for the platform"
         echo "  pack <PKG>       Build a package's archive"
         echo "  install <PKG>    Install a package"
         echo "  image build [IMAGE]"

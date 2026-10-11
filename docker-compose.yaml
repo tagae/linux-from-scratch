@@ -32,6 +32,11 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
+      # Unused here, but a volume created by this service takes the ownership of the mount point in
+      # its image, which the scratch image cannot provide.
+      - type: volume
+        source: install
+        target: /mnt/lfs/install
       - type: bind # So that built archives can be consumed where needed outside the container.
         source: $PWD/archive
         target: /mnt/lfs/archive
