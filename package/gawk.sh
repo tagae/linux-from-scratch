@@ -5,17 +5,42 @@
 : ${package_license:=GPL-3.0-or-later}
 
 prepare() {
-    $package_source_dir/configure \
-        ${host:+--host=$host} \
-        ${build:+--build=$build} \
-        ${prefix:+--prefix=$prefix} \
-        ${nls:+--enable-nls=$nls}
+    case $package_component in
+        gawk)
+            $package_source_dir/configure \
+                ${host:+--host=$host} \
+                ${build:+--build=$build} \
+                ${prefix:+--prefix=$prefix} \
+                ${nls:+--enable-nls=$nls}
+            ;;
+        *)
+            default_prepare
+            ;;
+    esac
 }
 
 build() {
-    make
+    case $package_component in
+        gawk)
+            make
+            ;;
+        *)
+            default_build
+            ;;
+    esac
 }
 
 install() {
-    make install DESTDIR=$package_install_dir
+    case $package_component in
+        gawk)
+            make install DESTDIR=$package_install_dir
+            split_dev_files
+            ;;
+        dev)
+            install_split
+            ;;
+        *)
+            default_install
+            ;;
+    esac
 }

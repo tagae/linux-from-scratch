@@ -1,11 +1,13 @@
 # The guest has the build machine's architecture, so that the accelerator can run it.
 case "$(uname -m)" in
     arm64|aarch64)
+        readonly target_arch=aarch64
         readonly kernel_arch=arm64
         readonly QEMU=qemu-system-aarch64
         readonly qemu_machine=virt
         ;;
     x86_64)
+        readonly target_arch=x86_64
         readonly kernel_arch=x86_64
         readonly QEMU=qemu-system-x86_64
         readonly qemu_machine=q35

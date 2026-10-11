@@ -4,9 +4,9 @@ Linux From Scratch
 Build [Linux From Scratch](https://www.linuxfromscratch.org/lfs/view/systemd/)
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
-The project currently builds the build tools: a toolchain plus the temporary tools needed to build
-packages. Building a bootable system is not part of it at the moment; the disk image and QEMU
-support remain for when it returns.
+The project builds a bootable system: the build tools, a cross toolchain, the base system and its
+kernel, a disk image, and a QEMU boot test of that image. `virt-systemd-gnu` and `pi0-systemd-gnu`
+build and boot under QEMU; images do not boot on real hardware yet.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
@@ -18,6 +18,12 @@ Build the build tools through Docker:
 
 ```shell
 make tools
+```
+
+Build the whole chain, from the build tools to a disk image that boots and passes the login test:
+
+```shell
+make test
 ```
 
 
@@ -59,13 +65,14 @@ Make Targets
 
 ```shell
 make tools    # toolchain + temporary build tools
+make system   # build the system for the platform into the install tree
 make image    # produce a disk image from the install tree
 make qemu     # boot the image in QEMU (interactive serial console)
 make test     # check that the image boots and root can login/poweroff
 ```
 
-Nothing populates the install tree at the moment, so `image`, `qemu` and `test` have nothing to
-work with yet.
+`make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
+system built by the latest run. Running `make` without a goal runs `test`.
 
 Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no capabilities. The
 defaults can be changed through variables:

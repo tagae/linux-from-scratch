@@ -9,9 +9,9 @@ Overview
 * `package/`: package recipes
 * `download/`: fetched archives
 * `source/`: unpacked sources
-* `work/`: build dirs
+* `work/`: build dirs, and the sysroots of the cross toolchains
 * `tools/`: toolchains
-* `install/`: target install trees
+* `install/`: target install trees, one per system key
 * `archive/`: package tarballs
 * `image/`:  disk images
 * `Dockerfile.{bootstrap,scratch}`: build containers (for reproducibility)
@@ -39,17 +39,33 @@ Self-hosted using only what `tools bootstrap` staged. The following command adds
 build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...) into the `tools` directory:
 
 ```shell
-`./lfs tools build
+./lfs tools build
 ```
 
 With this the tools are fully functional and can be used to build packages.
+
+
+Building the System
+-------------------
+
+The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
+an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
+first gcc, the Linux API headers and glibc, then the full cross gcc. The base system from chapter 8
+is then compiled with that toolchain, followed by the kernel. Each package is installed both into
+the system tree and into the toolchain's sysroot, `work/$SYSTEM_KEY/sysroot`, which also receives
+what compiling against the packages needs: the Linux API headers and the packages' `dev`
+components. The kernel is also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
+
+```shell
+./lfs system build
+```
 
 
 Images
 ------
 
 * The `./lfs image build` command formats a disk image from the install tree at
-  `install/$SYSTEM_KEY`, which nothing populates at the moment.
+  `install/$SYSTEM_KEY`, as populated by `./lfs system build`.
 * The `./lfs qemu` command runs the built image.
 
 
@@ -64,6 +80,12 @@ The framework fetches them before building the package, and exposes their locati
 `<dependency>_source_dir`.
 
 The `package_license` list the package's license in [SPDX format][SPDX License List].
+
+A package's install can set files aside for its split components (see `lib/split.sh`): its
+development files (headers, static libraries, pkg-config files...) for its `dev` component, and,
+when built with debugging information, that information for its `debug` component, leaving its
+programs and libraries stripped. Split components are installed only where wanted: `dev` into build
+trees, and `debug` on request, e.g. `./lfs install util-linux#debug`, under `/usr/lib/debug`.
 
 
 Conventions

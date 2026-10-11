@@ -1,0 +1,150 @@
+# Target System
+# -------------
+#
+# Builds the system that runs on the platform into its own tree, $INSTALL_DIR/$SYSTEM_KEY, from
+# which images are made, and which holds only what the running system needs.
+#
+# The cross toolchain that compiles the system has a sysroot of its own, which holds the same
+# packages, plus what compiling against them needs: the kernel headers and the packages' dev
+# components. The toolchain finds the platform's headers and libraries there, with no extra flags.
+# Every platform goes through a cross toolchain, even one with the build machine's architecture.
+
+lfs_system() {
+    case "${1:-help}" in
+        build) shift && lfs_system_build ;;
+        help)
+            echo "Usage: $(basename "$0") system <build>"
+            if [ $# -eq 1 ]; then exit 0; else exit 1; fi ;;
+        *) bail "Unknown command '$1'" ;;
+    esac
+}
+
+lfs_system_build() {
+    mkdir -p ${TMPDIR:-/tmp}
+
+    readonly nls=no
+    readonly multilib=no
+    readonly prefix=/usr
+    readonly system_dir=$INSTALL_DIR/$SYSTEM_KEY
+    readonly sysroot=$WORK_DIR/$SYSTEM_KEY/sysroot
+
+    # With an explicit build triplet, autoconf never mistakes a platform of the build machine's
+    # architecture for the build machine itself, and never runs what it compiles.
+    readonly build=$(gcc -dumpmachine)
+    host=$target_triplet
+
+    # The trees hold exactly what the packages below install, with the permissions they were
+    # packaged with (setuid and sticky bits included), which tar drops for unprivileged users.
+    rm -rf $system_dir $sysroot
+    package_install_dir=$sysroot
+    export TAR_OPTIONS=--same-permissions
+
+    # Programs and libraries carry no debugging information, and are stripped at link time, through
+    # -Wl so that libtool passes it on to shared libraries too. Autoconf and meson both take these
+    # flags for the platform's code; the kernel does not read them.
+    export CFLAGS=-O2 CXXFLAGS=-O2 LDFLAGS=-Wl,-s
+
+    # Merged-usr layout, which every later package installs through.
+    lfs_system_install system-files
+
+    # Chapter 5: Compiling a Cross-Toolchain
+    ( gprofng=no werror=no; lfs_system_cross binutils )
+    (
+        package_variant=pass1
+        glibc_version=$(lfs_package_version glibc)
+        default_pie=default-pie default_ssp=default-ssp
+        # With a C++ compiler for the host that cannot link yet, glibc skips its C++ parts, instead
+        # of using the build machine's.
+        languages=c,c++
+        newlib=yes headers=no
+        shared=no threads=no
+        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no libsanitizer=no
+        lfs_system_cross gcc
+    )
+    lfs_install_package linux#headers
+    (
+        nscd=no enable_kernel=5.10
+        lfs_system_install glibc
+        lfs_install_package glibc#dev
+    )
+    (
+        glibc_version=$(lfs_package_version glibc)
+        languages=c,c++
+        shared=yes threads=posix
+        default_pie=default-pie default_ssp=default-ssp
+        libgomp=no libquadmath=no libssp=no libvtv=no libsanitizer=no
+        lfs_system_cross gcc
+    )
+    lfs_system_install gcc#runtime
+
+    # pkg-config sees the platform's libraries only, which the packages below install in the
+    # sysroot. Their .pc files record /usr paths.
+    export PKG_CONFIG_LIBDIR=$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig
+    export PKG_CONFIG_SYSROOT_DIR=$sysroot
+    export PKG_CONFIG_SYSTEM_INCLUDE_PATH=$sysroot/usr/include
+    export PKG_CONFIG_SYSTEM_LIBRARY_PATH=$sysroot/usr/lib
+
+    # Chapter 8: Installing Basic System Software
+    ( manpages=no; lfs_system_install kmod )
+    lfs_install_package kmod#dev
+    ( bash_malloc=no curses=no; lfs_system_install bash )
+    lfs_system_install coreutils
+    lfs_system_install grep
+    lfs_system_install sed
+    lfs_system_install gawk
+    lfs_system_install libxcrypt
+    lfs_install_package libxcrypt#dev
+    lfs_system_install shadow
+    (
+        bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
+        # Need PAM or libcap-ng, or come with shadow.
+        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no
+        liblastlog2=no pylibmount=no python=no systemd=no static=no
+        makeinstall_chown=no makeinstall_setuid=no
+        lfs_system_debuggable util-linux
+        lfs_install_package util-linux#dev
+    )
+    lfs_system_debuggable systemd
+
+    # Chapter 10: Making the LFS System Bootable
+    lfs_system_install linux
+
+    # QEMU runs on the host, which cannot see the install tree (a Docker volume), but sees
+    # WORK_DIR/boot.
+    mkdir -pv $WORK_DIR/boot/$SYSTEM_KEY
+    (
+        cd $system_dir/boot
+        cp -v --parents kernel.img ${dev_tree_blob:-} $WORK_DIR/boot/$SYSTEM_KEY/
+    )
+}
+
+# Installs a package into the system, and into the sysroot for the packages compiled after it.
+lfs_system_install() {
+    lfs_install_package $1
+    ( package_install_dir=$system_dir; lfs_unarchive_package $1 )
+}
+
+# Installs a package built with debugging information, which it splits off into its debug
+# component (see lib/split.sh), installed only on request.
+lfs_system_debuggable() (
+    export CFLAGS="-O2 -g" CXXFLAGS="-O2 -g"
+    unset LDFLAGS
+    lfs_system_install $1
+)
+
+# Installs a package of the cross toolchain, which runs on the build machine and compiles for the
+# platform, tuned for its CPU.
+lfs_system_cross() (
+    unset host
+    target=$target_triplet
+    arch=${target_gcc_arch:-} tune=${target_gcc_tune:-} abi=${target_gcc_abi:-}
+    fpu=${target_gcc_fpu:-} float=${target_gcc_float:-}
+
+    : ${package_variant:=cross}
+    package_install_dir=$TOOL_DIR
+
+    # The platform's code in the toolchain (libgcc, libstdc++) is built like the system's.
+    export CFLAGS_FOR_TARGET=$CFLAGS CXXFLAGS_FOR_TARGET=$CXXFLAGS LDFLAGS_FOR_TARGET=${LDFLAGS:-}
+    lfs_tools_set_rtld_ldflags
+    lfs_install_package $1
+)

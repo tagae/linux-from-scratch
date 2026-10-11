@@ -5,49 +5,77 @@
 : ${package_license:=GPL-1.0-or-later AND GPL-2.0-or-later AND LGPL-2.1-or-later AND BSD-3-Clause}
 
 prepare() {
-    $package_source_dir/configure \
-        ${host:+--host=$host} \
-        ${build:+--build=$build} \
-        ${prefix:+--prefix=$prefix} \
-        ${bindir:+--bindir=$bindir} \
-        ${libdir:+--libdir=$libdir} \
-        ${sbindir:+--sbindir=$sbindir} \
-        ${all_programs:+--enable-all-programs=$all_programs} \
-        ${libblkid:+--enable-libblkid=$libblkid} \
-        ${libuuid:+--enable-libuuid=$libuuid} \
-        ${libmount:+--enable-libmount=$libmount} \
-        ${libmount_mountfd_support:+--enable-libmount-mountfd-support=$libmount_mountfd_support} \
-        ${libfdisk:+--enable-libfdisk=$libfdisk} \
-        ${libsmartcols:+--enable-libsmartcols=$libsmartcols} \
-        ${mount:+--enable-mount=$mount} \
-        ${fdisks:+--enable-fdisks=$fdisks} \
-        ${losetup:+--enable-losetup=$losetup} \
-        ${fallocate:+--enable-fallocate=$fallocate} \
-        ${mountpoint:+--enable-mountpoint=$mountpoint} \
-        ${chfn_chsh:+--enable-chfn-chsh=$chfn_chsh} \
-        ${login:+--enable-login=$login} \
-        ${nologin:+--enable-nologin=$nologin} \
-        ${su:+--enable-su=$su} \
-        ${setpriv:+--enable-setpriv=$setpriv} \
-        ${runuser:+--enable-runuser=$runuser} \
-        ${pylibmount:+--enable-pylibmount=$pylibmount} \
-        ${static:+--enable-static=$static} \
-        ${liblastlog2:+--enable-liblastlog2=$liblastlog2} \
-        ${python:+--with-python=$python} \
-        ${systemd:+--with-systemd=$systemd} \
-        ${systemdsystemunitdir:+--with-systemdsystemunitdir=$systemdsystemunitdir} \
-        ${ncurses:+--with-ncurses=$ncurses} \
-        ${ncursesw:+--with-ncursesw=$ncursesw} \
-        ${tinfo:+--with-tinfo=$tinfo} \
-        ${wall:+--enable-wall=$wall} \
-        ${makeinstall_chown:+--enable-makeinstall-chown=$makeinstall_chown} \
-        ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid}
+    case $package_component in
+        util-linux)
+            $package_source_dir/configure \
+                ${host:+--host=$host} \
+                ${build:+--build=$build} \
+                ${prefix:+--prefix=$prefix} \
+                ${sysroot:+--with-sysroot=$sysroot} \
+                ${bindir:+--bindir=$bindir} \
+                ${libdir:+--libdir=$libdir} \
+                ${sbindir:+--sbindir=$sbindir} \
+                ${nls:+--enable-nls=$nls} \
+                ${all_programs:+--enable-all-programs=$all_programs} \
+                ${libblkid:+--enable-libblkid=$libblkid} \
+                ${libuuid:+--enable-libuuid=$libuuid} \
+                ${libmount:+--enable-libmount=$libmount} \
+                ${libmount_mountfd_support:+--enable-libmount-mountfd-support=$libmount_mountfd_support} \
+                ${libfdisk:+--enable-libfdisk=$libfdisk} \
+                ${libsmartcols:+--enable-libsmartcols=$libsmartcols} \
+                ${mount:+--enable-mount=$mount} \
+                ${fdisks:+--enable-fdisks=$fdisks} \
+                ${losetup:+--enable-losetup=$losetup} \
+                ${fallocate:+--enable-fallocate=$fallocate} \
+                ${mountpoint:+--enable-mountpoint=$mountpoint} \
+                ${chfn_chsh:+--enable-chfn-chsh=$chfn_chsh} \
+                ${login:+--enable-login=$login} \
+                ${nologin:+--enable-nologin=$nologin} \
+                ${su:+--enable-su=$su} \
+                ${setpriv:+--enable-setpriv=$setpriv} \
+                ${runuser:+--enable-runuser=$runuser} \
+                ${pylibmount:+--enable-pylibmount=$pylibmount} \
+                ${static:+--enable-static=$static} \
+                ${liblastlog2:+--enable-liblastlog2=$liblastlog2} \
+                ${python:+--with-python=$python} \
+                ${systemd:+--with-systemd=$systemd} \
+                ${systemdsystemunitdir:+--with-systemdsystemunitdir=$systemdsystemunitdir} \
+                ${ncurses:+--with-ncurses=$ncurses} \
+                ${ncursesw:+--with-ncursesw=$ncursesw} \
+                ${tinfo:+--with-tinfo=$tinfo} \
+                ${wall:+--enable-wall=$wall} \
+                ${makeinstall_chown:+--enable-makeinstall-chown=$makeinstall_chown} \
+                ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid}
+            ;;
+        *)
+            default_prepare
+            ;;
+    esac
 }
 
 build() {
-    make
+    case $package_component in
+        util-linux)
+            make
+            ;;
+        *)
+            default_build
+            ;;
+    esac
 }
 
 install() {
-    make install DESTDIR=$package_install_dir
+    case $package_component in
+        util-linux)
+            make install DESTDIR=$package_install_dir
+            split_dev_files
+            split_debug_info
+            ;;
+        dev|debug)
+            install_split
+            ;;
+        *)
+            default_install
+            ;;
+    esac
 }
