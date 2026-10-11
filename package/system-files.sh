@@ -17,6 +17,8 @@ install() {
     ln -sfv usr/bin  bin
     ln -sfv usr/sbin sbin
     ln -sfv usr/lib  lib
+    # Where x86-64 programs load their dynamic linker from (/lib64/ld-linux-x86-64.so.2).
+    ln -sfv usr/lib  lib64
 
     ln -sfv /proc/self/mounts etc/mtab
     ln -sfv /run var/run

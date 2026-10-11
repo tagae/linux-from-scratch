@@ -5,8 +5,8 @@ Build [Linux From Scratch](https://www.linuxfromscratch.org/lfs/view/systemd/)
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
 The project builds a bootable system: the build tools, a cross toolchain, the base system and its
-kernel, a disk image, and a QEMU boot test of that image. `virt-systemd-gnu` and `pi0-systemd-gnu`
-build and boot under QEMU; images do not boot on real hardware yet.
+kernel, a disk image, and a QEMU boot test of that image. `virt-systemd-gnu`, `pi0-systemd-gnu` and
+`amd64-systemd-gnu` build and boot under QEMU; images do not boot on real hardware yet.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
@@ -33,6 +33,7 @@ Supported Platforms
 | Platform | Hardware                     | Architecture  |
 |----------|------------------------------|---------------|
 | `virt`   | QEMU virtual machine         | host          |
+| `amd64`  | 64-bit x86 PC (QEMU q35)     | x86-64        |
 | `pi0`    | Raspberry Pi Zero            | ARMv6 (arm)   |
 | `pi4`    | Raspberry Pi 4               | ARMv8 (arm64) |
 | `pi5`    | Raspberry Pi 5               | ARMv8 (arm64) |
