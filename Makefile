@@ -1,5 +1,6 @@
 .PHONY: \
 	tools %-tools \
+	system %-system \
 	image \
 	qemu %-qemu \
 	test %-test \
@@ -9,8 +10,9 @@
 # Keep all intermediate files, in particular image/*.img. Otherwise, make deletes them.
 .SECONDARY:
 
-# Nothing builds a system to put in an image yet, so the default goal stops at the tools.
-.DEFAULT_GOAL := tools
+# The `test` goal covers the whole chain for the `virt` platform: tools, system, image, and
+# emulation.
+.DEFAULT_GOAL := test
 
 # Whatever depends on FORCE will be considered out of date, since it depends on nothing.
 FORCE:
@@ -23,21 +25,27 @@ FORCE:
 
 # Default targets.
 tools: virt-systemd-gnu-tools
+system: virt-systemd-gnu-system
 image: image/virt-systemd-gnu.img
 qemu: virt-systemd-gnu-qemu
 test: virt-systemd-gnu-test
 
-%-tools image/%.img %-qemu: export SYSTEM_KEY = $*
+%-tools %-system image/%.img %-qemu: export SYSTEM_KEY = $*
 
-# Toolchain.
+# Build tools.
 %-tools: .env
-	# Chapter 5: Compiling a Cross-Toolchain
-	# Chapter 6: Cross Compiling Temporary Tools
+	# A native toolchain plus the temporary tools needed to run the scratch container.
 	docker compose run --build --rm bootstrap ./lfs tools bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	docker compose run --build --rm scratch ./lfs tools build
 
-image/%.img: %-tools FORCE
+%-system: %-tools
+	# Chapter 5: Compiling a Cross-Toolchain
+	# Chapter 8: Installing Basic System Software
+	# Chapter 10: Making the LFS System Bootable
+	docker compose run --rm scratch ./lfs system build
+
+image/%.img: %-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
 	docker compose run --rm --user 0:0 scratch ./lfs image build
 

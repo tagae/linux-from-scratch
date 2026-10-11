@@ -36,7 +36,11 @@ lfs_tools_bootstrap() {
     package_install_dir=$TOOL_DIR
 
     lfs_install_package linux#headers
-    ( nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include; lfs_install_package glibc )
+    (
+        nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include
+        lfs_install_package glibc
+        lfs_install_package glibc#dev
+    )
 
     lfs_tools_set_rtld_ldflags
 
@@ -125,6 +129,8 @@ lfs_tools_build() {
     lfs_install_package bc
     lfs_install_package perl
     ( manpages=no; lfs_install_package kmod )
+    # The kernel's headers_install copies the headers with rsync.
+    lfs_install_package rsync
     ( shared=yes normal=no debug=no cxx_shared=yes; lfs_install_package ncurses )
     (
         libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin
@@ -133,6 +139,7 @@ lfs_tools_build() {
         libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes
         mount=yes fdisks=yes losetup=yes fallocate=yes mountpoint=yes
         lfs_install_package util-linux
+        lfs_install_package util-linux#dev
     )
     lfs_install_package btrfs-progs
     lfs_install_package dosfstools

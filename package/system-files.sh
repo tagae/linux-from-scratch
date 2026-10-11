@@ -7,22 +7,16 @@ install() {
 
     # Create the real directory tree under /usr
     mkdir -pv \
-          usr/bin usr/sbin usr/lib \
-          usr/include usr/share \
+          usr/bin usr/sbin usr/lib usr/share \
           boot dev etc \
           proc root run sys tmp \
-          var/log var/tmp \
-          var/lfs
+          var/log var/tmp
 
     # Compatibility symlinks (merged-usr layout: /bin, /sbin, /lib -> usr/*)
     # These must be created BEFORE any package installs to /bin, /sbin, /lib.
     ln -sfv usr/bin  bin
     ln -sfv usr/sbin sbin
     ln -sfv usr/lib  lib
-
-    chmod -v 0750 root
-    chmod -v 1777 tmp var/tmp
-    chmod -v 0600 etc/shadow
 
     ln -sfv /proc/self/mounts etc/mtab
     ln -sfv /run var/run
@@ -34,6 +28,10 @@ install() {
     # replace rather than merge with any common/ version.
     cp -rv $package_files_dir/common/* .
     cp -rv $package_files_dir/$USERLAND/* .
+
+    chmod -v 0750 root
+    chmod -v 1777 tmp var/tmp
+    chmod -v 0600 etc/shadow
 
     cat > etc/lsb-release <<EOF
 DISTRIB_ID="Linux From Scratch"

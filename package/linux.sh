@@ -54,7 +54,7 @@ prepare() {
 build() {
     case $package_component in
         headers)
-            _make headers
+            _make_headers headers
             ;;
         linux)
             _make_target ${kernel_image##*/} modules ${dev_tree_blob:+dtbs}
@@ -68,7 +68,7 @@ build() {
 install() {
     case $package_component in
         headers)
-            _make INSTALL_HDR_PATH=$package_install_dir/usr headers_install
+            _make_headers INSTALL_HDR_PATH=$package_install_dir/usr headers_install
             ;;
         linux)
             # modules_install writes to lib/modules/ -not configurable.
@@ -91,9 +91,14 @@ install() {
     esac
 }
 
-# Builds natively. The headers belong to the toolchain, which runs on the build machine.
 _make() {
     make -C $package_source_dir O=$package_build_dir "$@"
+}
+
+# Headers describe the kernel interface to the libc of the host: the platform's when compiling for
+# it, the build machine's otherwise.
+_make_headers() {
+    _make ${host:+ARCH=$kernel_arch} "$@"
 }
 
 # Builds for the platform's architecture.
