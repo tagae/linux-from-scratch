@@ -14,6 +14,7 @@ case "$(uname -m)" in
         ;;
     *) bail "Unsupported virt architecture '$(uname -m)'" ;;
 esac
+readonly kernel_machine=virt
 
 case "$(uname -s)" in
     Darwin) readonly qemu_accel="-accel hvf" ;;
