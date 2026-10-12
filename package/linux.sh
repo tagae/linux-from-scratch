@@ -1,5 +1,5 @@
 case $PLATFORM in
-    pi0|pi4|pi5)
+    pi0)
         package_version=stable_20260609 # 6.18.34
         package_source=https://github.com/raspberrypi/linux/archive/refs/tags/$package_version/linux-$package_version.tar.gz
         package_source_hash=sha256:3eacbbb1253a913034efd38ce6aeee2def137eb40c799af2745db874796e389d
@@ -25,11 +25,12 @@ esac
 prepare() {
     case $package_component in
         linux)
-            if [ -f "$package_files_dir/$PLATFORM.config" ]; then
+            # A platform with no configuration fragment for its machine builds its defconfig.
+            if [ -n "${kernel_machine:-}" ]; then
                 {
                     cat $package_files_dir/base.config \
                         $package_files_dir/hardening.config \
-                        $package_files_dir/$PLATFORM.config \
+                        $package_files_dir/$kernel_machine.config \
                         $package_files_dir/arch-$kernel_arch.config \
                         $package_files_dir/$USERLAND.config
                     for cap in $CAPS; do
