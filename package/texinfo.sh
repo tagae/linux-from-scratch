@@ -45,10 +45,7 @@ install() {
         texinfo)
             make -C info install DESTDIR=$package_install_dir
             make -C install-info install DESTDIR=$package_install_dir
-            split_docs
-            ;;
-        docs)
-            install_split
+            move_to_docs_component
             ;;
         *)
             default_install

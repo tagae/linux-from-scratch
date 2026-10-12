@@ -57,11 +57,11 @@ install() {
         ncurses)
             make install DESTDIR=$package_install_dir
             # Plus the script that tells the flags for compiling against it.
-            split_dev_files 'usr/bin/ncurses*-config'
-            split_docs
+            move_to_dev_component 'usr/bin/ncurses*-config'
+            move_to_docs_component
             ;;
-        dev|docs)
-            install_split
+        dev)
+            install_component
             ;;
         *)
             default_install

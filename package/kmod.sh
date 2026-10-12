@@ -43,10 +43,10 @@ install() {
     case $package_component in
         kmod)
             make install DESTDIR=$package_install_dir
-            split_dev_files
+            move_to_dev_component
             ;;
         dev)
-            install_split
+            install_component
             ;;
         *)
             default_install

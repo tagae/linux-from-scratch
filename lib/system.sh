@@ -133,12 +133,12 @@ lfs_system_build() {
         blkid=yes lsblk=yes fdisks=yes losetup=yes dmesg=yes kill=yes more=yes
         python=no systemd=no static=no
         makeinstall_chown=no makeinstall_setuid=no
-        lfs_system_debuggable util-linux
+        lfs_system_install util-linux
         lfs_install_package util-linux#dev
     )
-    lfs_system_debuggable systemd
+    lfs_system_install systemd
 
-    # The readers of man and info pages (see the docs components). They come after the packages
+    # The readers of man and info pages. They come after the packages
     # above, which would otherwise pick up zlib, that mandoc requires, and configure differently.
     lfs_system_install zlib
     lfs_install_package zlib#dev
@@ -168,14 +168,6 @@ lfs_system_install() {
     lfs_install_package $1
     ( package_install_dir=$system_dir; lfs_unarchive_package $1 )
 }
-
-# Installs a package built with debugging information, which it splits off into its debug
-# component (see lib/split.sh), installed only on request.
-lfs_system_debuggable() (
-    export CFLAGS="-O2 -g" CXXFLAGS="-O2 -g"
-    unset LDFLAGS
-    lfs_system_install $1
-)
 
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the
 # platform, tuned for its CPU.

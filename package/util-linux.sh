@@ -78,12 +78,11 @@ install() {
     case $package_component in
         util-linux)
             make install DESTDIR=$package_install_dir
-            split_dev_files
-            split_docs
-            split_debug_info
+            move_to_dev_component
+            move_to_docs_component
             ;;
-        dev|debug|docs)
-            install_split
+        dev)
+            install_component
             ;;
         *)
             default_install

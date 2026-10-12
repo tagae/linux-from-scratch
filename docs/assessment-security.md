@@ -140,8 +140,8 @@ what goes into the build, and about what comes out of it, stay.
 **Other aspects (licence compliance):** images now ship no licence texts, except the firmware's
 `LICENCE.broadcom`, which its licence requires to travel with the blobs. Distributing the
 GPL-licensed binaries (kernel, bash, coreutils, util-linux...) requires their licence texts and the
-corresponding sources (or a written offer). The `docs` split moved licence texts out of the default
-install; a `/usr/share/licenses` that is never split off, and keeping the `download/` tarballs with
+corresponding sources (or a written offer). Removing the documentation also removes the licence
+texts that packages install under `/usr/share/doc`; a `/usr/share/licenses` that is kept, and keeping the `download/` tarballs with
 each released image, would cover both. This belongs with the licence-policy TODO.
 
 ## 3. Remaining work, in suggested order
@@ -169,7 +169,7 @@ each released image, would cover both. This belongs with the licence-policy TODO
 
 ## 4. What was done, and how it was checked (2026-10-12)
 
-The fixes were made together with the rest of the work in this period (the `docs` component, the
+The fixes were made together with the rest of the work in this period (the `docs` component, since removed, the
 minimality and FHS changes, the Pi boot files), and verified by rebuilding virt, pi0 and amd64 from
 scratch, booting each under QEMU, and re-measuring the trees and kernels.
 

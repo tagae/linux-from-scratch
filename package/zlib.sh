@@ -32,11 +32,11 @@ install() {
         zlib)
             make install DESTDIR=$package_install_dir
             rm -fv $package_install_dir/$prefix/lib/libz.a
-            split_dev_files
-            split_docs
+            move_to_dev_component
+            move_to_docs_component
             ;;
-        dev|docs)
-            install_split
+        dev)
+            install_component
             ;;
         *)
             default_install

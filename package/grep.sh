@@ -34,10 +34,7 @@ install() {
     case $package_component in
         grep)
             make install DESTDIR=$package_install_dir
-            split_docs
-            ;;
-        docs)
-            install_split
+            move_to_docs_component
             ;;
         *)
             default_install

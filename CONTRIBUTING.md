@@ -94,14 +94,15 @@ The framework fetches them before building the package, and exposes their locati
 
 The `package_license` list the package's license in [SPDX format][SPDX License List].
 
-A package's install can set files aside for its split components (see `lib/split.sh`): its
-development files (headers, static libraries, pkg-config files...) for its `dev` component, its
-documentation (man and info pages, `/usr/share/doc`) for its `docs` component, and, when built with
-debugging information, that information for its `debug` component, leaving its programs and
-libraries stripped. Split components are installed only where wanted: `dev` into build trees, while
-`docs` and `debug` stay in their own archives (the debugging information belongs under
-`/usr/lib/debug`), to unpack into a system by hand. The system carries readers for the `docs` components: `man` from mandoc,
-which needs zlib, and `info` from texinfo, of which only the reader and `install-info` are built.
+A package's install can set its development files (headers, static libraries, pkg-config files...)
+aside for its `dev` component with `move_to_dev_component` (see `lib/components.sh`), which is
+installed only where wanted: into build trees, not into systems. Systems ship without documentation,
+so a package's install also sets aside its man and info pages and whatever it installs under
+`/usr/share/doc` with `move_to_docs_component`, for a `docs` component that nothing makes a package
+of; wanting it again takes a `docs` branch in the recipes' install, like `dev`'s. Programs and
+libraries are stripped as they are linked. The system carries readers for man and info pages: `man`
+from mandoc, which needs zlib, and `info` from texinfo, of which only the reader and `install-info`
+are built.
 
 
 Conventions

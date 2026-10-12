@@ -55,8 +55,8 @@ One document per image, `image/<SYSTEM_KEY>.spdx.json`, next to the image:
 }
 ```
 
-Split components that a system doesn't get (`dev`, `debug`, `docs`) stay out. If one is unpacked
-into a system by hand, it is a separate archive and can be added the same way.
+The `dev` component, which a system doesn't get, stays out. If it is unpacked into a system by
+hand, it is a separate archive and can be added the same way.
 
 ## How it would be produced
 

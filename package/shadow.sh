@@ -53,10 +53,10 @@ install() {
         shadow)
             make install DESTDIR=$package_install_dir ${suidperms:+suidperms=$suidperms}
             sed -i 's/^#ENCRYPT_METHOD .*/ENCRYPT_METHOD YESCRYPT/' $package_install_dir/etc/login.defs
-            split_dev_files
+            move_to_dev_component
             ;;
         dev)
-            install_split
+            install_component
             ;;
         *)
             default_install
