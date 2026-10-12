@@ -65,23 +65,28 @@ Images
 ------
 
 * The `./lfs image build` command formats a disk image from the install tree at
-  `install/$SYSTEM_KEY`, as populated by `./lfs system build`.
+  `install/$SYSTEM_KEY`, as populated by `./lfs system build`. Given a block device instead of an
+  image file, it formats the device and fills it the same way, with the root file system taking
+  all of the space the boot partition leaves.
 * The `./lfs qemu` command runs the built image.
 
-Making images needs loop devices and mounts, and so does installing into an image or a device
-(`DESTINATION`). Those run in the `image` service, the only privileged one, as root, e.g.
-`DESTINATION=image/virt-systemd-gnu.img docker compose run --rm --user 0:0 image ./lfs install
-util-linux#debug`. The other services build without privileges, and mount `lfs`, `lib` and
-`package` read-only.
+An image or a device is opened through loop devices and mounts, so making one needs a privileged
+container and root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`. Making a
+system on a device erases it, so that takes `ERASE`, set to the same device, e.g.
+`ERASE=/dev/sdb ./lfs image build /dev/sdb`. A device that anything has mounted or opened, in the
+container or on the host, is refused (unmount a card from a desktop's automounter first). Outside
+the scratch container, which has them, a host needs `btrfs-progs`, `dosfstools` and `fdisk` (for
+`sfdisk`), besides the usual `util-linux` and `tar`.
 
 
 Package Model
 -------------
 
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
-`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults. The default
-`archive` records the archive's SHA-256 digest next to it, and the default `unarchive` installs an
-archive only if it still matches.
+`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults. `install` runs into
+an empty stage, so an archive holds exactly what it installed. The default `archive` records the
+archive's SHA-256 digest next to it, and the default `unarchive` installs an archive only if it
+still matches.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -93,9 +98,10 @@ A package's install can set files aside for its split components (see `lib/split
 development files (headers, static libraries, pkg-config files...) for its `dev` component, its
 documentation (man and info pages, `/usr/share/doc`) for its `docs` component, and, when built with
 debugging information, that information for its `debug` component, leaving its programs and
-libraries stripped. Split components are installed only where wanted: `dev` into build trees, and
-`docs` and `debug` on request, e.g. `./lfs install bash#docs` or `./lfs install util-linux#debug`
-(under `/usr/lib/debug`).
+libraries stripped. Split components are installed only where wanted: `dev` into build trees, while
+`docs` and `debug` stay in their own archives (the debugging information belongs under
+`/usr/lib/debug`), to unpack into a system by hand. The system carries readers for the `docs` components: `man` from mandoc,
+which needs zlib, and `info` from texinfo, of which only the reader and `install-info` are built.
 
 
 Conventions

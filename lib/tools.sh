@@ -118,6 +118,7 @@ lfs_tools_build() {
     ( relocatable=yes; lfs_install_package bison )
     lfs_install_package patch
     lfs_install_package zlib
+    lfs_install_package zlib#dev
     ( optimizations=no; lfs_install_package python )
     lfs_install_package gperf
     (

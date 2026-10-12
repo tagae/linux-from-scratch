@@ -139,11 +139,6 @@ case "${1:-help}" in
         lfs_archive_package "$2"
         ;;
 
-    install)
-        [ $# -eq 2 ] || usage "$1 <PACKAGE>"
-        lfs_install_package "$2"
-        ;;
-
     tools)
         shift
         lfs_tools "$@"

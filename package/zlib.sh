@@ -5,14 +5,41 @@
 : ${package_license:=Zlib}
 
 prepare() {
-    $package_source_dir/configure ${prefix:+--prefix=$prefix}
+    case $package_component in
+        zlib)
+            # The toolchain for the platform is named by CHOST.
+            env ${host:+CHOST=$host} $package_source_dir/configure ${prefix:+--prefix=$prefix}
+            ;;
+        *)
+            default_prepare
+            ;;
+    esac
 }
 
 build() {
-    make
+    case $package_component in
+        zlib)
+            make
+            ;;
+        *)
+            default_build
+            ;;
+    esac
 }
 
 install() {
-    make install DESTDIR=$package_install_dir
-    rm -fv $package_install_dir/$prefix/lib/libz.a
+    case $package_component in
+        zlib)
+            make install DESTDIR=$package_install_dir
+            rm -fv $package_install_dir/$prefix/lib/libz.a
+            split_dev_files
+            split_docs
+            ;;
+        dev|docs)
+            install_split
+            ;;
+        *)
+            default_install
+            ;;
+    esac
 }

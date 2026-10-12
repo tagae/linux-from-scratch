@@ -138,6 +138,13 @@ lfs_system_build() {
     )
     lfs_system_debuggable systemd
 
+    # The readers of man and info pages (see the docs components). They come after the packages
+    # above, which would otherwise pick up zlib, that mandoc requires, and configure differently.
+    lfs_system_install zlib
+    lfs_install_package zlib#dev
+    lfs_system_install mandoc
+    lfs_system_install texinfo
+
     # Chapter 10: Making the LFS System Bootable
     lfs_system_install linux
     # The Pi layout's FAT partition holds what the Raspberry Pi firmware boots from.

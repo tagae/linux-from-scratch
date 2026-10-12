@@ -56,7 +56,7 @@ Restrictions
 ------------
 
 Systems ship without documentation. The man pages, info pages and other documentation a package
-installs make up its `docs` component, which is installed on request, e.g. `./lfs install bash#docs`.
+installs make up its `docs` component, a separate archive that systems do not include.
 Documentation that needs extra tools to build (e.g. systemd's man pages) is not built.
 
 Localisation and native language support (NLS) are unsupported. This might become an opt-in feature

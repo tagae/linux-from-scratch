@@ -23,52 +23,77 @@ build_image() {
     mkdir -p /run/mount
 
     stage image
-    create_image
-    attach_image
-    device
+    if [ -b "$target" ]; then
+        # A device is made afresh, like a new image file.
+        DEVICE=$(realpath "$target")
+        confirm_erase
+    else
+        IMAGE=$target
+
+        # Mirrors the _once-stamp pattern lib/package.sh uses everywhere else:
+        # skip the (expensive — mkfs/tar/mount) rebuild if $IMAGE already
+        # reflects the current $INSTALL_DIR/$SYSTEM_KEY content. This can't live
+        # in the Makefile instead: image/%.img's prerequisite is the phony
+        # system-%, not $INSTALL_DIR itself, since $INSTALL_DIR is a Docker
+        # volume invisible to the host-side `make` process — so image/%.img's
+        # recipe always gets invoked, and the skip has to happen in here.
+        if [ -e "$IMAGE" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
+            && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$IMAGE" -print -quit)" ]; then
+            echo "image (done)"
+            return
+        fi
+
+        create_image
+        attach_image
+    fi
+    create_partitions
+    create_filesystems
+    mount_partitions
     populate_image
     unmount_all
 }
 
 create_image() {
-    [ -z "$IMAGE" ] && return
     rm -f "$IMAGE"
     mkdir -pv "$(dirname $IMAGE)"
     fallocate -l "${IMAGE_SIZE:-4g}" "$IMAGE"
 }
 
 attach_image() {
-    [ -z "$IMAGE" ] && return
     DEVICE=$(losetup -f)
     losetup -fP "$IMAGE"
 }
 
 detach_image() {
     if [ -b "${DEVICE:-}" ]; then
-        losetup -d $DEVICE 2>/dev/null || true
+        # Only the loop device made for an image is ours to detach.
+        [ -z "${IMAGE:-}" ] || losetup -d $DEVICE 2>/dev/null || true
         kpartx -dv $DEVICE 2>/dev/null || true
     fi
 }
 
-device() {
-    stage device
-    find_partitions || {
-        create_partitions
-        create_filesystems
-    }
-    mount_partitions
+# Making a system on a device erases it, so that takes ERASE as well as the device itself: a
+# mistyped path cannot pass for the one intended, and a script must mean it. A device that anything
+# has mounted or opened, in this container or on the host, is refused by sfdisk, which asks the
+# kernel, and is not made to proceed.
+confirm_erase() {
+    [ "$(realpath "${ERASE:-/dev/null}")" = "$DEVICE" ] && return 0
+
+    echo "This erases $DEVICE:" >&2
+    lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL $DEVICE >&2 2>/dev/null || true
+    bail "To go ahead, set ERASE=$DEVICE"
 }
 
 create_partitions() {
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        sfdisk -f -w always -W always $DEVICE <<- EOF
+        sfdisk -w always -W always $DEVICE <<- EOF
 label: dos
 unit: sectors
 
 type=83
 EOF
     else
-        sfdisk -f -w always -W always $DEVICE <<- EOF
+        sfdisk -w always -W always $DEVICE <<- EOF
 label: dos
 unit: sectors
 
@@ -80,7 +105,17 @@ EOF
     find_partitions
 }
 
+# The name of partition NUMBER of a device: the kernel inserts a "p" after device names that end in a
+# digit (mmcblk0p1, loop0p1), and none after the others (sdb1, vdb1).
+partition_name() {
+    case $1 in
+        *[0-9]) echo ${1}p$2 ;;
+        *) echo $1$2 ;;
+    esac
+}
+
 find_partitions() {
+    local dir=/dev
     if command -v kpartx >/dev/null 2>&1; then
         # losetup -P's own kernel-level partition scanning doesn't reliably
         # create /dev/loopNpM device nodes inside a container (no working
@@ -88,33 +123,18 @@ find_partitions() {
         # just in theory. kpartx creates the same devices explicitly via
         # device-mapper instead, which doesn't have that problem.
         kpartx -av $DEVICE
-        if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-            BASE_DEVICE=/dev/mapper/${DEVICE##*/}p1
-            [ -b $BASE_DEVICE ]
-        else
-            BOOT_DEVICE=/dev/mapper/${DEVICE##*/}p1
-            BASE_DEVICE=/dev/mapper/${DEVICE##*/}p2
-            [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
-        fi
+        dir=/dev/mapper
+    fi
+    # Without kpartx, as on a guest, the kernel's own partition scanning
+    # creates the nodes, through a working devtmpfs.
+    local name=${DEVICE##*/}
+    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
+        BASE_DEVICE=$dir/$(partition_name $name 1)
+        [ -b $BASE_DEVICE ]
     else
-        # Guest phase fallback: kpartx is container-only build-time tooling,
-        # absent on the guest. But
-        # the container-only problem above doesn't apply
-        # here — the guest boots a real kernel with a real, working
-        # devtmpfs (CONFIG_DEVTMPFS_MOUNT=y, see package/linux/base.config),
-        # so losetup -P's own kernel-level partition scanning (attach_image,
-        # already unconditional) DOES reliably create /dev/loopNpM nodes on
-        # its own, with nothing further to do here beyond checking for them
-        # under their plain kernel-assigned names (no device-mapper
-        # involved at all).
-        if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-            BASE_DEVICE=${DEVICE}p1
-            [ -b $BASE_DEVICE ]
-        else
-            BOOT_DEVICE=${DEVICE}p1
-            BASE_DEVICE=${DEVICE}p2
-            [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
-        fi
+        BOOT_DEVICE=$dir/$(partition_name $name 1)
+        BASE_DEVICE=$dir/$(partition_name $name 2)
+        [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
     fi
 }
 
@@ -172,5 +192,5 @@ unmount_partitions() {
 unmount_all() {
     unmount_partitions
     detach_image
-    unset BASE_DIR ROOT_DIR BOOT_DIR DEVICE BOOT_DEVICE BASE_DEVICE
+    unset BASE_DIR ROOT_DIR BOOT_DIR IMAGE DEVICE BOOT_DEVICE BASE_DEVICE
 }
