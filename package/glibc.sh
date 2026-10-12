@@ -16,9 +16,15 @@ prepare() {
 
             : ${prefix:=/usr}
 
-            # Ensure that the ldconfig and sln utilities are installed alongside the
-            # rest of this glibc, rather than glibc's default rootsbindir=/sbin.
-            echo "rootsbindir=$prefix/sbin" > configparms
+            # rootsbindir: ensure that the ldconfig and sln utilities are installed alongside the
+            # rest of this glibc, rather than glibc's default /sbin.
+            # ldd-rewrite-script: have ldd try the dynamic linker where this glibc installs it
+            # (slibdir), rather than the lib64, lib and libx32 directories under $prefix that
+            # x86-64's multilib rewrite lists, none of which holds it.
+            {
+                echo "rootsbindir=$prefix/sbin"
+                echo "ldd-rewrite-script=no"
+            } > configparms
 
             $package_source_dir/configure \
                 ${host:+--host=$host} \
@@ -37,6 +43,7 @@ prepare() {
                 ${multilib:+--enable-multilib=$multilib} \
                 ${profile:+--enable-profile=$profile} \
                 ${nscd:+--enable-nscd=$nscd} \
+                ${timezone_tools:+--enable-timezone-tools=$timezone_tools} \
                 ${prefix:+libc_cv_slibdir=$prefix/lib}
             ;;
         *)
@@ -70,10 +77,18 @@ install() {
             rm -rf $package_install_dir${prefix:-/usr}/share/i18n
             rm -rf $package_install_dir${prefix:-/usr}/lib/gconv
 
-            split_dev_files
+            # Plus the tools for tracing, profiling and debugging programs, the compilers of
+            # locales and message catalogs, and the tools for locales and character sets, which
+            # have no data here (no locales, no conversion modules).
+            move_to_dev_component \
+                usr/bin/mtrace usr/bin/pcprofiledump usr/bin/sotruss usr/bin/sprof usr/bin/xtrace \
+                usr/lib/audit usr/lib/libc_malloc_debug.so.0 usr/lib/libthread_db.so.1 \
+                usr/bin/gencat usr/bin/localedef \
+                usr/bin/locale usr/bin/iconv usr/sbin/iconvconfig usr/bin/makedb \
+                usr/lib/libBrokenLocale.so.1
             ;;
         dev)
-            install_split
+            install_component
             ;;
         *)
             default_install

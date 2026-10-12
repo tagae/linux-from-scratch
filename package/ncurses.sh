@@ -10,7 +10,7 @@ prepare() {
             $package_source_dir/configure \
                 ${prefix:+--prefix=$prefix}
             ;;
-        *)
+        ncurses)
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
@@ -18,10 +18,18 @@ prepare() {
                 ${shared:+--with-shared=$shared} \
                 ${debug:+--with-debug=$debug} \
                 ${normal:+--with-normal=$normal} \
+                ${cxx_binding:+--with-cxx-binding=$cxx_binding} \
                 ${cxx_shared:+--with-cxx-shared=$cxx_shared} \
                 ${ada:+--with-ada=$ada} \
                 ${widec:+--enable-widec=$widec} \
-                ${stripping:+--enable-stripping=$stripping}
+                ${stripping:+--enable-stripping=$stripping} \
+                ${fallbacks:+--with-fallbacks=$fallbacks} \
+                ${db_install:+--enable-db-install=$db_install} \
+                ${pc_files:+--enable-pc-files=$pc_files} \
+                ${pkg_config_libdir:+--with-pkg-config-libdir=$pkg_config_libdir}
+            ;;
+        *)
+            default_prepare
             ;;
     esac
 }
@@ -32,8 +40,11 @@ build() {
             make -C include
             make -C progs tic
             ;;
-        *)
+        ncurses)
             make
+            ;;
+        *)
+            default_build
             ;;
     esac
 }
@@ -43,8 +54,17 @@ install() {
         tic)
             env install progs/tic $prefix/bin
             ;;
-        *)
+        ncurses)
             make install DESTDIR=$package_install_dir
+            # Plus the script that tells the flags for compiling against it.
+            move_to_dev_component 'usr/bin/ncurses*-config'
+            move_to_docs_component
+            ;;
+        dev)
+            install_component
+            ;;
+        *)
+            default_install
             ;;
     esac
 }

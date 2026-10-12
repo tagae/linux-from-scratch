@@ -38,10 +38,11 @@ install() {
     case $package_component in
         libxcrypt)
             make install DESTDIR=$package_install_dir
-            split_dev_files
+            move_to_dev_component
+            move_to_docs_component
             ;;
         dev)
-            install_split
+            install_component
             ;;
         *)
             default_install

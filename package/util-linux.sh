@@ -24,8 +24,17 @@ prepare() {
                 ${libfdisk:+--enable-libfdisk=$libfdisk} \
                 ${libsmartcols:+--enable-libsmartcols=$libsmartcols} \
                 ${mount:+--enable-mount=$mount} \
+                ${fsck:+--enable-fsck=$fsck} \
+                ${blkid:+--enable-blkid=$blkid} \
+                ${lsblk:+--enable-lsblk=$lsblk} \
                 ${fdisks:+--enable-fdisks=$fdisks} \
                 ${losetup:+--enable-losetup=$losetup} \
+                ${swapon:+--enable-swapon=$swapon} \
+                ${agetty:+--enable-agetty=$agetty} \
+                ${sulogin:+--enable-sulogin=$sulogin} \
+                ${dmesg:+--enable-dmesg=$dmesg} \
+                ${kill:+--enable-kill=$kill} \
+                ${more:+--enable-more=$more} \
                 ${fallocate:+--enable-fallocate=$fallocate} \
                 ${mountpoint:+--enable-mountpoint=$mountpoint} \
                 ${chfn_chsh:+--enable-chfn-chsh=$chfn_chsh} \
@@ -45,7 +54,8 @@ prepare() {
                 ${tinfo:+--with-tinfo=$tinfo} \
                 ${wall:+--enable-wall=$wall} \
                 ${makeinstall_chown:+--enable-makeinstall-chown=$makeinstall_chown} \
-                ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid}
+                ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid} \
+                --disable-bash-completion
             ;;
         *)
             default_prepare
@@ -68,11 +78,11 @@ install() {
     case $package_component in
         util-linux)
             make install DESTDIR=$package_install_dir
-            split_dev_files
-            split_debug_info
+            move_to_dev_component
+            move_to_docs_component
             ;;
-        dev|debug)
-            install_split
+        dev)
+            install_component
             ;;
         *)
             default_install

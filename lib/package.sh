@@ -5,7 +5,10 @@ lfs_install_package() {
 
 lfs_archive_package() (
     archive=$(lfs_package_archive "$1")
-    ! [ -s $archive ] || exit 0
+    # An archive counts as built only along with its digest.
+    if [ -s $archive ] && [ -s $archive.sha256 ]; then
+        exit 0
+    fi
 
     lfs_fetch_dependencies "$1"
     lfs_source_package "$1"
@@ -18,6 +21,9 @@ lfs_archive_package() (
     build
 
     package_install_dir=$package_stage_dir
+    # Starts empty, so that the archive holds what `install` puts there and nothing left by an
+    # earlier build.
+    rm -rf "${package_install_dir:?}"
     mkdir -pv $package_install_dir
     install
 
@@ -129,13 +135,17 @@ lfs_source_package() {
         local archive=$(archive_filename)
         mkdir -pv $(dirname $archive)
         # Moved into place only once complete, so an interrupted run never leaves an archive behind
-        # that looks finished.
+        # that looks finished. Its digest is recorded first, so every archive has one.
         tar --owner=0 --group=0 --numeric-owner -cJf $archive.tmp -C $package_install_dir .
+        echo "$(sha256sum < $archive.tmp | cut -d' ' -f1)  ${archive##*/}" > $archive.sha256
         mv $archive.tmp $archive
     }
 
     default_unarchive() {
         local archive=$(archive_filename)
+        # Only an archive as it was built is installed.
+        ( cd ${archive%/*} && sha256sum --check --quiet ${archive##*/}.sha256 ) \
+            || bail "$archive does not match its recorded digest"
         mkdir -pv $package_install_dir
         tar xf $archive -C $package_install_dir
     }
