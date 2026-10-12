@@ -12,7 +12,7 @@ Overview
 * `work/`: build dirs, and the sysroots of the cross toolchains
 * `tools/`: toolchains
 * `install/`: target install trees, one per system key
-* `archive/`: package tarballs
+* `archive/`: package tarballs, each with its SHA-256 digest
 * `image/`:  disk images
 * `Dockerfile.{bootstrap,scratch}`: build containers (for reproducibility)
 * `test`: boot tester
@@ -65,15 +65,28 @@ Images
 ------
 
 * The `./lfs image build` command formats a disk image from the install tree at
-  `install/$SYSTEM_KEY`, as populated by `./lfs system build`.
+  `install/$SYSTEM_KEY`, as populated by `./lfs system build`. Given a block device instead of an
+  image file, it formats the device and fills it the same way, with the root file system taking
+  all of the space the boot partition leaves.
 * The `./lfs qemu` command runs the built image.
+
+An image or a device is opened through loop devices and mounts, so making one needs a privileged
+container and root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`. Making a
+system on a device erases it, so that takes `ERASE`, set to the same device, e.g.
+`ERASE=/dev/sdb ./lfs image build /dev/sdb`. A device that anything has mounted or opened, in the
+container or on the host, is refused (unmount a card from a desktop's automounter first). Outside
+the scratch container, which has them, a host needs `btrfs-progs`, `dosfstools` and `fdisk` (for
+`sfdisk`), besides the usual `util-linux` and `tar`.
 
 
 Package Model
 -------------
 
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
-`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults.
+`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults. `install` runs into
+an empty stage, so an archive holds exactly what it installed. The default `archive` records the
+archive's SHA-256 digest next to it, and the default `unarchive` installs an archive only if it
+still matches.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -81,11 +94,15 @@ The framework fetches them before building the package, and exposes their locati
 
 The `package_license` list the package's license in [SPDX format][SPDX License List].
 
-A package's install can set files aside for its split components (see `lib/split.sh`): its
-development files (headers, static libraries, pkg-config files...) for its `dev` component, and,
-when built with debugging information, that information for its `debug` component, leaving its
-programs and libraries stripped. Split components are installed only where wanted: `dev` into build
-trees, and `debug` on request, e.g. `./lfs install util-linux#debug`, under `/usr/lib/debug`.
+A package's install can set its development files (headers, static libraries, pkg-config files...)
+aside for its `dev` component with `move_to_dev_component` (see `lib/components.sh`), which is
+installed only where wanted: into build trees, not into systems. Systems ship without documentation,
+so a package's install also sets aside its man and info pages and whatever it installs under
+`/usr/share/doc` with `move_to_docs_component`, for a `docs` component that nothing makes a package
+of; wanting it again takes a `docs` branch in the recipes' install, like `dev`'s. Programs and
+libraries are stripped as they are linked. The system carries readers for man and info pages: `man`
+from mandoc, which needs zlib, and `info` from texinfo, of which only the reader and `install-info`
+are built.
 
 
 Conventions

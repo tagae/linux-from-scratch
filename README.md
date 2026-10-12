@@ -4,39 +4,36 @@ Linux From Scratch
 Build [Linux From Scratch](https://www.linuxfromscratch.org/lfs/view/systemd/)
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
-The project builds a bootable system: the build tools, a cross toolchain, the base system and its
-kernel, a disk image, and a QEMU boot test of that image. `virt-systemd-gnu`, `pi0-systemd-gnu` and
-`amd64-systemd-gnu` build and boot under QEMU; images do not boot on real hardware yet.
-
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
 
 Quick Start
 -----------
 
-Build the build tools through Docker:
+Build the whole chain, from the build tools to a disk image that is booted a virtual machine:
 
 ```shell
-make tools
+make image
 ```
 
-Build the whole chain, from the build tools to a disk image that boots and passes the login test:
+Or if you want to also boot the built image:
 
 ```shell
-make test
+make qemu
 ```
 
 
 Supported Platforms
 -------------------
 
-| Platform | Hardware                     | Architecture  |
-|----------|------------------------------|---------------|
-| `virt`   | QEMU virtual machine         | host          |
-| `amd64`  | 64-bit x86 PC (QEMU q35)     | x86-64        |
-| `pi0`    | Raspberry Pi Zero            | ARMv6 (arm)   |
-| `pi4`    | Raspberry Pi 4               | ARMv8 (arm64) |
-| `pi5`    | Raspberry Pi 5               | ARMv8 (arm64) |
+| Platform | Hardware                       | Architecture  |
+|----------|--------------------------------|---------------|
+| `virt`   | QEMU virtual machine           | host          |
+| `amd64`  | 64-bit x86 PC (QEMU q35)       | x86-64        |
+| `arm64`  | 64-bit ARM machine (QEMU virt) | ARMv8 (arm64) |
+| `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
+| `pi4`    | Raspberry Pi 4                 | ARMv8 (arm64) |
+| `pi5`    | Raspberry Pi 5                 | ARMv8 (arm64) |
 
 
 Capabilities
@@ -54,8 +51,9 @@ Capabilities can be combined.
 Restrictions
 ------------
 
-No documentation is built (man pages, info pages, etc.). This might become an opt-in feature in the
-future.
+Systems ship without documentation: the man pages, info pages and other documentation a package
+installs are left out. Documentation that needs extra tools to build (e.g. systemd's man pages) is
+not built.
 
 Localisation and native language support (NLS) are unsupported. This might become an opt-in feature
 in the future.
