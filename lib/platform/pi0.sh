@@ -10,7 +10,11 @@ readonly target_gcc_fpu=vfpv2
 readonly target_gcc_float=hard
 
 readonly defconfig=bcmrpi_defconfig
-readonly dev_tree_blob=bcm2835-rpi-zero.dtb
+readonly dev_tree_blob=broadcom/bcm2835-rpi-zero.dtb
+
+# What the SoC's boot ROM loads from the FAT boot partition: the bootloader, and the GPU firmware
+# that starts the kernel.
+readonly firmware_files="bootcode.bin start.elf fixup.dat"
 
 readonly QEMU=qemu-system-arm
 
@@ -21,12 +25,13 @@ readonly QEMU_FLAGS="\
     -display none \
     -serial mon:stdio"
 
-# Kernel command line fragment specific to this platform.
-# `rootdelay` lets the emulated SD card settle
-# `initcall_blacklist` works around a known QEMU pm-driver hang on this machine model.
-readonly QEMU_APPEND="earlycon=pl011,0x20201000 console=ttyAMA0,115200 \
-    root=/dev/mmcblk0p2 rootdelay=5 \
-    initcall_blacklist=bcm2835_pm_driver_init"
+# Kernel command line fragment specific to this platform: the serial console, and the root file
+# system on the SD card's second partition.
+readonly kernel_cmdline="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/dev/mmcblk0p2"
+
+# Under QEMU, `rootdelay` lets the emulated SD card settle, and `initcall_blacklist` works around a
+# known QEMU pm-driver hang on this machine model.
+readonly QEMU_APPEND="$kernel_cmdline rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
 
 # Serial console device: BCM2835's PL011 is ttyAMA0.
 readonly CONSOLE=ttyAMA0
