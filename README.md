@@ -4,40 +4,36 @@ Linux From Scratch
 Build [Linux From Scratch](https://www.linuxfromscratch.org/lfs/view/systemd/)
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
-The project builds a bootable system: the build tools, a cross toolchain, the base system and its
-kernel, a disk image, and a QEMU boot test of that image. `virt-systemd-gnu`, `pi0-systemd-gnu` and
-`amd64-systemd-gnu` build and boot under QEMU. `pi0` images also carry what a Raspberry Pi Zero
-boots from (firmware, `config.txt`, `cmdline.txt`), which is untested on the board itself.
-
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
 
 Quick Start
 -----------
 
-Build the build tools through Docker:
+Build the whole chain, from the build tools to a disk image that is booted a virtual machine:
 
 ```shell
-make tools
+make image
 ```
 
-Build the whole chain, from the build tools to a disk image that boots and passes the login test:
+Or if you want to also boot the built image:
 
 ```shell
-make test
+make qemu
 ```
 
 
 Supported Platforms
 -------------------
 
-| Platform | Hardware                     | Architecture  |
-|----------|------------------------------|---------------|
-| `virt`   | QEMU virtual machine         | host          |
-| `amd64`  | 64-bit x86 PC (QEMU q35)     | x86-64        |
-| `pi0`    | Raspberry Pi Zero            | ARMv6 (arm)   |
-| `pi4`    | Raspberry Pi 4               | ARMv8 (arm64) |
-| `pi5`    | Raspberry Pi 5               | ARMv8 (arm64) |
+| Platform | Hardware                       | Architecture  |
+|----------|--------------------------------|---------------|
+| `virt`   | QEMU virtual machine           | host          |
+| `amd64`  | 64-bit x86 PC (QEMU q35)       | x86-64        |
+| `arm64`  | 64-bit ARM machine (QEMU virt) | ARMv8 (arm64) |
+| `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
+| `pi4`    | Raspberry Pi 4                 | ARMv8 (arm64) |
+| `pi5`    | Raspberry Pi 5                 | ARMv8 (arm64) |
 
 
 Capabilities

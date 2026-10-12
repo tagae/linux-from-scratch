@@ -30,7 +30,7 @@ prepare() {
                     cat $package_files_dir/base.config \
                         $package_files_dir/hardening.config \
                         $package_files_dir/$PLATFORM.config \
-                        $package_files_dir/$kernel_arch.config \
+                        $package_files_dir/arch-$kernel_arch.config \
                         $package_files_dir/$USERLAND.config
                     for cap in $CAPS; do
                         [ -f $package_files_dir/$cap.config ] \
