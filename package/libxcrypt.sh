@@ -39,8 +39,9 @@ install() {
         libxcrypt)
             make install DESTDIR=$package_install_dir
             split_dev_files
+            split_docs
             ;;
-        dev)
+        dev|docs)
             install_split
             ;;
         *)

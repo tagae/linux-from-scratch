@@ -33,6 +33,14 @@ EOF
             # libmount, blkid and kmod are required rather than detected, so that a missing
             # library fails the build. logind would need a D-Bus system bus, and PAM to register
             # sessions.
+            # Left out: the D-Bus services (hostnamed, localed, timedated), container and VM
+            # management, the NSS modules, the hardware database (device names), journal transfer
+            # over the network, desktop autostart, kernel-install, shell completions (no completion
+            # framework is installed), and what needs kernel features (core dumps, pressure stall
+            # information for oomd, pstore, hibernation, quotas) or hardware (backlights, rfkill,
+            # virtual consoles, EFI) that these systems lack.
+            # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
+            # it persistent.
             meson setup $package_source_dir \
                 --cross-file cross.ini \
                 ${prefix:+--prefix=$prefix} \
@@ -70,6 +78,38 @@ EOF
                 -Dnetworkd=false \
                 -Dresolve=false \
                 -Dtimesyncd=false \
+                -Dhostnamed=false \
+                -Dlocaled=false \
+                -Dtimedated=false \
+                -Dmachined=false \
+                -Dnspawn=disabled \
+                -Dportabled=false \
+                -Dimportd=disabled \
+                -Dmountfsd=false \
+                -Dnsresourced=false \
+                -Dsysext=false \
+                -Dstoragetm=false \
+                -Dnss-myhostname=false \
+                -Dnss-mymachines=disabled \
+                -Dnss-resolve=disabled \
+                -Dnss-systemd=false \
+                -Dhwdb=false \
+                -Dcoredump=false \
+                -Doomd=false \
+                -Dpstore=false \
+                -Dhibernate=false \
+                -Dquotacheck=false \
+                -Dbacklight=false \
+                -Drfkill=false \
+                -Dvconsole=false \
+                -Defi=false \
+                -Dremote=disabled \
+                -Dxdg-autostart=false \
+                -Dkernel-install=false \
+                -Dbashcompletiondir=no \
+                -Dzshcompletiondir=no \
+                -Djournal-storage-default=auto \
+                -Dcreate-log-dirs=false \
                 -Dkmod=enabled \
                 -Dlibmount=enabled \
                 -Dblkid=enabled
@@ -96,17 +136,24 @@ install() {
         systemd)
             DESTDIR=$package_install_dir ninja install
 
-            # An xinit script is installed unconditionally; nothing here uses X11.
+            # X11's xinit script and socket directories are installed unconditionally; nothing here
+            # uses X11.
             rm -rf $package_install_dir/etc/X11
+            rm -v $package_install_dir$prefix/lib/tmpfiles.d/x11.conf
 
             # Images have an MBR partition table, which GPT auto-discovery does not apply to.
             local generators=$package_install_dir$prefix/lib/systemd/system-generators
             rm -v $generators/systemd-gpt-auto-generator
 
+            # Empty directories for configuration and drop-ins (sysctl.d, system-shutdown...),
+            # which systemd reads only when they exist: whoever adds a file creates its directory.
+            find $package_install_dir -type d -empty -delete
+
             split_dev_files
+            split_docs
             split_debug_info
             ;;
-        dev|debug)
+        dev|debug|docs)
             install_split
             ;;
         *)

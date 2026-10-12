@@ -7,7 +7,7 @@ qemu() {
     [ -f "$kernel" ] || bail "Kernel not found: $kernel"
     set -- -kernel "$kernel"
     if [ -n "${dev_tree_blob:-}" ]; then
-        local dtb="$WORK_DIR/boot/$SYSTEM_KEY/$dev_tree_blob"
+        local dtb="$WORK_DIR/boot/$SYSTEM_KEY/${dev_tree_blob##*/}"
         [ -f "$dtb" ] || bail "DTB not found: $dtb"
         set -- "$@" -dtb "$dtb"
     fi

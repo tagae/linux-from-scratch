@@ -11,6 +11,7 @@ prepare() {
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
+                --sysconfdir=/etc \
                 ${nls:+--enable-nls=$nls}
             ;;
         *)
@@ -35,8 +36,9 @@ install() {
         gawk)
             make install DESTDIR=$package_install_dir
             split_dev_files
+            split_docs
             ;;
-        dev)
+        dev|docs)
             install_split
             ;;
         *)

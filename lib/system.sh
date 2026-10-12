@@ -64,6 +64,8 @@ lfs_system_build() {
     lfs_install_package linux#headers
     (
         nscd=no enable_kernel=5.10
+        # No time zone data is installed.
+        timezone_tools=no
         lfs_system_install glibc
         lfs_install_package glibc#dev
     )
@@ -88,18 +90,48 @@ lfs_system_build() {
     ( manpages=no; lfs_system_install kmod )
     lfs_install_package kmod#dev
     ( bash_malloc=no curses=no; lfs_system_install bash )
-    lfs_system_install coreutils
+    (
+        # One program for all the utilities, which otherwise carry a copy of the same library each.
+        single_binary=symlinks
+        install_program=hostname
+        lfs_system_install coreutils
+    )
     lfs_system_install grep
     lfs_system_install sed
     lfs_system_install gawk
-    lfs_system_install libxcrypt
-    lfs_install_package libxcrypt#dev
-    lfs_system_install shadow
+    (
+        # Strong hashes for new passwords, and glibc's for checking older ones; nothing here needs
+        # the interfaces of glibc's own libcrypt.
+        hashes=strong,glibc obsolete_api=no
+        lfs_system_install libxcrypt
+        lfs_install_package libxcrypt#dev
+    )
+    (
+        # Root, the only account, needs no setuid programs. Subordinate ids serve user namespaces,
+        # which the kernels lack.
+        suidperms=0755 subordinate_ids=no
+        lfs_system_install shadow
+    )
+    (
+        shared=yes normal=no debug=no ada=no cxx_binding=no stripping=no
+        # The descriptions of the terminals these systems meet are built into the library, instead
+        # of a database of every known terminal.
+        fallbacks=dumb,linux,vt100,vt220,xterm,xterm-256color db_install=no
+        pc_files=yes pkg_config_libdir=/usr/lib/pkgconfig
+        lfs_system_install ncurses
+        lfs_install_package ncurses#dev
+    )
+    # util-linux provides kill.
+    ( kill=no; lfs_system_install procps-ng )
     (
         bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
-        # Need PAM or libcap-ng, or come with shadow.
-        chfn_chsh=no login=no nologin=no su=no setpriv=no runuser=no
-        liblastlog2=no pylibmount=no python=no systemd=no static=no
+        # What systemd runs (agetty, fsck, mount, sulogin, swapon), and the basic tools to manage
+        # disks, logs and processes.
+        all_programs=no
+        libblkid=yes libuuid=yes libmount=yes libsmartcols=yes libfdisk=yes
+        mount=yes fsck=yes agetty=yes sulogin=yes swapon=yes
+        blkid=yes lsblk=yes fdisks=yes losetup=yes dmesg=yes kill=yes more=yes
+        python=no systemd=no static=no
         makeinstall_chown=no makeinstall_setuid=no
         lfs_system_debuggable util-linux
         lfs_install_package util-linux#dev
@@ -108,13 +140,19 @@ lfs_system_build() {
 
     # Chapter 10: Making the LFS System Bootable
     lfs_system_install linux
+    # The Pi layout's FAT partition holds what the Raspberry Pi firmware boots from.
+    if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
+        lfs_system_install firmware
+        lfs_system_install boot
+    fi
 
     # QEMU runs on the host, which cannot see the install tree (a Docker volume), but sees
     # WORK_DIR/boot.
+    rm -rf $WORK_DIR/boot/$SYSTEM_KEY
     mkdir -pv $WORK_DIR/boot/$SYSTEM_KEY
     (
         cd $system_dir/boot
-        cp -v --parents kernel.img ${dev_tree_blob:-} $WORK_DIR/boot/$SYSTEM_KEY/
+        cp -v kernel.img ${dev_tree_blob:+${dev_tree_blob##*/}} $WORK_DIR/boot/$SYSTEM_KEY/
     )
 }
 

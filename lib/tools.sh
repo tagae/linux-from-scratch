@@ -134,7 +134,11 @@ lfs_tools_build() {
     # The x86-64 kernel's objtool links libelf, from elfutils, whose sources come as .tar.bz2.
     lfs_install_package bzip2
     lfs_install_package elfutils
-    ( shared=yes normal=no debug=no cxx_shared=yes; lfs_install_package ncurses )
+    (
+        shared=yes normal=no debug=no cxx_shared=yes
+        lfs_install_package ncurses
+        lfs_install_package ncurses#dev
+    )
     (
         libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin
         makeinstall_chown=no makeinstall_setuid=no

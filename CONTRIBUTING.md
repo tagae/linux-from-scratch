@@ -12,7 +12,7 @@ Overview
 * `work/`: build dirs, and the sysroots of the cross toolchains
 * `tools/`: toolchains
 * `install/`: target install trees, one per system key
-* `archive/`: package tarballs
+* `archive/`: package tarballs, each with its SHA-256 digest
 * `image/`:  disk images
 * `Dockerfile.{bootstrap,scratch}`: build containers (for reproducibility)
 * `test`: boot tester
@@ -68,12 +68,20 @@ Images
   `install/$SYSTEM_KEY`, as populated by `./lfs system build`.
 * The `./lfs qemu` command runs the built image.
 
+Making images needs loop devices and mounts, and so does installing into an image or a device
+(`DESTINATION`). Those run in the `image` service, the only privileged one, as root, e.g.
+`DESTINATION=image/virt-systemd-gnu.img docker compose run --rm --user 0:0 image ./lfs install
+util-linux#debug`. The other services build without privileges, and mount `lfs`, `lib` and
+`package` read-only.
+
 
 Package Model
 -------------
 
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
-`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults.
+`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults. The default
+`archive` records the archive's SHA-256 digest next to it, and the default `unarchive` installs an
+archive only if it still matches.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -82,10 +90,12 @@ The framework fetches them before building the package, and exposes their locati
 The `package_license` list the package's license in [SPDX format][SPDX License List].
 
 A package's install can set files aside for its split components (see `lib/split.sh`): its
-development files (headers, static libraries, pkg-config files...) for its `dev` component, and,
-when built with debugging information, that information for its `debug` component, leaving its
-programs and libraries stripped. Split components are installed only where wanted: `dev` into build
-trees, and `debug` on request, e.g. `./lfs install util-linux#debug`, under `/usr/lib/debug`.
+development files (headers, static libraries, pkg-config files...) for its `dev` component, its
+documentation (man and info pages, `/usr/share/doc`) for its `docs` component, and, when built with
+debugging information, that information for its `debug` component, leaving its programs and
+libraries stripped. Split components are installed only where wanted: `dev` into build trees, and
+`docs` and `debug` on request, e.g. `./lfs install bash#docs` or `./lfs install util-linux#debug`
+(under `/usr/lib/debug`).
 
 
 Conventions

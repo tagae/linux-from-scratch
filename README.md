@@ -6,7 +6,8 @@ and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-syst
 
 The project builds a bootable system: the build tools, a cross toolchain, the base system and its
 kernel, a disk image, and a QEMU boot test of that image. `virt-systemd-gnu`, `pi0-systemd-gnu` and
-`amd64-systemd-gnu` build and boot under QEMU; images do not boot on real hardware yet.
+`amd64-systemd-gnu` build and boot under QEMU. `pi0` images also carry what a Raspberry Pi Zero
+boots from (firmware, `config.txt`, `cmdline.txt`), which is untested on the board itself.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
@@ -54,8 +55,9 @@ Capabilities can be combined.
 Restrictions
 ------------
 
-No documentation is built (man pages, info pages, etc.). This might become an opt-in feature in the
-future.
+Systems ship without documentation. The man pages, info pages and other documentation a package
+installs make up its `docs` component, which is installed on request, e.g. `./lfs install bash#docs`.
+Documentation that needs extra tools to build (e.g. systemd's man pages) is not built.
 
 Localisation and native language support (NLS) are unsupported. This might become an opt-in feature
 in the future.

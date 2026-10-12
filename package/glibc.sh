@@ -37,6 +37,7 @@ prepare() {
                 ${multilib:+--enable-multilib=$multilib} \
                 ${profile:+--enable-profile=$profile} \
                 ${nscd:+--enable-nscd=$nscd} \
+                ${timezone_tools:+--enable-timezone-tools=$timezone_tools} \
                 ${prefix:+libc_cv_slibdir=$prefix/lib}
             ;;
         *)
@@ -70,7 +71,12 @@ install() {
             rm -rf $package_install_dir${prefix:-/usr}/share/i18n
             rm -rf $package_install_dir${prefix:-/usr}/lib/gconv
 
-            split_dev_files
+            # Plus the tools for tracing, profiling and debugging programs, and the compilers of
+            # locales and message catalogs.
+            split_dev_files \
+                usr/bin/mtrace usr/bin/pcprofiledump usr/bin/sotruss usr/bin/sprof usr/bin/xtrace \
+                usr/lib/audit usr/lib/libc_malloc_debug.so.0 usr/lib/libthread_db.so.1 \
+                usr/bin/gencat usr/bin/localedef
             ;;
         dev)
             install_split

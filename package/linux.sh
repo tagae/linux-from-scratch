@@ -28,6 +28,7 @@ prepare() {
             if [ -f "$package_files_dir/$PLATFORM.config" ]; then
                 {
                     cat $package_files_dir/base.config \
+                        $package_files_dir/hardening.config \
                         $package_files_dir/$PLATFORM.config \
                         $package_files_dir/$kernel_arch.config \
                         $package_files_dir/$USERLAND.config
@@ -57,7 +58,7 @@ build() {
             _make_headers headers
             ;;
         linux)
-            _make_target ${kernel_image##*/} modules ${dev_tree_blob:+dtbs}
+            _make_target ${kernel_image##*/} modules ${dev_tree_blob:-}
             ;;
         *)
             default_build
@@ -77,13 +78,17 @@ install() {
             ln -sfn usr/lib $package_install_dir/lib
 
             # modules_install runs depmod *if* it can find a depmod on PATH.
-            _make_target \
-                INSTALL_DTBS_PATH=$package_install_dir/boot \
-                INSTALL_MOD_PATH=$package_install_dir \
-                ${dev_tree_blob:+dtbs_install} modules_install
+            _make_target INSTALL_MOD_PATH=$package_install_dir modules_install
             mkdir -pv $package_install_dir/boot
             cp -v $package_build_dir/$kernel_image \
                $package_install_dir/boot/kernel.img
+
+            # The platform's own device tree, rather than those of every board of its SoC family,
+            # next to the kernel, where the Raspberry Pi firmware looks for it.
+            if [ -n "${dev_tree_blob:-}" ]; then
+                cp -v $package_build_dir/${kernel_image%/*}/dts/$dev_tree_blob \
+                   $package_install_dir/boot/
+            fi
             ;;
         *)
             default_install
