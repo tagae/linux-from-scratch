@@ -115,11 +115,6 @@ if command -v nproc >/dev/null 2>&1; then
     readonly MAKEFLAGS
 fi
 
-# Toolchain usr/bin LAST. Do NOT put toolchain usr/bin first: once glibc-linked binaries are
-# installed there they shadow host tools and fail (wrong ELF interpreter).  It still needs to be on
-# PATH somewhere, though: build-time tools that only the toolchain itself provides (e.g. pkgconf)
-# aren't on the host at all, so they're only found as a fallback after host tools are checked
-# first.
 export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
 readonly PATH
 
@@ -135,26 +130,6 @@ fi
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
 trap unmount_all EXIT
-
-# DESTINATION picks an install location.
-if [ -n "${DESTINATION:-}" ]; then
-    if [ -d "$DESTINATION" ]; then
-        package_install_dir=$(realpath "$DESTINATION")
-    elif [ -f "$DESTINATION" ]; then
-        IMAGE="$DESTINATION" image
-        package_install_dir=$ROOT_DIR
-    elif [ -b "$DESTINATION" ]; then
-        DEVICE="$DESTINATION" device
-        package_install_dir=$ROOT_DIR
-    elif [ "${DESTINATION%.img}" != "$DESTINATION" ]; then
-        IMAGE="$DESTINATION" image
-        package_install_dir=$ROOT_DIR
-    else
-        mkdir -pv "$DESTINATION"
-        package_install_dir=$(realpath "$DESTINATION")
-    fi
-fi
-unset DESTINATION
 
 #===[ Command Execution ]===
 
@@ -190,24 +165,23 @@ case "${1:-help}" in
         ;;
 
     help)
-        echo "Usage: $(basename "$0") [-d DESTINATION] (tools|system|pack|install|image|qemu)"
+        echo "Usage: $(basename "$0") (tools|system|pack|image|qemu)"
         echo ""
         echo "Commands:"
         echo "  tools            Build the build tools"
         echo "  system build     Build the system for the platform"
         echo "  pack <PKG>       Build a package's archive"
-        echo "  install <PKG>    Install a package"
-        echo "  image build [IMAGE]"
-        echo "                   Create bootable disk image from the built system"
+        echo "  image build [IMAGE|DEVICE]"
+        echo "                   Create a bootable disk image, or format a block device, from the"
+        echo "                   built system"
         echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"
-        echo ""
-        echo "Options:"
-        echo "  -d DESTINATION   Install destination (dir, device, or .img file)"
         echo ""
         echo "Environment:"
         echo "  PLATFORM         Target platform"
         echo "  USERLAND         Userland flavor, init system included"
         echo "  CAPS             Capability set"
+        echo "  ERASE            The block device that image build may erase; the same path as the"
+        echo "                   DEVICE argument. A device is never erased without it"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
         ;;
 

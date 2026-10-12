@@ -1,93 +1,3 @@
-# Builds run third-party build scripts, so their containers get no privileges, and can't change the
-# build system: lfs, lib and package are mounted read-only. Only making images needs privileges
-# (loop devices and mounts), which the image service has.
-
-x-scratch: &scratch
-  build:
-    dockerfile: Dockerfile.scratch
-    args:
-      HOST_UID:
-      HOST_GID:
-  tty: true
-  stdin_open: true
-  environment:
-    SYSTEM_KEY:
-    DESTINATION:
-    INSTALL_DIR:
-    IMAGE_SIZE:
-    LFS_RELEASE:
-    VERSION_CODENAME:
-    RELEASE_TYPE:
-    DISTRIB_CODENAME:
-    DISTRIB_DESCRIPTION:
-  volumes:
-    - type: bind
-      source: lfs
-      target: /mnt/lfs/lfs
-      read_only: true
-    - type: bind
-      source: lib
-      target: /mnt/lfs/lib
-      read_only: true
-    - type: bind
-      source: package
-      target: /mnt/lfs/package
-      read_only: true
-    - type: bind
-      source: $PWD/download
-      target: /mnt/lfs/download
-    - type: volume
-      source: source
-      target: /mnt/lfs/source
-    - type: volume
-      source: work
-      target: /mnt/lfs/work
-    - type: bind # So that the kernel lands on the host for consumption by QEMU.
-      source: $PWD/work/boot
-      target: /mnt/lfs/work/boot
-    - type: volume
-      source: tools
-      target: /mnt/lfs/tools
-    # Avoids baking a /lib symlink into the image, which isn't possible since the `scratch` base
-    # image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
-    - type: volume
-      source: tools
-      target: /lib
-      read_only: true
-      volume:
-        subpath: usr/lib
-    # Avoids baking a /usr/lib symlink into the image, which isn't possible since the `scratch`
-    # base image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
-    - type: volume
-      source: tools
-      target: /usr/lib
-      read_only: true
-      volume:
-        subpath: usr/lib
-    # Enables resolution of the #!/usr/bin/env shebang.
-    - type: volume
-      source: tools
-      target: /usr/bin
-      read_only: true
-      volume:
-        subpath: usr/bin
-    # The from-scratch CA trust store built by bootstrap, at openssl's default location.
-    - type: volume
-      source: tools
-      target: /etc/ssl
-      read_only: true
-      volume:
-        subpath: etc/ssl
-    - type: volume
-      source: install
-      target: /mnt/lfs/install
-    - type: bind # So that built images are available on the host (e.g., for QEMU to run).
-      source: $PWD/image
-      target: /mnt/lfs/image
-    - type: bind # So that built archives can be consumed where needed outside the container.
-      source: $PWD/archive
-      target: /mnt/lfs/archive
-
 services:
   bootstrap:
     build:
@@ -97,23 +7,19 @@ services:
         HOST_GID:
     tty: true
     stdin_open: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
+    privileged: true
     environment:
       SYSTEM_KEY:
     volumes:
       - type: bind
         source: lfs
         target: /mnt/lfs/lfs
-        read_only: true
       - type: bind
         source: lib
         target: /mnt/lfs/lib
-        read_only: true
       - type: bind
         source: package
         target: /mnt/lfs/package
-        read_only: true
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download
@@ -139,14 +45,88 @@ services:
         target: /mnt/lfs/work/bootstrap
 
   scratch:
-    <<: *scratch
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-
-  # Makes images, and installs into images and devices (DESTINATION).
-  image:
-    <<: *scratch
+    build:
+      dockerfile: Dockerfile.scratch
+      args:
+        HOST_UID:
+        HOST_GID:
+    tty: true
+    stdin_open: true
     privileged: true
+    environment:
+      SYSTEM_KEY:
+      ERASE:
+      INSTALL_DIR:
+      IMAGE_SIZE:
+      LFS_RELEASE:
+      VERSION_CODENAME:
+      RELEASE_TYPE:
+      DISTRIB_CODENAME:
+      DISTRIB_DESCRIPTION:
+    volumes:
+      - type: bind
+        source: lfs
+        target: /mnt/lfs/lfs
+      - type: bind
+        source: lib
+        target: /mnt/lfs/lib
+      - type: bind
+        source: package
+        target: /mnt/lfs/package
+      - type: bind
+        source: $PWD/download
+        target: /mnt/lfs/download
+      - type: volume
+        source: source
+        target: /mnt/lfs/source
+      - type: volume
+        source: work
+        target: /mnt/lfs/work
+      - type: bind # So that the kernel lands on the host for consumption by QEMU.
+        source: $PWD/work/boot
+        target: /mnt/lfs/work/boot
+      - type: volume
+        source: tools
+        target: /mnt/lfs/tools
+      # Avoids baking a /lib symlink into the image, which isn't possible since the `scratch` base
+      # image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
+      - type: volume
+        source: tools
+        target: /lib
+        read_only: true
+        volume:
+          subpath: usr/lib
+      # Avoids baking a /usr/lib symlink into the image, which isn't possible since the `scratch`
+      # base image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
+      - type: volume
+        source: tools
+        target: /usr/lib
+        read_only: true
+        volume:
+          subpath: usr/lib
+      # Enables resolution of the #!/usr/bin/env shebang.
+      - type: volume
+        source: tools
+        target: /usr/bin
+        read_only: true
+        volume:
+          subpath: usr/bin
+      # The from-scratch CA trust store built by bootstrap, at openssl's default location.
+      - type: volume
+        source: tools
+        target: /etc/ssl
+        read_only: true
+        volume:
+          subpath: etc/ssl
+      - type: volume
+        source: install
+        target: /mnt/lfs/install
+      - type: bind # So that built images are available on the host (e.g., for QEMU to run).
+        source: $PWD/image
+        target: /mnt/lfs/image
+      - type: bind # So that built archives can be consumed where needed outside the container.
+        source: $PWD/archive
+        target: /mnt/lfs/archive
 
 volumes:
   source:

@@ -46,9 +46,8 @@ test: virt-systemd-gnu-test
 	docker compose run --rm scratch ./lfs system build
 
 image/%.img: %-system FORCE
-	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root, in the
-	# only service with the privileges that loop devices and mounts need.
-	docker compose run --build --rm --user 0:0 image ./lfs image build
+	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
+	docker compose run --rm --user 0:0 scratch ./lfs image build
 
 %-test: image/%.img
 	./test $*

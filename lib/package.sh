@@ -21,6 +21,9 @@ lfs_archive_package() (
     build
 
     package_install_dir=$package_stage_dir
+    # Starts empty, so that the archive holds what `install` puts there and nothing left by an
+    # earlier build.
+    rm -rf "${package_install_dir:?}"
     mkdir -pv $package_install_dir
     install
 

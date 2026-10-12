@@ -1,8 +1,10 @@
 : ${package_version:=1.20260521}
-: ${package_source:=https://github.com/raspberrypi/firmware/archive/refs/tags/$package_version/firmware-$package_version.tar.gz}
-: ${package_source_hash:=sha256:b900de58571920a306ab2d1296500499d0744451dbefda0c76b79e652bb71cb7}
+: ${package_source:=https://github.com/raspberrypi/firmware/releases/download/$package_version/raspi-firmware_$package_version.orig.tar.xz}
+: ${package_source_hash:=sha256:f812f2f55efb97053c985cc285115e12caaa16f8040fe1a6f2f94666785257ac}
 : ${package_description:=Raspberry Pi bootloader and GPU firmware, which start the kernel.}
 : ${package_license:=LicenseRef-Broadcom-Firmware}
+
+package_source_dir=$SOURCE_DIR/raspi-firmware-$package_version
 
 install() {
     mkdir -pv $package_install_dir/boot

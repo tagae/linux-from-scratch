@@ -13,21 +13,8 @@ image() {
 }
 
 build_image() {
-    [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE]"
-    readonly IMAGE="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}"
-
-    # Mirrors the _once-stamp pattern lib/package.sh uses everywhere else:
-    # skip the (expensive — mkfs/tar/mount) rebuild if $IMAGE already
-    # reflects the current $INSTALL_DIR/$SYSTEM_KEY content. This can't live
-    # in the Makefile instead: image/%.img's prerequisite is the phony
-    # system-%, not $INSTALL_DIR itself, since $INSTALL_DIR is a Docker
-    # volume invisible to the host-side `make` process — so image/%.img's
-    # recipe always gets invoked, and the skip has to happen in here.
-    if [ -e "$IMAGE" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
-        && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$IMAGE" -print -quit)" ]; then
-        echo "image (done)"
-        return
-    fi
+    [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
+    local target="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}"
 
     # libmount needs a writable /run/mount for its own lock/state files —
     # this is a bare `FROM scratch` image with no /run at all, and without
