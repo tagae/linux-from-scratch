@@ -32,8 +32,6 @@ Supported Platforms
 | `amd64`  | 64-bit x86 PC (QEMU q35)       | x86-64        |
 | `arm64`  | 64-bit ARM machine (QEMU virt) | ARMv8 (arm64) |
 | `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
-| `pi4`    | Raspberry Pi 4                 | ARMv8 (arm64) |
-| `pi5`    | Raspberry Pi 5                 | ARMv8 (arm64) |
 
 
 Capabilities
