@@ -9,6 +9,7 @@
 # configure resets exec_prefix to "" under /usr, which would put login, nologin and libsubid in
 # /bin, /sbin and /lib, so the directories derived from it are passed explicitly.
 # logind support would need libsystemd, which is built after this package.
+# New passwords are hashed with yescrypt, rather than with shadow's default, DES.
 prepare() {
     case $package_component in
         shadow)
@@ -25,10 +26,10 @@ prepare() {
                 --disable-logind \
                 --without-libpam \
                 --without-libbsd \
-                --without-su \
                 --with-group-name-max-length=32 \
-                ${bcrypt:+--with-bcrypt=$bcrypt} \
-                ${yescrypt:+--with-yescrypt=$yescrypt}
+                --with-yescrypt \
+                ${subordinate_ids:+--enable-subordinate-ids=$subordinate_ids} \
+                ${bcrypt:+--with-bcrypt=$bcrypt}
             ;;
         *)
             default_prepare
@@ -50,11 +51,12 @@ build() {
 install() {
     case $package_component in
         shadow)
-            make install DESTDIR=$package_install_dir
-            split_dev_files
+            make install DESTDIR=$package_install_dir ${suidperms:+suidperms=$suidperms}
+            sed -i 's/^#ENCRYPT_METHOD .*/ENCRYPT_METHOD YESCRYPT/' $package_install_dir/etc/login.defs
+            move_to_dev_component
             ;;
         dev)
-            install_split
+            install_component
             ;;
         *)
             default_install

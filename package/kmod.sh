@@ -4,6 +4,7 @@
 : ${package_description:=Kernel module management tools and library.}
 : ${package_license:=GPL-2.0-or-later AND LGPL-2.1-or-later}
 
+# Empty completion directories install no shell completions.
 prepare() {
     case $package_component in
         kmod)
@@ -11,6 +12,10 @@ prepare() {
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
+                --sysconfdir=/etc \
+                --with-bashcompletiondir= \
+                --with-fishcompletiondir= \
+                --with-zshcompletiondir= \
                 ${openssl:+--with-openssl=$openssl} \
                 ${xz:+--with-xz=$xz} \
                 ${zstd:+--with-zstd=$zstd} \
@@ -38,16 +43,10 @@ install() {
     case $package_component in
         kmod)
             make install DESTDIR=$package_install_dir
-
-            for tool in depmod insmod modinfo modprobe rmmod; do
-                ln -sfv kmod $package_install_dir/$prefix/bin/$tool
-            done
-            ln -sfv kmod $package_install_dir/$prefix/bin/lsmod
-
-            split_dev_files
+            move_to_dev_component
             ;;
         dev)
-            install_split
+            install_component
             ;;
         *)
             default_install

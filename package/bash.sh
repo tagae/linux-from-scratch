@@ -35,12 +35,11 @@ build() {
 install() {
     case $package_component in
         bash)
-            make install DESTDIR=$package_install_dir
+            # The loadable builtins are examples, many of them duplicating standalone programs, and
+            # the headers and makefiles for writing more.
+            make install DESTDIR=$package_install_dir SHOBJ_STATUS=unsupported
             ln -sfv bash $package_install_dir$prefix/bin/sh
-            split_dev_files
-            ;;
-        dev)
-            install_split
+            move_to_docs_component
             ;;
         *)
             default_install

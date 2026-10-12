@@ -5,24 +5,22 @@
 install() {
     cd $package_install_dir
 
-    # Create the real directory tree under /usr
-    mkdir -pv \
-          usr/bin usr/sbin usr/lib usr/share \
-          boot dev etc \
-          proc root run sys tmp \
-          var/log var/tmp
+    # Mount points, for the kernel's file systems and /tmp. Every other directory is created by
+    # whatever puts something in it: a package, or systemd-tmpfiles at boot (/root, /var/log...).
+    mkdir -pv dev proc run sys tmp
 
     # Compatibility symlinks (merged-usr layout: /bin, /sbin, /lib -> usr/*)
     # These must be created BEFORE any package installs to /bin, /sbin, /lib.
-    ln -sfv usr/bin  bin
-    ln -sfv usr/sbin sbin
-    ln -sfv usr/lib  lib
+    ln -sfnv usr/bin  bin
+    ln -sfnv usr/sbin sbin
+    ln -sfnv usr/lib  lib
     # Where x86-64 programs load their dynamic linker from (/lib64/ld-linux-x86-64.so.2).
-    ln -sfv usr/lib  lib64
+    ln -sfnv usr/lib  lib64
 
-    ln -sfv /proc/self/mounts etc/mtab
-    ln -sfv /run var/run
-    ln -sfv /run/lock var/lock
+    mkdir -pv etc var
+    ln -sfnv /proc/self/mounts etc/mtab
+    ln -sfnv /run var/run
+    ln -sfnv /run/lock var/lock
 
     # Content shared by every userland flavor (common/) plus whatever is
     # specific to this one ($USERLAND/, e.g. systemd's accounts). Flavor
@@ -31,9 +29,15 @@ install() {
     cp -rv $package_files_dir/common/* .
     cp -rv $package_files_dir/$USERLAND/* .
 
-    chmod -v 0750 root
-    chmod -v 1777 tmp var/tmp
+    chmod -v 1777 tmp
     chmod -v 0600 etc/shadow
+
+    # File systems by the labels images give them. The Pi layout boots from a FAT partition, which
+    # holds what the firmware loads.
+    {
+        echo "LABEL=base / btrfs defaults 0 0"
+        [ "${IMAGE_LAYOUT:-pi}" = single ] || echo "LABEL=BOOT /boot vfat defaults 0 0"
+    } > etc/fstab
 
     cat > etc/lsb-release <<EOF
 DISTRIB_ID="Linux From Scratch"
