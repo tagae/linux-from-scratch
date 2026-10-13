@@ -29,20 +29,11 @@ build_image() {
         confirm_erase
     else
         IMAGE=$target
-
-        # Mirrors the _once-stamp pattern lib/package.sh uses everywhere else:
-        # skip the (expensive — mkfs/tar/mount) rebuild if $IMAGE already
-        # reflects the current $INSTALL_DIR/$SYSTEM_KEY content. This can't live
-        # in the Makefile instead: image/%.img's prerequisite is the phony
-        # system-%, not $INSTALL_DIR itself, since $INSTALL_DIR is a Docker
-        # volume invisible to the host-side `make` process — so image/%.img's
-        # recipe always gets invoked, and the skip has to happen in here.
         if [ -e "$IMAGE" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
             && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$IMAGE" -print -quit)" ]; then
             echo "image (done)"
             return
         fi
-
         create_image
         attach_image
     fi

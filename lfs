@@ -143,6 +143,7 @@ trap unmount_all EXIT
 
 #===[ Command Execution ]===
 
+set -x
 case "${1:-help}" in
     pack)
         [ $# -eq 2 ] || usage "$1 <PACKAGE>"
