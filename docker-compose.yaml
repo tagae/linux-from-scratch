@@ -9,6 +9,8 @@ services:
     stdin_open: true
     privileged: true
     environment:
+      PLATFORM:
+      CAPS:
       SYSTEM_KEY:
     volumes:
       - type: bind
@@ -54,6 +56,8 @@ services:
     stdin_open: true
     privileged: true
     environment:
+      PLATFORM:
+      CAPS:
       SYSTEM_KEY:
       ERASE:
       INSTALL_DIR:

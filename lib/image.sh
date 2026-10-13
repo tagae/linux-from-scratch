@@ -29,20 +29,11 @@ build_image() {
         confirm_erase
     else
         IMAGE=$target
-
-        # Mirrors the _once-stamp pattern lib/package.sh uses everywhere else:
-        # skip the (expensive — mkfs/tar/mount) rebuild if $IMAGE already
-        # reflects the current $INSTALL_DIR/$SYSTEM_KEY content. This can't live
-        # in the Makefile instead: image/%.img's prerequisite is the phony
-        # system-%, not $INSTALL_DIR itself, since $INSTALL_DIR is a Docker
-        # volume invisible to the host-side `make` process — so image/%.img's
-        # recipe always gets invoked, and the skip has to happen in here.
         if [ -e "$IMAGE" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
             && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$IMAGE" -print -quit)" ]; then
             echo "image (done)"
             return
         fi
-
         create_image
         attach_image
     fi
@@ -56,7 +47,7 @@ build_image() {
 create_image() {
     rm -f "$IMAGE"
     mkdir -pv "$(dirname $IMAGE)"
-    fallocate -l "${IMAGE_SIZE:-4g}" "$IMAGE"
+    fallocate -l "${IMAGE_SIZE:-1g}" "$IMAGE"
 }
 
 attach_image() {
@@ -72,10 +63,6 @@ detach_image() {
     fi
 }
 
-# Making a system on a device erases it, so that takes ERASE as well as the device itself: a
-# mistyped path cannot pass for the one intended, and a script must mean it. A device that anything
-# has mounted or opened, in this container or on the host, is refused by sfdisk, which asks the
-# kernel, and is not made to proceed.
 confirm_erase() {
     [ "$(realpath "${ERASE:-/dev/null}")" = "$DEVICE" ] && return 0
 
@@ -117,16 +104,9 @@ partition_name() {
 find_partitions() {
     local dir=/dev
     if command -v kpartx >/dev/null 2>&1; then
-        # losetup -P's own kernel-level partition scanning doesn't reliably
-        # create /dev/loopNpM device nodes inside a container (no working
-        # udev/devtmpfs auto-population there) — confirmed empirically, not
-        # just in theory. kpartx creates the same devices explicitly via
-        # device-mapper instead, which doesn't have that problem.
         kpartx -av $DEVICE
         dir=/dev/mapper
     fi
-    # Without kpartx, as on a guest, the kernel's own partition scanning
-    # creates the nodes, through a working devtmpfs.
     local name=${DEVICE##*/}
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
         BASE_DEVICE=$dir/$(partition_name $name 1)
