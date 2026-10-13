@@ -85,9 +85,19 @@ readonly USERLAND
 
 readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
 
+for cap in $CAPS; do
+    [ -f $project_dir/lib/capability/$cap.sh ] || bail "Unknown capability '$cap'"
+done
+
 #-- System key: canonical marker for the platform/userland/caps combination.
 
 readonly SYSTEM_KEY=$PLATFORM-$USERLAND${CAPS:++$(set -- $CAPS; IFS=+; echo "$*")}
+
+#-- Package key: the system key of the system as it stands when a package is built, under which
+#   the package is archived. Capabilities are added one by one, each extending it, so that systems
+#   share the archives of what they have in common.
+
+package_key=$PLATFORM-$USERLAND
 
 #===[ Compilation ]===
 

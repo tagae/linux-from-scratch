@@ -8,6 +8,9 @@
 # packages, plus what compiling against them needs: the kernel headers and the packages' dev
 # components. The toolchain finds the platform's headers and libraries there, with no extra flags.
 # Every platform goes through a cross toolchain, even one with the build machine's architecture.
+#
+# A capability adds the packages listed in lib/capability/<capability>.sh, installed the same way
+# after those of the base system.
 
 lfs_system() {
     case "${1:-help}" in
@@ -26,7 +29,8 @@ lfs_system_build() {
     readonly multilib=no
     readonly prefix=/usr
     readonly system_dir=$INSTALL_DIR/$SYSTEM_KEY
-    readonly sysroot=$WORK_DIR/$SYSTEM_KEY/sysroot
+    # Under the key the cross toolchain is archived under, as the toolchain records the path.
+    readonly sysroot=$WORK_DIR/$package_key/sysroot
 
     # With an explicit build triplet, autoconf never mistakes a platform of the build machine's
     # architecture for the build machine itself, and never runs what it compiles.
@@ -137,6 +141,7 @@ lfs_system_build() {
         lfs_install_package util-linux#dev
     )
     lfs_system_install systemd
+    lfs_install_package systemd#dev
 
     # The readers of man and info pages. They come after the packages
     # above, which would otherwise pick up zlib, that mandoc requires, and configure differently.
@@ -144,6 +149,12 @@ lfs_system_build() {
     lfs_install_package zlib#dev
     lfs_system_install mandoc
     lfs_system_install texinfo
+
+    # Each capability installs its own packages.
+    for cap in $CAPS; do
+        package_key=$package_key+$cap
+        . $project_dir/lib/capability/$cap.sh
+    done
 
     # Chapter 10: Making the LFS System Bootable
     lfs_system_install linux

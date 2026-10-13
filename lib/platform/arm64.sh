@@ -7,10 +7,12 @@ readonly kernel_machine=virt
 readonly QEMU=qemu-system-aarch64
 
 # QEMU uses the first accelerator available: KVM or HVF on ARM hosts, emulation (TCG) elsewhere.
+# Like a real machine, it has a USB host controller, for the USB devices given in QEMU_EXTRA.
 readonly QEMU_FLAGS="\
     -M virt -cpu max -accel kvm -accel hvf -accel tcg -smp 1 -m 512 \
     -display none \
     -device virtio-rng-pci \
+    -device qemu-xhci \
     -serial mon:stdio"
 
 # Kernel command line fragment specific to this platform.

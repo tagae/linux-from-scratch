@@ -128,7 +128,7 @@ lfs_source_package() {
     }
 
     archive_filename() {
-        echo $ARCHIVE_DIR/$SYSTEM_KEY/$package_archive
+        echo $ARCHIVE_DIR/$package_key/$package_archive
     }
 
     default_archive() {
@@ -196,7 +196,7 @@ lfs_source_package() {
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
     : ${package_files_dir:=$package_dir/$package_name}
     : ${package_source_dir:=$SOURCE_DIR/$package_name-$package_version}
-    : ${package_work_dir:=$WORK_DIR/$SYSTEM_KEY/$package_release}
+    : ${package_work_dir:=$WORK_DIR/$package_key/$package_release}
     : ${package_build_dir:=$package_work_dir/build/$package_component}
     : ${package_stage_dir:=$package_work_dir/stage/$package_component}
     : ${package_install_dir:=$package_stage_dir}

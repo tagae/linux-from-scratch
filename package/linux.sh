@@ -33,10 +33,9 @@ prepare() {
                         $package_files_dir/$kernel_machine.config \
                         $package_files_dir/arch-$kernel_arch.config \
                         $package_files_dir/$USERLAND.config
+                    # A capability that needs kernel support has a fragment of its own.
                     for cap in $CAPS; do
-                        [ -f $package_files_dir/$cap.config ] \
-                            || bail "Unknown capability '$cap' (no package/linux/$cap.config)"
-                        cat $package_files_dir/$cap.config
+                        [ ! -f $package_files_dir/$cap.config ] || cat $package_files_dir/$cap.config
                     done
                 } > $package_build_dir/$package_name.config
                 _make_target KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig
