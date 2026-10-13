@@ -1,0 +1,114 @@
+#!/bin/sh
+# Makes an OpenPGP key, and exports it to a USB stick.
+#
+# The key is made for a security key such as a YubiKey: a primary key that only certifies, and
+# subkeys to sign, to encrypt and to authenticate. The secret key material lives in memory only:
+# GnuPG's home is a new directory under /run, a tmpfs, and it is wiped on every exit path. The
+# secret key leaves only on the stick, protected by the passphrase.
+#
+# Usage: gpg-genkey -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE [-d USB_DEV]
+#   -n NAME        Real name of the key's user ID                 ($NAME)
+#   -e EMAIL       Email address of the key's user ID             ($EMAIL)
+#   -a ALGO        ed25519 (the default; the encryption subkey is cv25519), or an
+#                  RSA size such as rsa4096, for every key         ($ALGO)
+#   -p PASSPHRASE  Passphrase that protects the secret key         ($PASSPHRASE)
+#   -d USB_DEV     Device of the stick, a FAT file system on the
+#                  whole device or on its first partition          ($USB_DEV, /dev/sda)
+#
+# Options can also be given as the environment variables shown, which keeps a passphrase out of
+# the process list. Options win over variables.
+#
+# On success the root of the stick holds:
+#   EMAIL-secret.asc   secret key, protected by the passphrase
+#   EMAIL-public.asc   public key
+#   EMAIL-revoke.asc   revocation certificate
+set -eu
+
+ALGO=${ALGO:-ed25519}
+USB_DEV=${USB_DEV:-/dev/sda}
+USB_MOUNT=/mnt/usb
+
+usage() {
+    echo "Usage: $(basename "$0") -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE [-d USB_DEV]" >&2
+    exit 1
+}
+
+while getopts ":n:e:a:p:d:h" opt; do
+    case "$opt" in
+        n) NAME=$OPTARG ;;
+        e) EMAIL=$OPTARG ;;
+        a) ALGO=$OPTARG ;;
+        p) PASSPHRASE=$OPTARG ;;
+        d) USB_DEV=$OPTARG ;;
+        h) usage ;;
+        :) echo "gpg-genkey: option -$OPTARG requires an argument" >&2; usage ;;
+        \?) echo "gpg-genkey: unknown option -$OPTARG" >&2; usage ;;
+    esac
+done
+
+: ${NAME:?"gpg-genkey: -n NAME (or \$NAME) is required"}
+: ${EMAIL:?"gpg-genkey: -e EMAIL (or \$EMAIL) is required"}
+: ${PASSPHRASE:?"gpg-genkey: -p PASSPHRASE (or \$PASSPHRASE) is required"}
+
+# Elliptic curve keys encrypt with Curve25519, whose keys are made apart from the signing ones.
+case $ALGO in
+    ed25519) ENCR_ALGO=cv25519 ;;
+    *)       ENCR_ALGO=$ALGO ;;
+esac
+
+# Everything GnuPG writes is under GNUPGHOME: the keyring, the random pool, the revocation
+# certificate.
+GNUPGHOME=$(mktemp -d /run/gnupg.XXXXXX)
+export GNUPGHOME
+echo "gpg-genkey: GNUPGHOME=$GNUPGHOME (tmpfs, memory only)"
+
+MOUNTED=no
+cleanup() {
+    gpgconf --kill gpg-agent 2>/dev/null || true
+    if [ "$MOUNTED" = yes ]; then
+        umount "$USB_MOUNT" 2>/dev/null || true
+    fi
+    rm -rf "$GNUPGHOME"
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM HUP
+
+mkdir -p "$USB_MOUNT"
+if mount -t vfat "$USB_DEV" "$USB_MOUNT" 2>/dev/null; then
+    :
+elif mount -t vfat "${USB_DEV}1" "$USB_MOUNT" 2>/dev/null; then
+    :
+else
+    echo "gpg-genkey: failed to mount $USB_DEV (or ${USB_DEV}1) as vfat on $USB_MOUNT" >&2
+    exit 1
+fi
+MOUNTED=yes
+echo "gpg-genkey: mounted $USB_DEV on $USB_MOUNT"
+
+# The passphrase reaches gpg on its standard input, out of the process list, and the agent through
+# the loopback pinentry. Keys never expire: this GnuPG rejects the expiration "default".
+gpg_batch() {
+    printf '%s\n' "$PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 "$@"
+}
+
+gpg_batch --quick-generate-key "$NAME <$EMAIL>" "$ALGO" cert 0
+FPR=$(gpg --batch --with-colons --list-keys "$EMAIL" | awk -F: '$1 == "fpr" { print $10; exit }')
+gpg_batch --quick-add-key "$FPR" "$ALGO" sign 0
+gpg_batch --quick-add-key "$FPR" "$ENCR_ALGO" encr 0
+gpg_batch --quick-add-key "$FPR" "$ALGO" auth 0
+echo "gpg-genkey: key $FPR generated in memory for $EMAIL"
+
+gpg_batch --armor --export-secret-keys "$FPR" > "$USB_MOUNT/$EMAIL-secret.asc"
+gpg --armor --export "$FPR" > "$USB_MOUNT/$EMAIL-public.asc"
+
+# Making the primary key stored a revocation certificate, which is how GnuPG makes one without
+# asking questions on a terminal.
+cp "$GNUPGHOME/openpgp-revocs.d/$FPR.rev" "$USB_MOUNT/$EMAIL-revoke.asc"
+
+sync
+echo "gpg-genkey: exported the secret and public keys and the revocation certificate to $USB_MOUNT"
+
+umount "$USB_MOUNT"
+MOUNTED=no
+echo "gpg-genkey: unmounted $USB_MOUNT"
+echo "gpg-genkey: done"

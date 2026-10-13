@@ -21,10 +21,12 @@ case "$(uname -s)" in
     Linux)  readonly qemu_accel="-accel kvm" ;;
 esac
 
+# Like a real machine, it has a USB host controller, for the USB devices given in QEMU_EXTRA.
 readonly QEMU_FLAGS="\
     -M $qemu_machine -cpu host $qemu_accel -smp 1 -m 512 \
     -nographic \
     -device virtio-rng \
+    -device qemu-xhci \
     -device virtio-serial \
     -chardev stdio,signal=off,mux=on,id=char0 \
     -device virtconsole,chardev=char0,id=console0 \

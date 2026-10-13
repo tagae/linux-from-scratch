@@ -61,11 +61,3 @@ git_checkout() {
     mkdir -p $(dirname $dest)
     git clone --branch $branch --depth 1 $url $dest
 }
-
-# Tests whether a capability is enabled.
-has_cap() {
-    case " ${CAPS:-} " in
-        *" $1 "*) ;;
-        *) return 1 ;;
-    esac
-}
