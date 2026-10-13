@@ -47,7 +47,7 @@ build_image() {
 create_image() {
     rm -f "$IMAGE"
     mkdir -pv "$(dirname $IMAGE)"
-    fallocate -l "${IMAGE_SIZE:-4g}" "$IMAGE"
+    fallocate -l "${IMAGE_SIZE:-1g}" "$IMAGE"
 }
 
 attach_image() {
