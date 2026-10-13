@@ -51,10 +51,11 @@ Building the System
 The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. The base system from chapter 8
-is then compiled with that toolchain, followed by the kernel. Each package is installed both into
-the system tree and into the toolchain's sysroot, `work/$SYSTEM_KEY/sysroot`, which also receives
-what compiling against the packages needs: the Linux API headers and the packages' `dev`
-components. The kernel is also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
+is then compiled with that toolchain, then the packages of the system's capabilities, followed by
+the kernel. Each package is installed both into the system tree and into the toolchain's sysroot,
+`work/<platform>-<userland>/sysroot`, which also receives what compiling against the packages
+needs: the Linux API headers and the packages' `dev` components. The kernel is also copied to
+`work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
 
 ```shell
 ./lfs system build

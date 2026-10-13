@@ -11,21 +11,6 @@ qemu() {
         [ -f "$dtb" ] || bail "DTB not found: $dtb"
         set -- "$@" -dtb "$dtb"
     fi
-    if has_cap usb && [ -n "${USB_DISK:-}" ]; then
-        [ -f "$USB_DISK" ] || bail "USB_DISK not found: $USB_DISK"
-        set -- "$@" \
-            -drive if=none,id=usbstick,format=raw,file=$USB_DISK,cache=writethrough
-        case $PLATFORM in
-            pi0)
-                set -- "$@" -device usb-storage,bus=usb-bus.0,drive=usbstick
-                ;;
-            *)
-                set -- "$@" \
-                    -device qemu-xhci,id=xhci \
-                    -device usb-storage,bus=xhci.0,drive=usbstick
-                ;;
-        esac
-    fi
     exec ${QEMU:-qemu-system-$target_arch} -nodefaults -no-user-config ${QEMU_FLAGS:-} \
         -no-reboot \
         "$@" \

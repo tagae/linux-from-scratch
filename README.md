@@ -37,13 +37,15 @@ Supported Platforms
 Capabilities
 ------------
 
-| Capability | Enables                                                            |
-|------------|--------------------------------------------------------------------|
-| `usb`      | Removable USB storage (attach a stick with `USB_DISK=<img>`)       |
-| `loop`     | Loop devices                                                       |
-| `fat-fs`   | FAT filesystem support                                             |
+| Capability    | Enables                                                                   |
+|---------------|---------------------------------------------------------------------------|
+| `gnupg`       | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory |
+| `usb-storage` | USB sticks and card readers with a FAT file system                        |
+| `yubikey`     | Security keys on USB: their OpenPGP card (with `gnupg`) and FIDO2         |
 
-Capabilities can be combined.
+Capabilities can be combined. Each one is described by `lib/capability/<capability>.sh`, which
+installs its packages after those of the base system, and by `package/linux/<capability>.config`
+when it needs kernel support.
 
 
 Restrictions
@@ -75,19 +77,24 @@ Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no 
 defaults can be changed through variables:
 
 ```shell
-make image PLATFORM=pi0 CAPS="usb fat-fs"
+make image PLATFORM=pi0 CAPS="gnupg usb-storage"
 ```
 
 Those three variables make up a *system key*, `<platform>-<userland>[+<caps>]`, which names every
-deliverable: the package archives, the install tree, the boot files, and the image. A target can be
-named by its system key directly:
+deliverable: the install tree, the boot files, and the image. A target can be named by its system
+key directly:
 
 ```shell
-make pi0-systemd-gnu+fat-fs+usb-test
+make pi0-systemd-gnu+gnupg+usb-storage-test
 ```
 
-Images are file targets under that same key, so `make image/pi0-systemd-gnu+usb.img` produces an
-image for the `pi0` platform featuring the `usb` capability.
+Images are file targets under that same key, so `make image/pi0-systemd-gnu+usb-storage.img`
+produces an image for the `pi0` platform featuring the `usb-storage` capability.
+
+Package archives are filed under the key of the system as it stands when they are built: the base
+system's under `<platform>-<userland>`, and each capability's under that key extended with the
+capabilities added so far, in the system key's order. Systems thus share the archives of what they
+have in common, the base system's in particular.
 
 `make distclean` removes the build state and the tools; `make pristine` also removes downloads,
 archives and images.

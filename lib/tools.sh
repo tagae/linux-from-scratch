@@ -135,6 +135,8 @@ lfs_tools_build() {
     # The x86-64 kernel's objtool links libelf, from elfutils, whose sources come as .tar.bz2.
     lfs_install_package bzip2
     lfs_install_package elfutils
+    # libcbor and libfido2 build with CMake.
+    lfs_install_package cmake
     (
         shared=yes normal=no debug=no cxx_shared=yes
         lfs_install_package ncurses
