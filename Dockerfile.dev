@@ -10,11 +10,25 @@ RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --n
 
 # Provision dev tools.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates build-essential \
+    && apt-get install -y --no-install-recommends \
+    curl ca-certificates build-essential \
+    qemu-system-arm \
     && rm -rf /var/lib/apt/lists/*
 
 # Create mount points.
 RUN mkdir -pv \
+    /mnt/lfs/download \
+    /mnt/lfs/image \
+    /mnt/lfs/install \
+    /mnt/lfs/lib \
+    /mnt/lfs/package \
+    /mnt/lfs/source \
+    /mnt/lfs/tools \
+    /mnt/lfs/work
+
+# Docker copies this ownership into newly created named volumes.
+RUN chown lfs:lfs \
+    /mnt/lfs \
     /mnt/lfs/download \
     /mnt/lfs/image \
     /mnt/lfs/install \
