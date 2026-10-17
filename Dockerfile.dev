@@ -41,5 +41,5 @@ RUN chown lfs:lfs \
 USER lfs
 WORKDIR /mnt/lfs
 
-#RUN curl -fsSL https://opencode.ai/v2/install | bash
+RUN curl -fsSL https://opencode.ai/v2/install | bash
 ENV PATH=/mnt/lfs/.opencode/bin:$PATH
