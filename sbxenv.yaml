@@ -1,0 +1,11 @@
+schemaVersion: "1"
+name: lfs
+agent: opencode
+workspace: ${{ env.projectDir }}
+
+kits:
+  - docker.io/sbx/qemu-kit
+
+sandboxOptions:
+  cpus: 2
+  memory: 4g

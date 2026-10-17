@@ -1,0 +1,45 @@
+FROM debian:bookworm-slim
+
+ARG HOST_UID
+ARG HOST_GID
+
+# Provision user.
+RUN groupdel dialout # Conflicts with macOS.
+RUN groupadd --gid $HOST_GID lfs
+RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --no-create-home lfs
+
+# Provision dev tools.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    curl ca-certificates build-essential \
+    qemu-system-arm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create mount points.
+RUN mkdir -pv \
+    /mnt/lfs/download \
+    /mnt/lfs/image \
+    /mnt/lfs/install \
+    /mnt/lfs/lib \
+    /mnt/lfs/package \
+    /mnt/lfs/source \
+    /mnt/lfs/tools \
+    /mnt/lfs/work
+
+# Docker copies this ownership into newly created named volumes.
+RUN chown lfs:lfs \
+    /mnt/lfs \
+    /mnt/lfs/download \
+    /mnt/lfs/image \
+    /mnt/lfs/install \
+    /mnt/lfs/lib \
+    /mnt/lfs/package \
+    /mnt/lfs/source \
+    /mnt/lfs/tools \
+    /mnt/lfs/work
+
+USER lfs
+WORKDIR /mnt/lfs
+
+RUN curl -fsSL https://opencode.ai/v2/install | bash
+ENV PATH=/mnt/lfs/.opencode/bin:$PATH
