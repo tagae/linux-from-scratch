@@ -10,10 +10,13 @@ prepare() {
 }
 
 build() {
+    # The Makefiles hardcode CC and LDFLAGS, and the one linking bzip2-shared uses no LDFLAGS.
+    local cc="${CC:-gcc} ${LDFLAGS:-}"
+
     # The shared library and the program linked against it (bzip2-shared), then the rest.
-    make -f Makefile-libbz2_so
+    make -f Makefile-libbz2_so CC="$cc"
     make clean
-    make
+    make CC="$cc"
 }
 
 install() {

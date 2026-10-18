@@ -21,9 +21,15 @@ prepare() {
             # ldd-rewrite-script: have ldd try the dynamic linker where this glibc installs it
             # (slibdir), rather than the lib64, lib and libx32 directories under $prefix that
             # x86-64's multilib rewrite lists, none of which holds it.
+            # rtld-LDFLAGS: when rtld_dir is set, have glibc's own programs (getconf, iconv, ...)
+            # run with the dynamic linker and libraries installed there, rather than with the ones
+            # at the standard location.
             {
                 echo "rootsbindir=$prefix/sbin"
                 echo "ldd-rewrite-script=no"
+                if [ -n "${rtld_dir:-}" ]; then
+                    echo "rtld-LDFLAGS=-Wl,-dynamic-linker=$rtld_dir/\$(rtld-installed-name) -Wl,-rpath,$rtld_dir"
+                fi
             } > configparms
 
             $package_source_dir/configure \
