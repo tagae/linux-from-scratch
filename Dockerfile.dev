@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:stable-slim
 
 ARG HOST_UID
 ARG HOST_GID
@@ -11,8 +11,37 @@ RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --n
 # Provision dev tools.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    curl ca-certificates build-essential \
+    build-essential \
+    curl \
+    wget \
+    rsync \
+    gawk \
+    bison \
+    python3 \
+    patchelf \
+    ca-certificates \
     qemu-system-arm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Provision Docker from its own apt repository. Only the client side is needed, as the daemon is the
+# host's, reached through the socket that docker-compose.yaml mounts.
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc
+RUN . /etc/os-release \
+    && printf '%s\n' \
+    'Types: deb' \
+    'URIs: https://download.docker.com/linux/debian' \
+    "Suites: $VERSION_CODENAME" \
+    'Components: stable' \
+    "Architectures: $(dpkg --print-architecture)" \
+    'Signed-By: /etc/apt/keyrings/docker.asc' \
+    > /etc/apt/sources.list.d/docker.sources
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    docker-ce-cli \
+    docker-buildx-plugin \
+    docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
 # Create mount points.
@@ -38,8 +67,14 @@ RUN chown lfs:lfs \
     /mnt/lfs/tools \
     /mnt/lfs/work
 
+# The agents install under a home of their own, as docker-compose.yaml mounts the repository over
+# the user's, hiding whatever the image holds there.
+RUN install -d -o lfs -g lfs /opt/agents
+
 USER lfs
 WORKDIR /mnt/lfs
 
-RUN curl -fsSL https://opencode.ai/v2/install | bash
-ENV PATH=/mnt/lfs/.opencode/bin:$PATH
+RUN curl -fsSL https://opencode.ai/v2/install | HOME=/opt/agents bash
+RUN curl -fsSL https://claude.ai/install.sh | HOME=/opt/agents bash
+
+ENV PATH=/opt/agents/.opencode/bin:/opt/agents/.local/bin:$PATH

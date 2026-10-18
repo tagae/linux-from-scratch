@@ -87,36 +87,6 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
-      # Avoids baking a /lib symlink into the image, which isn't possible since the `scratch` base
-      # image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
-      - type: volume
-        source: tools
-        target: /lib
-        read_only: true
-        volume:
-          subpath: usr/lib
-      # Avoids baking a /usr/lib symlink into the image, which isn't possible since the `scratch`
-      # base image cannot execute anything (not even `ln`) prior to mounting TOOL_DIR.
-      - type: volume
-        source: tools
-        target: /usr/lib
-        read_only: true
-        volume:
-          subpath: usr/lib
-      # Enables resolution of the #!/usr/bin/env shebang.
-      - type: volume
-        source: tools
-        target: /usr/bin
-        read_only: true
-        volume:
-          subpath: usr/bin
-      # The from-scratch CA trust store built by bootstrap, at openssl's default location.
-      - type: volume
-        source: tools
-        target: /etc/ssl
-        read_only: true
-        volume:
-          subpath: etc/ssl
       - type: volume
         source: install
         target: /mnt/lfs/install
@@ -136,6 +106,8 @@ services:
     tty: true
     stdin_open: true
     privileged: true
+    group_add: # Lets the `lfs` user use the Docker socket, owned by the daemon host's `docker` group.
+      - ${DOCKER_GID:-991} # That of the Colima VM.
     volumes:
       - type: bind
         source: .
@@ -152,6 +124,9 @@ services:
       - type: volume
         source: install
         target: /mnt/lfs/install
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
 
 volumes:
   source:
