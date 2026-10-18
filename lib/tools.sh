@@ -35,6 +35,10 @@ lfs_tools_bootstrap() {
     readonly package_variant=bootstrap
     package_install_dir=$TOOL_DIR
 
+    # Where the programs built from here on find their dynamic linker and libraries, whether
+    # TOOL_DIR is mounted over /usr (the scratch container) or not (a Linux host).
+    local rtld_dir=$TOOL_DIR/usr/lib
+
     lfs_install_package linux#headers
     (
         nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include
@@ -48,7 +52,13 @@ lfs_tools_bootstrap() {
         readonly sysroot=$TOOL_DIR
         readonly build_sysroot=$TOOL_DIR
 
-        ( shared=yes gprofng=no werror=no; lfs_install_package binutils )
+        # new_dtags: what the programs linked from here on find through their rpath (TOOL_DIR's
+        # libraries) comes after LD_LIBRARY_PATH, which builds set to run what they just built
+        # against the libraries they just built, rather than against those already in TOOL_DIR.
+        (
+            shared=yes gprofng=no werror=no new_dtags=yes
+            lfs_install_package binutils
+        )
 
         (
             glibc_version=$(lfs_package_version glibc)
@@ -56,6 +66,11 @@ lfs_tools_bootstrap() {
             shared=yes threads=yes libstdcxx=yes
             fixincludes=no
             libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no
+            # The compilers after the first stage ignore LDFLAGS.
+            boot_ldflags="$LDFLAGS -static-libstdc++ -static-libgcc"
+            # Rather than the build machine's, whatever comes first in PATH. Its linker would load
+            # the LTO plugin built by the first stage, which needs a glibc as recent as TOOL_DIR's.
+            ld=$TOOL_DIR/usr/bin/ld as=$TOOL_DIR/usr/bin/as
             lfs_install_package gcc
         )
     )
@@ -92,11 +107,19 @@ lfs_tools_bootstrap() {
 
     mkdir -pv $BOOTSTRAP_DIR
     cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/bash
+    cp -v $TOOL_DIR/usr/bin/env $BOOTSTRAP_DIR/env
 }
 
 # Builds the remainder of the toolchain starting from the bootstrapped state.
 lfs_tools_build() {
     mkdir -p ${TMPDIR:-/tmp}
+
+    # Build with the compiler bootstrap staged, not with whatever `gcc` comes first in PATH. The
+    # scratch container mounts TOOL_DIR over /usr, but on a Linux host /usr holds the host's own
+    # toolchain, whose linker resolves the absolute /usr/lib paths in TOOL_DIR's linker scripts
+    # (libc.so) against the host's libc. The bootstrapped gcc has TOOL_DIR as its sysroot, and runs
+    # its own as and ld.
+    export CC=$TOOL_DIR/usr/bin/gcc CXX=$TOOL_DIR/usr/bin/g++
 
     # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
     export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
@@ -128,7 +151,12 @@ lfs_tools_build() {
     )
     lfs_install_package flex
     lfs_install_package bc
-    lfs_install_package perl
+    # Its compiled-in @INC is /usr/lib/perl5, and its scripts' shebang /usr/bin/perl: neither is
+    # in TOOL_DIR.
+    (
+        sysroot=$TOOL_DIR shrplib=no relocatable=yes perlpath=$TOOL_DIR/usr/bin/perl
+        lfs_install_package perl
+    )
     ( manpages=no; lfs_install_package kmod )
     # The kernel's headers_install copies the headers with rsync.
     lfs_install_package rsync

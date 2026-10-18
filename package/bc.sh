@@ -5,7 +5,7 @@
 : ${package_license:=BSD-2-Clause AND MIT}
 
 prepare() {
-    CC="${host:+$host-}gcc -std=c99" $package_source_dir/configure \
+    CC="${CC:-${host:+$host-}gcc} -std=c99" $package_source_dir/configure \
         ${prefix:+--prefix=$prefix} \
         -O3
 }

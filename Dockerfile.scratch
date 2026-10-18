@@ -6,10 +6,16 @@ ARG HOST_GID
 # Enable execution of the #!/bin/sh and #!/bin/bash shebangs.
 COPY work/bootstrap/bash /bin/sh
 COPY work/bootstrap/bash /bin/bash
+# Enable execution of the #!/usr/bin/env shebang.
+COPY work/bootstrap/env /usr/bin/env
 
 ENV LC_ALL=POSIX
 ENV PATH=/mnt/lfs/tools/usr/bin
 ENV HOME=/mnt/lfs
+
+# The from-scratch CA trust store built by bootstrap, in place of openssl's default /etc/ssl.
+ENV SSL_CERT_FILE=/mnt/lfs/tools/etc/ssl/cert.pem
+ENV SSL_CERT_DIR=/mnt/lfs/tools/etc/ssl/certs
 
 # There is no /tmp in this image, and nothing can create one at build time, so TMPDIR at an
 # already-existing writable directory.

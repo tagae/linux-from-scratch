@@ -16,7 +16,7 @@ prepare() {
 build() {
     case $package_component in
         kpartx)
-            make -C $package_source_dir/kpartx CC=gcc
+            make -C $package_source_dir/kpartx CC=${CC:-gcc}
             ;;
         *)
             default_build
@@ -28,7 +28,7 @@ install() {
     case $package_component in
         kpartx)
             make -C $package_source_dir/kpartx install \
-                 DESTDIR=$package_install_dir CC=gcc prefix=${prefix:-/usr}
+                 DESTDIR=$package_install_dir CC=${CC:-gcc} prefix=${prefix:-/usr}
             ;;
         *)
             default_build
