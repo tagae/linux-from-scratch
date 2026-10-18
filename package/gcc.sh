@@ -47,6 +47,8 @@ prepare() {
                 ${mpc:+--with-mpc=$mpc} \
                 ${newlib:+--with-newlib=$newlib} \
                 ${headers:+--with-headers=$headers} \
+                ${ld:+--with-ld=$ld} \
+                ${as:+--with-as=$as} \
                 ${default_pie:+--enable-$default_pie} \
                 ${default_ssp:+--enable-$default_ssp} \
                 ${fixincludes:+--enable-fixincludes=$fixincludes} \
@@ -62,7 +64,8 @@ prepare() {
                 ${libstdcxx:+--enable-libstdcxx=$libstdcxx} \
                 ${libsanitizer:+--enable-libsanitizer=$libsanitizer} \
                 ${languages:+--enable-languages=$languages} \
-                ${bootstrap:+--enable-bootstrap=$bootstrap}
+                ${bootstrap:+--enable-bootstrap=$bootstrap} \
+                ${boot_ldflags:+--with-boot-ldflags="$boot_ldflags"}
             ;;
     esac
 }
@@ -92,6 +95,9 @@ install() {
         *)
             _link_lib64
             make install DESTDIR=$package_install_dir
+            if [ -n "${rtld_dir:-}" ]; then
+                _write_rtld_specs
+            fi
             case ${package_variant:-} in
                 pass1)
                     # The compiler just staged, not one already installed.
@@ -103,6 +109,19 @@ install() {
                     ;;
             esac
     esac
+}
+
+# Has the compiler just staged link programs against the C library in rtld_dir by default, rather
+# than against the one at the standard location: their dynamic linker is the one in rtld_dir, and
+# their rpath points there. GCC reads a `specs` file next to its libgcc in place of its built-in
+# specs.
+_write_rtld_specs() {
+    local gcc=$package_install_dir$prefix/bin/gcc
+    local specs=$package_install_dir$prefix/lib/gcc/$($gcc -dumpmachine)/$($gcc -dumpfullversion)/specs
+    {
+        $gcc -dumpspecs | sed "s@\([ :]\)/lib\(64\)\?/ld-linux@\1$rtld_dir/ld-linux@g"
+        printf '*link:\n+ %%{!static:%%{!static-pie:-rpath %s}}\n\n' "$rtld_dir"
+    } > $specs
 }
 
 # Some architectures install the runtime libraries (libstdc++, libgcc_s, ...) into lib64; keep them

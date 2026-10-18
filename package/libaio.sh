@@ -10,9 +10,9 @@ prepare() {
 }
 
 build() {
-    make -C $package_source_dir CC=gcc
+    make -C $package_source_dir CC=${CC:-gcc}
 }
 
 install() {
-    make -C $package_source_dir install DESTDIR=$package_install_dir CC=gcc
+    make -C $package_source_dir install DESTDIR=$package_install_dir CC=${CC:-gcc}
 }

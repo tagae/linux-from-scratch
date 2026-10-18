@@ -5,20 +5,33 @@
 : ${package_license:=Artistic-1.0-Perl OR GPL-1.0-or-later}
 
 prepare() {
+    : ${shrplib:=yes}
+    : ${relocatable:=no}
+
     local privlib_version=${package_version%.*}
+    # Configure relocates only the library paths it derives itself; ones given to it must start
+    # with .../, which stands for the directory of the perl binary.
+    local lib_prefix=$([ $relocatable = yes ] && echo .../.. || echo ${prefix:-/usr})
     cd $package_source_dir
+    # Configure ignores LDFLAGS from the environment, and looks for libraries in the build machine's
+    # own directories unless given a sysroot.
+    # A relocatable @INC is incompatible with a shared libperl, whose rpath is absolute.
     sh Configure -des \
         ${host:+-Dusecrosscompile} \
-        -D cc=${host:+$host-}gcc \
+        -D cc=${CC:-${host:+$host-}gcc} \
+        ${sysroot:+-D sysroot=$sysroot} \
+        ${LDFLAGS:+-D ldflags="$LDFLAGS"} \
+        ${perlpath:+-D perlpath=$perlpath -D startperl="#!$perlpath"} \
+        $([ $relocatable = yes ] && echo -D userelocatableinc) \
         -D prefix=${prefix:-/usr} \
         -D vendorprefix=${prefix:-/usr} \
-        -D privlib=${prefix:-/usr}/lib/perl5/$privlib_version/core_perl \
-        -D archlib=${prefix:-/usr}/lib/perl5/$privlib_version/core_perl \
-        -D sitelib=${prefix:-/usr}/lib/perl5/$privlib_version/site_perl \
-        -D sitearch=${prefix:-/usr}/lib/perl5/$privlib_version/site_perl \
-        -D vendorlib=${prefix:-/usr}/lib/perl5/$privlib_version/vendor_perl \
-        -D vendorarch=${prefix:-/usr}/lib/perl5/$privlib_version/vendor_perl \
-        -D useshrplib \
+        -D privlib=$lib_prefix/lib/perl5/$privlib_version/core_perl \
+        -D archlib=$lib_prefix/lib/perl5/$privlib_version/core_perl \
+        -D sitelib=$lib_prefix/lib/perl5/$privlib_version/site_perl \
+        -D sitearch=$lib_prefix/lib/perl5/$privlib_version/site_perl \
+        -D vendorlib=$lib_prefix/lib/perl5/$privlib_version/vendor_perl \
+        -D vendorarch=$lib_prefix/lib/perl5/$privlib_version/vendor_perl \
+        $([ $shrplib = yes ] && echo -D useshrplib) \
         -D usethreads
 }
 
