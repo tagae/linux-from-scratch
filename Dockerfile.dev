@@ -67,10 +67,14 @@ RUN chown lfs:lfs \
     /mnt/lfs/tools \
     /mnt/lfs/work
 
+# The agents install under a home of their own, as docker-compose.yaml mounts the repository over
+# the user's, hiding whatever the image holds there.
+RUN install -d -o lfs -g lfs /opt/agents
+
 USER lfs
 WORKDIR /mnt/lfs
 
-RUN curl -fsSL https://opencode.ai/v2/install | bash
-RUN curl -fsSL https://claude.ai/install.sh | bash
+RUN curl -fsSL https://opencode.ai/v2/install | HOME=/opt/agents bash
+RUN curl -fsSL https://claude.ai/install.sh | HOME=/opt/agents bash
 
-ENV PATH=/mnt/lfs/.opencode/bin:/mnt/lfs/.local/bin:$PATH
+ENV PATH=/opt/agents/.opencode/bin:/opt/agents/.local/bin:$PATH
