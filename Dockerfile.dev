@@ -21,7 +21,13 @@ RUN apt-get update \
     patchelf \
     ca-certificates \
     qemu-system-arm \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
+
+# Lets the lfs user take root, as the Makefile does for what needs it (making an image), like on a
+# Linux host.
+RUN printf '%s\n' 'lfs ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/lfs \
+    && chmod 0440 /etc/sudoers.d/lfs
 
 # Provision Docker from its own apt repository. Only the client side is needed, as the daemon is the
 # host's, reached through the socket that docker-compose.yaml mounts.

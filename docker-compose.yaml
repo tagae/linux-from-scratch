@@ -118,6 +118,11 @@ services:
       - type: volume
         source: work
         target: /mnt/lfs/work
+      # The work volume holds a root-owned mount point for this when the scratch service ran first,
+      # which the lfs user could not write the kernel to.
+      - type: bind
+        source: $PWD/work/boot
+        target: /mnt/lfs/work/boot
       - type: volume
         source: tools
         target: /mnt/lfs/tools
