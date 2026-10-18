@@ -41,7 +41,10 @@ EOF
             # virtual consoles, EFI) that these systems lack.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
-            meson setup $package_source_dir \
+            # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
+            # which the Python of TOOL_DIR has, unlike whichever python3 the build machine has
+            # first in PATH. Meson, ninja and what they run all see the former first.
+            env PATH=$TOOL_DIR/usr/bin:$PATH meson setup $package_source_dir \
                 --cross-file cross.ini \
                 ${prefix:+--prefix=$prefix} \
                 --libdir=lib \
@@ -123,7 +126,7 @@ EOF
 build() {
     case $package_component in
         systemd)
-            ninja
+            env PATH=$TOOL_DIR/usr/bin:$PATH ninja
             ;;
         *)
             default_build
@@ -134,7 +137,7 @@ build() {
 install() {
     case $package_component in
         systemd)
-            DESTDIR=$package_install_dir ninja install
+            DESTDIR=$package_install_dir env PATH=$TOOL_DIR/usr/bin:$PATH ninja install
 
             # X11's xinit script and socket directories are installed unconditionally; nothing here
             # uses X11.

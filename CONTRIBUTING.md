@@ -14,6 +14,8 @@ Overview
 * `install/`: target install trees, one per system key
 * `archive/`: package tarballs, each with its SHA-256 digest
 * `image/`:  disk images
+* `Makefile`: build rules, run directly on a Linux host; the `docker-` goals run them through Docker
+  Compose instead, up to the image
 * `Dockerfile.{bootstrap,scratch}`: build containers (for reproducibility)
 * `test`: boot tester
 
@@ -71,13 +73,15 @@ Images
   all of the space the boot partition leaves.
 * The `./lfs qemu` command runs the built image.
 
-An image or a device is opened through loop devices and mounts, so making one needs a privileged
-container and root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`. Making a
-system on a device erases it, so that takes `ERASE`, set to the same device, e.g.
-`ERASE=/dev/sdb ./lfs image build /dev/sdb`. A device that anything has mounted or opened, in the
-container or on the host, is refused (unmount a card from a desktop's automounter first). Outside
-the scratch container, which has them, a host needs `btrfs-progs`, `dosfstools` and `fdisk` (for
-`sfdisk`), besides the usual `util-linux` and `tar`.
+An image or a device is opened through loop devices and mounts, so making one needs root, e.g.
+`sudo --preserve-env ./lfs image build`, which is what `make image` runs (or a privileged container
+as root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`, as
+`make docker-image` does). The image then belongs to root, which `make image` changes so that QEMU can
+open it as the user. Making a system on a device erases it, so that takes `ERASE`, set to the same
+device, e.g. `sudo ERASE=/dev/sdb ./lfs image build /dev/sdb`. A device that anything has mounted or
+opened, in the container or on the host, is refused (unmount a card from a desktop's automounter
+first). Outside the scratch container, which has them, a host needs `btrfs-progs`, `dosfstools` and
+`fdisk` (for `sfdisk`), besides the usual `util-linux` and `tar`.
 
 
 Package Model

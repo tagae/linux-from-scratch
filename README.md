@@ -23,6 +23,24 @@ make qemu
 ```
 
 
+Requirements
+------------
+
+The rules build directly on a Linux host, which needs:
+
+* the tools that `Dockerfile.bootstrap` installs: a C and C++ toolchain (`build-essential`), `curl`,
+  `wget`, `rsync`, `gawk`, `bison`, `python3`, `patchelf` and CA certificates;
+* `sudo`, for `make image`, which opens loop devices and mounts file systems (as root, run
+  `make image SUDO=`);
+* `expect` and QEMU for the platform's architecture, for `make qemu` and `make test`. The `virt`
+  platform uses KVM.
+
+Hosts that are not Linux can make the image through Docker Compose instead, with the `docker-`
+goals: `make docker-image`, or `make docker-image/pi0-systemd-gnu.img` for a given system. The image
+then runs on the host, with QEMU and `expect`: `./lfs qemu` boots it, and `./test` also logs in and
+powers off (for a system other than `virt`, set `PLATFORM=pi0`, or pass its key to `./test`).
+
+
 Supported Platforms
 -------------------
 
