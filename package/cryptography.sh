@@ -24,6 +24,7 @@ build() {
     # compiled with the platform's Python headers, which the build finds next to that library
     # directory.
     export PYO3_PYTHON=$TOOL_DIR/usr/bin/python3
+    export PYO3_CROSS=1
     export PYO3_CROSS_LIB_DIR=$sysroot$prefix/lib/python${python_version%.*}
     export PYO3_BUILD_EXTENSION_MODULE=1
     export OPENSSL_DIR=$sysroot$prefix
@@ -33,13 +34,18 @@ build() {
     # The platform's code is compiled and linked by the cross toolchain, whose sysroot holds the
     # libraries. The paths of the crates' sources, which panic messages quote, are not those of
     # the build machine.
-    export TARGET_CC=$host-gcc TARGET_AR=$host-ar
-    export CARGO_TARGET_$(echo $rust_target | tr a-z- A-Z_)_LINKER=$host-gcc
+    # The crates that compile C code look for the compiler by the platform's triple first: TARGET_CC
+    # is read only when that is not the build machine's own triple.
+    export CC_$(echo $rust_target | tr - _)=$host-gcc AR_$(echo $rust_target | tr - _)=$host-ar
     export RUSTFLAGS=--remap-path-prefix=$CARGO_HOME=/cargo
     export CARGO_PROFILE_RELEASE_STRIP=symbols
 
-    cargo build --release --locked --offline --target $rust_target --target-dir target \
-        --manifest-path $package_source_dir/src/rust/Cargo.toml
+    # The extension module is the only thing linked for the platform: what it depends on is Rust
+    # libraries. So the cross linker goes to that one compilation, instead of to cargo's setting
+    # for the platform's triple, which is also the one for build scripts, run on the build machine,
+    # when the platform has the build machine's own triple.
+    cargo rustc --release --locked --offline --target $rust_target --target-dir target \
+        --manifest-path $package_source_dir/src/rust/Cargo.toml --lib -- -C linker=$host-gcc
 }
 
 install() {

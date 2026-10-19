@@ -136,6 +136,15 @@ With it, GnuPG reaches the YubiKey through `pcscd` rather than through its own U
 (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and `ykman` can use the key in turn.
 Without it, scdaemon drives the key itself and `ykman` is not installed.
 
+The same capabilities build for the `virt` platform, to try the workflow in QEMU without a Pi:
+
+```shell
+make docker-image/virt-systemd-gnu+gnupg+usb-storage+yubikey+yubikey-manager.img
+```
+
+It boots on the Mac's own architecture with the host's accelerator, and QEMU takes the USB devices
+(`QEMU_EXTRA="-device usb-host,hostbus=…,hostport=…"`, a stick as a `usb-storage` drive).
+
 
 Restrictions
 ------------
