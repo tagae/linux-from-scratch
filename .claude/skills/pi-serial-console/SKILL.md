@@ -85,11 +85,13 @@ measures 4.7 MB/s and a cold read 9.5 MB/s. The btrfs error counters
   disabled`: deliberate. `package/linux/pi0.config` leaves `CONFIG_DMADEVICES` off (the 6.18
   `bcm2835-dma` regression raspberrypi/linux#7136, and QEMU's broken DMA). It costs SD throughput.
 - `check access for rdinit=/init failed: -2, ignoring`: there is no initramfs.
-- `mmc0: host does not support reading read-only switch, assuming write-enable`.
 - `tmp.mount: x-systemd.graceful-option=usrquota ... suppressing`; `Kernel Trace File System` and
   `configfs` module skipped.
-- Five `systemd-sysctl: Couldn't write ... kernel/sysrq, kernel/core_uses_pid, net/ipv4/conf/default/*`
-  warnings: the kernel has neither SysRq nor an IPv4 stack.
+- Systems with USB: `dwc2 ...: dwc2_check_params: Invalid parameter max_packet_count=511` and
+  `max_transfer_size=65535` (seen under QEMU; unconfirmed on silicon), `sd 0:0:0:0: Power-on or
+  device reset occurred` when a stick is plugged in, and, at info level, `PM: genpd: Disabling unused
+  power domains` and `raspberrypi-power ...: sync_state() pending due to ...v3d/hdmi/vec` (nothing
+  uses those domains).
 - `watchdog: watchdog0: watchdog left running` at shutdown: `systemd-shutdown` arms a 10 minute
   hardware watchdog on purpose.
 - `systemctl list-units --all` marks not-found units with a dot (`auditd`, `display-manager`,
@@ -97,12 +99,14 @@ measures 4.7 MB/s and a cold read 9.5 MB/s. The btrfs error counters
 
 ### Absent by design (do not report as faults)
 
-No networking (only `lo`), USB, LED class, thermal or hwmon (so undervoltage cannot be detected), RTC,
-input, graphics, cpufreq or swap. No D-Bus: `systemd-run --wait`/`--pipe` and `busctl` fail with
+No networking (only `lo`), LED class, thermal or hwmon (so undervoltage cannot be detected), RTC,
+input, graphics, cpufreq or swap. USB exists only in systems with the `usb-storage` or `yubikey`
+capability. No D-Bus: `systemd-run --wait`/`--pipe` and `busctl` fail with
 `Failed to connect to system scope bus` (in the journal); plain `systemd-run` and `--scope` work.
-`/etc/hostname` is absent (the name is `localhost`). The clock has no source: every boot starts at
-systemd's built-in epoch (2026-05-27 08:37 UTC), so times from the Pi are not real. The machine ID
-persists across reboots. `find`, `tar`, `less`, `file` and `ip` are not installed.
+`/etc/hostname` is absent (the name is `localhost`). The clock has no source: systemd-timesyncd saves it every
+minute and at shutdown, and the next boot restarts from that time; a new image starts at the time it
+was made. Times from the Pi are real only after `date -u -s`. The machine ID is made with the image
+and persists across reboots. `find`, `tar`, `less`, `file` and `ip` are not installed.
 
 ## A health-check pass
 
