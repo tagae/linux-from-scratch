@@ -153,6 +153,16 @@ populate_image() {
         # Boot files to FAT partition (ownership not supported by FAT)
         cp -r $platform_install_dir/boot/. $ROOT_DIR/boot/
     fi
+    # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd
+    # never start the clock earlier than the modification time of this file, so an image boots no
+    # earlier than the time it was made.
+    mkdir -p $ROOT_DIR/var/lib/systemd/timesync
+    touch $ROOT_DIR/var/lib/systemd/timesync/clock
+    # With a machine ID, the first boot is an ordinary one. Without it, systemd presets every unit
+    # at the first boot, and warns about each unit that a generator made. The ID belongs to the
+    # image: cards written from the same image share it.
+    tr -d - < /proc/sys/kernel/random/uuid > $ROOT_DIR/etc/machine-id
+    chmod 444 $ROOT_DIR/etc/machine-id
 }
 
 unmount_partitions() {
