@@ -84,9 +84,11 @@ build() {
 install() {
     case $package_component in
         runtime)
-            # glibc loads libgcc_s at run time, to unwind stacks.
+            # glibc loads libgcc_s at run time, to unwind stacks. Libraries that need atomic
+            # operations the CPU lacks, such as OpenSSL's on 32-bit ARM, link libatomic.
             mkdir -pv $package_install_dir$prefix/lib
-            cp -v $($host-gcc -print-file-name=libgcc_s.so.1) $package_install_dir$prefix/lib/
+            cp -v $($host-gcc -print-file-name=libgcc_s.so.1) \
+                  $($host-gcc -print-file-name=libatomic.so.1) $package_install_dir$prefix/lib/
             ;;
         libstdc++)
             _link_lib64
