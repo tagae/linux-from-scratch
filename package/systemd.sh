@@ -11,24 +11,7 @@ prepare() {
             # setup leaves it alone, and ninja regenerates it with the old ones.
             find . -mindepth 1 -delete
 
-            cat > cross.ini <<EOF
-[host_machine]
-system = 'linux'
-cpu_family = '$target_arch'
-cpu = '$target_arch'
-endian = 'little'
-
-[binaries]
-c = '$host-gcc'
-cpp = '$host-g++'
-ar = '$host-ar'
-strip = '$host-strip'
-pkg-config = 'pkg-config'
-
-[properties]
-sys_root = '$sysroot'
-pkg_config_libdir = ['$sysroot/usr/lib/pkgconfig', '$sysroot/usr/share/pkgconfig']
-EOF
+            meson_cross_file
 
             # Pinned because meson would otherwise take them from the build machine: libdir (a
             # multiarch directory), split-bin (whether /usr/sbin is a symlink) and the system
