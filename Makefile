@@ -27,12 +27,20 @@ export LFS_RELEASE ?= r13.0-143
 # Making an image opens loop devices and mounts file systems, which needs root access.
 SUDO ?= sudo --preserve-env
 
+# The system that the default targets build: its key is <platform>-<userland>[+<capabilities>],
+# with the capabilities in alphabetical order, as `lfs` names it.
+PLATFORM ?= virt
+USERLAND ?= systemd-gnu
+CAPS ?=
+space := $(subst ,, )
+SYSTEM := $(PLATFORM)-$(USERLAND)$(subst $(space),,$(foreach cap,$(sort $(CAPS)),+$(cap)))
+
 # Default targets.
-tools: virt-systemd-gnu-tools
-system: virt-systemd-gnu-system
-image: image/virt-systemd-gnu.img
-qemu: virt-systemd-gnu-qemu
-test: virt-systemd-gnu-test
+tools: $(SYSTEM)-tools
+system: $(SYSTEM)-system
+image: image/$(SYSTEM).img
+qemu: $(SYSTEM)-qemu
+test: $(SYSTEM)-test
 
 %-tools %-system image/%.img %-qemu: export SYSTEM_KEY = $*
 
@@ -74,9 +82,9 @@ pristine: distclean
 #---===[ Docker ]===---
 
 # Default Docker targets.
-docker-tools: docker-virt-systemd-gnu-tools
-docker-system: docker-virt-systemd-gnu-system
-docker-image: docker-image/virt-systemd-gnu.img
+docker-tools: docker-$(SYSTEM)-tools
+docker-system: docker-$(SYSTEM)-system
+docker-image: docker-image/$(SYSTEM).img
 
 # Environment variables picked up automatically by Docker Compose.
 .env:
