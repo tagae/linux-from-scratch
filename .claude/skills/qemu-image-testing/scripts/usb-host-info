@@ -1,0 +1,13 @@
+#!/bin/sh
+# Lists the USB devices of the Mac as QEMU's usb-host sees them: bus, address, port and ids. The bus
+# and the port path (not the address, which changes whenever a device re-enumerates) select a device:
+#   -device usb-host,hostbus=2,hostport=1.1
+# This is the same for every platform: the numbers name the device on the Mac, not in the guest.
+#
+# Usage: usb-host-info [PATTERN]     e.g. usb-host-info 1050: for Yubico; default every device
+# Needs no root: listing does not claim the devices. Passing one through does.
+qemu=$(command -v qemu-system-aarch64 || command -v qemu-system-arm || command -v qemu-system-x86_64) \
+    || { echo "usb-host-info: no qemu-system-* on PATH" >&2; exit 1; }
+printf 'info usbhost\nquit\n' \
+    | "$qemu" -nodefaults -no-user-config -M none -display none -S -monitor stdio 2>&1 \
+    | tr -d '\r' | grep -a -B1 "USB device ${1:-}" | grep -a -v '^--'

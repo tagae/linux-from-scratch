@@ -1,0 +1,15 @@
+#!/bin/sh
+# Waits until a process has ended, but returns before the Bash tool's 600 s limit would move the call
+# to the background. Prints "finished", or "still running" (exit 1): call it again.
+#
+# Usage: wait-pid PID [SECONDS]     SECONDS defaults to 570
+# Waiting on the PID is deliberate: `pgrep -f make` in a wait loop matches the loop itself.
+pid=${1:?Usage: wait-pid PID [SECONDS]}
+limit=${2:-570}
+i=0
+while kill -0 "$pid" 2>/dev/null; do
+    [ "$i" -lt "$limit" ] || { echo "still running"; exit 1; }
+    sleep 5
+    i=$((i + 5))
+done
+echo finished
