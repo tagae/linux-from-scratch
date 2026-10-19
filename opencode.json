@@ -13,7 +13,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "name": "MLX (local)",
       "settings": {
-        "baseURL": "http://host.docker.internal:8080/v1"
+        "baseURL": "http://host.docker.internal:8000/v1"
       },
       "models": {
         "qwen3.8-27b-4bit": {
