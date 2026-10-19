@@ -1,0 +1,32 @@
+#!/bin/sh
+# Makes the image of a USB stick for QEMU: an MBR partition table with one FAT32 partition, as real
+# sticks come, or with PARTITIONED=0 a FAT32 file system on the whole device.
+#
+# Usage: make-fat-stick [PATH [SIZE]]    default image/stick/stick.img, 128M
+#
+# It is made with the tools of the scratch container (sfdisk, mkfs.fat), whose image and tools
+# volume must exist, and PATH must be under $HOME: Colima shares nothing else with containers, and
+# binding a path elsewhere gives an empty directory. Attach it to QEMU with
+#   -drive if=none,id=stick,file=PATH,format=raw -device usb-storage,drive=stick
+# and boot a COPY of it each time (booting writes to it).
+set -eu
+path=${1:-image/stick/stick.img}
+size=${2:-128M}
+mkdir -p "$(dirname "$path")"
+dir=$(cd "$(dirname "$path")" && pwd)
+name=$(basename "$path")
+case $dir in "$HOME"/*) ;; *) echo "make-fat-stick: $dir is not under \$HOME" >&2; exit 1 ;; esac
+
+docker run --rm -v linux-from-scratch_tools:/mnt/lfs/tools:ro -v "$dir":/img \
+    -e NAME="$name" -e SIZE="$size" -e PARTITIONED="${PARTITIONED:-1}" \
+    linux-from-scratch-scratch:latest sh -c '
+        export PATH=/mnt/lfs/tools/bin:/mnt/lfs/tools/usr/bin:/mnt/lfs/tools/usr/sbin:$PATH
+        rm -f /img/$NAME
+        truncate -s $SIZE /img/$NAME
+        if [ "$PARTITIONED" = 1 ]; then
+            printf "label: dos\nstart=2048, type=c\n" | sfdisk -q /img/$NAME
+            mkfs.fat -F 32 -n STICK --offset 2048 /img/$NAME > /dev/null
+        else
+            mkfs.fat -F 32 -n STICK /img/$NAME > /dev/null
+        fi'
+echo "$dir/$name"

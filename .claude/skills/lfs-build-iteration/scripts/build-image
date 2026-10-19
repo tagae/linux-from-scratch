@@ -1,0 +1,23 @@
+#!/bin/sh
+# Starts the build of a system's image in the background and prints the PID and the log.
+#
+# Usage: build-image KEY [LOGDIR]     LOGDIR defaults to $TMPDIR or /tmp
+#   build-image pi0-systemd-gnu+gnupg+usb-storage+yubikey
+#   wait-pid <PID>        then      build-summary <LOG>
+#
+# It runs `make docker-image/KEY.img`, which builds the tools (stamped), the system from archives and
+# the packages whose archive is missing, and the image. Never start two builds for pi0 keys at once:
+# they share and wipe work/pi0-systemd-gnu/sysroot (see the skill).
+set -eu
+key=${1:?Usage: build-image KEY [LOGDIR]}
+logdir=${2:-${TMPDIR:-/tmp}}
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../../../.." && pwd)
+if ps aux | grep -E '[m]ake docker-|[d]ocker compose run' | grep -q .; then
+    echo "build-image: a build is already running" >&2; exit 1
+fi
+log=$logdir/build-$(printf %s "$key" | tr '+' '_').log
+cd "$root"
+nohup make "docker-image/$key.img" > "$log" 2>&1 &
+echo $! > "$log.pid"
+echo "pid $! log $log"

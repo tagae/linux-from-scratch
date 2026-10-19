@@ -1,0 +1,96 @@
+#!/bin/sh
+# Boots a built image under QEMU exactly as `./lfs qemu` does (so with the settings of its platform:
+# pi0, virt, arm64, amd64), logs in as root, runs one command line, powers off, and prints what the
+# command printed. Or, with --print, prints the QEMU command line instead of running it.
+#
+# Usage: qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
+#   KEY            system key of the image, e.g. pi0-systemd-gnu+gnupg+usb-storage+yubikey or virt-systemd-gnu
+#   EXTRA ARGS     appended to the QEMU command line (`lfs qemu` reads them from QEMU_EXTRA),
+#                  e.g. "-device usb-ccid"
+#   GUEST COMMAND  one line for the guest's shell (bash-like), default `systemctl is-system-running`
+#   --print        print the command line, quoted for the shell, for the COPY of the image; the copy is
+#                  made if missing (image/KEY.qemu.img unless IMAGE_COPY is set). Use it to give the
+#                  user a command to run under sudo, or to see what a platform runs.
+#
+# Environment:
+#   IMAGE_COPY=PATH    boot this copy of the image, making it from image/KEY.img if it does not exist,
+#                      and keep it: a second call sees what the first left (clock, files)
+#   EXPECT_SCRIPT=PATH run this expect script instead of qemu-run.exp; it sources boot.tcl, which
+#                      gives it a logged-in shell (see examples/)
+#   VERBOSE=1          print the whole console instead of what the command printed
+#   TIMEOUT=SECONDS    for the login prompt and for the command (default 400)
+#   STATE_DIR=PATH     where work/ and image/ are, as for lfs (default: the repo)
+#
+# The image is always a COPY: booting writes to it. Failure prints the end of the console and its path.
+set -eu
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../../../.." && pwd)
+cd "$root"
+
+mode=run
+if [ "${1:-}" = --print ]; then mode=print; shift; fi
+key=${1:?Usage: qemu-check [--print] KEY [EXTRA QEMU ARGS] [GUEST COMMAND]}
+extra=${2:-}
+cmd=${3:-systemctl is-system-running}
+
+state=${STATE_DIR:-$root}
+image=$state/image/$key.img
+[ -f "$image" ] || { echo "qemu-check: no $image: make docker-image/$key.img first" >&2; exit 1; }
+[ -f "$state/work/boot/$key/kernel.img" ] \
+    || { echo "qemu-check: no kernel for $key under $state/work/boot" >&2; exit 1; }
+
+copy=${IMAGE_COPY:-}
+if [ -z "$copy" ]; then
+    if [ $mode = print ]; then
+        copy=$state/image/$key.qemu.img
+    else
+        copy=$(mktemp "${TMPDIR:-/tmp}/qemu-check.XXXXXX")
+        trap 'rm -f "$copy"' EXIT
+    fi
+fi
+if [ ! -s "$copy" ]; then
+    /bin/cp -c "$image" "$copy" 2>/dev/null || cp "$image" "$copy"
+fi
+export SYSTEM_KEY=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
+
+if [ $mode = print ]; then
+    # `lfs qemu` execs the platform's QEMU, whose name the platform file fixes (readonly), so a stand-in
+    # of that name first in PATH prints the arguments it was given instead.
+    bin=$( . "lib/platform/${key%%-*}.sh"; echo "${QEMU:-qemu-system-$target_arch}" )
+    shim=$(mktemp -d "${TMPDIR:-/tmp}/qemu-shim.XXXXXX")
+    trap 'rm -rf "$shim"' EXIT
+    cat > "$shim/$bin" <<'SHIM'
+#!/bin/sh
+printf '%s' "$(basename "$0")"
+for a; do
+    case $a in
+        ''|*[!A-Za-z0-9_./:=,+@%-]*) printf " '%s'" "$(printf %s "$a" | sed "s/'/'\\\\''/g")" ;;
+        *) printf ' %s' "$a" ;;
+    esac
+done
+echo
+SHIM
+    chmod +x "$shim/$bin"
+    PATH=$shim:$PATH ./lfs qemu "$copy"
+    echo "# the image copy: $copy" >&2
+    exit 0
+fi
+
+# The guest prints the markers from split strings, so that the echo of the typed line does not match.
+export GUEST_CMD="echo QEMU_CHECK''_BEGIN; $cmd; echo QEMU_CHECK''_END"
+log=$(mktemp "${TMPDIR:-/tmp}/qemu-check-log.XXXXXX")
+status=0
+expect "${EXPECT_SCRIPT:-$here/qemu-run.exp}" 2>&1 | tr -d '\r' | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' > "$log" || status=$?
+
+if [ "${VERBOSE:-}" = 1 ]; then
+    cat "$log"
+elif grep -q '^QEMU_CHECK_BEGIN' "$log"; then
+    sed -n '/^QEMU_CHECK_BEGIN/,/^QEMU_CHECK_END/p' "$log" | sed '1d;$d'
+else
+    echo "qemu-check: the command did not run; end of the console ($log):" >&2
+    tail -25 "$log" >&2
+    exit 1
+fi
+rm -f "$log"
+exit $status

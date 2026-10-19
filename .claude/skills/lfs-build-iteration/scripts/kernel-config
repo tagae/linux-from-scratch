@@ -1,0 +1,21 @@
+#!/bin/sh
+# Shows options of the kernel configuration that a build resolved, from the `work` volume.
+#
+# Usage: kernel-config KEY OPTION...    e.g. kernel-config pi0-systemd-gnu+gnupg+yubikey PM HIDRAW
+#
+# OPTION is written without CONFIG_. Prints the line of .config, or "CONFIG_X absent" when the option
+# does not exist for the architecture or was dropped. Use it after editing a package/linux/*.config
+# fragment: allnoconfig turns every option off that the fragments and their dependencies do not set,
+# even those that default to y.
+set -eu
+key=${1:?Usage: kernel-config KEY OPTION...}
+shift
+docker run --rm -i -v linux-from-scratch_work:/w:ro linux-from-scratch-dev sh -s -- "$key" "$@" <<'SCRIPT'
+key=$1; shift
+cfg=$(find "/w/$key" -maxdepth 5 -path '*build/linux/.config' | head -1)
+[ -n "$cfg" ] || { echo "no resolved .config for $key" >&2; exit 1; }
+echo "# $cfg"
+for o in "$@"; do
+    grep -E "^(CONFIG_$o=|# CONFIG_$o is not set)" "$cfg" || echo "CONFIG_$o absent"
+done
+SCRIPT

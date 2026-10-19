@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+# Boots the image, runs the guest command in GUEST_CMD, and powers off. qemu-check runs it.
+source [file join [file dirname [info script]] boot.tcl]
+send "$env(GUEST_CMD)\r"
+expect {
+    -re {\nQEMU_CHECK_END} { }
+    timeout { puts "\nFAIL: the command did not finish in $timeout seconds" }
+}
+send "poweroff\r"
+expect eof
