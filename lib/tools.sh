@@ -76,12 +76,7 @@ lfs_tools_bootstrap() {
     )
 
     (
-        export CC=$TOOL_DIR/usr/bin/gcc
-        export CXX=$TOOL_DIR/usr/bin/g++
-
-        # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig, and the
-        # .pc files there record /usr paths that live under TOOL_DIR.
-        export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$TOOL_DIR
+        lfs_tools_set_env
 
         ( curses=no; lfs_install_package bash )
         lfs_install_package coreutils
@@ -114,19 +109,10 @@ lfs_tools_bootstrap() {
 lfs_tools_build() {
     mkdir -p ${TMPDIR:-/tmp}
 
-    # Build with the compiler bootstrap staged, not with whatever `gcc` comes first in PATH. The
-    # scratch container mounts TOOL_DIR over /usr, but on a Linux host /usr holds the host's own
-    # toolchain, whose linker resolves the absolute /usr/lib paths in TOOL_DIR's linker scripts
-    # (libc.so) against the host's libc. The bootstrapped gcc has TOOL_DIR as its sysroot, and runs
-    # its own as and ld.
-    export CC=$TOOL_DIR/usr/bin/gcc CXX=$TOOL_DIR/usr/bin/g++
+    lfs_tools_set_env
 
     # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
     export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
-
-    # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig, and the
-    # .pc files there record /usr paths that live under TOOL_DIR.
-    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$TOOL_DIR
 
     readonly prefix=/usr
     readonly nls=no
@@ -184,6 +170,34 @@ lfs_tools_build() {
     lfs_install_package libaio
     lfs_install_package lvm2#device-mapper
     lfs_install_package multipath-tools#kpartx
+}
+
+# Installs a package that runs on the build machine into TOOL_DIR, built as the tools are, from
+# another phase, such as the system's.
+lfs_tools_install() (
+    unset host
+    package_variant=tools
+    package_install_dir=$TOOL_DIR
+    lfs_tools_set_env
+    lfs_tools_set_rtld_ldflags
+    lfs_install_package $1
+)
+
+# Sets the environment that the tools are built in.
+#
+# They are built with the compiler that bootstrap staged, not with whatever `gcc` comes first in
+# PATH. The scratch container mounts TOOL_DIR over /usr, but on a Linux host /usr holds the host's
+# own toolchain, whose linker resolves the absolute /usr/lib paths in TOOL_DIR's linker scripts
+# (libc.so) against the host's libc. The bootstrapped gcc has TOOL_DIR as its sysroot, and runs its
+# own as and ld.
+lfs_tools_set_env() {
+    export CC=$TOOL_DIR/usr/bin/gcc CXX=$TOOL_DIR/usr/bin/g++
+
+    # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig, and the
+    # .pc files there record /usr paths that live under TOOL_DIR. The system phase points the
+    # system search paths at its sysroot.
+    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$TOOL_DIR
+    unset PKG_CONFIG_SYSTEM_INCLUDE_PATH PKG_CONFIG_SYSTEM_LIBRARY_PATH
 }
 
 # Exports LDFLAGS so that native binaries carry a TOOL_DIR-relative interpreter/rpath

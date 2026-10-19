@@ -7,24 +7,11 @@
 prepare() {
     case $package_component in
         systemd)
-            cat > cross.ini <<EOF
-[host_machine]
-system = 'linux'
-cpu_family = '$target_arch'
-cpu = '$target_arch'
-endian = 'little'
+            # A build directory that meson configured earlier keeps its options and compilers:
+            # setup leaves it alone, and ninja regenerates it with the old ones.
+            find . -mindepth 1 -delete
 
-[binaries]
-c = '$host-gcc'
-cpp = '$host-g++'
-ar = '$host-ar'
-strip = '$host-strip'
-pkg-config = 'pkg-config'
-
-[properties]
-sys_root = '$sysroot'
-pkg_config_libdir = ['$sysroot/usr/lib/pkgconfig', '$sysroot/usr/share/pkgconfig']
-EOF
+            meson_cross_file
 
             # Pinned because meson would otherwise take them from the build machine: libdir (a
             # multiarch directory), split-bin (whether /usr/sbin is a symlink) and the system
@@ -80,7 +67,8 @@ EOF
                 -Dlibcryptsetup=disabled \
                 -Dnetworkd=false \
                 -Dresolve=false \
-                -Dtimesyncd=false \
+                -Dtimesyncd=true \
+                -Dntp-servers= \
                 -Dhostnamed=false \
                 -Dlocaled=false \
                 -Dtimedated=false \
@@ -138,6 +126,31 @@ install() {
     case $package_component in
         systemd)
             DESTDIR=$package_install_dir env PATH=$TOOL_DIR/usr/bin:$PATH ninja install
+
+            # Boards without a battery-backed clock start each boot at the date systemd was built.
+            # timesyncd saves the clock every minute and on shutdown, and restores it at the next
+            # boot. It has no NTP servers: without a network it only keeps the clock. Distributions
+            # enable it with a preset; nothing here applies presets, so make the link that
+            # `systemctl enable` makes from its [Install] section (the alias is for D-Bus
+            # activation, which these systems lack).
+            mkdir -pv $package_install_dir/etc/systemd/system/sysinit.target.wants
+            ln -sv $prefix/lib/systemd/system/systemd-timesyncd.service \
+                $package_install_dir/etc/systemd/system/sysinit.target.wants/
+
+            # The default settings for what these kernels lack (SysRq, core dumps, an IPv4 stack)
+            # fail at every boot. Only the file protections apply.
+            cat > $package_install_dir$prefix/lib/sysctl.d/50-default.conf <<'EOF'
+# systemd's own 50-default.conf, without the settings for what these kernels lack: SysRq, core
+# dumps and an IPv4 stack. Applying them would fail at every boot.
+
+# Enable hard and soft link protection
+fs.protected_hardlinks = 1
+fs.protected_symlinks = 1
+
+# Enable regular file and FIFO protection
+fs.protected_regular = 1
+fs.protected_fifos = 1
+EOF
 
             # X11's xinit script and socket directories are installed unconditionally; nothing here
             # uses X11.

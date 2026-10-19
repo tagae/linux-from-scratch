@@ -12,8 +12,8 @@
 #   -a ALGO        ed25519 (the default; the encryption subkey is cv25519), or an
 #                  RSA size such as rsa4096, for every key         ($ALGO)
 #   -p PASSPHRASE  Passphrase that protects the secret key         ($PASSPHRASE)
-#   -d USB_DEV     Device of the stick, a FAT file system on the
-#                  whole device or on its first partition          ($USB_DEV, /dev/sda)
+#   -d USB_DEV     Device of the stick, a FAT file system on its first partition or, if it
+#                  has no partitions, on the whole device          ($USB_DEV, /dev/sda)
 #
 # Options can also be given as the environment variables shown, which keeps a passphrase out of
 # the process list. Options win over variables.
@@ -73,17 +73,17 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 1' INT TERM HUP
 
+# Sticks come with a partition table, or with the file system on the whole device.
+USB_PART=$USB_DEV
+[ ! -b "${USB_DEV}1" ] || USB_PART=${USB_DEV}1
+
 mkdir -p "$USB_MOUNT"
-if mount -t vfat "$USB_DEV" "$USB_MOUNT" 2>/dev/null; then
-    :
-elif mount -t vfat "${USB_DEV}1" "$USB_MOUNT" 2>/dev/null; then
-    :
-else
-    echo "gpg-genkey: failed to mount $USB_DEV (or ${USB_DEV}1) as vfat on $USB_MOUNT" >&2
+mount -t vfat "$USB_PART" "$USB_MOUNT" || {
+    echo "gpg-genkey: failed to mount $USB_PART as vfat on $USB_MOUNT" >&2
     exit 1
-fi
+}
 MOUNTED=yes
-echo "gpg-genkey: mounted $USB_DEV on $USB_MOUNT"
+echo "gpg-genkey: mounted $USB_PART on $USB_MOUNT"
 
 # The passphrase reaches gpg on its standard input, out of the process list, and the agent through
 # the loopback pinentry. Keys never expire: this GnuPG rejects the expiration "default".
