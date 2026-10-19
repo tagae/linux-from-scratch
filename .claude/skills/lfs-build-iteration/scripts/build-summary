@@ -1,0 +1,13 @@
+#!/bin/sh
+# Summarises the log of a build: errors, whether anything was compiled, and how it ended.
+#
+# Usage: build-summary LOG
+# "compiled" counts lines of compilers (C, ninja, cargo) and configure scripts: a build that only unpacked archives
+# has about none, so a number there means some package ran (its archive was missing or deleted).
+log=${1:?Usage: build-summary LOG}
+echo "lines: $(wc -l < "$log" | tr -d ' ')"
+echo "errors: $(grep -c -E 'make: \*\*\*|rror:|FAILED|Failed to' "$log" || true)"
+echo "compiled: $(grep -c -E '^\[[0-9]+/[0-9]+\] |^  (CC|CXX|LD|CCLD) |^checking for |^ +Compiling ' "$log" || true)"
+grep -n -m3 -E 'make: \*\*\*|rror:|FAILED' "$log" | cut -c1-200
+grep -m1 -E '^image \(done\)' "$log" || true
+tail -3 "$log" | cut -c1-120

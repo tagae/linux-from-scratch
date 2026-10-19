@@ -1,0 +1,61 @@
+#!/bin/sh
+# Proves that a refactor of framework shell code (lib/*.sh) leaves the environment of every package
+# install unchanged, without rebuilding anything: runs a driver against the old and the new version of
+# a file with lfs_install_package stubbed to print the variables that matter, under bash and under
+# dash (the build shells), and compares.
+#
+# Usage: env-trace OLD_FILE NEW_FILE 'DRIVER' [STUBS_FILE]
+#   OLD_FILE   the file before the change, e.g. from `git show HEAD:lib/tools.sh > /tmp/old.sh`
+#   NEW_FILE   the file after it
+#   DRIVER     what to run, e.g. lfs_tools_build, or lfs_tools_bootstrap, or several lines
+#   STUBS_FILE shell code run before the file is read, to stub what the driver needs; the defaults
+#              stub bail, lfs_package_version, mkdir and cp and set TOOL_DIR=/T, BOOTSTRAP_DIR=/B
+# Environment: TRACE_VARS, the variables printed at every lfs_install_package.
+#
+# Prints IDENTICAL or DIFFERENT (with the first differing lines) for each shell. Files under $HOME
+# only: dash runs in the dev container, with the script text on stdin. Needs the dev image.
+set -eu
+old=${1:?Usage: env-trace OLD NEW DRIVER [STUBS]}
+new=${2:?}
+driver=${3:?}
+stubs=${4:-}
+vars=${TRACE_VARS:-package_variant package_install_dir CC CXX PKG_CONFIG_LIBDIR PKG_CONFIG_SYSROOT_DIR PKG_CONFIG_SYSTEM_INCLUDE_PATH PKG_CONFIG_SYSTEM_LIBRARY_PATH LDFLAGS GCONV_PATH prefix nls host}
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/env-trace.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+
+script() { # script FILE
+    cat <<STUBS
+TOOL_DIR=/T
+BOOTSTRAP_DIR=/B
+bail() { echo "BAIL \$*"; exit 1; }
+lfs_package_version() { echo 1.0; }
+mkdir() { :; }
+cp() { :; }
+lfs_tools_set_rtld_ldflags() { export LDFLAGS="-Wl,--dynamic-linker=/T/usr/lib/ld.so"; }
+lfs_install_package() {
+    printf '%s' "\$1"
+    for v in $vars; do eval "printf ' | \$v=%s' \"\\\${\$v-}\""; done
+    echo
+}
+STUBS
+    [ -z "$stubs" ] || cat "$stubs"
+    cat "$1"
+    # The stubs above must win over the file's own definitions of the same names.
+    printf '%s\n' 'lfs_tools_set_rtld_ldflags() { export LDFLAGS="-Wl,--dynamic-linker=/T/usr/lib/ld.so"; }'
+    printf '%s\n' "$driver"
+}
+
+status=0
+for shell in bash dash; do
+    for v in old new; do
+        f=$old; [ $v = new ] && f=$new
+        script "$f" > "$tmp/$v.script"
+        if [ $shell = bash ]; then bash "$tmp/$v.script" > "$tmp/$v.$shell" 2>&1 || true
+        else docker run --rm -i linux-from-scratch-dev dash -s < "$tmp/$v.script" > "$tmp/$v.$shell" 2>&1 || true; fi
+    done
+    n=$(wc -l < "$tmp/new.$shell" | tr -d ' ')
+    if [ "$n" -eq 0 ]; then echo "$shell: the driver printed nothing (stubs missing?)"; status=1
+    elif diff "$tmp/old.$shell" "$tmp/new.$shell" > "$tmp/d.$shell"; then echo "$shell: IDENTICAL ($n installs)"
+    else echo "$shell: DIFFERENT"; head -6 "$tmp/d.$shell" | cut -c1-200; status=1; fi
+done
+exit $status

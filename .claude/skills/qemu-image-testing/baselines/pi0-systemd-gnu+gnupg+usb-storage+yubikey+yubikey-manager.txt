@@ -1,0 +1,9 @@
+state: running
+failed units: 0
+--- dmesg, warnings and worse
+initcall_blacklist requires CONFIG_KALLSYMS
+dwc2 20980000.usb: dwc2_check_params: Invalid parameter max_packet_count=511
+dwc2 20980000.usb: dwc2_check_params: Invalid parameter max_transfer_size=65535
+sdhost-bcm2835 20202000.mmc: unable to initialise DMA channel. Falling back to PIO
+check access for rdinit=/init failed: -2, ignoring
+--- journal, warnings and worse, not the kernel

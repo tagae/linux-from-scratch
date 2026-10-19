@@ -1,0 +1,29 @@
+#!/bin/sh
+# Scans the install tree of a system for shared libraries that are needed but not shipped, and for
+# RPATHs that are not /usr/lib. Run it before booting a new package set.
+#
+# Usage: missing-libs KEY      e.g. missing-libs pi0-systemd-gnu+gnupg+usb-storage+yubikey
+#
+# KEY's tree is in the `install` volume of the last build of KEY. Prints one line per problem:
+#   path  NEEDS  libfoo.so.1         no file of that name is in the tree
+#   path  RPATH  /some/build/dir     an RPATH or RUNPATH outside /usr/lib, /lib and $ORIGIN
+# and nothing when the tree is clean. Dlopened libraries are not seen (python, scdaemon plugins).
+# The base system has known build-path RPATHs (shadow's chfn chsh gpasswd login newgrp passwd su
+# chgpasswd chpasswd newusers sulogin, util-linux's more and cfdisk): only new lines matter.
+set -eu
+key=${1:?Usage: missing-libs KEY}
+docker run --rm -i -v linux-from-scratch_install:/i:ro linux-from-scratch-dev sh -s -- "/i/$key" <<'SCRIPT'
+root=$1
+[ -d "$root" ] || { echo "no install tree $root" >&2; exit 1; }
+find "$root" -type f -o -type l | sed 's#.*/##' | sort -u > /tmp/provided
+find "$root" -type f \( -perm -u+x -o -name '*.so*' \) | while read -r f; do
+    head -c4 "$f" 2>/dev/null | grep -q 'ELF' || continue
+    readelf -d "$f" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | while read -r n; do
+        grep -qxF "$n" /tmp/provided || echo "${f#"$root"/}  NEEDS  $n"
+    done
+    readelf -d "$f" 2>/dev/null | sed -n 's/.*(\(RPATH\|RUNPATH\)).*\[\(.*\)\]/\2/p' | tr ':' '\n' \
+        | while read -r p; do
+            case $p in /usr/lib|/usr/lib/*|/lib|/lib/*|'$ORIGIN'*|'') ;; *) echo "${f#"$root"/}  RPATH  $p" ;; esac
+        done
+done | sort -u
+SCRIPT

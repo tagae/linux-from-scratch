@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+# An example of a test that answers prompts: imports the secret key that gpg-genkey wrote on a USB
+# stick into a temporary GnuPG home, typing the passphrase when pinentry-tty asks for it on the
+# serial console. The same pattern drives any other prompt, a YubiKey PIN included.
+#
+#   stick=$(.claude/skills/qemu-image-testing/scripts/make-fat-stick /Users/you/.../stick.img)
+#   qemu-check KEY "-drive if=none,id=stick,file=$stick,format=raw -device usb-storage,drive=stick" \
+#       'PASSPHRASE=test-passphrase gpg-genkey -n "Test Key" -e test@example.org'
+#   EXPECT_SCRIPT=.claude/skills/qemu-image-testing/examples/pinentry-import.exp \
+#       qemu-check KEY "-drive if=none,id=stick,file=$stick,format=raw -device usb-storage,drive=stick"
+#
+# Scripts print the two markers around what they want shown, as qemu-check's own command line does.
+source [file join [file dirname [info script]] .. scripts boot.tcl]
+
+puts "\nQEMU_CHECK_BEGIN"
+# The marker is typed from a split string, so that the echo of the line does not match it.
+send "mkdir -p /mnt/usb && mount -t vfat /dev/sda1 /mnt/usb && export GNUPGHOME=\$(mktemp -d /run/gnupg.XXXXXX) && gpg --import /mnt/usb/test@example.org-secret.asc; echo IMPORT''_RC=\$?\r"
+expect {
+    -re {assphrase:} { puts ">>> pinentry-tty asked for the passphrase"; send "test-passphrase\r" }
+    timeout { puts "FAIL: no pinentry prompt"; exit 1 }
+}
+expect {
+    -re {\nIMPORT_RC=([0-9]+)} { puts ">>> gpg exit code $expect_out(1,string)" }
+    timeout { puts "FAIL: gpg did not finish"; exit 1 }
+}
+send "gpg --list-secret-keys --keyid-format long | grep -E 'sec|ssb'; echo LIST''_END\r"
+expect -re {\nLIST_END}
+puts "\nQEMU_CHECK_END"
+send "umount /mnt/usb; poweroff\r"
+expect eof

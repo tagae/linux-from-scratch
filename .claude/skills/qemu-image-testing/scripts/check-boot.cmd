@@ -1,0 +1,1 @@
+echo "state: $(systemctl is-system-running)"; echo "failed units: $(systemctl --failed --no-pager --plain --no-legend | wc -l)"; echo "--- dmesg, warnings and worse"; dmesg --level=emerg,alert,crit,err,warn | cut -c1-170; echo "--- journal, warnings and worse, not the kernel"; journalctl -b --no-pager -p warning | grep -v " kernel: " | cut -c1-200
