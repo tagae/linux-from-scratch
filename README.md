@@ -208,7 +208,8 @@ make pi0-systemd-gnu+gnupg-test
 ```
 
 Images are file targets under that same key, so `make image/pi0-systemd-gnu+usb-storage.img`
-produces an image for the `pi0` platform featuring the `usb-storage` capability.
+produces an image for the `pi0` platform featuring the `usb-storage` capability. An image appears
+only once it is complete.
 
 Package archives are filed under the key of the system as it stands when they are built: the base
 system's under `<platform>-<userland>`, the kernel's under that key extended with all the system's
