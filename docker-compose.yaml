@@ -107,8 +107,6 @@ services:
     tty: true
     stdin_open: true
     privileged: true
-    group_add: # Lets the `lfs` user use the Docker socket, owned by the daemon host's `docker` group.
-      - ${DOCKER_GID:-991} # That of the Colima VM.
     volumes:
       - type: bind
         source: .
@@ -130,9 +128,6 @@ services:
       - type: volume
         source: install
         target: /mnt/lfs/install
-      - type: bind
-        source: /var/run/docker.sock
-        target: /var/run/docker.sock
 
 volumes:
   source:
