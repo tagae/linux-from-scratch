@@ -9,8 +9,9 @@
 # components. The toolchain finds the platform's headers and libraries there, with no extra flags.
 # Every platform goes through a cross toolchain, even one with the build machine's architecture.
 #
-# A capability adds the packages listed in lib/capability/<capability>.sh, installed the same way
-# after those of the base system.
+# A capability is kernel support, configured by capability/<capability>.config. A feature adds the
+# packages listed in feature/<feature>.sh, installed the same way after the kernel. Either names the
+# capabilities it needs on a `# Requires:` line.
 
 lfs_system() {
     case "${1:-help}" in
@@ -151,10 +152,10 @@ lfs_system_build() {
     lfs_system_install mandoc
     lfs_system_install texinfo
 
-    # Each capability installs its own packages.
-    for cap in $CAPS; do
+    # The kernel is archived under the capabilities that configure it, which the features leave
+    # unchanged.
+    for cap in $capabilities; do
         package_key=$package_key+$cap
-        . $project_dir/lib/capability/$cap.sh
     done
 
     # Chapter 10: Making the LFS System Bootable
@@ -164,6 +165,11 @@ lfs_system_build() {
         lfs_system_install firmware
         lfs_system_install boot
     fi
+
+    for feature in $features; do
+        package_key=$package_key+$feature
+        ( . $feature_dir/$feature.sh )
+    done
 
     # QEMU runs on the host, which cannot see the install tree (a Docker volume), but sees
     # WORK_DIR/boot.
@@ -179,6 +185,24 @@ lfs_system_build() {
 lfs_system_install() {
     lfs_install_package $1
     ( package_install_dir=$system_dir; lfs_unarchive_package $1 )
+}
+
+# Prints the capabilities that a capability or a feature requires, from its `# Requires:` line.
+lfs_requires() {
+    sed -n 's/^# Requires://p' $1
+}
+
+# Adds a capability to `capabilities`, with the capabilities that it requires.
+lfs_add_capability() {
+    case " $capabilities " in
+        *" $1 "*) return 0 ;;
+    esac
+    [ -f $capability_dir/$1.config ] || bail "Unknown capability '$1'"
+    capabilities="$capabilities $1"
+    local required
+    for required in $(lfs_requires $capability_dir/$1.config); do
+        lfs_add_capability $required
+    done
 }
 
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the

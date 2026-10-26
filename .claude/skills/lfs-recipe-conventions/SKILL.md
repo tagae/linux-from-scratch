@@ -1,10 +1,10 @@
 ---
 name: lfs-recipe-conventions
-description: Rules for writing or changing recipes, capabilities, kernel fragments and framework helpers in this LFS framework - the user's preferences, where each kind of code goes, naming, pinning and licences, systemd and kernel idioms, cross-compilation idioms (meson, Python, Rust, same-triple platforms), ARMv6 pitfalls, and the checklist before calling a change done. Use before adding or editing anything under package/, lib/ or package/linux/. Read CONTRIBUTING.md too; this adds what it does not say.
+description: Rules for writing or changing recipes, capabilities, features, kernel fragments and framework helpers in this LFS framework - the user's preferences, where each kind of code goes, naming, pinning and licences, systemd and kernel idioms, cross-compilation idioms (meson, Python, Rust, same-triple platforms), ARMv6 pitfalls, and the checklist before calling a change done. Use before adding or editing anything under package/, lib/ or package/linux/. Read CONTRIBUTING.md too; this adds what it does not say.
 model: sonnet
 ---
 
-# Writing recipes and capabilities here
+# Writing recipes, capabilities and features here
 
 CONTRIBUTING.md has the package model (hooks, components, uppercase external / lowercase internal never-exported
 variables, POSIX shell, the ash/dash pipeline gotcha). Read two recipes like yours before starting: copy idioms,
@@ -36,18 +36,21 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 |---|---|
 | One package's build | `package/<name>.sh`: `case $package_component`, `default_*` for the rest |
 | Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
-| What a capability installs | `lib/capability/<cap>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order |
-| Helpers of one capability | in its file (recipes run in subshells that inherit them) |
+| A capability (kernel support) | `capability/<cap>.config`: a fragment, with a `# Requires: <cap>...` line for the capabilities it builds on |
+| What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
+| Helpers of one feature | in its file (recipes run in subshells that inherit them) |
 | Helpers several recipes share | `lib/<topic>.sh` sourced in `lfs` (`lib/meson.sh`); recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options | `package/linux/{base,hardening,<machine>,arch-<arch>,<userland>,<cap>}.config`, each with its reason |
+| Kernel options | `package/linux/{base,hardening,<machine>,arch-<arch>,<userland>}.config`, `capability/<cap>.config`, each with its reason |
 | Device tree changes | override nodes appended in `package/linux.sh` `prepare` (later definitions win) |
 | Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
 
-A cap that needs another bails: `case " $CAPS " in *" other "*) ;; *) bail "..." esac`, and its header comment says
-what it enables and how it changes the others. Caps install in alphabetical order, so name a dependent after its
-dependency (`yubikey` < `yubikey-manager`). Build-machine tools a system build needs (swig, the Rust seed, native
-Python modules) are installed into TOOL_DIR from the cap with `lfs_tools_install <package>`, archived `*-tools-*`,
-never shipped.
+A capability is what the system supports (a kind of device), a feature a tool set for users. A capability installs no
+packages; a feature touches no kernel option: a kernel need becomes a capability the feature requires. The system
+gets the required capabilities along (the key leaves them out). Features require capabilities only and install in
+alphabetical order, each in a subshell; one that needs another's packages installs them itself. Each file's header
+says what it enables and how it changes the others. Build-machine tools a system build needs (swig, the Rust seed,
+native Python modules) are installed into TOOL_DIR from the feature with `lfs_tools_install <package>`, archived
+`*-tools-*`, never shipped.
 
 ## systemd here
 

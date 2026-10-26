@@ -23,11 +23,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create mount points.
 RUN mkdir -pv \
+    /mnt/lfs/capability \
     /mnt/lfs/download \
+    /mnt/lfs/feature \
     /mnt/lfs/image \
     /mnt/lfs/install \
     /mnt/lfs/lib \
     /mnt/lfs/package \
+    /mnt/lfs/platform \
     /mnt/lfs/source \
     /mnt/lfs/tools \
     /mnt/lfs/work
@@ -35,11 +38,14 @@ RUN mkdir -pv \
 # Docker copies this ownership into newly created named volumes.
 RUN chown lfs:lfs \
     /mnt/lfs \
+    /mnt/lfs/capability \
     /mnt/lfs/download \
+    /mnt/lfs/feature \
     /mnt/lfs/image \
     /mnt/lfs/install \
     /mnt/lfs/lib \
     /mnt/lfs/package \
+    /mnt/lfs/platform \
     /mnt/lfs/source \
     /mnt/lfs/tools \
     /mnt/lfs/work

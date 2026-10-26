@@ -2,7 +2,7 @@
 # Starts the build of a system's image in the background and prints the PID and the log.
 #
 # Usage: build-image KEY [LOGDIR]     LOGDIR defaults to $TMPDIR or /tmp
-#   build-image pi0-systemd-gnu+gnupg+usb-storage+yubikey
+#   build-image pi0-systemd-gnu+fido2+gnupg
 #   wait-pid <PID>        then      build-summary <LOG>
 #
 # It runs `make docker-image/KEY.img`, which builds the tools (stamped), the system from archives and

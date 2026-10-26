@@ -52,30 +52,39 @@ Supported Platforms
 | `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
 
 
-Capabilities
-------------
+Capabilities and Features
+-------------------------
 
-| Capability        | Enables                                                                    |
-|-------------------|----------------------------------------------------------------------------|
-| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory  |
-| `usb-storage`     | USB sticks and card readers with a FAT file system                         |
-| `yubikey`         | Security keys on USB: their OpenPGP card (with `gnupg`) and FIDO2          |
-| `yubikey-manager` | `ykman`, to configure a YubiKey (needs `yubikey`); `pcscd` serves the card |
+A *capability* is something the system supports, such as a kind of device: the kernel support for
+it, described by `capability/<capability>.config`.
 
-Capabilities can be combined. Each one is described by `lib/capability/<capability>.sh`, which
-installs its packages after those of the base system, and by `package/linux/<capability>.config`
-when it needs kernel support.
+| Capability    | Supports                                                     | Requires |
+|---------------|--------------------------------------------------------------|----------|
+| `usb`         | USB devices, also from user space through `/dev/bus/usb`     |          |
+| `usb-storage` | USB sticks and card readers with a FAT file system           | `usb`    |
+| `hidraw`      | HID devices on USB, such as security keys, as `/dev/hidraw*` | `usb`    |
+
+A *feature* is a tool set for the system's users, which relies on capabilities. Its packages, listed
+in `feature/<feature>.sh`, are installed after the base system and the kernel.
+
+| Feature           | Provides                                                                  | Requires          |
+|-------------------|---------------------------------------------------------------------------|-------------------|
+| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `hidraw`          |
+| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `usb usb-storage` |
+| `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `hidraw usb`      |
+
+Capabilities and features can be combined. Each names the capabilities it requires on a
+`# Requires:` line of its file, and the system gets them along with it.
 
 
 Making OpenPGP Keys on a Raspberry Pi
 -------------------------------------
 
-A Raspberry Pi Zero running a system with the `gnupg`, `usb-storage` and `yubikey` capabilities can
-make an OpenPGP key whose secret part never touches a disk but the USB stick you back it up to, and
-move its subkeys to a YubiKey:
+A Raspberry Pi Zero running a system with the `gnupg` feature can make an OpenPGP key whose secret
+part never touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey:
 
 ```shell
-make docker-image/pi0-systemd-gnu+gnupg+usb-storage+yubikey.img
+make docker-image/pi0-systemd-gnu+gnupg.img
 ```
 
 Write the image to an SD card. The Zero has one USB data port, the micro-USB one marked *USB*, so
@@ -125,21 +134,21 @@ the serial console.
 `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal (`echo hi | gpg --clearsign`),
 for the PIN prompt to find it.
 
-Add the `yubikey-manager` capability to also have `ykman` on the Pi (Python, `cryptography` and the
+Add the `yubikey-manager` feature to also have `ykman` on the Pi (Python, `cryptography` and the
 smart card daemon `pcscd` come with it, about 60 MB):
 
 ```shell
-make docker-image/pi0-systemd-gnu+gnupg+usb-storage+yubikey+yubikey-manager.img
+make docker-image/pi0-systemd-gnu+gnupg+yubikey-manager.img
 ```
 
 With it, GnuPG reaches the YubiKey through `pcscd` rather than through its own USB driver
 (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and `ykman` can use the key in turn.
 Without it, scdaemon drives the key itself and `ykman` is not installed.
 
-The same capabilities build for the `virt` platform, to try the workflow in QEMU without a Pi:
+The same features build for the `virt` platform, to try the workflow in QEMU without a Pi:
 
 ```shell
-make docker-image/virt-systemd-gnu+gnupg+usb-storage+yubikey+yubikey-manager.img
+make docker-image/virt-systemd-gnu+gnupg+yubikey-manager.img
 ```
 
 It boots on the Mac's own architecture with the host's accelerator, and QEMU takes the USB devices
@@ -181,28 +190,31 @@ make test     # check that the image boots and root can login/poweroff
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
-Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no capabilities. The
-defaults can be changed through variables:
+Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no capabilities or
+features. The defaults can be changed through variables:
 
 ```shell
-make image PLATFORM=pi0 CAPS="gnupg usb-storage"
+make image PLATFORM=pi0 FEATURES="fido2 gnupg"
 ```
 
-Those three variables make up a *system key*, `<platform>-<userland>[+<caps>]`, which names every
-deliverable: the install tree, the boot files, and the image. A target can be named by its system
-key directly:
+Those variables (`CAPS` for capabilities) make up a *system key*,
+`<platform>-<userland>[+<item>...]`, with the capabilities and features in alphabetical order,
+which names every deliverable: the install tree, the boot files, and the image. A capability that a
+feature or another capability requires is left out of the key, which comes to one per system. A
+target can be named by its system key directly:
 
 ```shell
-make pi0-systemd-gnu+gnupg+usb-storage-test
+make pi0-systemd-gnu+gnupg-test
 ```
 
 Images are file targets under that same key, so `make image/pi0-systemd-gnu+usb-storage.img`
 produces an image for the `pi0` platform featuring the `usb-storage` capability.
 
 Package archives are filed under the key of the system as it stands when they are built: the base
-system's under `<platform>-<userland>`, and each capability's under that key extended with the
-capabilities added so far, in the system key's order. Systems thus share the archives of what they
-have in common, the base system's in particular.
+system's under `<platform>-<userland>`, the kernel's under that key extended with all the system's
+capabilities, those required included, and each feature's under that key extended with the features
+added so far, in alphabetical order. Systems thus share the archives of what they have in common:
+the base system's, and the kernel of systems with the same capabilities.
 
 `make distclean` removes the build state and the tools; `make pristine` also removes downloads,
 archives and images.

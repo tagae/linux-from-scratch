@@ -6,6 +6,9 @@ Overview
 
 * `lfs`: CLI frontend
 * `lib/`: LFS framework
+* `platform/`: the machines that systems run on
+* `capability/`: what systems can support, as kernel configuration fragments
+* `feature/`: tool sets for the systems' users, as lists of packages
 * `package/`: package recipes
 * `download/`: fetched archives
 * `source/`: unpacked sources
@@ -53,8 +56,8 @@ Building the System
 The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. The base system from chapter 8
-is then compiled with that toolchain, then the packages of the system's capabilities, followed by
-the kernel. Each package is installed both into the system tree and into the toolchain's sysroot,
+is then compiled with that toolchain, followed by the kernel, configured for the system's
+capabilities, then the packages of the system's features. Each package is installed both into the system tree and into the toolchain's sysroot,
 `work/<platform>-<userland>/sysroot`, which also receives what compiling against the packages
 needs: the Linux API headers and the packages' `dev` components. The kernel is also copied to
 `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
@@ -119,7 +122,7 @@ All shell code should be POSIX compliant.
 
 Shell variables are part of the **external API** if they are used to parameterise `lfs`.
 
-External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `CAPS`)
+External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `CAPS`, `FEATURES`)
 
 External API variables might be exported in invocations of `lfs`, but are never exported internally
 as part of internal logic.

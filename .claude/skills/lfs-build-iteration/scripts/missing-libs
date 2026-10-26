@@ -2,7 +2,7 @@
 # Scans the install tree of a system for shared libraries that are needed but not shipped, and for
 # RPATHs that are not /usr/lib. Run it before booting a new package set.
 #
-# Usage: missing-libs KEY      e.g. missing-libs pi0-systemd-gnu+gnupg+usb-storage+yubikey
+# Usage: missing-libs KEY      e.g. missing-libs pi0-systemd-gnu+fido2+gnupg
 #
 # KEY's tree is in the `install` volume of the last build of KEY. Prints one line per problem:
 #   path  NEEDS  libfoo.so.1         no file of that name is in the tree
