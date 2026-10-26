@@ -28,12 +28,14 @@ build_image() {
         DEVICE=$(realpath "$target")
         confirm_erase
     else
-        IMAGE=$target
-        if [ -e "$IMAGE" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
-            && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$IMAGE" -print -quit)" ]; then
+        if [ -e "$target" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
+            && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$target" -print -quit)" ]; then
             echo "image (done)"
             return
         fi
+        # Made under a name of its own, and moved into place only once complete, so that a failed
+        # run never leaves an image behind that looks finished.
+        IMAGE=$target.tmp
         create_image
         attach_image
     fi
@@ -42,6 +44,7 @@ build_image() {
     mount_partitions
     populate_image
     unmount_all
+    [ -b "$target" ] || mv "$target.tmp" "$target"
 }
 
 create_image() {
