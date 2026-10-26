@@ -226,6 +226,8 @@ case "${1:-help}" in
         echo "                   features"
         echo "  FEATURES         Features: tool sets, such as GnuPG"
         echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
+        echo "  IMAGE_SIZE       The image file's size, as fallocate takes it (512m); by default"
+        echo "                   what the system needs"
         echo "  ERASE            The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
