@@ -50,7 +50,20 @@ build_image() {
 create_image() {
     rm -f "$IMAGE"
     mkdir -pv "$(dirname $IMAGE)"
-    fallocate -l "${IMAGE_SIZE:-256m}" "$IMAGE"
+    fallocate -l "${IMAGE_SIZE:-$(image_size)}" "$IMAGE"
+}
+
+# The size of an image that holds the system: what its files take, plus 128 MiB, for the structures
+# of btrfs, which take some 80 MiB in a file system this small, and for what the system writes; plus
+# the boot partition of the Pi layout, and the MiB ahead of the first partition. It is rounded up to
+# a power of two, the only sizes of SD card that QEMU takes.
+image_size() {
+    local needed=$(( $(du -sm $INSTALL_DIR/$SYSTEM_KEY | cut -f1) + 128 + 1 )) size=1
+    [ "${IMAGE_LAYOUT:-pi}" = single ] || needed=$((needed + boot_size))
+    while [ $size -lt $needed ]; do
+        size=$((size * 2))
+    done
+    echo ${size}m
 }
 
 attach_image() {
@@ -74,6 +87,9 @@ confirm_erase() {
     bail "To go ahead, set ERASE=$DEVICE"
 }
 
+# The size of the Pi layout's FAT boot partition, in MiB.
+readonly boot_size=128
+
 create_partitions() {
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
         sfdisk -w always -W always $DEVICE <<- EOF
@@ -87,7 +103,7 @@ EOF
 label: dos
 unit: sectors
 
-size=+128m, type=c, bootable
+size=+${boot_size}m, type=c, bootable
 type=83
 EOF
     fi
