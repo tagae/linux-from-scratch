@@ -10,6 +10,7 @@
 # /bin, /sbin and /lib, so the directories derived from it are passed explicitly.
 # logind support would need libsystemd, which is built after this package.
 # New passwords are hashed with yescrypt, rather than with shadow's default, DES.
+# The system has no mail delivery, so login does not check for mail.
 prepare() {
     case $package_component in
         shadow)
@@ -52,7 +53,8 @@ install() {
     case $package_component in
         shadow)
             make install DESTDIR=$package_install_dir ${suidperms:+suidperms=$suidperms}
-            sed -i 's/^#ENCRYPT_METHOD .*/ENCRYPT_METHOD YESCRYPT/' $package_install_dir/etc/login.defs
+            sed -i -e 's/^#ENCRYPT_METHOD .*/ENCRYPT_METHOD YESCRYPT/' \
+                -e 's/^MAIL_CHECK_ENAB[[:space:]].*/MAIL_CHECK_ENAB no/' $package_install_dir/etc/login.defs
             move_to_dev_component
             ;;
         dev)
