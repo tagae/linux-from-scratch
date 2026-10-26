@@ -71,6 +71,36 @@ hand, it is a separate archive and can be added the same way.
 3. **Check it.** Validate against the SPDX 2.3 schema (`pyspdxtools`, on the host or as a tool), and
    check that every package in the list appears with a digest that matches.
 
+## Tools to use
+
+No existing generator understands these recipes, so `lib/sbom.sh` writes the document itself. Open
+source tools then validate it, scan it and sign it. These are the well-known, maintained ones; all
+are Apache-2.0 unless noted. Versions and release dates were not checked, so look at each project's
+releases page before pinning one.
+
+| Job | Tool | Why / caveat |
+|---|---|---|
+| Validate | [`spdx-tools`](https://github.com/spdx/tools-python) (`pyspdxtools`) | The SPDX project's own library. Fully validates 2.2 and 2.3; 3.0 is experimental and write-only. Another reason to stay on 2.3. |
+| Score | [`sbomqs`](https://github.com/interlynk-io/sbomqs) | Scores an SPDX or CycloneDX file 0–10 and checks it against NTIA minimum elements, BSI TR-03183-2 and OpenChain Telco. Shows which fields (supplier, CPE) are still missing. |
+| Scan | [Grype](https://github.com/anchore/grype) | Scans an SBOM without the image; large user base. Matches NVD by CPE, so recipes need `package_cpe`. Its CPE matching is switched off for ecosystems covered by GitHub advisories, which is not our case, but check it on a real SBOM. |
+| Scan | [Trivy](https://github.com/aquasecurity/trivy) | Reads SPDX too, but matches mainly on purl and OS package types, so `pkg:generic` will find little. Use as a second opinion. |
+| Scan (embedded) | [`sbom-cve-check`](https://github.com/bootlin/sbom-cve-check) (Bootlin, GPL-2.0) | Made for embedded Linux and Yocto. Reads SPDX 2.2/3.0, uses NVD and the CVE List, drops kernel CVEs for source files not compiled in, and takes OpenVEX annotations. Young (first release Dec 2025) and documented for Yocto, so try it on our SBOM before relying on it. |
+| Scan (binaries) | [`cve-bin-tool`](https://github.com/intel/cve-bin-tool) | Intel's. Scans the built tree's binaries for known components and can read SBOMs, so it cross-checks the recipes' versions independently. Emits VEX (CycloneDX, CSAF, OpenVEX). |
+| Monitor | [OWASP Dependency-Track](https://github.com/DependencyTrack/dependency-track) | Takes SBOMs per product and version and re-evaluates them as vulnerability feeds update. Worth it once there are several images or releases. |
+| Triage | [OpenVEX / `vexctl`](https://github.com/openvex/vexctl) | Records "not affected" decisions (e.g. a kernel CVE for a driver we don't build) so they don't reappear on every scan. |
+| Licences | [ScanCode Toolkit](https://github.com/aboutcode-org/scancode-toolkit), [ORT](https://github.com/oss-review-toolkit/ort) | Scan the unpacked sources for licences, to check `package_license` and fill `licenseConcluded`. A one-off audit, not part of every build. |
+| Convert | [`bomctl`](https://github.com/bomctl/bomctl) | Converts and merges SPDX and CycloneDX. Describes itself as experimental, and has no diff yet. Only needed if a consumer insists on CycloneDX. |
+| Cross-check | [Syft](https://github.com/anchore/syft) | The most popular generator, but it finds packages from databases and manifests. An LFS tree has neither, so it would see little. Useful only to compare against. |
+| Sign | [cosign](https://github.com/sigstore/cosign), [minisign](https://github.com/jedisct1/minisign) | See Signing below. |
+
+**Prior art.** Yocto's `create-spdx` builds SPDX per recipe and image, and its `cve-check` takes a
+CPE product name per recipe (`CVE_PRODUCT`), the same idea as `package_cpe`. Buildroot has
+`make legal-info`. Both are worth reading before writing `lib/sbom.sh`.
+
+**Starting set:** `pyspdxtools` and `sbomqs` in step 3, Grype and `sbom-cve-check` for scanning,
+ScanCode once for the licence audit. Add Dependency-Track and OpenVEX when there are releases to
+keep watching.
+
 ## Choices for later
 
 - **CVE matching needs identifiers that scanners know.** purls of type `generic` identify packages
