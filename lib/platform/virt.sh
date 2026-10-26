@@ -30,7 +30,7 @@ readonly QEMU_FLAGS="\
     -device virtio-serial \
     -chardev stdio,signal=off,mux=on,id=char0 \
     -device virtconsole,chardev=char0,id=console0 \
-    -mon chardev=char0,mode=readline"
+    -object monitor-hmp,id=mon0,chardev=char0"
 
 # Kernel command line fragment specific to this platform.
 readonly QEMU_APPEND="console=hvc0 root=/dev/vda1"
