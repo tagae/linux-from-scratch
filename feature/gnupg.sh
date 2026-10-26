@@ -1,8 +1,8 @@
 # GnuPG, to make and use OpenPGP keys offline: there is no network, no key server, and no X.509.
 # Smart cards, such as the OpenPGP card of a YubiKey, are reached through scdaemon's own CCID
-# driver over libusb, which needs the USB support that the yubikey capability gives the kernel.
-# gpg-genkey makes a key in memory and exports it to a USB stick, so it needs the usb-storage
-# capability.
+# driver over libusb. gpg-genkey makes a key in memory and exports it to a USB stick.
+
+# Requires: usb usb-storage
 
 ( languages=no; lfs_system_install libgpg-error )
 lfs_install_package libgpg-error#dev

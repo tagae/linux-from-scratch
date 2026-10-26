@@ -27,13 +27,16 @@ export LFS_RELEASE ?= r13.0-143
 # Making an image opens loop devices and mounts file systems, which needs root access.
 SUDO ?= sudo --preserve-env
 
-# The system that the default targets build: its key is <platform>-<userland>[+<capabilities>],
-# with the capabilities in alphabetical order, as `lfs` names it.
+# The system that the default targets build: its key is <platform>-<userland>[+<item>...], with
+# its capabilities and features in alphabetical order, as `lfs` names it. The capabilities that the
+# features and the other capabilities require are left out, as they come with them.
 PLATFORM ?= virt
 USERLAND ?= systemd-gnu
 CAPS ?=
+FEATURES ?=
 space := $(subst ,, )
-SYSTEM := $(PLATFORM)-$(USERLAND)$(subst $(space),,$(foreach cap,$(sort $(CAPS)),+$(cap)))
+items := $(sort $(CAPS) $(FEATURES))
+SYSTEM := $(PLATFORM)-$(USERLAND)$(subst $(space),,$(foreach item,$(items),+$(item)))
 
 # Default targets.
 tools: $(SYSTEM)-tools
