@@ -1,2 +1,5 @@
 # Route log output from systemd CLI tools to the journal, not the terminal
 export SYSTEMD_LOG_TARGET=journal
+
+# Prompt: user@host:directory, with # for root
+PS1='\u@\h:\w\$ '
