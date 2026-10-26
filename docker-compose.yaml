@@ -8,6 +8,7 @@ services:
     environment:
       PLATFORM:
       CAPS:
+      FEATURES:
       SYSTEM_KEY:
     volumes:
       - type: bind
@@ -19,6 +20,15 @@ services:
       - type: bind
         source: package
         target: /mnt/lfs/package
+      - type: bind
+        source: platform
+        target: /mnt/lfs/platform
+      - type: bind
+        source: capability
+        target: /mnt/lfs/capability
+      - type: bind
+        source: feature
+        target: /mnt/lfs/feature
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download
@@ -53,6 +63,7 @@ services:
     environment:
       PLATFORM:
       CAPS:
+      FEATURES:
       SYSTEM_KEY:
       ERASE:
       TIMEZONE:
@@ -73,6 +84,15 @@ services:
       - type: bind
         source: package
         target: /mnt/lfs/package
+      - type: bind
+        source: platform
+        target: /mnt/lfs/platform
+      - type: bind
+        source: capability
+        target: /mnt/lfs/capability
+      - type: bind
+        source: feature
+        target: /mnt/lfs/feature
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download

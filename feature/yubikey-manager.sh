@@ -4,12 +4,9 @@
 # interfaces through hidraw. GnuPG's scdaemon reaches the key through pcscd as well, instead of
 # through its own driver, so that gpg and ykman can share it. ykman is a Python program: it
 # needs ctypes, which needs libffi, cryptography, and pyscard for pcscd, besides pure Python
-# libraries. OpenSSL and the kernel support are those of the yubikey capability.
+# libraries.
 
-case " $CAPS " in
-    *" yubikey "*) ;;
-    *) bail "The yubikey-manager capability needs the yubikey capability" ;;
-esac
+# Requires: hidraw usb
 
 # Builds the wheel of a Python package from a copy of its source, with the Python of TOOL_DIR. For
 # the platform, that Python takes the compiler, the flags and the file names of extension modules
@@ -59,6 +56,13 @@ lfs_install_package pcsc-lite#dev
 lfs_system_install ccid
 lfs_system_install scdaemon-pcsc
 
+(
+    # Only libcrypto is wanted, which cryptography links: not the openssl program, its
+    # documentation or the legacy provider, nor the directories for certificates and configuration.
+    disable="apps docs legacy" ssldirs=no
+    lfs_system_install openssl
+    lfs_install_package openssl#dev
+)
 lfs_system_install libffi
 lfs_install_package libffi#dev
 (

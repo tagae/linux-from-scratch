@@ -10,19 +10,21 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 
 ## Keys, archives, volumes
 
-- A system is `<platform>-<userland>[+<cap>...]`, caps in ALPHABETICAL order:
-  `pi0-systemd-gnu+gnupg+usb-storage+yubikey+yubikey-manager`. Each cap needs `lib/capability/<cap>.sh` (lfs bails
-  without it) and may have `package/linux/<cap>.config`.
+- A system is `<platform>-<userland>[+<item>...]`, capabilities and features in ALPHABETICAL order, minus the
+  capabilities that come with the others (lfs bails on `+gnupg+usb`): `pi0-systemd-gnu+fido2+gnupg+yubikey-manager`.
+  A capability is `capability/<cap>.config`, a feature `feature/<feature>.sh`; both name what they need on a
+  `# Requires:` line. lfs resolves `capabilities` (all, sorted) and `features`.
 - Build: `make docker-image/<key>.img` (Linux hosts: `make image/<key>.img`); also `make image PLATFORM=pi0
-  CAPS="a b"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
+  CAPS="a" FEATURES="b c"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
 - Packages are archived once: `archive/<package_key>/<name>-<version>[-component].tar.xz` + `.sha256`. The
-  package key is the base key (`pi0-systemd-gnu`) extended by each cap in order, AS IT STOOD WHEN THE PACKAGE WAS
-  BUILT: base packages are shared by all cap sets, a cap's packages sit under the key up to it, the kernel under
-  the full key. Build-machine packages are `<name>-tools-<version>`.
+  package key is the base key (`pi0-systemd-gnu`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: base packages
+  are shared by all systems; the kernel (and Pi firmware/boot) sits under the base key plus ALL capabilities
+  (`pi0-systemd-gnu+hidraw+usb+usb-storage`), shared by systems with the same capabilities; a feature's packages
+  under that key plus the features up to it. Build-machine packages are `<name>-tools-<version>`.
 - A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel fragment or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
-  After a kernel fragment delete `linux-*.tar.xz*` of EVERY key that must change, base keys included. Packages
-  after the deleted one are not rebuilt unless their own archive is gone.
+  After a kernel fragment delete `linux-*.tar.xz*` of EVERY capability key that must change, base keys included.
+  Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed).
 - NEVER run two builds at once, of any keys or platforms, yours or an agent's: check `ps aux | grep -E

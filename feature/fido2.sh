@@ -1,7 +1,7 @@
-# Security keys on USB, such as the YubiKey. The kernel support (package/linux/yubikey.config) makes
-# the key's FIDO2 interface appear as /dev/hidraw*, which libfido2's tools (fido2-token, fido2-cred
-# and fido2-assert) drive. The key's OpenPGP card is reached by GnuPG's scdaemon over the same USB
-# support, so using it takes the gnupg capability as well.
+# FIDO2 security keys, such as the YubiKey, through libfido2's tools (fido2-token, fido2-cred and
+# fido2-assert), which drive the key's FIDO2 interface through /dev/hidraw*.
+
+# Requires: hidraw
 
 (
     # Only libcrypto is wanted: not the openssl program, its documentation or the legacy provider,

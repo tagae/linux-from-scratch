@@ -9,6 +9,8 @@ readonly lfs_version=13.1
 
 readonly project_dir=$(dirname $(realpath "$0"))
 readonly package_dir=$project_dir/package
+readonly capability_dir=$project_dir/capability
+readonly feature_dir=$project_dir/feature
 
 . $project_dir/lib/base.sh
 . $project_dir/lib/package.sh
@@ -57,24 +59,32 @@ readonly STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
 if [ -n "${SYSTEM_KEY:-}" ]; then
     _platform_userland=${SYSTEM_KEY%%+*}
     _platform=${_platform_userland%%-*}
-    _plus_caps=${SYSTEM_KEY#"$_platform_userland"} # "" or "+cap1+cap2..."
     : ${PLATFORM:=$_platform}
     if [ "$_platform" != "$_platform_userland" ]; then
         : ${USERLAND:=${_platform_userland#*-}}
     fi
-    : ${CAPS=$(echo "$_plus_caps" | tr '+' ' ')}
-    unset _platform_userland _platform _plus_caps
+    # The rest is "" or "+item1+item2...", each item a capability or else a feature.
+    _caps= _features=
+    for _item in $(echo "${SYSTEM_KEY#"$_platform_userland"}" | tr '+' ' '); do
+        if [ -f $capability_dir/$_item.config ]; then
+            _caps="$_caps $_item"
+        else
+            _features="$_features $_item"
+        fi
+    done
+    : ${CAPS=$_caps} ${FEATURES=$_features}
+    unset _platform_userland _platform _item _caps _features
 fi
 
 #-- Platform: machine on which the built system will run.
 
 : ${PLATFORM:=virt}
 
-[ -f $project_dir/lib/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
+[ -f $project_dir/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
 
 readonly PLATFORM
 
-. $project_dir/lib/platform/$PLATFORM.sh
+. $project_dir/platform/$PLATFORM.sh
 
 #-- Userland: init system and toolset.
 
@@ -82,21 +92,48 @@ readonly PLATFORM
 
 readonly USERLAND
 
-#-- Capabilities: set of opt-in features layered on top of the base system.
+#-- Capabilities: what the system supports, such as USB devices, as kernel configuration. Features:
+#   tool sets for the system's users, which rely on capabilities. Both are opt-in, and layered on
+#   top of the base system.
 
 readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
+readonly FEATURES=$(printf '%s\n' ${FEATURES:-} | sort -u | xargs)
 
+# The capabilities that come with the given ones and with the features. A system has a single key,
+# which leaves them out.
+capabilities=
 for cap in $CAPS; do
-    [ -f $project_dir/lib/capability/$cap.sh ] || bail "Unknown capability '$cap'"
+    [ -f $capability_dir/$cap.config ] || bail "Unknown capability '$cap'"
+    for required in $(lfs_requires $capability_dir/$cap.config); do
+        lfs_add_capability $required
+    done
+done
+for feature in $FEATURES; do
+    [ -f $feature_dir/$feature.sh ] || bail "Unknown feature '$feature'"
+    for required in $(lfs_requires $feature_dir/$feature.sh); do
+        lfs_add_capability $required
+    done
+done
+for cap in $CAPS; do
+    case " $capabilities " in
+        *" $cap "*) bail "Capability '$cap' comes with the others: leave it out" ;;
+    esac
 done
 
-#-- System key: canonical marker for the platform/userland/caps combination.
+# All the system's capabilities, in alphabetical order, so that systems with the same capabilities
+# share their archives.
+readonly capabilities=$(printf '%s\n' $capabilities $CAPS | sort | xargs)
+readonly features=$FEATURES
 
-readonly SYSTEM_KEY=$PLATFORM-$USERLAND${CAPS:++$(set -- $CAPS; IFS=+; echo "$*")}
+#-- System key: canonical marker for the platform/userland/capabilities/features combination.
+
+_all=$(printf '%s\n' $CAPS $FEATURES | sort | xargs)
+readonly SYSTEM_KEY=$PLATFORM-$USERLAND${_all:++$(set -- $_all; IFS=+; echo "$*")}
+unset cap feature required _all
 
 #-- Package key: the system key of the system as it stands when a package is built, under which
-#   the package is archived. Capabilities are added one by one, each extending it, so that systems
-#   share the archives of what they have in common.
+#   the package is archived. Capabilities, then features, are added one by one, each extending it,
+#   so that systems share the archives of what they have in common.
 
 package_key=$PLATFORM-$USERLAND
 
@@ -185,7 +222,9 @@ case "${1:-help}" in
         echo "Environment:"
         echo "  PLATFORM         Target platform"
         echo "  USERLAND         Userland flavor, init system included"
-        echo "  CAPS             Capability set"
+        echo "  CAPS             Capabilities, such as USB devices, beyond those that come with the"
+        echo "                   features"
+        echo "  FEATURES         Features: tool sets, such as GnuPG"
         echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
         echo "  ERASE            The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"

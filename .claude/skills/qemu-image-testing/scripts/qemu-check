@@ -4,7 +4,7 @@
 # command printed. Or, with --print, prints the QEMU command line instead of running it.
 #
 # Usage: qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
-#   KEY            system key of the image, e.g. pi0-systemd-gnu+gnupg+usb-storage+yubikey or virt-systemd-gnu
+#   KEY            system key of the image, e.g. pi0-systemd-gnu+fido2+gnupg or virt-systemd-gnu
 #   EXTRA ARGS     appended to the QEMU command line (`lfs qemu` reads them from QEMU_EXTRA),
 #                  e.g. "-device usb-ccid"
 #   GUEST COMMAND  one line for the guest's shell (bash-like), default `systemctl is-system-running`
@@ -57,7 +57,7 @@ export SYSTEM_KEY=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
 if [ $mode = print ]; then
     # `lfs qemu` execs the platform's QEMU, whose name the platform file fixes (readonly), so a stand-in
     # of that name first in PATH prints the arguments it was given instead.
-    bin=$( . "lib/platform/${key%%-*}.sh"; echo "${QEMU:-qemu-system-$target_arch}" )
+    bin=$( . "platform/${key%%-*}.sh"; echo "${QEMU:-qemu-system-$target_arch}" )
     shim=$(mktemp -d "${TMPDIR:-/tmp}/qemu-shim.XXXXXX")
     trap 'rm -rf "$shim"' EXIT
     cat > "$shim/$bin" <<'SHIM'

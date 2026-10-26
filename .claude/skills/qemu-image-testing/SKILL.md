@@ -7,14 +7,14 @@ model: sonnet
 # Testing images under QEMU
 
 `qemu-check` spawns `./lfs qemu` (as `./test` does), so each platform runs the command its
-`lib/platform/<platform>.sh` defines. Needs the built image (`make docker-image/<key>.img`), `expect` and the
+`platform/<platform>.sh` defines. Needs the built image (`make docker-image/<key>.img`), `expect` and the
 platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu-image-testing/scripts`.
 
 ## Run
 
 ```sh
 $Q/qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
-$Q/qemu-check pi0-systemd-gnu+gnupg+usb-storage+yubikey+yubikey-manager "-device usb-ccid" 'ykman list --readers'
+$Q/qemu-check pi0-systemd-gnu+fido2+gnupg+yubikey-manager "-device usb-ccid" 'ykman list --readers'
 ```
 Boots a COPY of `image/KEY.img` (booting writes to it), logs in as root (password `root`), runs ONE guest
 line, powers off, prints only that line's output (on failure: the end of the console and its path). Env:
