@@ -68,7 +68,7 @@ lfs_system_build() {
     lfs_install_package linux#headers
     (
         nscd=no enable_kernel=5.10
-        # No time zone data is installed.
+        # The time zone data is tzdata's, compiled by its own zic.
         timezone_tools=no
         lfs_system_install glibc
         lfs_install_package glibc#dev
@@ -82,6 +82,7 @@ lfs_system_build() {
         lfs_system_cross gcc
     )
     lfs_system_install gcc#runtime
+    lfs_system_install tzdata
 
     # pkg-config sees the platform's libraries only, which the packages below install in the
     # sysroot. Their .pc files record /usr paths.
