@@ -158,6 +158,11 @@ systemd-timesyncd, which saves the clock every minute and at shutdown, and resto
 boot. Every image starts at the time it was made. No NTP servers are configured, as there is no
 network.
 
+Images are in UTC. `TIMEZONE`, set to a name from the time zone database, gives an image another
+zone, e.g. `make image TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how
+time is shown. The system carries the whole database, so `TZ` and `/etc/localtime` can name any
+other zone on the device.
+
 Localisation and native language support (NLS) are unsupported. This might become an opt-in feature
 in the future.
 

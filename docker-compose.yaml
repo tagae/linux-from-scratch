@@ -55,6 +55,7 @@ services:
       CAPS:
       SYSTEM_KEY:
       ERASE:
+      TIMEZONE:
       INSTALL_DIR:
       IMAGE_SIZE:
       LFS_RELEASE:

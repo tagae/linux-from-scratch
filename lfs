@@ -186,6 +186,7 @@ case "${1:-help}" in
         echo "  PLATFORM         Target platform"
         echo "  USERLAND         Userland flavor, init system included"
         echo "  CAPS             Capability set"
+        echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
         echo "  ERASE            The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
