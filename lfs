@@ -177,8 +177,6 @@ fi
 # BTRFS subvolume name to use as root filesystem.
 readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 
-trap unmount_all EXIT
-
 #===[ Command Execution ]===
 
 case "${1:-help}" in
@@ -226,8 +224,8 @@ case "${1:-help}" in
         echo "                   features"
         echo "  FEATURES         Features: tool sets, such as GnuPG"
         echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
-        echo "  IMAGE_SIZE       The image file's size, as fallocate takes it (512m); by default"
-        echo "                   what the system needs"
+        echo "  IMAGE_SIZE       The image file's size, as truncate takes it (512M), with the root"
+        echo "                   file system filling it; by default as small as the system allows"
         echo "  ERASE            The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi

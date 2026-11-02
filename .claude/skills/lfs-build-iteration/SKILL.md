@@ -26,7 +26,9 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   After a kernel fragment delete `linux-*.tar.xz*` of EVERY capability key that must change, base keys included.
   Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
-  no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed).
+  no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade
+  only when a file of the install tree is newer than it, and archives keep their files' times: after changing
+  `lib/image.sh`, delete the image (`image/<key>.img`; its QEMU overlay `<key>.qcow2` follows it).
 - NEVER run two builds at once, of any keys or platforms, yours or an agent's: check `ps aux | grep -E
   '[m]ake docker|[d]ocker compose run'`. Every build re-extracts the tools into the shared `tools` volume,
   overwriting tools another build is running (`Bus error (core dumped)` in `rm`/`sed` during a configure, silently
@@ -70,6 +72,10 @@ user's YubiKey touch).
 - `$B/missing-libs KEY`: needed-but-unshipped libraries and RPATHs outside /usr/lib. Only NEW lines matter: the
   header lists the known base ones (shadow and util-linux build-path RPATHs). Dlopened libraries are invisible.
 - `readelf -A` (pi0: ARM v6KZ + VFP; `objdump -d | grep -E 'movw|movt|dmb|sdiv|ubfx'` must be empty), `readelf -d`.
+- Inside an image, nothing booted: the scratch container is not privileged, the dev container is. As root in dev,
+  `losetup -r -f --show -o $((START * 512)) --sizelimit $((SIZE * 512)) image/<key>.img` with START and SIZE from
+  `sfdisk -d` (the tools' `/mnt/lfs/tools/usr/sbin/sfdisk`: dev has none), then `mount -o ro`. A read-only
+  mount of a shrunk btrfs reports 0 available: `df` in the booted system is the real figure.
 - Boot: qemu-image-testing.
 
 ## Prove a refactor changed nothing

@@ -24,7 +24,7 @@ FORCE:
 # The release for built systems.
 export LFS_RELEASE ?= r13.0-143
 
-# Making an image opens loop devices and mounts file systems, which needs root access.
+# Making an image gives the system's files to root, which needs root access.
 SUDO ?= sudo --preserve-env
 
 # The system that the default targets build: its key is <platform>-<userland>[+<item>...], with
@@ -64,8 +64,6 @@ image/%.img: %-system FORCE
 	# The image directory is the user's, rather than root's.
 	mkdir -p image
 	$(SUDO) ./lfs image build
-	# The image is root's, but QEMU opens it for writing as the user.
-	$(SUDO) chown $$(id -u):$$(id -g) $@
 
 %-test: image/%.img
 	./test $*

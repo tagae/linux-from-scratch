@@ -57,10 +57,10 @@ The following command builds the system for the platform into `install/$SYSTEM_K
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. The base system from chapter 8
 is then compiled with that toolchain, followed by the kernel, configured for the system's
-capabilities, then the packages of the system's features. Each package is installed both into the system tree and into the toolchain's sysroot,
-`work/<platform>-<userland>/sysroot`, which also receives what compiling against the packages
-needs: the Linux API headers and the packages' `dev` components. The kernel is also copied to
-`work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
+capabilities, then the packages of the system's features. Each package is installed both into the
+system tree and into the toolchain's sysroot, `work/<platform>-<userland>/sysroot`, which also
+receives what compiling against the packages needs: the Linux API headers and the packages' `dev`
+components. The kernel is also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
 
 ```shell
 ./lfs system build
@@ -70,21 +70,26 @@ needs: the Linux API headers and the packages' `dev` components. The kernel is a
 Images
 ------
 
-* The `./lfs image build` command formats a disk image from the install tree at
+* The `./lfs image build` command makes a disk image from the install tree at
   `install/$SYSTEM_KEY`, as populated by `./lfs system build`. Given a block device instead of an
-  image file, it formats the device and fills it the same way, with the root file system taking
+  image file, it partitions the device and fills it the same way, with the root file system taking
   all of the space the boot partition leaves.
-* The `./lfs qemu` command runs the built image.
+* The `./lfs qemu` command boots the built image through a qcow2 overlay next to it,
+  `<image>.qcow2`, which takes what the system writes. The overlay is made anew with the image, and
+  its size is a power of two, as QEMU requires of an SD card.
 
-An image or a device is opened through loop devices and mounts, so making one needs root, e.g.
-`sudo --preserve-env ./lfs image build`, which is what `make image` runs (or a privileged container
-as root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`, as
-`make docker-image` does). The image then belongs to root, which `make image` changes so that QEMU can
-open it as the user. Making a system on a device erases it, so that takes `ERASE`, set to the same
-device, e.g. `sudo ERASE=/dev/sdb ./lfs image build /dev/sdb`. A device that anything has mounted or
-opened, in the container or on the host, is refused (unmount a card from a desktop's automounter
-first). Outside the scratch container, which has them, a host needs `btrfs-progs`, `dosfstools` and
-`fdisk` (for `sfdisk`), besides the usual `util-linux` and `tar`.
+Nothing is mounted: `mkfs.btrfs --rootdir` makes the root file system from a copy of the install
+tree, and mtools fills the FAT boot partition. For an image file, each file system is made in a
+file of its own, the root file system as small as its files allow, then copied into the image,
+behind its partition table. The copy gives the system's files to root, so making an image needs
+root, e.g. `sudo --preserve-env ./lfs image build`, which is what `make image` runs (or the scratch
+container as root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`, as
+`make docker-image` does). Making a system on a device erases it, so that takes `ERASE`, set to the
+same device, e.g. `sudo ERASE=/dev/sdb ./lfs image build /dev/sdb`, on a Linux host: the scratch
+container is not privileged, and has no access to devices. A device that anything has mounted or
+opened is refused (unmount a card from a desktop's automounter first). Outside the scratch
+container, which has them, a host needs `btrfs-progs` 6.12 or later (for `--subvol`),
+`dosfstools`, `mtools` and `fdisk` (for `sfdisk`), besides the usual `coreutils` and `tar`.
 
 
 Package Model
