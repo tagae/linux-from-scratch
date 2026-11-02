@@ -12,71 +12,53 @@ image() {
     esac
 }
 
+# The file systems are made from trees of files, with nothing mounted: the root file system by
+# mkfs.btrfs, the Pi layout's boot partition by mtools. On a device they are made on its partitions;
+# an image file is put together from them.
 build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
-    local target="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}"
-
-    # libmount needs a writable /run/mount for its own lock/state files —
-    # this is a bare `FROM scratch` image with no /run at all, and without
-    # it mount(8) fails with a misleading "must be superuser" message
-    # (confirmed the raw mount(2) syscall itself succeeds fine otherwise).
-    mkdir -p /run/mount
+    local target="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}" shrink=
+    # One install tree per system key, not a shared $INSTALL_DIR.
+    local install_dir=$INSTALL_DIR/$SYSTEM_KEY
+    [ -d "$install_dir" ] || bail "Install directory not found: $install_dir"
 
     stage image
     if [ -b "$target" ]; then
         # A device is made afresh, like a new image file.
         DEVICE=$(realpath "$target")
         confirm_erase
+    elif [ -e "$target" ] && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
+        echo "image (done)"
+        return
+    fi
+    trap clean_image EXIT
+    PARTS_DIR=$(mktemp -dt lfs-XXXXXX)
+    stage_root
+    if [ -n "${DEVICE:-}" ]; then
+        create_partitions $DEVICE
+        find_partitions
     else
-        if [ -e "$target" ] && [ -d "$INSTALL_DIR/$SYSTEM_KEY" ] \
-            && [ -z "$(find $INSTALL_DIR/$SYSTEM_KEY -newer "$target" -print -quit)" ]; then
-            echo "image (done)"
-            return
-        fi
         # Made under a name of its own, and moved into place only once complete, so that a failed
         # run never leaves an image behind that looks finished.
         IMAGE=$target.tmp
-        create_image
-        attach_image
+        BOOT_DEVICE=$PARTS_DIR/boot.fat
+        BASE_DEVICE=$PARTS_DIR/base.btrfs
+        if [ -n "${IMAGE_SIZE:-}" ]; then
+            # The root file system fills what the partitions ahead of it leave.
+            truncate -s $IMAGE_SIZE $BASE_DEVICE
+            truncate -s -$(base_start)M $BASE_DEVICE
+        else
+            # The root file system is as small as its files allow.
+            : > $BASE_DEVICE
+            shrink=--shrink
+        fi
     fi
-    create_partitions
-    create_filesystems
-    mount_partitions
-    populate_image
-    unmount_all
-    [ -b "$target" ] || mv "$target.tmp" "$target"
-}
-
-create_image() {
-    rm -f "$IMAGE"
-    mkdir -pv "$(dirname $IMAGE)"
-    fallocate -l "${IMAGE_SIZE:-$(image_size)}" "$IMAGE"
-}
-
-# The size of an image that holds the system: what its files take, plus 128 MiB, for the structures
-# of btrfs, which take some 80 MiB in a file system this small, and for what the system writes; plus
-# the boot partition of the Pi layout, and the MiB ahead of the first partition. It is rounded up to
-# a power of two, the only sizes of SD card that QEMU takes.
-image_size() {
-    local needed=$(( $(du -sm $INSTALL_DIR/$SYSTEM_KEY | cut -f1) + 128 + 1 )) size=1
-    [ "${IMAGE_LAYOUT:-pi}" = single ] || needed=$((needed + boot_size))
-    while [ $size -lt $needed ]; do
-        size=$((size * 2))
-    done
-    echo ${size}m
-}
-
-attach_image() {
-    DEVICE=$(losetup -f)
-    losetup -fP "$IMAGE"
-}
-
-detach_image() {
-    if [ -b "${DEVICE:-}" ]; then
-        # Only the loop device made for an image is ours to detach.
-        [ -z "${IMAGE:-}" ] || losetup -d $DEVICE 2>/dev/null || true
-        kpartx -dv $DEVICE 2>/dev/null || true
+    create_filesystems $shrink
+    if [ -n "${IMAGE:-}" ]; then
+        assemble_image
+        mv "$IMAGE" "$target"
     fi
+    clean_image
 }
 
 confirm_erase() {
@@ -90,16 +72,27 @@ confirm_erase() {
 # The size of the Pi layout's FAT boot partition, in MiB.
 readonly boot_size=128
 
+# Where the root file system's partition begins, in MiB: after the MiB that holds the partition
+# table, and after the boot partition of the Pi layout. sfdisk aligns partitions to the MiB.
+base_start() {
+    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
+        echo 1
+    else
+        echo $((1 + boot_size))
+    fi
+}
+
+# Partitions DEVICE, a device or an image file. The root file system's partition takes the rest.
 create_partitions() {
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        sfdisk -w always -W always $DEVICE <<- EOF
+        sfdisk -w always -W always $1 <<- EOF
 label: dos
 unit: sectors
 
 type=83
 EOF
     else
-        sfdisk -w always -W always $DEVICE <<- EOF
+        sfdisk -w always -W always $1 <<- EOF
 label: dos
 unit: sectors
 
@@ -108,7 +101,6 @@ type=83
 EOF
     fi
     sync
-    find_partitions
 }
 
 # The name of partition NUMBER of a device: the kernel inserts a "p" after device names that end in a
@@ -120,57 +112,55 @@ partition_name() {
     esac
 }
 
+# The device of partition NUMBER, which the kernel makes once sfdisk has written the partition
+# table. A container's /dev holds only the devices that were there when it started: a node missing
+# from it is made after what sysfs says.
+partition_device() {
+    local name=$(partition_name ${DEVICE##*/} $1)
+    [ -b /dev/$name ] || mknod /dev/$name b $(tr : ' ' < /sys/class/block/$name/dev)
+    echo /dev/$name
+}
+
 find_partitions() {
-    local dir=/dev
-    if command -v kpartx >/dev/null 2>&1; then
-        kpartx -av $DEVICE
-        dir=/dev/mapper
-    fi
-    local name=${DEVICE##*/}
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        BASE_DEVICE=$dir/$(partition_name $name 1)
-        [ -b $BASE_DEVICE ]
+        BASE_DEVICE=$(partition_device 1)
     else
-        BOOT_DEVICE=$dir/$(partition_name $name 1)
-        BASE_DEVICE=$dir/$(partition_name $name 2)
-        [ -b $BOOT_DEVICE ] && [ -b $BASE_DEVICE ]
+        BOOT_DEVICE=$(partition_device 1)
+        BASE_DEVICE=$(partition_device 2)
     fi
 }
 
+# Makes the file systems on their devices, or in their files, with --shrink to make the root file
+# system as small as its files allow. Data and metadata share their chunks (-M): a shrunk file system
+# has no room to make chunks in, and what one kind's chunks have free would be lost to the other.
 create_filesystems() {
-    mkfs.btrfs -f -L base --checksum xxhash $BASE_DEVICE
-    [ "${IMAGE_LAYOUT:-pi}" = single ] || mkfs.fat -c -f 1 -F 32 -n BOOT $BOOT_DEVICE
+    mkfs.btrfs -f -L base --checksum xxhash -M \
+        --rootdir $BASE_DIR --subvol rw:root/$ROOT_VOLUME ${1:-} $BASE_DEVICE
+    if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
+        [ -b $BOOT_DEVICE ] || truncate -s ${boot_size}M $BOOT_DEVICE
+        mkfs.fat -c -f 1 -F 32 -n BOOT $BOOT_DEVICE
+        # FAT has no owners, so the boot files are copied as they are.
+        mcopy -s -i $BOOT_DEVICE $INSTALL_DIR/$SYSTEM_KEY/boot/* ::
+    fi
 }
 
-mount_partitions() {
-    BASE_DIR=$(mktemp -dt lfs-XXXXXX)
-    mount -v $BASE_DEVICE $BASE_DIR
-    mkdir -p $BASE_DIR/root
+# Copies the files of the root file system: the system's, owned by root, the Pi layout's boot files
+# aside, as they have a partition of their own; and those that belong to the image.
+stage_root() {
+    local install_dir=$INSTALL_DIR/$SYSTEM_KEY
+    stage "Staging the root file system from $install_dir"
+    # The file system's top level, which holds the root subvolume.
+    BASE_DIR=$PARTS_DIR/base
     ROOT_DIR=$BASE_DIR/root/$ROOT_VOLUME
-    btrfs subvolume create $ROOT_DIR
-
-    BOOT_DIR=$ROOT_DIR/boot
-    mkdir -p $BOOT_DIR
-    [ "${IMAGE_LAYOUT:-pi}" = single ] || mount -v $BOOT_DEVICE $BOOT_DIR
-}
-
-populate_image() {
-    [ -n "${ROOT_DIR:-}" ] || bail "No root directory — call 'image' first"
-    # One install tree per system key, not a shared $INSTALL_DIR.
-    local platform_install_dir=$INSTALL_DIR/$SYSTEM_KEY
-    [ -d "$platform_install_dir" ] || bail "Install directory not found: $platform_install_dir"
-    stage "Populating image from $platform_install_dir"
+    mkdir -p $ROOT_DIR
     # The install tree belongs to the build user, but the system's files belong to root.
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        # All files including boot go into the btrfs subvolume
-        tar -C $platform_install_dir --owner=0 --group=0 --numeric-owner -cf - . \
-            | tar -C $ROOT_DIR -xpf -
+        tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - . | tar -C $ROOT_DIR -xpf -
     else
-        # Rootfs to btrfs subvolume (exclude boot — it lives on the FAT partition)
-        tar -C $platform_install_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
+        tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
             | tar -C $ROOT_DIR -xpf -
-        # Boot files to FAT partition (ownership not supported by FAT)
-        cp -r $platform_install_dir/boot/. $ROOT_DIR/boot/
+        # Where the boot partition is mounted.
+        mkdir $ROOT_DIR/boot
     fi
     # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd
     # never start the clock earlier than the modification time of this file, so an image boots no
@@ -188,22 +178,24 @@ populate_image() {
     chmod 444 $ROOT_DIR/etc/machine-id
 }
 
-unmount_partitions() {
-    if [ -n "${BASE_DIR:-}" ]; then
-        if [ -d "${BOOT_DIR:-}" ] && mountpoint -q "$BOOT_DIR" 2>/dev/null; then
-            umount -v $BOOT_DIR
-        fi
-        if [ -d "$BASE_DIR" ] && mountpoint -q "$BASE_DIR" 2>/dev/null; then
-            umount -v $BASE_DIR
-        fi
+# Puts the image file together: the partition table, and each file system where its partition is.
+assemble_image() {
+    local start=$(base_start)
+    rm -f "$IMAGE"
+    mkdir -pv "$(dirname "$IMAGE")"
+    truncate -s $((start + ($(wc -c < $BASE_DEVICE) + 1048575) / 1048576))M "$IMAGE"
+    create_partitions "$IMAGE"
+    # The image starts out as zeros, which the file systems' own zeros need not be written over.
+    if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
+        dd if=$BOOT_DEVICE of="$IMAGE" bs=1M seek=1 conv=notrunc,sparse status=none
     fi
+    dd if=$BASE_DEVICE of="$IMAGE" bs=1M seek=$start conv=notrunc,sparse status=none
 }
 
-# The one cleanup chain: called explicitly at the end of build_image, and
-# as lfs's EXIT trap (where the unset is harmless and the guards above
-# make every step a no-op if nothing is mounted/attached).
-unmount_all() {
-    unmount_partitions
-    detach_image
-    unset BASE_DIR ROOT_DIR BOOT_DIR IMAGE DEVICE BOOT_DEVICE BASE_DEVICE
+# Removes what making an image leaves behind, the image itself if incomplete: at the end of
+# build_image, and as the EXIT trap it sets, when it fails.
+clean_image() {
+    [ -z "${PARTS_DIR:-}" ] || rm -rf "$PARTS_DIR"
+    [ -z "${IMAGE:-}" ] || rm -f "$IMAGE"
+    unset PARTS_DIR IMAGE
 }

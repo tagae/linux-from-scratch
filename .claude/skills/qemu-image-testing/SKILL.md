@@ -16,12 +16,14 @@ platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu
 $Q/qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
 $Q/qemu-check pi0-systemd-gnu+fido2+gnupg+yubikey-manager "-device usb-ccid" 'ykman list --readers'
 ```
-Boots a COPY of `image/KEY.img` (booting writes to it), logs in as root (password `root`), runs ONE guest
-line, powers off, prints only that line's output (on failure: the end of the console and its path). Env:
-`IMAGE_COPY=path` keeps a copy across calls, `EXPECT_SCRIPT=` runs your own script (see Prompts),
-`VERBOSE=1`, `TIMEOUT=s` (400), `STATE_DIR=`. `--print` prints the quoted QEMU command for
-`image/KEY.qemu.img` (made; delete it after): to see what a platform runs, or to hand the user a command
-that needs root.
+Boots a COPY of `image/KEY.img`, logs in as root (password `root`), runs ONE guest line, powers off, prints
+only that line's output (on failure: the end of the console and its path). `./lfs qemu` boots an image through
+a qcow2 overlay next to it (`x.img` through `x.qcow2`), which keeps what the system writes until the image is
+made anew: the image itself is never written, and the copy gives each check a fresh overlay. Env:
+`IMAGE_COPY=path` keeps a copy (and its overlay) across calls, `EXPECT_SCRIPT=` runs your own script (see
+Prompts), `VERBOSE=1`, `TIMEOUT=s` (400), `STATE_DIR=`. `--print` prints the quoted QEMU command for
+`image/KEY.qemu.img` (made, with `image/KEY.qemu.qcow2`; delete both after): to see what a platform runs, or
+to hand the user a command that needs root.
 
 ## Checks and baselines
 
@@ -57,7 +59,8 @@ data port, so real use needs a hub. The emulated reader is 08E6:4433 (in ccid's 
 - Missing libraries and RPATHs first: `missing-libs` (lfs-build-iteration).
 - Clock across boots: `IMAGE_COPY=/tmp/x.img`; `qemu-check KEY "" 'date -u -s "2026-12-31 12:00:00"; sleep 75'`
   (timesyncd saves every 60 s and at exit), then `... 'date -u'`: it continues from the saved time and PID 1
-  logs "System time advanced to timestamp on /var/lib/systemd/timesync/clock".
+  logs "System time advanced to timestamp on /var/lib/systemd/timesync/clock". Delete `/tmp/x.img` and
+  `/tmp/x.qcow2` after.
 - Probes in the same line: `ykman --version`, `python3 -c 'import cryptography'`,
   `gpg-connect-agent "scd getinfo reader_list" /bye` (after `mkdir -p -m700 /root/.gnupg`).
 
@@ -93,7 +96,7 @@ it with `EXPECT_SCRIPT=`, print `QEMU_CHECK_BEGIN` and `QEMU_CHECK_END` around t
 
 ## Traps
 
-- "Failed to get write lock": an earlier QEMU still holds the image or stick. `ps aux | grep '[q]emu-system'`,
+- "Failed to get write lock": an earlier QEMU still holds the overlay or stick. `ps aux | grep '[q]emu-system'`,
   then `pkill -f 'qemu-system.*<copy>'` (SIGTERM, throwaway copies only: `-9` corrupted a btrfs once).
 - Login: wait for the glob `login:`, send `root`, answer `Password:` with `root`; skipping it hangs silently.
   Never wait twice for one marker.

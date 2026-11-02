@@ -53,7 +53,7 @@ lfs_system_build() {
     lfs_system_install system-files
 
     # Chapter 5: Compiling a Cross-Toolchain
-    ( gprofng=no werror=no; lfs_system_cross binutils )
+    ( gprofng=no werror=no; lfs_install_tool binutils )
     (
         package_variant=pass1
         glibc_version=$(lfs_package_version glibc)
@@ -64,7 +64,7 @@ lfs_system_build() {
         newlib=yes headers=no
         shared=no threads=no
         libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no libsanitizer=no
-        lfs_system_cross gcc
+        lfs_install_tool gcc
     )
     lfs_install_package linux#headers
     (
@@ -80,7 +80,7 @@ lfs_system_build() {
         shared=yes threads=posix
         default_pie=default-pie default_ssp=default-ssp
         libgomp=no libquadmath=no libssp=no libvtv=no libsanitizer=no
-        lfs_system_cross gcc
+        lfs_install_tool gcc
     )
     lfs_system_install gcc#runtime
     lfs_system_install tzdata
@@ -207,7 +207,7 @@ lfs_add_capability() {
 
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the
 # platform, tuned for its CPU.
-lfs_system_cross() (
+lfs_install_tool() (
     unset host
     target=$target_triplet
     arch=${target_gcc_arch:-} tune=${target_gcc_tune:-} abi=${target_gcc_abi:-}

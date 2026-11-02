@@ -161,15 +161,13 @@ lfs_tools_build() {
         makeinstall_chown=no makeinstall_setuid=no
         all_programs=no
         libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes
-        mount=yes fdisks=yes losetup=yes fallocate=yes mountpoint=yes
+        fdisks=yes
         lfs_install_package util-linux
         lfs_install_package util-linux#dev
     )
     lfs_install_package btrfs-progs
     lfs_install_package dosfstools
-    lfs_install_package libaio
-    lfs_install_package lvm2#device-mapper
-    lfs_install_package multipath-tools#kpartx
+    lfs_install_package mtools
 }
 
 # Installs a package that runs on the build machine into TOOL_DIR, built as the tools are, from

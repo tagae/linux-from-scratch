@@ -9,19 +9,23 @@
 #                  e.g. "-device usb-ccid"
 #   GUEST COMMAND  one line for the guest's shell (bash-like), default `systemctl is-system-running`
 #   --print        print the command line, quoted for the shell, for the COPY of the image; the copy is
-#                  made if missing (image/KEY.qemu.img unless IMAGE_COPY is set). Use it to give the
-#                  user a command to run under sudo, or to see what a platform runs.
+#                  made if missing (image/KEY.qemu.img unless IMAGE_COPY is set), and so is its
+#                  overlay (image/KEY.qemu.qcow2). Use it to give the user a command to run under sudo,
+#                  or to see what a platform runs.
 #
 # Environment:
 #   IMAGE_COPY=PATH    boot this copy of the image, making it from image/KEY.img if it does not exist,
-#                      and keep it: a second call sees what the first left (clock, files)
+#                      and keep it, with its overlay: a second call sees what the first left (clock,
+#                      files)
 #   EXPECT_SCRIPT=PATH run this expect script instead of qemu-run.exp; it sources boot.tcl, which
 #                      gives it a logged-in shell (see examples/)
 #   VERBOSE=1          print the whole console instead of what the command printed
 #   TIMEOUT=SECONDS    for the login prompt and for the command (default 400)
 #   STATE_DIR=PATH     where work/ and image/ are, as for lfs (default: the repo)
 #
-# The image is always a COPY: booting writes to it. Failure prints the end of the console and its path.
+# The image is always a COPY, so that each check starts afresh: `lfs qemu` keeps what the system writes
+# in an overlay next to the image it boots (x.img's is x.qcow2), until that image is made anew. Failure
+# prints the end of the console and its path.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -46,7 +50,7 @@ if [ -z "$copy" ]; then
         copy=$state/image/$key.qemu.img
     else
         copy=$(mktemp "${TMPDIR:-/tmp}/qemu-check.XXXXXX")
-        trap 'rm -f "$copy"' EXIT
+        trap 'rm -f "$copy" "$copy.qcow2"' EXIT
     fi
 fi
 if [ ! -s "$copy" ]; then
