@@ -59,7 +59,6 @@ services:
       args:
         HOST_UID:
         HOST_GID:
-    privileged: true
     environment:
       PLATFORM:
       CAPS:

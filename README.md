@@ -30,10 +30,9 @@ The rules build directly on a Linux host, which needs:
 
 * the tools that `Dockerfile.bootstrap` installs: a C and C++ toolchain (`build-essential`), `curl`,
   `wget`, `rsync`, `gawk`, `bison`, `python3`, `patchelf` and CA certificates;
-* `sudo`, for `make image`, which opens loop devices and mounts file systems (as root, run
-  `make image SUDO=`);
-* `expect` and QEMU for the platform's architecture, for `make qemu` and `make test`. The `virt`
-  platform uses KVM.
+* `sudo`, for `make image`, which makes the system's files root's (as root, run `make image SUDO=`);
+* `expect`, and QEMU for the platform's architecture with `qemu-img`, for `make qemu` and
+  `make test`. The `virt` platform uses KVM.
 
 Hosts that are not Linux can make the image through Docker Compose instead, with the `docker-`
 goals: `make docker-image`, or `make docker-image/pi0-systemd-gnu.img` for a given system. The image
@@ -208,9 +207,13 @@ make pi0-systemd-gnu+gnupg-test
 ```
 
 Images are file targets under that same key, so `make image/pi0-systemd-gnu+usb-storage.img`
-produces an image for the `pi0` platform featuring the `usb-storage` capability. An image is as large
-as its system needs, with some room to spare, rounded up to a power of two; `IMAGE_SIZE` sets
-another size (e.g. `IMAGE_SIZE=1g`). An image appears only once it is complete.
+produces an image for the `pi0` platform featuring the `usb-storage` capability. An image is as
+small as its system allows: its root file system has only the room that btrfs leaves in it, which
+grows with the system (some 30 MB without features, 50 MB with those above). `IMAGE_SIZE` makes it
+larger (e.g. `IMAGE_SIZE=1G`), the root file system filling it. An image appears only once it is
+complete. `make qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps
+what the system writes until the image is made anew, so that the image stays as it was made, to be
+written to a card.
 
 Package archives are filed under the key of the system as it stands when they are built: the base
 system's under `<platform>-<userland>`, the kernel's under that key extended with all the system's
