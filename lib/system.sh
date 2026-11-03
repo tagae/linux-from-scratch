@@ -52,36 +52,7 @@ lfs_system_build() {
     # Merged-usr layout, which every later package installs through.
     lfs_system_install system-files
 
-    # Chapter 5: Compiling a Cross-Toolchain
-    ( gprofng=no werror=no; lfs_install_tool binutils )
-    (
-        package_variant=pass1
-        glibc_version=$(lfs_package_version glibc)
-        default_pie=default-pie default_ssp=default-ssp
-        # With a C++ compiler for the host that cannot link yet, glibc skips its C++ parts, instead
-        # of using the build machine's.
-        languages=c,c++
-        newlib=yes headers=no
-        shared=no threads=no
-        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no libsanitizer=no
-        lfs_install_tool gcc
-    )
-    lfs_install_package linux#headers
-    (
-        nscd=no enable_kernel=5.10
-        # The time zone data is tzdata's, compiled by its own zic.
-        timezone_tools=no
-        lfs_system_install glibc
-        lfs_install_package glibc#dev
-    )
-    (
-        glibc_version=$(lfs_package_version glibc)
-        languages=c,c++
-        shared=yes threads=posix
-        default_pie=default-pie default_ssp=default-ssp
-        libgomp=no libquadmath=no libssp=no libvtv=no libsanitizer=no
-        lfs_install_tool gcc
-    )
+    lfs_system_build_toolchain
     lfs_system_install gcc#runtime
     lfs_system_install tzdata
 
@@ -178,6 +149,42 @@ lfs_system_build() {
     (
         cd $system_dir/boot
         cp -v kernel.img ${dev_tree_blob:+${dev_tree_blob##*/}} $WORK_DIR/boot/$SYSTEM_KEY/
+    )
+}
+
+# Chapter 5: Compiling a Cross-Toolchain
+#
+# Builds the cross toolchain into TOOL_DIR. Its C library, which the final compiler links against,
+# is the system's, installed into the system as well as the sysroot.
+lfs_system_build_toolchain() {
+    ( gprofng=no werror=no; lfs_install_tool binutils )
+    (
+        package_variant=pass1
+        glibc_version=$(lfs_package_version glibc)
+        default_pie=default-pie default_ssp=default-ssp
+        # With a C++ compiler for the host that cannot link yet, glibc skips its C++ parts, instead
+        # of using the build machine's.
+        languages=c,c++
+        newlib=yes headers=no
+        shared=no threads=no
+        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no libsanitizer=no
+        lfs_install_tool gcc
+    )
+    lfs_install_package linux#headers
+    (
+        nscd=no enable_kernel=5.10
+        # The time zone data is tzdata's, compiled by its own zic.
+        timezone_tools=no
+        lfs_system_install glibc
+        lfs_install_package glibc#dev
+    )
+    (
+        glibc_version=$(lfs_package_version glibc)
+        languages=c,c++
+        shared=yes threads=posix
+        default_pie=default-pie default_ssp=default-ssp
+        libgomp=no libquadmath=no libssp=no libvtv=no libsanitizer=no
+        lfs_install_tool gcc
     )
 }
 
