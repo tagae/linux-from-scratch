@@ -7,7 +7,7 @@ Overview
 * `lfs`: CLI frontend
 * `lib/`: LFS framework
 * `platform/`: the machines that systems run on
-* `capability/`: what systems can support, as kernel configuration fragments
+* `capability/`: what systems can support, as kernel configuration fragments: optional ones, and the userland's own
 * `feature/`: tool sets for the systems' users, as lists of packages
 * `package/`: package recipes
 * `download/`: fetched archives
@@ -56,8 +56,10 @@ Building the System
 The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. The base system from chapter 8
-is then compiled with that toolchain, followed by the kernel, configured for the system's
-capabilities, then the packages of the system's features. Each package is installed both into the
+is then compiled with that toolchain, followed by the kernel, configured from the layers that
+every system gets (`package/linux/`: base, hardening, machine and architecture) and from the
+system's capabilities (`capability/`, the userland's own included), then the packages of the
+system's features. Each package is installed both into the
 system tree and into the toolchain's sysroot, `work/<platform>-<userland>/sysroot`, which also
 receives what compiling against the packages needs: the Linux API headers and the packages' `dev`
 components. The kernel is also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.

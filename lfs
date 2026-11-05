@@ -102,6 +102,8 @@ readonly FEATURES=$(printf '%s\n' ${FEATURES:-} | sort -u | xargs)
 # The capabilities that come with the given ones and with the features. A system has a single key,
 # which leaves them out.
 capabilities=
+# The userland's own kernel support comes with it.
+lfs_add_capability $USERLAND
 for cap in $CAPS; do
     [ -f $capability_dir/$cap.config ] || bail "Unknown capability '$cap'"
     for required in $(lfs_requires $capability_dir/$cap.config); do
