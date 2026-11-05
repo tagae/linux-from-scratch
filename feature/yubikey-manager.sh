@@ -33,7 +33,6 @@ lfs_install_package libffi#dev
     lfs_system_install python
     lfs_install_package python#dev
 )
-python_version=$(lfs_package_version python)
 
 # cryptography is Rust, which a prebuilt Rust toolchain compiles, and C code that cffi generates on
 # the build machine, whose Python then needs cffi, and libffi under it.
