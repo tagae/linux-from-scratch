@@ -1,6 +1,6 @@
-: ${package_version:=6.17.1}
+: ${package_version:=7.1}
 : ${package_source:=https://www.kernel.org/pub/linux/kernel/people/kdave/btrfs-progs/btrfs-progs-v$package_version.tar.xz}
-: ${package_source_hash:=sha256:a4be0a6ebb3c476427fb5d97b2cf027b0ccdb6b0c55ff16323320c1e8cb77658}
+: ${package_source_hash:=sha256:d1f55cc2971398c9142eaa79d203e63d586a3b4b867f956664a1d68322cd4e34}
 : ${package_description:=Btrfs filesystem utilities and libraries.}
 : ${package_license:=GPL-2.0-only AND LGPL-2.1-or-later}
 

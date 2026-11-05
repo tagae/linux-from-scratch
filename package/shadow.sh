@@ -1,6 +1,6 @@
-: ${package_version:=4.19.4}
+: ${package_version:=4.20.2}
 : ${package_source:=https://github.com/shadow-maint/shadow/releases/download/$package_version/shadow-$package_version.tar.xz}
-: ${package_source_hash:=sha256:ce57a313e315a0a7cb04a8f50cc20753e994e487bbe9b78a2a824ca75cb486c0}
+: ${package_source_hash:=sha256:b89f432b75ae55a2d852b446d0365484795fdf533ab97d550e325fa15594a224}
 : ${package_description:=Login and user account management tools.}
 : ${package_license:=BSD-3-Clause AND BSD-2-Clause AND GPL-2.0-or-later AND Unlicense}
 

@@ -1,6 +1,6 @@
-: ${package_version:=3.0.2}
+: ${package_version:=3.0.3}
 : ${package_source:=https://files.pythonhosted.org/packages/source/m/markupsafe/markupsafe-$package_version.tar.gz}
-: ${package_source_hash:=sha256:ee55d3edf80167e48ea11a923c7386f4669df67d7994554387f84e7d8b0a2bf0}
+: ${package_source_hash:=sha256:722695808f4b6457b320fdc131280796bdceb04ab50fe1795cd540799ebe1698}
 : ${package_description:=Python library for HTML-safe string escaping.}
 : ${package_license:=BSD-3-Clause}
 

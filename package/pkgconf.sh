@@ -1,6 +1,6 @@
-: ${package_version:=2.5.1}
+: ${package_version:=3.0.5}
 : ${package_source:=https://distfiles.ariadne.space/pkgconf/pkgconf-$package_version.tar.xz}
-: ${package_source_hash:=sha256:cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243}
+: ${package_source_hash:=sha256:3acd3a8a3cce65a8d620321855d92fb602e026cbe8e13ee36bdec58483b59ace}
 : ${package_description:=Compiler and linker flag helper for libraries (pkg-config).}
 : ${package_license:=pkgconf}
 

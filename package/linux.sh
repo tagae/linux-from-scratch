@@ -1,13 +1,13 @@
 case $PLATFORM in
     pi0)
-        package_version=stable_20260609 # 6.18.34
+        package_version=stable_20261103 # 6.18.60
         package_source=https://github.com/raspberrypi/linux/archive/refs/tags/$package_version/linux-$package_version.tar.gz
-        package_source_hash=sha256:3eacbbb1253a913034efd38ce6aeee2def137eb40c799af2745db874796e389d
+        package_source_hash=sha256:53a3967359cf1b68953bbfc5aef5d3c7fcf9ebf61518fbba108c6a8bfce0c079
         ;;
     *)
-        package_version=7.1.2
+        package_version=7.3.1
         package_source=https://www.kernel.org/pub/linux/kernel/v${package_version%%.*}.x/linux-$package_version.tar.xz
-        package_source_hash=sha256:37198c93727be247c9fb5309bb86cd5e496c61e5322cd8c4eca9476bb0b5883f
+        package_source_hash=sha256:fa595aad93734f829c963c2a90ef7c3673224fd7fdae7b49406e397cde2de231
         ;;
 esac
 

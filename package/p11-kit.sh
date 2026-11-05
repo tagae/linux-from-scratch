@@ -1,6 +1,6 @@
-: ${package_version:=0.26.4}
+: ${package_version:=0.26.5}
 : ${package_source:=https://github.com/p11-glue/p11-kit/releases/download/$package_version/p11-kit-$package_version.tar.xz}
-: ${package_source_hash:=sha256:89c3ffb10e076ee036e14732bf6547a1e1c4fb48699a5dee7ceb5ce4f7c0c462}
+: ${package_source_hash:=sha256:f2cc09111e44bf3fea58f023180b33acea90aa82d042d6fbb623fbc5ba033bb7}
 : ${package_description:=PKCS#11 module loader and trust store tools.}
 : ${package_license:=BSD-3-Clause}
 
