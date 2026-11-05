@@ -105,9 +105,15 @@ still matches.
 
 A package's name is the path of its recipe under `package/`, without the `.sh`. The Python libraries
 live in `package/python/` and are named `python/<name>`, after their PyPI project without any
-`python-` prefix, e.g. `lfs_system_install python/click`. Their downloads, sources, build directories
-and archives sit under `python/` as well, so that none of them is shared with a package of another
-directory.
+`python-` prefix, e.g. `lfs_system_install python/click`.
+
+The directory of a package's name is its group (`python` for `python/click`, `.` for `bash`). The
+framework puts everything of the package in the group's directory of `download/`, `source/`,
+`work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked sources (a recipe cannot
+set `package_source_dir` elsewhere), its build, stage and component directories, and its archives.
+Packages of different groups therefore never share a path, whatever their names, versions or files
+are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks by hand uses the
+same directories.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as

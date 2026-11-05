@@ -70,6 +70,9 @@ lfs_fetch_dependencies() {
 lfs_source_package() {
     : ${package_name:=${1%#*}}
     : ${package_component=${1#*#}}
+    # What the package downloads, unpacks, builds and archives goes in this directory of each
+    # state directory, so that packages of different directories never share a path.
+    : ${package_group:=$(dirname $package_name)}
 
     [ -f $package_dir/$package_name.sh ] || bail "Unknown package '$package_name'"
 
@@ -154,12 +157,13 @@ lfs_source_package() {
         local url=$1
         local hash=$2 # Expected to be in "algo:hexdigest" form.
         local file=${url##*/}
-        mkdir -p $DOWNLOAD_DIR
-        [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"
-        verify_hash "$DOWNLOAD_DIR/$file" "$hash"
+        local download_dir=$DOWNLOAD_DIR/$package_group
+        mkdir -p $download_dir
+        [ -f $download_dir/$file ] || fetch_url "$url" "$download_dir"
+        verify_hash "$download_dir/$file" "$hash"
         local stamp=$package_source_dir/.patched-$file
         ! [ -f $stamp ] || return 0
-        ( cd $package_source_dir && patch -N -p 1 -i $DOWNLOAD_DIR/$file ) || {
+        ( cd $package_source_dir && patch -N -p 1 -i $download_dir/$file ) || {
             # Discard half-patched source so that the next run re-extracts the pristine source.
             rm -rf "${package_source_dir:?}"
             bail "Failed to apply $file; discarded $package_source_dir"
@@ -168,9 +172,9 @@ lfs_source_package() {
     }
 
     fetch_patch() {
-        mkdir -p $DOWNLOAD_DIR
-        [ -f $DOWNLOAD_DIR/$file ] || fetch_url "$url" "$DOWNLOAD_DIR"
-        verify_hash "$DOWNLOAD_DIR/$file" "$hash"
+        mkdir -p $DOWNLOAD_DIR/$package_group
+        [ -f $DOWNLOAD_DIR/$package_group/$file ] || fetch_url "$url" "$DOWNLOAD_DIR/$package_group"
+        verify_hash "$DOWNLOAD_DIR/$package_group/$file" "$hash"
     }
 
     . $package_dir/$package_name.sh
@@ -196,6 +200,10 @@ lfs_source_package() {
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
     : ${package_files_dir:=$package_dir/$package_name}
     : ${package_source_dir:=$SOURCE_DIR/$package_name-$package_version}
+    # Sources are unpacked in the package's group, whatever the recipe sets: elsewhere, a package of
+    # another group could unpack into the same directory.
+    [ "$(dirname $package_source_dir)" = "$(dirname $SOURCE_DIR/$package_name)" ] \
+        || bail "$package_name: $package_source_dir is not in the directory of the package's group"
     : ${package_work_dir:=$WORK_DIR/$package_key/$package_release}
     : ${package_build_dir:=$package_work_dir/build/$package_component}
     : ${package_stage_dir:=$package_work_dir/stage/$package_component}
@@ -210,7 +218,7 @@ lfs_source_package() {
     : ${package_archive=$package_deliverable.tar.xz}
 
     # `package_install_dir` is the only writable var from the package API.
-    readonly package_name package_component \
+    readonly package_name package_component package_group \
              package_version package_branch package_release \
              package_source package_source_hash package_fetch_dependencies \
              package_files_dir package_source_dir \
