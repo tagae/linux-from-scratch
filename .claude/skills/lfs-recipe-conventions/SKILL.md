@@ -20,7 +20,8 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
   asked for that change. The archive step only archives. Shared helpers get their own `lib/<topic>.sh`, sourced in
   `lfs`. Features on request, not speculatively.
 - ENCAPSULATION: the functions a recipe or feature defines are its own; no other recipe calls them. What several
-  recipes need goes in `lib/<topic>.sh`.
+  recipes need goes in `lib/<topic>.sh`. A feature never defines a helper that a package uses: packages rely on the
+  framework (`lib/`) alone.
 - Use the upstream's own targets and options (headers_install, meson options, `make install`) over re-implementing;
   add the missing tool rather than a workaround.
 - Link DYNAMICALLY (static only where dynamic complicates things: gcc's in-tree gmp/mpfr/mpc).
@@ -40,7 +41,7 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 | Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
 | A capability (kernel support) | `capability/<cap>.config`: a fragment, with a `# Requires: <cap>...` line for the capabilities it builds on |
 | What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
-| Helpers of one feature | in its file, for its own use: no recipe calls them (encapsulation, below) |
+| Helpers of one feature | in its file, for its own use: no package uses them (encapsulation, above) |
 | Helpers several recipes share | `lib/<topic>.sh` sourced in `lfs` (`lib/meson.sh`, `lib/python.sh`); recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
 | Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
 | Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
