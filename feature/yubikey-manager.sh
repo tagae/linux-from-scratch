@@ -96,8 +96,8 @@ lfs_system_install python/pyscard
 # D-Bus, which the systems lack: keyring has no backend, and ykman then reports that it cannot
 # remember a password. The packages carry no metadata, in which keyring would look for backends.
 lfs_system_install python/six
-lfs_system_install python/python-dateutil
-lfs_system_install python/python-pskc
+lfs_system_install python/dateutil
+lfs_system_install python/pskc
 lfs_system_install python/click
 lfs_system_install python/more-itertools
 lfs_system_install python/jaraco-classes

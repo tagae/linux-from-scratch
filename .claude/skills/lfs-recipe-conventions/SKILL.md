@@ -92,8 +92,8 @@ bcm2835-dma regression). virt takes USB (xHCI), RNG (virtio-rng) and console (`h
   the target's sysconfigdata (`python_wheel`, `python_install_wheel`, `python_compile`; templates
   `package/python/cffi.sh` for a build backend, `package/python/pycparser.sh` for pure Python). Bytecode is
   precompiled unchecked-hash so the Pi never writes `__pycache__`; no pip, no dist-info unless metadata is read at run
-  time. A Python library's recipe is `package/python/<pypi name>.sh`, installed as `python/<pypi name>` (programs
-  stay at the top: `yubikey-manager`, `meson`); the default `package_source_dir` follows the package's name, so set it
+  time. A Python library's recipe is `package/python/<name>.sh`, installed as `python/<name>`: its PyPI name without a
+  `python-` prefix (programs stay at the top: `yubikey-manager`, `meson`); the default `package_source_dir` follows the package's name, so set it
   to the sdist's directory.
 - Rust: the seed in TOOL_DIR (`package/rust.sh`, `lfs_tools_install rust`); triple
   `$target_arch-unknown-$target_kernel-$target_abi`; crates fetched at fetch time, built `--locked --offline`;
