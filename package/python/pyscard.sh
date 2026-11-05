@@ -4,8 +4,6 @@
 : ${package_description:=Python interface to smart cards, through PC/SC.}
 : ${package_license:=LGPL-2.1-or-later}
 
-package_source_dir=$SOURCE_DIR/pyscard-$package_version
-
 # The extension module has nothing linked in: it loads libpcsclite.so.1 when a program first asks
 # for a smart card, so it builds against the headers only.
 build() {

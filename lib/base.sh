@@ -36,17 +36,21 @@ verify_hash() {
         || bail "Integrity check failed for $file (expected $hash)"
 }
 
+# Downloads an archive and unpacks it, both in the directory of the package that fetches it
+# (python/ for python/click), as the package's work directories and archives are. Packages in
+# different directories then never share a download or a source tree, whatever the files are called.
 get() {
     local url=$1
     # Optional expected source hash, "algo:hexdigest" (package_source_hash).
     local hash=${2:-}
+    local dir=$(dirname $package_name)
     local archive=${url##*/}
     local extracted=${archive%%.tar.*}
     [ "$extracted" != "$archive" ] || extracted=${archive%.tgz}
-    mkdir -p $SOURCE_DIR
-    [ -f $DOWNLOAD_DIR/$archive ] || fetch_url "$url" "$DOWNLOAD_DIR"
-    [ -z "$hash" ] || verify_hash "$DOWNLOAD_DIR/$archive" "$hash"
-    [ -d $SOURCE_DIR/$extracted ] || tar xf $DOWNLOAD_DIR/$archive -C $SOURCE_DIR
+    mkdir -p $SOURCE_DIR/$dir
+    [ -f $DOWNLOAD_DIR/$dir/$archive ] || fetch_url "$url" "$DOWNLOAD_DIR/$dir"
+    [ -z "$hash" ] || verify_hash "$DOWNLOAD_DIR/$dir/$archive" "$hash"
+    [ -d $SOURCE_DIR/$dir/$extracted ] || tar xf $DOWNLOAD_DIR/$dir/$archive -C $SOURCE_DIR/$dir
 }
 
 git_default_branch() {
