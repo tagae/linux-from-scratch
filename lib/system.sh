@@ -139,6 +139,8 @@ lfs_system_build() {
         lfs_system_install boot
     fi
 
+    # The Python packages of the features are for this version, which lib/python.sh reads.
+    python_version=$(lfs_package_version python)
     for feature in $features; do
         package_key=$package_key+$feature
         ( . $feature_dir/$feature.sh )

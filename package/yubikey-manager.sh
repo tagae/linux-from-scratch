@@ -7,11 +7,7 @@
 package_source_dir=$SOURCE_DIR/yubikey_manager-$package_version
 
 install() {
-    local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
-
-    mkdir -pv $site_packages
-    cp -rv $package_source_dir/ykman $package_source_dir/yubikit $site_packages/
-    python_compile
+    python_install_modules $package_source_dir/ykman $package_source_dir/yubikit
 
     # What the entry point of its project file would generate: a program that runs ykman's main.
     cd $package_install_dir

@@ -92,8 +92,9 @@ bcm2835-dma regression). virt takes USB (xHCI), RNG (virtio-rng) and console (`h
   C23 (`-std=gnu17` for gmp, gnupg, flex); libtool `.la` in the sysroot misdirect later builds (delete them); guard
   same-arch cross builds, where `build` equals `host`.
 - Python (CPython 3.14, `python` + `dev` components): extensions and wheels are built by the TOOL_DIR Python against
-  the target's sysconfigdata (`python_wheel`, `python_install_wheel`, `python_compile`, in `lib/python.sh`; templates
-  `package/python/cffi.sh` for a build backend, `package/python/pycparser.sh` for pure Python). Bytecode is
+  the target's sysconfigdata (`lib/python.sh`: `python_wheel` and `python_install_wheel` for a build backend,
+  `python_install_modules` for pure Python, `python_site_packages`; templates `package/python/cffi.sh` and
+  `package/python/pycparser.sh`). Recipes never mention `python_version`, which the framework sets. Bytecode is
   precompiled unchecked-hash so the Pi never writes `__pycache__`; no pip, no dist-info unless metadata is read at run
   time. A Python library's recipe is `package/python/<name>.sh`, installed as `python/<name>`: its PyPI name without a
   `python-` prefix (programs stay at the top: `yubikey-manager`, `meson`). The framework keeps downloads, patches,

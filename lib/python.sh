@@ -2,6 +2,25 @@
 # ---------------
 #
 # Helpers for the recipes of Python packages, which install into the site-packages of the platform.
+# They are for the Python whose version is `python_version`, which the framework sets.
+
+# Prints where the platform's Python keeps its standard library, in the tree being installed.
+python_lib_dir() {
+    echo $prefix/lib/python${python_version%.*}
+}
+
+# Prints where the platform's Python looks for the packages that are installed.
+python_site_packages() {
+    echo $(python_lib_dir)/site-packages
+}
+
+# Installs modules, directories or files of the package's source, into site-packages.
+python_install_modules() {
+    local site_packages=$package_install_dir$(python_site_packages)
+    mkdir -pv $site_packages
+    cp -rv "$@" $site_packages/
+    python_compile
+}
 
 # Builds the wheel of a Python package from a copy of its source, with the Python of TOOL_DIR. For
 # the platform, that Python takes the compiler, the flags and the file names of extension modules
@@ -13,7 +32,7 @@ python_wheel() (
     # its own with (-DNDEBUG included), which its sysconfigdata records.
     unset CFLAGS LDFLAGS
     if [ -n "${host:-}" ]; then
-        local lib=$sysroot$prefix/lib/python${python_version%.*}
+        local lib=$sysroot$(python_lib_dir)
         export _PYTHON_SYSCONFIGDATA_PATH=$lib
         export _PYTHON_SYSCONFIGDATA_NAME=$(basename $lib/_sysconfigdata_*.py .py)
         export CPPFLAGS=-I$sysroot$prefix/include/python${python_version%.*}
@@ -25,7 +44,7 @@ python_wheel() (
 # Unpacks the wheel into site-packages. The tools on the build machine read the package's metadata
 # (setuptools finds its commands in it), which nothing on the platform does.
 python_install_wheel() {
-    local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
+    local site_packages=$package_install_dir$(python_site_packages)
     mkdir -pv $site_packages
     $TOOL_DIR/usr/bin/python3 -m zipfile -e dist/*.whl $site_packages
     [ -z "${host:-}" ] || rm -rf $site_packages/*.dist-info
@@ -37,7 +56,7 @@ python_install_wheel() {
 # writes its own.
 python_compile() {
     [ -n "${host:-}" ] || return 0
-    local site_packages=$prefix/lib/python${python_version%.*}/site-packages
+    local site_packages=$(python_site_packages)
     $TOOL_DIR/usr/bin/python3 -m compileall -q -j0 -d $site_packages \
         --invalidation-mode unchecked-hash $package_install_dir$site_packages
 }

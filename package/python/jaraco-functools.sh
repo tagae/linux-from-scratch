@@ -7,9 +7,5 @@
 package_source_dir=$SOURCE_DIR/python/jaraco_functools-$package_version
 
 install() {
-    local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
-
-    mkdir -pv $site_packages
-    cp -rv $package_source_dir/jaraco $site_packages/
-    python_compile
+    python_install_modules $package_source_dir/jaraco
 }

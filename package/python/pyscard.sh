@@ -17,5 +17,5 @@ install() {
     python_install_wheel
 
     # The graphical interface needs wxPython.
-    rm -rv $package_install_dir$prefix/lib/python${python_version%.*}/site-packages/smartcard/wx
+    rm -rv $package_install_dir$(python_site_packages)/smartcard/wx
 }
