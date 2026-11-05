@@ -43,7 +43,7 @@ get() {
     local url=$1
     # Optional expected source hash, "algo:hexdigest" (package_source_hash).
     local hash=${2:-}
-    local dir=$(dirname $package_name)
+    local dir=$package_group
     local archive=${url##*/}
     local extracted=${archive%%.tar.*}
     [ "$extracted" != "$archive" ] || extracted=${archive%.tgz}
