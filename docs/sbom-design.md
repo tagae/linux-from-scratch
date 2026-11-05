@@ -106,7 +106,7 @@ keep watching.
 - **CVE matching needs identifiers that scanners know.** purls of type `generic` identify packages
   uniquely but match few vulnerability databases. NVD matches by CPE, so recipes would need a
   `package_cpe` (vendor and product), e.g. `cpe:2.3:a:gnu:bash:5.3`,
-  `cpe:2.3:o:linux:linux_kernel:7.1.2`, `cpe:2.3:a:systemd_project:systemd:260.2`. That's about
+  `cpe:2.3:o:linux:linux_kernel:7.3.1`, `cpe:2.3:a:systemd_project:systemd:261.2`. That's about
   twenty recipes for what the systems ship.
 - **Suppliers.** NTIA's minimum elements also ask for each component's supplier. A `package_supplier`
   (e.g. `Organization: GNU Project`), or `NOASSERTION` until then.

@@ -7,12 +7,15 @@
 prepare() {
     case $package_component in
         bash)
+            # Readline uses the termcap code in the source, linked statically. Left to look for a
+            # library, configure would link whichever terminal library the sysroot holds, and bash
+            # would then depend on what was installed before it.
+            bash_cv_termcap_lib=gnutermcap \
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
                 ${bash_malloc:+--with-bash-malloc=$bash_malloc} \
-                ${curses:+--with-curses=$curses} \
                 ${nls:+--enable-nls=$nls}
             ;;
         *)

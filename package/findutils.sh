@@ -1,6 +1,6 @@
-: ${package_version:=4.10.0}
+: ${package_version:=4.11.0}
 : ${package_source:=https://ftp.gnu.org/gnu/findutils/findutils-$package_version.tar.xz}
-: ${package_source_hash:=sha256:1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5}
+: ${package_source_hash:=sha256:bfd19cb06cc71f3352d567e90284d8cdac02ac89774bbeadf0b533b0c11432fd}
 : ${package_description:=GNU file search utilities.}
 : ${package_license:=GPL-3.0-or-later}
 

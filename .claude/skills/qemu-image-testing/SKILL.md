@@ -37,9 +37,8 @@ hand (real-Pi baseline: `reference/pi0-real-boot.md`), then `--save`. A new diff
 
 Known noise. pi0 under QEMU: `initcall_blacklist requires CONFIG_KALLSYMS` (QEMU-only), two `dwc2_check_params:
 Invalid parameter max_packet_count/max_transfer_size` (QEMU's registers; unconfirmed on silicon), `sdhost ...
-Falling back to PIO` and `check access for rdinit=/init failed` (real). virt: `cacheinfo: Unable to detect
-cache hierarchy`, `pci-host-generic ... Memory resource size exceeds max for 32 bits`. An attached stick adds
-`sd 0:0:0:0: Power-on or device reset occurred`.
+Falling back to PIO` and `check access for rdinit=/init failed` (real). virt: `pci-host-generic ...
+Memory resource size exceeds max for 32 bits`. An attached stick adds `sd 0:0:0:0: Power-on or device reset occurred`.
 
 ## Platforms
 
@@ -84,8 +83,9 @@ the key must not be the one used for sudo.
 
 Ignore 14 lines `libusb_kernel_driver_active: -5 [NOT_FOUND]` (QEMU probes 16 interface slots, the key has 2).
 `libusb_detach_kernel_driver: -3 [ACCESS]` and `can't set config #1, error -32` mean not root, not passed
-through. Never `fido2-token -L` under QEMU: it aborts it (`!usb_packet_is_inflight`, a dwc2 model bug; other
-controllers untested). In the Terminal panel a fresh fish tab swallows its first command (a 10 s terminal-query
+through. A real key behind pi0's dwc2 aborts QEMU (`!usb_packet_is_inflight`, a dwc2 model bug) on the first
+transfer: `fido2-token -L` and `gpg --card-status` both trigger it. The pi0 key can only be tried on the Pi; virt's
+`qemu-xhci` carries it (tested). In the Terminal panel a fresh fish tab swallows its first command (a 10 s terminal-query
 wait); `set -Ua fish_features no-query-term` fixes it, and is the user's configuration.
 
 ## Prompts
