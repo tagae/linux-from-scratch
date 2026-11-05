@@ -155,6 +155,13 @@ Internal API variables have lowercase names.
 
 Internal API variables must not be exported.
 
+### Encapsulation
+
+A recipe owns the functions it defines: no other recipe, and no feature, calls them, as that would
+make a package depend on the inside of another. What several recipes need is a helper in
+`lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`, `lib/python.sh`). A feature may define helpers
+of its own, for its own use.
+
 
 Gotchas
 -------
