@@ -40,7 +40,8 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 | What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
 | Helpers of one feature | in its file (recipes run in subshells that inherit them) |
 | Helpers several recipes share | `lib/<topic>.sh` sourced in `lfs` (`lib/meson.sh`); recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options | `package/linux/{base,hardening,<machine>,arch-<arch>,<userland>}.config`, `capability/<cap>.config`, each with its reason |
+| Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
+| Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
 | Device tree changes | override nodes appended in `package/linux.sh` `prepare` (later definitions win) |
 | Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
 
