@@ -4,6 +4,8 @@
 : ${package_description:=Cryptographic recipes and primitives for Python.}
 : ${package_license:=Apache-2.0 OR BSD-3-Clause}
 
+package_source_dir=$SOURCE_DIR/cryptography-$package_version
+
 # Rust names the platform with its own vendor.
 rust_target=$target_arch-unknown-$target_kernel-$target_abi
 

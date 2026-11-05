@@ -4,6 +4,8 @@
 : ${package_description:=Python templating engine.}
 : ${package_license:=BSD-3-Clause}
 
+package_source_dir=$SOURCE_DIR/jinja2-$package_version
+
 install() {
     local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
 

@@ -4,6 +4,8 @@
 : ${package_description:=Python library to build Python packages.}
 : ${package_license:=MIT}
 
+package_source_dir=$SOURCE_DIR/setuptools-$package_version
+
 build() {
     python_wheel
 }

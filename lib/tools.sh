@@ -132,8 +132,8 @@ lfs_tools_build() {
     lfs_install_package gperf
     (
         python_version=$(lfs_package_version python)
-        lfs_install_package markupsafe
-        lfs_install_package jinja2
+        lfs_install_package python/markupsafe
+        lfs_install_package python/jinja2
     )
     lfs_install_package flex
     lfs_install_package bc
