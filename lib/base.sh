@@ -36,14 +36,15 @@ verify_hash() {
         || bail "Integrity check failed for $file (expected $hash)"
 }
 
-# Downloads an archive and unpacks it, both in the directory of the package that fetches it
-# (python/ for python/click), as the package's work directories and archives are. Packages in
-# different directories then never share a download or a source tree, whatever the files are called.
+# Downloads an archive and unpacks it, both in the directory of the category of the package that
+# fetches it (python/ for python/click), as the package's work directories and archives are.
+# Packages of different categories then never share a download or a source tree, whatever the
+# files are called.
 get() {
     local url=$1
     # Optional expected source hash, "algo:hexdigest" (package_source_hash).
     local hash=${2:-}
-    local dir=$package_group
+    local dir=$package_category
     local archive=${url##*/}
     local extracted=${archive%%.tar.*}
     [ "$extracted" != "$archive" ] || extracted=${archive%.tgz}

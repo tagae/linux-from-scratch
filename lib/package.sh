@@ -70,9 +70,10 @@ lfs_fetch_dependencies() {
 lfs_source_package() {
     : ${package_name:=${1%#*}}
     : ${package_component=${1#*#}}
-    # What the package downloads, unpacks, builds and archives goes in this directory of each
-    # state directory, so that packages of different directories never share a path.
-    : ${package_group:=$(dirname $package_name)}
+    # The category of a package is the directory of its name. What the package downloads, unpacks,
+    # builds and archives goes in that directory of each state directory, so that packages of
+    # different categories never share a path.
+    : ${package_category:=$(dirname $package_name)}
 
     [ -f $package_dir/$package_name.sh ] || bail "Unknown package '$package_name'"
 
@@ -157,7 +158,7 @@ lfs_source_package() {
         local url=$1
         local hash=$2 # Expected to be in "algo:hexdigest" form.
         local file=${url##*/}
-        local download_dir=$DOWNLOAD_DIR/$package_group
+        local download_dir=$DOWNLOAD_DIR/$package_category
         mkdir -p $download_dir
         [ -f $download_dir/$file ] || fetch_url "$url" "$download_dir"
         verify_hash "$download_dir/$file" "$hash"
@@ -172,13 +173,13 @@ lfs_source_package() {
     }
 
     fetch_patch() {
-        mkdir -p $DOWNLOAD_DIR/$package_group
-        [ -f $DOWNLOAD_DIR/$package_group/$file ] || fetch_url "$url" "$DOWNLOAD_DIR/$package_group"
-        verify_hash "$DOWNLOAD_DIR/$package_group/$file" "$hash"
+        mkdir -p $DOWNLOAD_DIR/$package_category
+        [ -f $DOWNLOAD_DIR/$package_category/$file ] || fetch_url "$url" "$DOWNLOAD_DIR/$package_category"
+        verify_hash "$DOWNLOAD_DIR/$package_category/$file" "$hash"
     }
 
-    # The helpers of the package's group, if it has any, are for its recipes alone.
-    [ ! -f $lib_dir/$package_group.sh ] || . $lib_dir/$package_group.sh
+    # The helpers of the package's category, if it has any, are for its recipes alone.
+    [ ! -f $lib_dir/category/$package_category.sh ] || . $lib_dir/category/$package_category.sh
 
     . $package_dir/$package_name.sh
 
@@ -203,10 +204,10 @@ lfs_source_package() {
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
     : ${package_files_dir:=$package_dir/$package_name}
     : ${package_source_dir:=$SOURCE_DIR/$package_name-$package_version}
-    # Sources are unpacked in the package's group, whatever the recipe sets: elsewhere, a package of
-    # another group could unpack into the same directory.
+    # Sources are unpacked in the package's category, whatever the recipe sets: elsewhere, a package
+    # of another category could unpack into the same directory.
     [ "$(dirname $package_source_dir)" = "$(dirname $SOURCE_DIR/$package_name)" ] \
-        || bail "$package_name: $package_source_dir is not in the directory of the package's group"
+        || bail "$package_name: $package_source_dir is not in the directory of the package's category"
     : ${package_work_dir:=$WORK_DIR/$package_key/$package_release}
     : ${package_build_dir:=$package_work_dir/build/$package_component}
     : ${package_stage_dir:=$package_work_dir/stage/$package_component}
@@ -221,7 +222,7 @@ lfs_source_package() {
     : ${package_archive=$package_deliverable.tar.xz}
 
     # `package_install_dir` is the only writable var from the package API.
-    readonly package_name package_component package_group \
+    readonly package_name package_component package_category \
              package_version package_branch package_release \
              package_source package_source_hash package_fetch_dependencies \
              package_files_dir package_source_dir \
