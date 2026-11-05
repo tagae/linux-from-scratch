@@ -4,6 +4,8 @@
 : ${package_description:=Compatibility helpers for Python 2 and 3 code.}
 : ${package_license:=MIT}
 
+package_source_dir=$SOURCE_DIR/six-$package_version
+
 install() {
     local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
 

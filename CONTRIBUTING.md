@@ -103,6 +103,10 @@ an empty stage, so an archive holds exactly what it installed. The default `arch
 archive's SHA-256 digest next to it, and the default `unarchive` installs an archive only if it
 still matches.
 
+A package's name is the path of its recipe under `package/`, without the `.sh`. The Python libraries
+live in `package/python/` and are named `python/<name>`, after their PyPI project, e.g.
+`lfs_system_install python/click`. Their archives and build directories sit under `python/` as well.
+
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir`.

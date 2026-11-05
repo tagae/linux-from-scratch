@@ -89,9 +89,12 @@ bcm2835-dma regression). virt takes USB (xHCI), RNG (virtio-rng) and console (`h
   C23 (`-std=gnu17` for gmp, gnupg, flex); libtool `.la` in the sysroot misdirect later builds (delete them); guard
   same-arch cross builds, where `build` equals `host`.
 - Python (CPython 3.14, `python` + `dev` components): extensions and wheels are built by the TOOL_DIR Python against
-  the target's sysconfigdata (`python_wheel`, `python_install_wheel`, `python_compile`; templates `package/cffi.sh`
-  for a build backend, `package/pycparser.sh` for pure Python). Bytecode is precompiled unchecked-hash so the Pi
-  never writes `__pycache__`; no pip, no dist-info unless metadata is read at run time.
+  the target's sysconfigdata (`python_wheel`, `python_install_wheel`, `python_compile`; templates
+  `package/python/cffi.sh` for a build backend, `package/python/pycparser.sh` for pure Python). Bytecode is
+  precompiled unchecked-hash so the Pi never writes `__pycache__`; no pip, no dist-info unless metadata is read at run
+  time. A Python library's recipe is `package/python/<pypi name>.sh`, installed as `python/<pypi name>` (programs
+  stay at the top: `yubikey-manager`, `meson`); the default `package_source_dir` follows the package's name, so set it
+  to the sdist's directory.
 - Rust: the seed in TOOL_DIR (`package/rust.sh`, `lfs_tools_install rust`); triple
   `$target_arch-unknown-$target_kernel-$target_abi`; crates fetched at fetch time, built `--locked --offline`;
   `--remap-path-prefix` keeps build paths out of panics; stripped.
