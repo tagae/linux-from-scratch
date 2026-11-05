@@ -66,7 +66,7 @@ lfs_system_build() {
     # Chapter 8: Installing Basic System Software
     ( manpages=no; lfs_system_install kmod )
     lfs_install_package kmod#dev
-    ( bash_malloc=no curses=no; lfs_system_install bash )
+    ( bash_malloc=no; lfs_system_install bash )
     (
         # One program for all the utilities, which otherwise carry a copy of the same library each.
         single_binary=symlinks

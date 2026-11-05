@@ -1,6 +1,6 @@
-: ${package_version:=2.46.1}
+: ${package_version:=2.47}
 : ${package_source:=https://sourceware.org/pub/binutils/releases/binutils-$package_version.tar.xz}
-: ${package_source_hash:=sha256:e127a709cba24c76de8936cb7083dd768f28cd37eb010492e2f19b71eb1294e4}
+: ${package_source_hash:=sha256:154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff}
 : ${package_description:=GNU assembler, linker and binary utilities.}
 : ${package_license:=GPL-3.0-or-later}
 

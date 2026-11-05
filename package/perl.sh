@@ -1,6 +1,6 @@
-: ${package_version:=5.42.2}
+: ${package_version:=5.44.0}
 : ${package_source:=https://www.cpan.org/src/5.0/perl-$package_version.tar.xz}
-: ${package_source_hash:=sha256:0a585eeb9e363c0f80482ddb3571625250c2c86aeb408853e8ea50805cfb14bb}
+: ${package_source_hash:=sha256:505cf43912e9480495c344c70260452e32aa2a73c546a026b3f100053b23ce91}
 : ${package_description:=Perl programming language.}
 : ${package_license:=Artistic-1.0-Perl OR GPL-1.0-or-later}
 
@@ -12,7 +12,10 @@ prepare() {
     # Configure relocates only the library paths it derives itself; ones given to it must start
     # with .../, which stands for the directory of the perl binary.
     local lib_prefix=$([ $relocatable = yes ] && echo .../.. || echo ${prefix:-/usr})
-    cd $package_source_dir
+    # Perl builds only in the tree that Configure ran in, and a second Configure over a built tree
+    # leaves its extensions stale, so build from a fresh copy of the source.
+    find . -mindepth 1 -delete
+    cp -Rp $package_source_dir/. .
     # Configure ignores LDFLAGS from the environment, and looks for libraries in the build machine's
     # own directories unless given a sysroot.
     # A relocatable @INC is incompatible with a shared libperl, whose rpath is absolute.
@@ -36,9 +39,9 @@ prepare() {
 }
 
 build() {
-    make -C $package_source_dir
+    make
 }
 
 install() {
-    make -C $package_source_dir install DESTDIR=$package_install_dir
+    make install DESTDIR=$package_install_dir
 }

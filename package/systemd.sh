@@ -1,6 +1,6 @@
-: ${package_version:=260.2}
+: ${package_version:=261.2}
 : ${package_source:=https://github.com/systemd/systemd/archive/v$package_version/systemd-$package_version.tar.gz}
-: ${package_source_hash:=sha256:71a9ed11cf773478b0d7a16cd96e39ca3c3939ab37ed9a8ee814c31ea9b4f2b5}
+: ${package_source_hash:=sha256:ed1059ff964f5df35b6056434cc17cc83f86dc913f10489948a0b19b6081c5ec}
 : ${package_description:=System and service manager.}
 : ${package_license:=LGPL-2.1-or-later AND GPL-2.0-or-later AND MIT AND BSD-3-Clause}
 
