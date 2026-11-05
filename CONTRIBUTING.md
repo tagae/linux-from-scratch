@@ -6,6 +6,7 @@ Overview
 
 * `lfs`: CLI frontend
 * `lib/`: LFS framework
+* `lib/category/`: the helpers of the recipes of a package category, loaded for them alone
 * `platform/`: the machines that systems run on
 * `capability/`: what systems can support, as kernel configuration fragments: optional ones, and the userland's own
 * `feature/`: tool sets for the systems' users, as lists of packages
@@ -107,17 +108,18 @@ A package's name is the path of its recipe under `package/`, without the `.sh`. 
 live in `package/python/` and are named `python/<name>`, after their PyPI project without any
 `python-` prefix, e.g. `lfs_system_install python/click`.
 
-The directory of a package's name is its group (`python` for `python/click`, `.` for `bash`). The
-framework puts everything of the package in the group's directory of `download/`, `source/`,
-`work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked sources (a recipe cannot
-set `package_source_dir` elsewhere), its build, stage and component directories, and its archives.
-Packages of different groups therefore never share a path, whatever their names, versions or files
-are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks by hand uses the
-same directories.
+The directory of a package's name is its category (`python` for `python/click`, `.` for `bash`).
+The framework puts everything of the package in the category's directory of `download/`,
+`source/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked sources (a
+recipe cannot set `package_source_dir` elsewhere), its build, stage and component directories, and
+its archives. Packages of different categories therefore never share a path, whatever their names,
+versions or files are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks
+by hand uses the same directories.
 
-A group can have helpers for its recipes in `lib/<group>.sh` (`lib/python.sh` for `python`), which
-the framework loads for the recipes of that group and for no others. A recipe that uses them
-belongs to the group, whatever it installs: `python/yubikey-manager` is a program.
+A category can have helpers for its recipes in `lib/category/<category>.sh`
+(`lib/category/python.sh` for `python`), which the framework loads for the recipes of that category
+and for no others. A recipe that uses them belongs to the category, whatever it installs:
+`python/yubikey-manager` is a program.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -163,8 +165,9 @@ Internal API variables must not be exported.
 
 A recipe owns the functions it defines: no other recipe, and no feature, calls them, as that would
 make a package depend on the inside of another. What several recipes need is a helper in
-`lib/<topic>.sh`: sourced by `lfs` (`lib/meson.sh`), or, if named after a group of packages, loaded
-for that group (`lib/python.sh`). A feature may define helpers of its own, for its own use, but never one that a package uses: packages rely on the framework
+`lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`), or in `lib/category/<category>.sh`, loaded for
+the recipes of that package category (`lib/category/python.sh`). A feature may define helpers of
+its own, for its own use, but never one that a package uses: packages rely on the framework
 (`lib/`) alone.
 
 
