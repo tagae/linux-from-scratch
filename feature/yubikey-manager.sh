@@ -65,4 +65,4 @@ lfs_system_install python/jaraco-context
 lfs_system_install python/jaraco-functools
 lfs_system_install python/keyring
 lfs_system_install python/fido2
-lfs_system_install yubikey-manager
+lfs_system_install python/yubikey-manager

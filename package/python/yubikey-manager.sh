@@ -4,7 +4,7 @@
 : ${package_description:=Command line tool and Python library to configure a YubiKey.}
 : ${package_license:=BSD-2-Clause}
 
-package_source_dir=$SOURCE_DIR/yubikey_manager-$package_version
+package_source_dir=$SOURCE_DIR/python/yubikey_manager-$package_version
 
 install() {
     python_install_modules $package_source_dir/ykman $package_source_dir/yubikit

@@ -177,6 +177,9 @@ lfs_source_package() {
         verify_hash "$DOWNLOAD_DIR/$package_group/$file" "$hash"
     }
 
+    # The helpers of the package's group, if it has any, are for its recipes alone.
+    [ ! -f $lib_dir/$package_group.sh ] || . $lib_dir/$package_group.sh
+
     . $package_dir/$package_name.sh
 
     case ${package_source:-none} in

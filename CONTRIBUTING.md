@@ -115,6 +115,10 @@ Packages of different groups therefore never share a path, whatever their names,
 are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks by hand uses the
 same directories.
 
+A group can have helpers for its recipes in `lib/<group>.sh` (`lib/python.sh` for `python`), which
+the framework loads for the recipes of that group and for no others. A recipe that uses them
+belongs to the group, whatever it installs: `python/yubikey-manager` is a program.
+
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir`.
@@ -159,8 +163,8 @@ Internal API variables must not be exported.
 
 A recipe owns the functions it defines: no other recipe, and no feature, calls them, as that would
 make a package depend on the inside of another. What several recipes need is a helper in
-`lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`, `lib/python.sh`). A feature may define helpers
-of its own, for its own use, but never one that a package uses: packages rely on the framework
+`lib/<topic>.sh`: sourced by `lfs` (`lib/meson.sh`), or, if named after a group of packages, loaded
+for that group (`lib/python.sh`). A feature may define helpers of its own, for its own use, but never one that a package uses: packages rely on the framework
 (`lib/`) alone.
 
 

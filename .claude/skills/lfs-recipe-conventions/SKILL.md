@@ -42,7 +42,7 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 | A capability (kernel support) | `capability/<cap>.config`: a fragment, with a `# Requires: <cap>...` line for the capabilities it builds on |
 | What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
 | Helpers of one feature | in its file, for its own use: no package uses them (encapsulation, above) |
-| Helpers several recipes share | `lib/<topic>.sh` sourced in `lfs` (`lib/meson.sh`, `lib/python.sh`); recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
+| Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or named after a group of packages (`package/python/`: `lib/python.sh`) and loaded for that group's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
 | Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
 | Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
 | Device tree changes | override nodes appended in `package/linux.sh` `prepare` (later definitions win) |
@@ -97,7 +97,8 @@ bcm2835-dma regression). virt takes USB (xHCI), RNG (virtio-rng) and console (`h
   `package/python/pycparser.sh`). Recipes never mention `python_version`, which the framework sets. Bytecode is
   precompiled unchecked-hash so the Pi never writes `__pycache__`; no pip, no dist-info unless metadata is read at run
   time. A Python library's recipe is `package/python/<name>.sh`, installed as `python/<name>`: its PyPI name without a
-  `python-` prefix (programs stay at the top: `yubikey-manager`, `meson`). The framework keeps downloads, patches,
+  `python-` prefix. A recipe that uses the group's helpers belongs to the group, a program like `python/yubikey-manager`
+  too. The framework keeps downloads, patches,
   sources, work directories and archives under `python/` (the package's group), and rejects a `package_source_dir`
   outside it; the default is right unless the sdist's directory is spelled differently from the name
   (`more_itertools-…`): then set it, with `python/` in it. A recipe that fetches by hand uses the group's directory.
