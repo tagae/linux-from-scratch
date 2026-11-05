@@ -16,6 +16,7 @@ readonly feature_dir=$project_dir/feature
 . $project_dir/lib/package.sh
 . $project_dir/lib/components.sh
 . $project_dir/lib/meson.sh
+. $project_dir/lib/python.sh
 . $project_dir/lib/tools.sh
 . $project_dir/lib/system.sh
 . $project_dir/lib/image.sh

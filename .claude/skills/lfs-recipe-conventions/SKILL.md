@@ -19,6 +19,8 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 - FRAMEWORK CHANGES (lib/*.sh, Makefile, Dockerfile.*, docker-compose.yaml, lfs): show the design first unless
   asked for that change. The archive step only archives. Shared helpers get their own `lib/<topic>.sh`, sourced in
   `lfs`. Features on request, not speculatively.
+- ENCAPSULATION: the functions a recipe or feature defines are its own; no other recipe calls them. What several
+  recipes need goes in `lib/<topic>.sh`.
 - Use the upstream's own targets and options (headers_install, meson options, `make install`) over re-implementing;
   add the missing tool rather than a workaround.
 - Link DYNAMICALLY (static only where dynamic complicates things: gcc's in-tree gmp/mpfr/mpc).
@@ -38,8 +40,8 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 | Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
 | A capability (kernel support) | `capability/<cap>.config`: a fragment, with a `# Requires: <cap>...` line for the capabilities it builds on |
 | What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
-| Helpers of one feature | in its file (recipes run in subshells that inherit them) |
-| Helpers several recipes share | `lib/<topic>.sh` sourced in `lfs` (`lib/meson.sh`); recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
+| Helpers of one feature | in its file, for its own use: no recipe calls them (encapsulation, below) |
+| Helpers several recipes share | `lib/<topic>.sh` sourced in `lfs` (`lib/meson.sh`, `lib/python.sh`); recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
 | Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
 | Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
 | Device tree changes | override nodes appended in `package/linux.sh` `prepare` (later definitions win) |
@@ -89,7 +91,7 @@ bcm2835-dma regression). virt takes USB (xHCI), RNG (virtio-rng) and console (`h
   C23 (`-std=gnu17` for gmp, gnupg, flex); libtool `.la` in the sysroot misdirect later builds (delete them); guard
   same-arch cross builds, where `build` equals `host`.
 - Python (CPython 3.14, `python` + `dev` components): extensions and wheels are built by the TOOL_DIR Python against
-  the target's sysconfigdata (`python_wheel`, `python_install_wheel`, `python_compile`; templates
+  the target's sysconfigdata (`python_wheel`, `python_install_wheel`, `python_compile`, in `lib/python.sh`; templates
   `package/python/cffi.sh` for a build backend, `package/python/pycparser.sh` for pure Python). Bytecode is
   precompiled unchecked-hash so the Pi never writes `__pycache__`; no pip, no dist-info unless metadata is read at run
   time. A Python library's recipe is `package/python/<name>.sh`, installed as `python/<name>`: its PyPI name without a
