@@ -93,8 +93,9 @@ bcm2835-dma regression). virt takes USB (xHCI), RNG (virtio-rng) and console (`h
   `package/python/cffi.sh` for a build backend, `package/python/pycparser.sh` for pure Python). Bytecode is
   precompiled unchecked-hash so the Pi never writes `__pycache__`; no pip, no dist-info unless metadata is read at run
   time. A Python library's recipe is `package/python/<name>.sh`, installed as `python/<name>`: its PyPI name without a
-  `python-` prefix (programs stay at the top: `yubikey-manager`, `meson`); the default `package_source_dir` follows the package's name, so set it
-  to the sdist's directory.
+  `python-` prefix (programs stay at the top: `yubikey-manager`, `meson`). Downloads, sources, work directories and
+  archives all sit under `python/`, so the default `package_source_dir` is right unless the sdist's directory is
+  spelled differently from the name (`more_itertools-…`): then set it, with `python/` in it.
 - Rust: the seed in TOOL_DIR (`package/rust.sh`, `lfs_tools_install rust`); triple
   `$target_arch-unknown-$target_kernel-$target_abi`; crates fetched at fetch time, built `--locked --offline`;
   `--remap-path-prefix` keeps build paths out of panics; stripped.

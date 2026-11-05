@@ -4,7 +4,7 @@
 : ${package_description:=Context managers for Python.}
 : ${package_license:=MIT}
 
-package_source_dir=$SOURCE_DIR/jaraco_context-$package_version
+package_source_dir=$SOURCE_DIR/python/jaraco_context-$package_version
 
 install() {
     local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
