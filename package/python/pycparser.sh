@@ -4,8 +4,6 @@
 : ${package_description:=C parser in Python.}
 : ${package_license:=BSD-3-Clause}
 
-package_source_dir=$SOURCE_DIR/pycparser-$package_version
-
 install() {
     local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
 
