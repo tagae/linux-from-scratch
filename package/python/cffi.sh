@@ -4,6 +4,8 @@
 : ${package_description:=Foreign function interface for Python calling C code.}
 : ${package_license:=MIT-0}
 
+package_source_dir=$SOURCE_DIR/cffi-$package_version
+
 build() {
     python_wheel
 }
