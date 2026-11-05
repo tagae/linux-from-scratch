@@ -25,7 +25,7 @@ build() {
     # directory.
     export PYO3_PYTHON=$TOOL_DIR/usr/bin/python3
     export PYO3_CROSS=1
-    export PYO3_CROSS_LIB_DIR=$sysroot$prefix/lib/python${python_version%.*}
+    export PYO3_CROSS_LIB_DIR=$sysroot$(python_lib_dir)
     export PYO3_BUILD_EXTENSION_MODULE=1
     export OPENSSL_DIR=$sysroot$prefix
     # The system's OpenSSL has no legacy provider, which cryptography would otherwise try to load.
@@ -49,7 +49,7 @@ build() {
 }
 
 install() {
-    local site_packages=$package_install_dir$prefix/lib/python${python_version%.*}/site-packages
+    local site_packages=$package_install_dir$(python_site_packages)
 
     mkdir -pv $site_packages
     cp -rv $package_source_dir/src/cryptography $site_packages/
