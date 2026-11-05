@@ -9,7 +9,9 @@
 # components. The toolchain finds the platform's headers and libraries there, with no extra flags.
 # Every platform goes through a cross toolchain, even one with the build machine's architecture.
 #
-# A capability is kernel support, configured by capability/<capability>.config. A feature adds the
+# A capability is kernel support, configured by capability/<capability>.config. The kernel has
+# layers that every system gets, in package/linux/ (base, hardening, machine, architecture);
+# capabilities are the optional ones, and the userland's own, which comes with it. A feature adds the
 # packages listed in feature/<feature>.sh, installed the same way after the kernel. Either names the
 # capabilities it needs on a `# Requires:` line.
 
@@ -124,9 +126,9 @@ lfs_system_build() {
     lfs_system_install texinfo
 
     # The kernel is archived under the capabilities that configure it, which the features leave
-    # unchanged.
+    # unchanged. The key names the userland's already.
     for cap in $capabilities; do
-        package_key=$package_key+$cap
+        [ $cap = $USERLAND ] || package_key=$package_key+$cap
     done
 
     # Chapter 10: Making the LFS System Bootable
