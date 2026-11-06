@@ -15,11 +15,12 @@
 # userland (pi0-systemd-gnu) for the base system and the build tools, extended by +<capability> for
 # the kernel, and by +<feature> for each feature in turn.
 #
-# Every path that changed between archive/.commit and HEAD is mapped by the first rule that fits:
+# Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/,
+# capability/, feature/ and platform/. Every other path (documentation, .github/, .claude/, the
+# Dockerfiles, docker-compose.yaml, test, ...) has no effect. Every input path that changed between
+# archive/.commit and HEAD is mapped by the first rule that fits:
 #
-#    1  No effect: *.md, docs/, .claude/, .github/, ci/, LICENSE, .gitignore, .dockerignore,
-#       opencode.json, sbxenv.yaml, Dockerfile.*, docker-compose.yaml (CI builds on the host, not
-#       in Docker), test, lib/image.sh and lib/qemu.sh (nothing in them goes into an archive).
+#    1  lib/image.sh and lib/qemu.sh: no effect (nothing in them goes into an archive).
 #    2  package/<path>: the archive/*/<recipe>-* of the recipe that the path belongs to. That is
 #       the path itself when it is a recipe, existing or deleted (package/python/cffi.sh is
 #       python/cffi, not python), else the longest directory of the path that has a recipe at HEAD
@@ -33,8 +34,9 @@
 #    7  lib/system.sh: every archive but the build tools (-bootstrap- and -tools- in the name).
 #    8  Makefile: archive/*/system-files-*, as its LFS_RELEASE ends up in os-release.
 #    9  platform/<p>.sh: everything under archive/<p>-*/.
-#   10  Anything else (lfs, lib/base.sh, lib/package.sh, lib/components.sh, lib/tools.sh, unknown
-#       paths): every archive, which makes a build from scratch.
+#   10  Any other input (lfs, lib/base.sh, lib/package.sh, lib/components.sh, lib/tools.sh, other
+#       paths of capability/, feature/, platform/ and lib/): every archive, which makes a build
+#       from scratch.
 #
 # A pattern like archive/*/make-* also drops make-ca-*, as a rebuild of a few archives too many is
 # cheaper than a stale one. download/ is never touched, as what it holds is checked by hash.
@@ -47,7 +49,7 @@
 set -o errexit -o nounset
 
 # The paths of git and of the rules are those of the repository, wherever the script is run from.
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 readonly archive_dir=archive
 readonly commit_file=$archive_dir/.commit
@@ -156,8 +158,7 @@ select_meson_recipe() {
 select_changed() {
     local path=$1 name callers
     case $path in
-    *.md|docs/*|.claude/*|.github/*|ci/*|LICENSE|.gitignore|.dockerignore|opencode.json \
-        |sbxenv.yaml|Dockerfile.*|docker-compose.yaml|test|lib/image.sh|lib/qemu.sh)
+    lib/image.sh|lib/qemu.sh)
         echo "$path: rule 1, no effect"
         ;;
     package/*)
@@ -199,8 +200,12 @@ EOF
         name=${name%.sh}
         select_archives "$path: rule 9, archives of the platform $name" platform "$name"
         ;;
-    *)
+    lfs|lib/*|capability/*|feature/*|platform/*)
         select_archives "$path: rule 10, every archive" all
+        ;;
+    *)
+        # Not an input of the build.
+        echo "$path: no effect"
         ;;
     esac
 }
