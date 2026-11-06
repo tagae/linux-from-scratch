@@ -6,7 +6,7 @@
 #
 # Prints one line per finding, and exits non-zero if there is any.
 #
-# Usage, from the repository root: ci/lint
+# Usage, from the repository root: .github/ci/lint
 
 set -o errexit -o nounset
 
@@ -54,7 +54,7 @@ shell_files=$(
     {
         echo lfs
         find lib platform feature package -type f -name '*.sh'
-        for file in ci/* $(find package -type f -path '*/usr/bin/*'); do
+        for file in .github/ci/* $(find package -type f -path '*/usr/bin/*'); do
             if is_sh_script $file; then echo $file; fi
         done
     } | sort
