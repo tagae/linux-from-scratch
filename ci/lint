@@ -1,0 +1,96 @@
+#!/bin/sh
+
+# Static checks that need no build and take seconds, for every push: the shell code parses and has
+# no errors, the recipes declare what their archives and licences rely on, and the system that CI
+# builds is one that lfs knows.
+#
+# Prints one line per finding, and exits non-zero if there is any.
+#
+# Usage, from the repository root: ci/lint
+
+set -o errexit -o nounset
+
+# The system that CI builds: the Makefile's pi0-test goal.
+readonly ci_system_key=pi0
+
+failed=
+
+finding() {
+    echo "$*"
+    failed=yes
+}
+
+[ -x lfs ] && [ -d package ] || {
+    echo "Run $0 from the repository root" >&2
+    exit 2
+}
+
+# Without a checker, everything would pass.
+for tool in dash shellcheck; do
+    command -v $tool > /dev/null 2>&1 || {
+        echo "$tool is needed" >&2
+        exit 2
+    }
+done
+
+# Whether the file is a script for sh, by its first line. The scripts that run as commands, CI's and
+# those that systems ship, have no .sh in their names.
+is_sh_script() {
+    case $(head -n 1 "$1") in
+        '#!/bin/sh' | '#!/bin/sh '*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Whether the file assigns the variable, as `name=` or as the recipes' `: ${name:=`, to a value that
+# matches the extended regular expression (any, by default).
+assigns() {
+    grep -Eq "^([^#]*[^[:alnum:]_])?$2:?=${3:-}" "$1"
+}
+
+#===[ Shell code ]===
+
+shell_files=$(
+    {
+        echo lfs
+        find lib platform feature package -type f -name '*.sh'
+        for file in ci/* $(find package -type f -path '*/usr/bin/*'); do
+            if is_sh_script $file; then echo $file; fi
+        done
+    } | sort
+)
+
+# dash is the strictest of the shells that run the code base: what it parses, they parse. It names
+# the file in its message.
+for file in $shell_files; do
+    if ! output=$(dash -n $file 2>&1); then
+        finding "$output"
+    fi
+done
+
+# The style warnings are the project's idioms, so only the errors count. The gcc format gives one
+# line per finding.
+if ! output=$(shellcheck -s dash -S error -f gcc $shell_files 2>&1); then
+    finding "$output"
+fi
+
+#===[ Recipes ]===
+
+for recipe in $(find package -type f -name '*.sh' | sort); do
+    assigns $recipe package_license \
+        || finding "$recipe: package_license is not set"
+    # Fetched the way lib/package.sh decides: a tarball is downloaded and then checked.
+    if assigns $recipe package_source 'https://.*(\.tar\.|\.tgz)'; then
+        assigns $recipe package_source_hash \
+            || finding "$recipe: package_source_hash is not set"
+    fi
+done
+
+#===[ System key ]===
+
+# stdout goes to /dev/null and stderr to the output, which is why the redirections are in this order.
+if ! output=$(SYSTEM_KEY=$ci_system_key ./lfs help 2>&1 > /dev/null); then
+    finding "SYSTEM_KEY=$ci_system_key does not resolve: $output"
+fi
+
+[ -z "$failed" ] || exit 1
