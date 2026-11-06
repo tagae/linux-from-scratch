@@ -1,4 +1,5 @@
 .PHONY: \
+	tools-bootstrap %-tools-bootstrap \
 	tools %-tools \
 	system %-system \
 	image \
@@ -39,18 +40,21 @@ items := $(sort $(CAPS) $(FEATURES))
 SYSTEM := $(PLATFORM)-$(USERLAND)$(subst $(space),,$(foreach item,$(items),+$(item)))
 
 # Default targets.
+tools-bootstrap: $(SYSTEM)-tools-bootstrap
 tools: $(SYSTEM)-tools
 system: $(SYSTEM)-system
 image: image/$(SYSTEM).img
 qemu: $(SYSTEM)-qemu
 test: $(SYSTEM)-test
 
-%-tools %-system image/%.img %-qemu: export SYSTEM_KEY = $*
+%-tools-bootstrap %-tools %-system image/%.img %-qemu: export SYSTEM_KEY = $*
 
 # Build tools.
-%-tools:
+%-tools-bootstrap:
 	# A native toolchain plus the temporary tools needed to build the rest.
 	./lfs tools bootstrap
+
+%-tools: %-tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	./lfs tools build
 

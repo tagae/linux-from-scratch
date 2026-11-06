@@ -179,11 +179,12 @@ Make Targets
 ------------
 
 ```shell
-make tools    # toolchain + temporary build tools
-make system   # build the system for the platform into the install tree
-make image    # produce a disk image from the install tree
-make qemu     # boot the image in QEMU (interactive serial console)
-make test     # check that the image boots and root can login/poweroff
+make tools-bootstrap  # native toolchain + temporary tools, from the host's
+make tools            # toolchain + temporary build tools
+make system           # build the system for the platform into the install tree
+make image            # produce a disk image from the install tree
+make qemu             # boot the image in QEMU (interactive serial console)
+make test             # check that the image boots and root can login/poweroff
 ```
 
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
