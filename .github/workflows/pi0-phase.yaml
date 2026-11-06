@@ -1,6 +1,7 @@
 name: pi0 phase
 
-# One phase of the pi0 build, on the runner, as the Makefile does it anywhere on a Linux host. The
+# One phase of the pi0 build, as the Makefile does it on a Linux host, directly or through Docker
+# Compose. The
 # package archives and the downloads come from the cache, and go back into it whatever happens to
 # the build, so that a build too long for one run completes over several. A phase relies on the
 # archives that the phases before it saved: they only unpack, and the build goes on from there.
@@ -19,6 +20,10 @@ on:
         description: Build from scratch, without the cache
         type: boolean
         default: false
+      docker:
+        description: The command builds through Docker Compose, whose archives have a cache of their own
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,6 +31,12 @@ permissions:
 defaults:
   run:
     shell: bash
+
+# The archives of a build through Docker Compose record the containers' paths, those of a build on
+# the runner its own: neither can use the other's. Neither prefix begins the other, as a cache is
+# restored by the prefix of its key.
+env:
+  CACHE: ${{ inputs.docker && 'docker-lfs-pi0-' || 'lfs-pi0-' }}
 
 jobs:
   phase:
@@ -62,11 +73,11 @@ jobs:
           path: |
             archive
             download
-          key: lfs-pi0-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
-          restore-keys: lfs-pi0-
+          key: ${{ env.CACHE }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+          restore-keys: ${{ env.CACHE }}
 
       - name: Drop the stale archives
-        run: .github/ci/invalidate
+        run: .github/ci/invalidate ${{ inputs.docker && '--docker' || '' }}
 
       # The files that the cache holds, by name, size and modification time, to tell afterwards
       # whether the build changed them: an archive rebuilt under the same name and size has a new
@@ -120,4 +131,4 @@ jobs:
           path: |
             archive
             download
-          key: lfs-pi0-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+          key: ${{ env.CACHE }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}

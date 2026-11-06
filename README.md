@@ -38,6 +38,7 @@ Hosts that are not Linux can make the image through Docker Compose instead, with
 goals: `make docker-image`, or `make docker-image/pi0-systemd-gnu.img` for a given system. The image
 then runs on the host, with QEMU and `expect`: `./lfs qemu` boots it, and `./test` also logs in and
 powers off (for a system other than `virt`, set `PLATFORM=pi0`, or pass its key to `./test`).
+`make docker-test` makes the image and runs `./test`, as `make test` does without Docker.
 
 
 Supported Platforms
