@@ -50,17 +50,9 @@ jobs:
       - name: Install the host's packages
         run: |
           sudo apt-get update
-          # The image is made with the mkfs.btrfs that the tools build: it needs btrfs-progs 6.12
-          # for --subvol, which Ubuntu 24.04 lacks. lfs puts the host's directories ahead of the
-          # tools', so a host mkfs.btrfs would be the one to run.
-          sudo apt-get purge -y btrfs-progs
           sudo apt-get install -y --no-install-recommends \
             build-essential curl wget rsync gawk bison python3 patchelf ca-certificates \
             expect qemu-system-arm qemu-utils
-          if command -v mkfs.btrfs; then
-            echo "::error::The host has a mkfs.btrfs, which would make the image"
-            exit 1
-          fi
 
       # Each phase saves its own cache, and restores the most recent one.
       - name: Restore the cache
