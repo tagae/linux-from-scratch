@@ -3,30 +3,42 @@
 : ${package_license:=MIT OR Apache-2.0}
 
 # Compiling Rust takes a Rust compiler, so this one comes prebuilt by the Rust project, as a seed
-# that stays on the build machine: rustc and cargo, and the standard library for the build machine,
-# where build scripts and procedural macros run, and for 32-bit ARM. Only an aarch64 build machine
-# is pinned.
+# that stays on the build machine: rustc and cargo, the standard library for the build machine,
+# where build scripts and procedural macros run, and the platform's, when the platform's target is
+# another. Only an aarch64 build machine is pinned.
 case $(uname -m) in
     aarch64|arm64) rust_host=aarch64-unknown-linux-gnu ;;
     *) bail "No Rust toolchain pinned for a $(uname -m) build machine" ;;
 esac
+
+# The platform's target, as Rust names it.
+rust_target=$target_arch-unknown-$target_kernel-$target_abi
+rust_targets=$rust_host
+[ $rust_target = $rust_host ] || rust_targets="$rust_targets $rust_target"
 
 fetch() {
     get https://static.rust-lang.org/dist/rustc-$package_version-$rust_host.tar.xz \
         sha256:b344b81f0cd4c2246c7da8b197fe7a339d7dd02bb15cb69b2524115d9c75224c
     get https://static.rust-lang.org/dist/cargo-$package_version-$rust_host.tar.xz \
         sha256:8f70bcaccea5ba4db187c3fd4d64e24592b4e16af513497201f5909d61691dbe
-    get https://static.rust-lang.org/dist/rust-std-$package_version-$rust_host.tar.xz \
-        sha256:46aed8e63186350004d8ec6afca798811e6530b514352e5a8a26f3dc4939b3be
-    get https://static.rust-lang.org/dist/rust-std-$package_version-arm-unknown-linux-gnueabihf.tar.xz \
-        sha256:5b1a03e3f6b021b2bc288a98011e1174a527922dbf4ece64d299472cf87b9cac
+    local target hash
+    for target in $rust_targets; do
+        case $target in
+            aarch64-unknown-linux-gnu)
+                hash=sha256:46aed8e63186350004d8ec6afca798811e6530b514352e5a8a26f3dc4939b3be ;;
+            arm-unknown-linux-gnueabihf)
+                hash=sha256:5b1a03e3f6b021b2bc288a98011e1174a527922dbf4ece64d299472cf87b9cac ;;
+            *)
+                bail "No Rust standard library pinned for $target" ;;
+        esac
+        get https://static.rust-lang.org/dist/rust-std-$package_version-$target.tar.xz $hash
+    done
 }
 
 install() {
-    local dist
+    local dist target
     for dist in rustc-$package_version-$rust_host cargo-$package_version-$rust_host \
-                rust-std-$package_version-$rust_host \
-                rust-std-$package_version-arm-unknown-linux-gnueabihf; do
+                $(for target in $rust_targets; do echo rust-std-$package_version-$target; done); do
         sh $SOURCE_DIR/$dist/install.sh --destdir=$package_install_dir --prefix=$prefix \
             --disable-ldconfig
     done
