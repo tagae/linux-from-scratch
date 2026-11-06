@@ -22,6 +22,39 @@ readonly feature_dir=$project_dir/feature
 . $lib_dir/image.sh
 . $lib_dir/qemu.sh
 
+#===[ Environment ]===
+
+# The variables that builds see of the environment lfs is started in: its external API, PATH and
+# TMPDIR. As in a container, nothing else of the caller's comes in, such as what steers compilers,
+# pkg-config or interpreters (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH...). QEMU runs in the caller's.
+readonly lfs_environment="PLATFORM USERLAND CAPS FEATURES SYSTEM_KEY TIMEZONE IMAGE_SIZE ERASE \
+    MACHINE LFS_RELEASE VERSION_CODENAME RELEASE_TYPE DISTRIB_CODENAME DISTRIB_DESCRIPTION \
+    ROOT_VOLUME STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR \
+    IMAGE_DIR BOOTSTRAP_DIR PATH TMPDIR"
+
+# Starts lfs anew with the same arguments in an environment that holds those variables alone,
+# unless it holds no other already. PWD, OLDPWD, SHLVL and _ are the shell's own.
+lfs_clean_environment() {
+    local name
+    for name in $(awk 'BEGIN { for (name in ENVIRON) print name }'); do
+        case " $lfs_environment PWD OLDPWD SHLVL _ " in
+            *" $name "*) ;;
+            *)
+                set -- "$project_dir/lfs" "$@"
+                for name in $lfs_environment; do
+                    eval "[ -z \"\${$name+set}\" ] || set -- \"$name=\$$name\" \"\$@\""
+                done
+                exec env -i "$@"
+                ;;
+        esac
+    done
+}
+
+case "${1:-help}" in
+    qemu|help) ;;
+    *) lfs_clean_environment "$@" ;;
+esac
+
 #===[ State Storage ]===
 
 # Override if you wish to store artefacts in a custom dir.
@@ -166,14 +199,32 @@ if command -v nproc >/dev/null 2>&1; then
     readonly MAKEFLAGS
 fi
 
-export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
+# The bootstrap builds the first tools with the host's, and QEMU runs on the host. Every other
+# command builds with the tools alone, as the scratch container does, so that nothing of the
+# host's (a program, a config script, an interpreter, a trust store) finds its way into a build.
+case "${1:-help} ${2:-}" in
+    'tools bootstrap'|qemu\ *|help\ *)
+        export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
+        # Bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists, prefer
+        # it.
+        if [ -x /usr/bin/m4 ]; then
+            : ${M4:=/usr/bin/m4}
+            export M4
+        fi
+        ;;
+    *)
+        export PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
+        # The tools' openssl looks in the host's /etc/ssl, unless told otherwise.
+        export SSL_CERT_FILE=$TOOL_DIR/etc/ssl/cert.pem SSL_CERT_DIR=$TOOL_DIR/etc/ssl/certs
+        ;;
+esac
 readonly PATH
 
-# Bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists, prefer it.
-if [ -x /usr/bin/m4 ]; then
-    : ${M4:=/usr/bin/m4}
-    export M4
-fi
+# A home of the build's own, rather than the user's, with its configuration files.
+case "${1:-help}" in
+    qemu|help) ;;
+    *) export HOME=$WORK_DIR ;;
+esac
 
 #===[ Installation ]===
 

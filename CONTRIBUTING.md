@@ -90,9 +90,8 @@ container as root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image 
 `make docker-image` does). Making a system on a device erases it, so that takes `ERASE`, set to the
 same device, e.g. `sudo ERASE=/dev/sdb ./lfs image build /dev/sdb`, on a Linux host: the scratch
 container is not privileged, and has no access to devices. A device that anything has mounted or
-opened is refused (unmount a card from a desktop's automounter first). Outside the scratch
-container, which has them, a host needs `btrfs-progs` 6.12 or later (for `--subvol`),
-`dosfstools`, `mtools` and `fdisk` (for `sfdisk`), besides the usual `coreutils` and `tar`.
+opened is refused (unmount a card from a desktop's automounter first). The programs that make
+the image (`mkfs.btrfs`, `mkfs.fat`, mtools, `sfdisk`) are the tools', as for every build.
 
 
 Package Model
@@ -148,6 +147,14 @@ All shell code should be POSIX compliant.
 Shell variables are part of the **external API** if they are used to parameterise `lfs`.
 
 External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `CAPS`, `FEATURES`)
+
+They are the only variables of its environment that `lfs` passes on to builds, along with `PATH`
+and `TMPDIR` (the list is `lfs_environment`, in `lfs`): every command but `qemu` and `help`
+starts anew in an environment that holds them alone, as a container would, and has a home of its
+own, `WORK_DIR`. After `tools bootstrap`, which builds the first tools with the host's, `PATH`
+holds the tools' directories alone, and their trust store serves the downloads: nothing of the
+host's (a program, a config script, an interpreter) finds its way into a build, on a Linux host
+as in the scratch container.
 
 External API variables might be exported in invocations of `lfs`, but are never exported internally
 as part of internal logic.
