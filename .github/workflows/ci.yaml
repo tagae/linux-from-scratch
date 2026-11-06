@@ -41,16 +41,16 @@ jobs:
 
   # The pi0 system, built and booted in QEMU as `make pi0-test` does, one job per phase because a
   # job has six hours and a cold build takes longer. Each phase relies on the archives that the
-  # one before it saved in the cache, so only the first can start from scratch.
+  # one before it saved in the cache, so only the first can start from scratch. The Makefile's
+  # targets set SYSTEM_KEY and export LFS_RELEASE, which the system files bake into os-release;
+  # the phases that a target runs before its own only unpack their archives.
   bootstrap:
     uses: ./.github/workflows/pi0-phase.yaml
     with:
       name: bootstrap
-      command: SYSTEM_KEY=pi0 ./lfs tools bootstrap
+      command: make pi0-tools-bootstrap
       cold: ${{ inputs.cold == true }}
 
-  # The Makefile's targets set SYSTEM_KEY and export LFS_RELEASE, which the system files bake
-  # into os-release. The bootstrap that they run first only unpacks its archives.
   tools:
     needs: bootstrap
     uses: ./.github/workflows/pi0-phase.yaml
