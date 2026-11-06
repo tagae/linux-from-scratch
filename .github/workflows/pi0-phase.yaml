@@ -1,0 +1,131 @@
+name: pi0 phase
+
+# One phase of the pi0 build, on the runner, as the Makefile does it anywhere on a Linux host. The
+# package archives and the downloads come from the cache, and go back into it whatever happens to
+# the build, so that a build too long for one run completes over several. A phase relies on the
+# archives that the phases before it saved: they only unpack, and the build goes on from there.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: The phase, which names the cache that it saves
+        type: string
+        required: true
+      command:
+        description: The command that builds the phase
+        type: string
+        required: true
+      cold:
+        description: Build from scratch, without the cache
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  phase:
+    name: ${{ inputs.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      # .github/ci/invalidate compares HEAD with the commit that the cache was built from.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      # README.md, Requirements: the packages of Dockerfile.bootstrap, and `expect` and QEMU for
+      # `make test`.
+      - name: Install the host's packages
+        run: |
+          sudo apt-get update
+          # The image is made with the mkfs.btrfs that the tools build: it needs btrfs-progs 6.12
+          # for --subvol, which Ubuntu 24.04 lacks. lfs puts the host's directories ahead of the
+          # tools', so a host mkfs.btrfs would be the one to run.
+          sudo apt-get purge -y btrfs-progs
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl wget rsync gawk bison python3 patchelf ca-certificates \
+            expect qemu-system-arm qemu-utils
+          if command -v mkfs.btrfs; then
+            echo "::error::The host has a mkfs.btrfs, which would make the image"
+            exit 1
+          fi
+
+      # Each phase saves its own cache, and restores the most recent one.
+      - name: Restore the cache
+        if: ${{ !inputs.cold }}
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            archive
+            download
+          key: lfs-pi0-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+          restore-keys: lfs-pi0-
+
+      - name: Drop the stale archives
+        run: .github/ci/invalidate
+
+      # The files that the cache holds, by name, size and modification time, to tell afterwards
+      # whether the build changed them: an archive rebuilt under the same name and size has a new
+      # time. Not archive/.commit, which .github/ci/invalidate has just written, nor an archive that
+      # is still being made.
+      - name: Fingerprint the cache
+        id: before
+        run: |
+          mkdir -p archive download
+          echo "sum=$(find archive download -type f ! -path archive/.commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)" >> "$GITHUB_OUTPUT"
+
+      # The build has its own timeout, so that the steps that save the cache get to run before the
+      # job's. QEMU emulates the raspi0 machine, which makes the boot slower than on a Pi.
+      - name: Build
+        timeout-minutes: 330
+        env:
+          COMMAND: ${{ inputs.command }}
+          TEST_TIMEOUT: 600
+          # The host's tools, as a container has them, rather than the runner's own, which sit in
+          # /usr/local, /opt and the home directory.
+          PATH: /usr/sbin:/usr/bin:/sbin:/bin
+        run: eval "$COMMAND"
+
+      - name: Report disk usage
+        if: always()
+        run: |
+          df -h /
+          du -sh archive download tools work source install image || true
+
+      - name: Check whether the build changed the cache
+        id: after
+        if: always()
+        env:
+          BEFORE: ${{ steps.before.outputs.sum }}
+        run: |
+          changed=false
+          # Without the fingerprint of before the build, the build never started.
+          if [ -n "$BEFORE" ]; then
+            # An archive that the build was making when it stopped is not worth the cache's space.
+            find archive -name '*.tmp' -delete
+            after=$(find archive download -type f ! -path archive/.commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)
+            [ "$after" = "$BEFORE" ] || changed=true
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+      # Only main saves, so that a cache always has a commit of main behind it.
+      - name: Save the cache
+        if: ${{ always() && github.ref == 'refs/heads/main' && steps.after.outputs.changed == 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            archive
+            download
+          key: lfs-pi0-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
