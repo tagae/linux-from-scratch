@@ -7,7 +7,13 @@
 prepare() {
     case $package_component in
         util-linux)
+            # configure takes the flags of ncurses from the first ncurses*-config in PATH, which on
+            # a Linux host is the host's own, ahead of the tools' and blind to the sysroot. Without
+            # them, it asks pkg-config, then the compiler, which both look in the tree being built
+            # against.
             $package_source_dir/configure \
+                NCURSESW6_CONFIG=false NCURSESW5_CONFIG=false \
+                NCURSES6_CONFIG=false NCURSES5_CONFIG=false \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
