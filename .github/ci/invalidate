@@ -17,8 +17,11 @@
 #
 # Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/,
 # capability/, feature/ and platform/. Every other path (documentation, .github/, .claude/, the
-# Dockerfiles, docker-compose.yaml, test, ...) has no effect. Every input path that changed between
-# archive/.commit and HEAD is mapped by the first rule that fits:
+# Dockerfiles, docker-compose.yaml, test, ...) has no effect. With --docker, for the archives of
+# the build through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml
+# are inputs too, which drop every archive, as they make the machines that every package is built
+# on. Every input path that changed between archive/.commit and HEAD is mapped by the first rule
+# that fits:
 #
 #    1  lib/image.sh and lib/qemu.sh: no effect (nothing in them goes into an archive).
 #    2  package/<path>: the archive/*/<recipe>-* of the recipe that the path belongs to. That is
@@ -47,6 +50,14 @@
 # any case. The script ends by recording HEAD in archive/.commit, for the next run.
 
 set -o errexit -o nounset
+
+# Usage: invalidate [--docker]
+docker=
+case ${1:-} in
+    --docker) docker=yes ;;
+    '') ;;
+    *) echo "Usage: $0 [--docker]" >&2; exit 2 ;;
+esac
 
 # The paths of git and of the rules are those of the repository, wherever the script is run from.
 cd "$(dirname "$0")/../.."
@@ -202,6 +213,13 @@ EOF
         ;;
     lfs|lib/*|capability/*|feature/*|platform/*)
         select_archives "$path: rule 10, every archive" all
+        ;;
+    Dockerfile.bootstrap|Dockerfile.scratch|docker-compose.yaml)
+        if [ -n "$docker" ]; then
+            select_archives "$path: the build's containers, every archive" all
+        else
+            echo "$path: no effect"
+        fi
         ;;
     *)
         # Not an input of the build.

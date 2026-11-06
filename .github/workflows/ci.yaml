@@ -71,3 +71,38 @@ jobs:
     with:
       name: test
       command: make pi0-test
+
+  # The same phases through Docker Compose, as on a Mac: the bootstrap container builds the first
+  # tools, the scratch container, which holds nothing but the tools, the rest, and the image boots on
+  # the runner. Their archives are cached apart from those above.
+  docker-bootstrap:
+    uses: ./.github/workflows/pi0-phase.yaml
+    with:
+      name: docker-bootstrap
+      command: make docker-pi0-tools-bootstrap
+      cold: ${{ inputs.cold == true }}
+      docker: true
+
+  docker-tools:
+    needs: docker-bootstrap
+    uses: ./.github/workflows/pi0-phase.yaml
+    with:
+      name: docker-tools
+      command: make docker-pi0-tools
+      docker: true
+
+  docker-system:
+    needs: docker-tools
+    uses: ./.github/workflows/pi0-phase.yaml
+    with:
+      name: docker-system
+      command: make docker-pi0-system
+      docker: true
+
+  docker-test:
+    needs: docker-system
+    uses: ./.github/workflows/pi0-phase.yaml
+    with:
+      name: docker-test
+      command: make docker-pi0-test
+      docker: true

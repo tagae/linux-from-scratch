@@ -7,9 +7,11 @@
 	test %-test \
 	clean distclean pristine \
 	FORCE \
+	docker-tools-bootstrap docker-%-tools-bootstrap \
 	docker-tools docker-%-tools \
 	docker-system docker-%-system \
 	docker-image \
+	docker-test docker-%-test \
 	docker-clean docker-distclean docker-pristine
 
 # Keep all intermediate files, in particular image/*.img. Otherwise, make deletes them.
@@ -87,9 +89,11 @@ pristine: distclean
 #---===[ Docker ]===---
 
 # Default Docker targets.
+docker-tools-bootstrap: docker-$(SYSTEM)-tools-bootstrap
 docker-tools: docker-$(SYSTEM)-tools
 docker-system: docker-$(SYSTEM)-system
 docker-image: docker-image/$(SYSTEM).img
+docker-test: docker-$(SYSTEM)-test
 
 # Environment variables picked up automatically by Docker Compose.
 .env:
@@ -97,14 +101,19 @@ docker-image: docker-image/$(SYSTEM).img
 	@echo HOST_GID=$$(id -g) >> $@
 	@echo LFS_RELEASE=$(LFS_RELEASE) >> $@
 
-docker-%-tools docker-%-system docker-image/%.img: export SYSTEM_KEY = $*
+docker-%-tools-bootstrap docker-%-tools docker-%-system docker-image/%.img: export SYSTEM_KEY = $*
 
 # The same rules through Docker Compose, up to the image.
 # The bootstrap container builds the first tools,
 # and the scratch container (nothing but those tools) builds the rest.
-docker-%-tools: .env
+docker-%-tools-bootstrap: .env
+	# The directories that Docker Compose mounts from the host, as the user's: the Docker daemon
+	# would make them root's.
+	mkdir -p download archive work/bootstrap work/boot image
 	# A native toolchain plus the temporary tools needed to run the scratch container.
 	docker compose run --build --rm bootstrap ./lfs tools bootstrap
+
+docker-%-tools: docker-%-tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	docker compose run --build --rm scratch ./lfs tools build
 
@@ -117,6 +126,10 @@ docker-%-system: docker-%-tools
 docker-image/%.img: docker-%-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
 	docker compose run --rm --user 0:0 scratch ./lfs image build
+
+# The image runs on the host, as the other Docker rules leave it there.
+docker-%-test: docker-image/%.img
+	./test $*
 
 # Besides the directories, these remove the volumes that Docker Compose keeps in their place.
 docker-clean: clean
