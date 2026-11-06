@@ -1,0 +1,255 @@
+#!/bin/sh
+#
+# Deletes the package archives that a change makes stale, before a build that reuses the archives of
+# an earlier one (the cache of the CI pipeline).
+#
+# Archives are named by package, variant and version (lib/package.sh), not by the content of the
+# recipe, kernel fragment or framework file that built them: an edit that keeps the version would
+# have the build reuse them. So the archives record the commit they were built from, in
+# archive/.commit, and what changed since decides which of them to drop. The packages built against
+# one that changed are not dropped with it: the rules below name the package alone.
+#
+# Layout: archive/<key>/<package>[-<variant>]-<version>[-<revision>][-<component>].tar.xz, next to
+# a .tar.xz.sha256. <package> is the path of the recipe under package/ without .sh, so that
+# python/click is archive/<key>/python/click-<version>.tar.xz. The key is the platform and the
+# userland (pi0-systemd-gnu) for the base system and the build tools, extended by +<capability> for
+# the kernel, and by +<feature> for each feature in turn.
+#
+# Every path that changed between archive/.commit and HEAD is mapped by the first rule that fits:
+#
+#    1  No effect: *.md, docs/, .claude/, .github/, ci/, LICENSE, .gitignore, .dockerignore,
+#       opencode.json, sbxenv.yaml, Dockerfile.*, docker-compose.yaml (CI builds on the host, not
+#       in Docker), test, lib/image.sh and lib/qemu.sh (nothing in them goes into an archive).
+#    2  package/<path>: the archive/*/<recipe>-* of the recipe that the path belongs to. That is
+#       the path itself when it is a recipe, existing or deleted (package/python/cffi.sh is
+#       python/cffi, not python), else the longest directory of the path that has a recipe at HEAD
+#       (package/python/yubikey-manager/usr/bin/ykman is python/yubikey-manager). A path that
+#       belongs to no recipe falls to rule 10.
+#    3  capability/*.config: archive/*/linux-*, the kernel.
+#    4  feature/<f>.sh: every archive under a key with +<f> as one of its items (+usb is not
+#       +usb-storage).
+#    5  lib/category/<c>.sh: everything under archive/*/<c>/.
+#    6  lib/meson.sh: rule 2 for each recipe at HEAD that calls meson_cross_file.
+#    7  lib/system.sh: every archive but the build tools (-bootstrap- and -tools- in the name).
+#    8  Makefile: archive/*/system-files-*, as its LFS_RELEASE ends up in os-release.
+#    9  platform/<p>.sh: everything under archive/<p>-*/.
+#   10  Anything else (lfs, lib/base.sh, lib/package.sh, lib/components.sh, lib/tools.sh, unknown
+#       paths): every archive, which makes a build from scratch.
+#
+# A pattern like archive/*/make-* also drops make-ca-*, as a rebuild of a few archives too many is
+# cheaper than a stale one. download/ is never touched, as what it holds is checked by hash.
+#
+# Without archive/.commit, or with one that names a commit that this clone lacks (a shallow clone,
+# or rewritten history), nothing says what the archives were built from: they all go. A CI checkout
+# therefore fetches the whole history. Leftover *.tmp files of an interrupted archive step go in
+# any case. The script ends by recording HEAD in archive/.commit, for the next run.
+
+set -o errexit -o nounset
+
+# The paths of git and of the rules are those of the repository, wherever the script is run from.
+cd "$(dirname "$0")/.."
+
+readonly archive_dir=archive
+readonly commit_file=$archive_dir/.commit
+
+# The archives to delete, as lines of "<kind> <argument>" that stale() reads: all, package <recipe>,
+# category <name>, platform <name>, feature <name> and system.
+selectors=
+removed=0
+
+# Runs a command on each line of the standard input, with the line as its last argument. The input
+# comes from a here-document, as the commands run in this shell and set variables: both sides of a
+# pipe run in a subshell.
+each() {
+    local line
+    while read -r line; do
+        [ -z "$line" ] || "$@" "$line"
+    done
+}
+
+# Adds a selection of archives, with the reason for it.
+select_archives() {
+    echo "$1"
+    selectors="$selectors
+$2 ${3:-}"
+}
+
+# Deletes a file.
+remove() {
+    echo "    delete $1"
+    rm -f -- "$1"
+    removed=$((removed + 1))
+}
+
+# Succeeds when the selection includes the file at the given path, relative to the archive
+# directory.
+stale() {
+    local key="${1%%/*}" name="${1#*/}" kind arg
+    while read -r kind arg; do
+        case $kind in
+        all)
+            return 0
+            ;;
+        package)
+            # The name is anchored: the package python/cffi leaves python-* alone, and python leaves
+            # python/cffi-* alone.
+            case $name in "$arg"-*) return 0 ;; esac
+            ;;
+        category)
+            case $name in "$arg"/*) return 0 ;; esac
+            ;;
+        platform)
+            case $key in "$arg"-*) return 0 ;; esac
+            ;;
+        feature)
+            # The key lists its features after the userland, each preceded by a +.
+            case $key in *"+$arg"|*"+$arg+"*) return 0 ;; esac
+            ;;
+        system)
+            case ${name##*/} in
+            *-bootstrap-*|*-tools-*) ;;
+            *) return 0 ;;
+            esac
+            ;;
+        esac
+    done <<EOF
+$selectors
+EOF
+    return 1
+}
+
+remove_if_stale() {
+    if stale "${1#"$archive_dir"/}"; then
+        remove "$1"
+    fi
+}
+
+# Prints the recipe that a path under package/ belongs to, or nothing. A file with the suffix .sh
+# is a recipe, as the files that packages ship have none.
+recipe_of() {
+    local rel="${1#package/}" dir
+    case $rel in
+    *.sh)
+        echo "${rel%.sh}"
+        return
+        ;;
+    esac
+    dir=$rel
+    while [ "$dir" != "${dir%/*}" ]; do
+        dir=${dir%/*}
+        if git cat-file -e "HEAD:package/$dir.sh" 2>/dev/null; then
+            echo "$dir"
+            return
+        fi
+    done
+}
+
+# Rule 6, for a line of the output of git grep.
+select_meson_recipe() {
+    local recipe
+    recipe=$(recipe_of "${1#HEAD:}")
+    [ -z "$recipe" ] \
+        || select_archives "lib/meson.sh: rule 6, archives of $recipe" package "$recipe"
+}
+
+# Maps a path that changed to the archives that it makes stale.
+select_changed() {
+    local path=$1 name callers
+    case $path in
+    *.md|docs/*|.claude/*|.github/*|ci/*|LICENSE|.gitignore|.dockerignore|opencode.json \
+        |sbxenv.yaml|Dockerfile.*|docker-compose.yaml|test|lib/image.sh|lib/qemu.sh)
+        echo "$path: rule 1, no effect"
+        ;;
+    package/*)
+        name=$(recipe_of "$path")
+        if [ -n "$name" ]; then
+            select_archives "$path: rule 2, archives of $name" package "$name"
+        else
+            select_archives "$path: rule 10, in no recipe: every archive" all
+        fi
+        ;;
+    capability/[!/]*.config)
+        select_archives "$path: rule 3, the kernel" package linux
+        ;;
+    feature/[!/]*.sh)
+        name=${path#feature/}
+        name=${name%.sh}
+        select_archives "$path: rule 4, archives of the feature $name" feature "$name"
+        ;;
+    lib/category/[!/]*.sh)
+        name=${path#lib/category/}
+        name=${name%.sh}
+        select_archives "$path: rule 5, archives of the category $name" category "$name"
+        ;;
+    lib/meson.sh)
+        # git grep fails when nothing matches.
+        callers=$(git grep -l -F meson_cross_file HEAD -- package || true)
+        each select_meson_recipe <<EOF
+$callers
+EOF
+        ;;
+    lib/system.sh)
+        select_archives "$path: rule 7, every archive but the build tools" system
+        ;;
+    Makefile)
+        select_archives "$path: rule 8, the system files" package system-files
+        ;;
+    platform/[!/]*.sh)
+        name=${path#platform/}
+        name=${name%.sh}
+        select_archives "$path: rule 9, archives of the platform $name" platform "$name"
+        ;;
+    *)
+        select_archives "$path: rule 10, every archive" all
+        ;;
+    esac
+}
+
+head_commit=$(git rev-parse HEAD)
+files=
+
+if [ -d "$archive_dir" ]; then
+    # Left by an archive step that was interrupted before it moved the archive into place.
+    leftovers=$(find "$archive_dir" -type f -name '*.tmp' | sort)
+    each remove <<EOF
+$leftovers
+EOF
+    files=$(find "$archive_dir" -type f \( -name '*.tar.xz' -o -name '*.tar.xz.sha256' \) | sort)
+fi
+
+if [ -z "$files" ]; then
+    echo "$archive_dir holds no archive"
+else
+    built=
+    [ ! -f "$commit_file" ] || built=$(cat "$commit_file")
+    case $built in
+    '')
+        select_archives "$commit_file is missing: every archive" all
+        ;;
+    *[!0-9a-f]*)
+        select_archives "$commit_file does not hold a commit: every archive" all
+        ;;
+    *)
+        if git rev-parse --verify --quiet "$built^{commit}" >/dev/null; then
+            echo "archives built from $built, HEAD is $head_commit"
+            # Without renames, both the old and the new path of a moved file show.
+            changed=$(git diff --no-renames --name-only "$built" HEAD)
+            each select_changed <<EOF
+$changed
+EOF
+        else
+            select_archives "$commit_file names $built, not in this clone: every archive" all
+        fi
+        ;;
+    esac
+    if [ -n "$selectors" ]; then
+        each remove_if_stale <<EOF
+$files
+EOF
+    fi
+fi
+
+echo "deleted $removed files"
+
+mkdir -p "$archive_dir"
+echo "$head_commit" > "$commit_file"
