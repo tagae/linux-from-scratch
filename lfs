@@ -33,10 +33,12 @@ readonly lfs_environment="PLATFORM USERLAND CAPS FEATURES SYSTEM_KEY TIMEZONE IM
     IMAGE_DIR BOOTSTRAP_DIR PATH TMPDIR"
 
 # Starts lfs anew with the same arguments in an environment that holds those variables alone,
-# unless it holds no other already. PWD, OLDPWD, SHLVL and _ are the shell's own.
+# unless it holds no other already. PWD, OLDPWD, SHLVL and _ are the shell's own. The names come
+# from env, which prints the environment as it is: gawk's ENVIRON adds AWKPATH and AWKLIBPATH,
+# which would have lfs start anew without end.
 lfs_clean_environment() {
     local name
-    for name in $(awk 'BEGIN { for (name in ENVIRON) print name }'); do
+    for name in $(env | sed -n 's/=.*//p'); do
         case " $lfs_environment PWD OLDPWD SHLVL _ " in
             *" $name "*) ;;
             *)
