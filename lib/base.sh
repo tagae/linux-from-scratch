@@ -10,13 +10,13 @@ bail() {
 }
 
 usage() {
-    bail "Usage: $(basename "$0") $@"
+    bail "Usage: $(basename "$0") $*"
 }
 
 stage() {
     if [ -t 1 ]; then
         echo
-        echo "---[ $@ ]"
+        echo "---[ $* ]"
     fi
 }
 
