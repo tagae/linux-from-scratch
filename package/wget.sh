@@ -5,11 +5,7 @@
 : ${package_license:=GPL-3.0-or-later}
 
 prepare() {
-    # wget-1.25.0 still references SSLv3_client_method, which OpenSSL 4.0
-    # dropped entirely (without continuing to define OPENSSL_NO_SSL3_METHOD
-    # to guard against it, as older OpenSSL did). SSLv3 is deprecated and
-    # insecure regardless, so just drop the dead code path.
-    sed -i '/meth = SSLv3_client_method ();/d' $package_source_dir/src/openssl.c
+    apply_patch $package_files_dir/no-sslv3.patch
 
     $package_source_dir/configure \
         ${host:+--host=$host} \
