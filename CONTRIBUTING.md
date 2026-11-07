@@ -120,6 +120,11 @@ A category can have helpers for its recipes in `lib/category/<category>.sh`
 and for no others. A recipe that uses them belongs to the category, whatever it installs:
 `python/yubikey-manager` is a program.
 
+A recipe changes an upstream source file with a patch, never by editing the file: `patch_source URL
+sha256:...` fetches and applies one, and `apply_patch` applies one kept in the package's files directory
+(`package/<name>/<change>.patch`, made with `diff -u` against the pristine file and starting with the reason
+for the change). Each patch is applied once to an unpacked source.
+
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir`.

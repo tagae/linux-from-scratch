@@ -25,23 +25,11 @@ esac
 prepare() {
     case $package_component in
         linux)
-            # The platform's board file makes the USB controller a gadget as well as a host, which
-            # the kernel's host-only driver reports as a configuration mismatch at every boot, and
-            # has the SD driver read a write-protect switch that microSD slots lack. A later
-            # definition of a node overrides an earlier one.
+            # Overrides of the platform's board file: a host-only USB controller, and no SD write-protect
+            # switch.
             if [ -n "${dev_tree_blob:-}" ]; then
-                local dts=$package_source_dir/arch/$kernel_arch/boot/dts/${dev_tree_blob%.dtb}.dts
-                grep -q '^// lfs' $dts || cat >> $dts <<'EOF'
-
-// lfs: overrides of the board file
-&usb {
-	dr_mode = "host";
-};
-
-&sdhost {
-	disable-wp;
-};
-EOF
+                local board=${dev_tree_blob##*/}
+                apply_patch $package_files_dir/${board%.dtb}.patch
             fi
 
             # A platform with no configuration fragment for its machine builds its defconfig.

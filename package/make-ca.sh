@@ -8,12 +8,7 @@
 : ${package_license:=MIT OR GPL-3.0-only}
 
 prepare() {
-    # BLFS's fix: make-ca calls `mktemp -p DIR -t TEMPLATE`, but GNU
-    # mktemp treats -p/--tmpdir and -t as conflicting ways of choosing the
-    # parent directory — drop -t so -p alone (the explicit ${TEMPDIR}/certs
-    # path make-ca already passes) wins.
-    sed -i '/mktemp/s/-t //' $package_source_dir/make-ca
-    chmod 755 $package_source_dir/make-ca
+    apply_patch $package_files_dir/mktemp-without-t.patch
 }
 
 install() {
