@@ -38,7 +38,7 @@ prepare() {
                     cat $package_files_dir/base.config \
                         $package_files_dir/hardening.config \
                         $package_files_dir/$kernel_machine.config \
-                        $package_files_dir/arch-$kernel_arch.config
+                        $package_files_dir/$kernel_arch.config
                     # Each capability is a fragment of its own, the userland's included.
                     for cap in $capabilities; do
                         cat $capability_dir/$cap.config
