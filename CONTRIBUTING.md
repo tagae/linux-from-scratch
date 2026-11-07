@@ -217,7 +217,7 @@ Where Code Goes
 | What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
 | Helpers of one feature | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/category/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
+| Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>}.config`, each with its reason |
 | Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
