@@ -162,9 +162,16 @@ lfs_source_package() {
         mkdir -p $download_dir
         [ -f $download_dir/$file ] || fetch_url "$url" "$download_dir"
         verify_hash "$download_dir/$file" "$hash"
+        apply_patch $download_dir/$file
+    }
+
+    # Applies a patch kept in the package's files directory. A recipe changes a source file with a
+    # patch, never by editing the file.
+    apply_patch() {
+        local file=${1##*/}
         local stamp=$package_source_dir/.patched-$file
         ! [ -f $stamp ] || return 0
-        ( cd $package_source_dir && patch -N -p 1 -i $download_dir/$file ) || {
+        ( cd $package_source_dir && patch -N -p 1 -i $1 ) || {
             # Discard half-patched source so that the next run re-extracts the pristine source.
             rm -rf "${package_source_dir:?}"
             bail "Failed to apply $file; discarded $package_source_dir"

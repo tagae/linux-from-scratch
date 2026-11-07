@@ -28,7 +28,8 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 - NO DOCS: no man/info/doc/locale/NLS: the install calls `move_to_docs_component`. No empty directories in a system
   (mount points only). Real hardware first: the Pi boot partition is firmware, `config.txt`, `cmdline.txt`, a flat DTB.
 - Pin everything: `package_source_hash=sha256:<hex>` of the tarball you downloaded, checked against the upstream's
-  digest or PyPI's JSON API; patches via `patch_source URL sha256:...`.
+  digest or PyPI's JSON API; patches via `patch_source URL sha256:...`. A patch of our own is made with `diff -u`
+  against the pristine file, so that it applies with `-p1`, and starts with the reason for it.
 - `package_license` in SPDX for every recipe, from the real LICENSE files, bundled code included (Rust crates too).
 - Ask in plain text, not with the question tool. Decide small things by these rules and report them; put framework
   changes and real trade-offs to the user.
@@ -45,7 +46,7 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/category/<category>.sh` for a package category (`package/python/`: `lib/category/python.sh`), loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
 | Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
 | Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
-| Device tree changes | override nodes appended in `package/linux.sh` `prepare` (later definitions win) |
+| A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
 
 A capability is what the system supports (a kind of device), a feature a tool set for users. A capability installs no

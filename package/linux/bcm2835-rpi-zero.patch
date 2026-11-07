@@ -1,0 +1,19 @@
+The board file makes the SoC's USB controller a gadget as well as a host, which the kernel's
+host-only driver reports as a configuration mismatch at every boot, and has the SD driver read a
+write-protect switch that microSD slots lack. A later definition of a node overrides an earlier one.
+
+--- a/arch/arm/boot/dts/broadcom/bcm2835-rpi-zero.dts
++++ b/arch/arm/boot/dts/broadcom/bcm2835-rpi-zero.dts
+@@ -117,3 +117,12 @@
+ 	pinctrl-0 = <&uart0_gpio14>;
+ 	status = "okay";
+ };
++
++// lfs: overrides of the board file
++&usb {
++	dr_mode = "host";
++};
++
++&sdhost {
++	disable-wp;
++};

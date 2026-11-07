@@ -37,7 +37,8 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 - `system-files` is merged BEFORE the other packages and the last file wins: a file a package installs cannot be
   overridden from `package/system-files`; change it in that package.
 - Sources and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
-  and compilers (the meson recipes wipe theirs in `prepare`); patches are stamped `.patched-*`.
+  and compilers (the meson recipes wipe theirs in `prepare`); patches are stamped `.patched-*`, so a patch you
+  change is not applied again to a source that has it: delete that source directory.
 - The kernel `.config` is regenerated from `allnoconfig` + fragments at every `prepare`; allnoconfig drops options
   that default to y (KUSER_HELPERS, COMPAT_32BIT_TIME, ...): set them, then confirm with `$B/kernel-config KEY
   OPTION...` (the resolved lines, from the volume).
