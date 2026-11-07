@@ -1,6 +1,5 @@
-wget 1.25.0 still references SSLv3_client_method, which OpenSSL 4.0 dropped entirely, without
-continuing to define OPENSSL_NO_SSL3_METHOD to guard against it, as older OpenSSL did. SSLv3 is
-deprecated and insecure regardless, so the dead code path goes.
+wget 1.25.0 calls SSLv3_client_method, which OpenSSL 4.0 does not provide and does not guard with
+OPENSSL_NO_SSL3_METHOD. SSLv3 is deprecated and insecure regardless, so the dead code path goes.
 
 --- a/src/openssl.c
 +++ b/src/openssl.c

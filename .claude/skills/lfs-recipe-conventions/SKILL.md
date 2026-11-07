@@ -14,8 +14,8 @@ not ideas. Building and verifying: lfs-build-iteration. Booting: qemu-image-test
 
 - SIMPLICITY: the simplest codebase, the fewest conditionals; a uniform rule beats a special-cased default.
   Remove duplication when asked, and prove the result unchanged.
-- COMMENTS state the current rationale only, timeless: no "previously", "instead of", "fixed", no incident stories.
-  They say WHY, briefly, in the density of the surrounding code.
+- COMMENTS follow CLAUDE.md: the current rationale only, timeless. They say WHY, briefly, in the density of the
+  surrounding code.
 - FRAMEWORK CHANGES (lib/*.sh, Makefile, Dockerfile.*, docker-compose.yaml, lfs): show the design first unless
   asked for that change. The archive step only archives. Shared helpers get their own `lib/<topic>.sh`, sourced in
   `lfs`. Features on request, not speculatively.
