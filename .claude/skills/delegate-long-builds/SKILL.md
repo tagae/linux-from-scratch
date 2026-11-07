@@ -28,7 +28,7 @@ share (lfs-build-iteration: never two builds at once); that includes YOUR builds
 
 One file in the scratchpad (`brief-template.md`); each agent's prompt is short: the phase scope, the exact
 verification list, what NOT to start, and a pointer to the brief. The brief holds the goal and who uses the result,
-the user's documented preferences as rules (lfs-recipe-conventions), the files agents may and may not touch,
+the user's documented preferences as rules (CONTRIBUTING.md), the files agents may and may not touch,
 build and test commands, hazards, the report format, and "Notes for later phases", which every agent appends to.
 
 In every brief:

@@ -1,6 +1,6 @@
 ---
 name: lfs-build-iteration
-description: Build, rebuild and verify systems of this LFS framework from the Mac (Docker via Colima) - system keys, archives and volumes, which stale state to delete after changing a recipe, kernel fragment or framework file, running long builds, inspecting images and volumes, proving a refactor changed nothing. Use before and during any change to package/*.sh, lib/*.sh, package/linux/*.config or a capability. Booting the result is qemu-image-testing; writing the recipe is lfs-recipe-conventions.
+description: Build, rebuild and verify systems of this LFS framework from the Mac (Docker via Colima) - system keys, archives and volumes, which stale state to delete after changing a recipe, kernel fragment or framework file, running long builds, inspecting images and volumes, proving a refactor changed nothing. Use before and during any change to package/*.sh, lib/*.sh, package/linux/*.config or a capability. Booting the result is qemu-image-testing; the conventions for writing the recipe are in CONTRIBUTING.md.
 model: sonnet
 ---
 
@@ -98,5 +98,5 @@ Say which of these ran.
   with `Bus error` in `rm`) is first a COLLISION: rerun alone before debugging; look for `Bus error`,
   `Segmentation fault`, `core dumped` ahead of the first compiler error.
 - virt (aarch64 on an aarch64 Mac) is a cross build between different triples that triple-comparing tools see as
-  native (lfs-recipe-conventions): a recipe proven for pi0 is not proven for virt, nor the reverse. Build both.
+  native (CONTRIBUTING.md): a recipe proven for pi0 is not proven for virt, nor the reverse. Build both.
 - `work/boot/<key>/` is per key: trust only the key you built.

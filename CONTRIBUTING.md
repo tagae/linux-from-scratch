@@ -121,9 +121,10 @@ and for no others. A recipe that uses them belongs to the category, whatever it 
 `python/yubikey-manager` is a program.
 
 A recipe changes an upstream source file with a patch, never by editing the file: `patch_source URL
-sha256:...` fetches and applies one, and `apply_patch` applies one kept in the package's files directory
-(`package/<name>/<change>.patch`, made with `diff -u` against the pristine file and starting with the reason
-for the change). Each patch is applied once to an unpacked source.
+sha256:...` fetches and applies one, and `apply_patch` applies one kept in the package's files
+directory (`package/<name>/<change>.patch`, made with `diff -u` against the pristine file, so that
+it applies with `-p1`, and starting with the reason for the change). Each patch is applied once to
+an unpacked source.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -182,6 +183,180 @@ the recipes of that package category (`lib/category/python.sh`). A feature may d
 its own, for its own use, but never one that a package uses: packages rely on the framework
 (`lib/`) alone.
 
+
+### Simplicity
+
+The simplest codebase, with the fewest conditionals: a uniform rule beats a special-cased default.
+Remove duplication where it appears, and prove that the result is unchanged.
+
+### Comments
+
+A comment says why the code is as it is now, in the present tense, briefly, in the density of the
+surrounding code. It never tells how things were or will be: no "previously", "formerly", "no
+longer", "used to", "still", "instead of", "fixed", no "kernels before 7.3 ...", no incident that
+led to the code, and no history that a commit message carries. Where the code must differ between
+the versions or platforms built today, a comment names the one that needs it ("the pi0's kernel
+selects SYSCTL through PROC_SYSCTL"), not what came before or after. This holds for every comment
+and every patch description.
+
+### Framework Changes
+
+A change to the framework (`lib/*.sh`, `Makefile`, `Dockerfile.*`, `docker-compose.yaml`, `lfs`)
+starts from its design, shown before the change is made, unless the change is what was asked for.
+The archive step only archives. Features are written on request, not speculatively.
+
+
+Where Code Goes
+---------------
+
+| What | Where |
+|---|---|
+| One package's build | `package/<name>.sh`: `case $package_component`, `default_*` for the rest |
+| Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
+| A capability (kernel support) | `capability/<cap>.config`: a fragment, with a `# Requires: <cap>...` line for the capabilities it builds on |
+| What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
+| Helpers of one feature | in its file, for its own use: no package uses them (see Encapsulation) |
+| Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/category/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
+| Kernel options every system needs | `package/linux/{base,hardening,<machine>,arch-<arch>}.config`, each with its reason |
+| Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
+| A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
+| Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
+
+A capability is what the system supports (a kind of device), a feature a tool set for users. A
+capability installs no packages; a feature touches no kernel option: a kernel need becomes a
+capability the feature requires. The system gets the required capabilities along (the key leaves
+them out). Features require capabilities only and install in alphabetical order, each in a subshell;
+one that needs another's packages installs them itself. Each file's header says what it enables and
+how it changes the others. Build-machine tools that a system build needs (swig, the Rust seed,
+native Python modules) are installed into `TOOL_DIR` from the feature with
+`lfs_tools_install <package>`, archived `*-tools-*`, never shipped.
+
+
+Writing Recipes
+---------------
+
+Read two recipes like yours before starting: copy idioms, not ideas.
+
+* Use the upstream's own targets and options (`headers_install`, meson options, `make install`)
+  over re-implementing them; add the missing tool rather than a workaround.
+* Link dynamically; static only where dynamic complicates things (gcc's in-tree gmp, mpfr and mpc).
+* No documentation: no man, info, doc, locale or NLS files; the install calls
+  `move_to_docs_component`. No empty directories in a system, except mount points. Real hardware
+  comes first: the Pi's boot partition is firmware, `config.txt`, `cmdline.txt` and a flat device
+  tree blob.
+* Pin everything: `package_source_hash=sha256:<hex>` of the tarball, checked against the upstream's
+  digest or PyPI's JSON API; patches via `patch_source URL sha256:...`.
+* `package_license` is in SPDX for every recipe, from the real LICENSE files, bundled code
+  included (Rust crates too).
+* A file that another package installs is changed in that package's install (`system-files` is
+  merged first, and the last file wins).
+
+
+systemd
+-------
+
+* No presets run. A unit is enabled as `systemctl enable` does it: the recipe makes the symlink
+  under `/etc/systemd/system/<target>.wants/`, with an absolute target in
+  `/usr/lib/systemd/system`; a symlink under `/usr/lib` reads as "disabled" to `is-enabled`.
+* The image bakes a machine ID (`lib/image.sh`): the first boot is ordinary, and a first-boot
+  `preset-all` would only warn about generated units. Images are per build, not per card.
+* There is no D-Bus, PAM, polkit or logind, and passwd is static: services run as root unless the
+  user exists in the static files. Where upstream's unit needs a dedicated user or
+  `PrivateUsers=full`, ship a small unit of our own (`pcscd.service`). Prefer socket activation
+  (`--auto-exit`).
+* The `sysctl.d` file `50-default.conf` is rewritten in `systemd.sh`.
+* A new service leaves `is-system-running` at `running`, `--failed` empty, and nothing new at
+  warning level.
+
+
+Kernel
+------
+
+The kernel is configured from `allnoconfig` and fragments. Write down every option relied on, even
+the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NET`,
+`NETWORK_FILESYSTEMS`, `NETDEVICES`: each bit once). Find dependencies in the Kconfig, which
+`tar --include` extracts from the tarball, and verify the resolved `.config`, never the fragment.
+Archives are named by package and version, not by content: after a change, delete the `linux-*`
+archive of every key that must pick it up (`.github/ci/invalidate` does so for CI's cache).
+
+Pi facts:
+
+* The USB power domain needs `CONFIG_PM` and `RASPBERRYPI_POWER`, else dwc2 probes ten seconds
+  late.
+* `KUSER_HELPERS` is required by libatomic, which OpenSSL's libraries link on ARMv6: an eager
+  `dlopen` of libcrypto faults without it.
+* `HW_RANDOM_BCM2835` and `COMPAT_32BIT_TIME` are set.
+* DMA stays off, for the regression of the bcm2835-dma driver in 6.18.
+* virt takes USB (xHCI), RNG (virtio-rng) and its console (`hvc0`) from `virt.config`.
+
+
+Cross-Compiling
+---------------
+
+* pkg-config: `PKG_CONFIG_LIBDIR`, which replaces the path, never `PKG_CONFIG_PATH`. pkgconf
+  prefixes the sysroot onto absolute-path `.pc` variables unless `PKG_CONFIG_FDO_SYSROOT_RULES=1`,
+  which is needed where meson reads them as install directories (pcsc-lite, ccid).
+* meson: `meson_cross_file`; wipe the build directory first; pin what meson takes from the build
+  machine (libdir, split-bin, uid ranges).
+* autotools: `--host` and `--build`; cache values only for tests that cannot run. `*-config`
+  scripts leak build paths (pass an absolute override, as `gnupg.sh` does with `GPGRT_CONFIG`); old
+  configure tests break under C23 (`-std=gnu17` for gmp, gnupg, flex); libtool `.la` files in the
+  sysroot misdirect later builds (delete them); guard same-arch cross builds, where `build` equals
+  `host`.
+* Python (CPython 3.14, `python` and `dev` components): extensions and wheels are built by the
+  `TOOL_DIR` Python against the target's sysconfigdata (`lib/category/python.sh`: `python_wheel` and
+  `python_install_wheel` for a build backend, `python_install_modules` for pure Python,
+  `python_site_packages`; templates `package/python/cffi.sh` and `package/python/pycparser.sh`).
+  Recipes never mention `python_version`, which the framework sets. Bytecode is precompiled
+  unchecked-hash so that the Pi never writes `__pycache__`; no pip, and no dist-info unless
+  metadata is read at run time. The default `package_source_dir` is right unless the sdist's
+  directory is spelled differently from the name (`more_itertools-...`): then the recipe sets it,
+  with `python/` in it.
+* Rust: the seed is in `TOOL_DIR` (`package/rust.sh`, `lfs_tools_install rust`); the triple is
+  `$target_arch-unknown-$target_kernel-$target_abi`; crates are fetched at fetch time and built
+  `--locked --offline`; `--remap-path-prefix` keeps build paths out of panics; binaries are
+  stripped.
+* ARMv6: no `-march` or `-mcpu` overrides from a build system's guesses (`readelf -A` shows no
+  v7-only instructions); 32-bit atomics are inline, 64-bit ones go through libatomic (shipped by
+  `gcc#runtime`).
+* An ELF file that carries a build-machine path (RPATH, debug sections, panic strings) is a defect.
+
+### Platforms with the Build Machine's Own Triple
+
+On virt and arm64, built on an aarch64 Mac, the triple is `aarch64-unknown-linux-gnu`, the build
+machine's, though the compiler is the cross `aarch64-scratch-linux-gnu-gcc`: tools that compare
+triples see a native build. For `cryptography`:
+
+* cargo has one linker setting per triple, shared by build scripts and proc-macros (which run on the
+  build machine; `rust.sh`'s `cargo` wrapper points them at the tools' compiler) and by the
+  platform's code. With equal triples the cross linker is silently replaced, and the extension
+  links against the tools' glibc with its RPATH. The cross linker goes to the single compilation
+  that links the platform's code: `cargo rustc ... --lib -- -C linker=$host-gcc`.
+* The `cc` crate reads `CC_<triple_with_underscores>`, then `HOST_CC` if the triples are equal, else
+  `TARGET_CC`, then `CC`: set `CC_<triple>` and `AR_<triple>`.
+* pyo3 detects cross builds by comparing triples: set `PYO3_CROSS=1` with `PYO3_CROSS_LIB_DIR`.
+* The `TOOL_DIR` Python and the platform's share a multiarch name: select the sysconfigdata by name
+  and by path (`python_wheel` sets `_PYTHON_SYSCONFIGDATA_NAME` and `_PATH`).
+* Only ARM32 needs `KUSER_HELPERS`, libatomic's need for it, and 32-bit time.
+
+A recipe is proven on a platform with a different triple (pi0) and on one with the same (virt):
+check the extension's `readelf -d` (RPATH, NEEDED).
+
+
+Before Calling a Change Done
+----------------------------
+
+1. The package's archive is deleted and the package rebuilt, and the build log shows the rebuild
+   and no error.
+2. No library is newly needed but unshipped; `readelf -A` is right; licences and hashes are
+   verified.
+3. The system boots in QEMU: the standard checks are clean, and the feature is exercised with
+   emulated devices.
+4. The real build command, run again, is a no-op.
+5. Comments are timeless and nothing is duplicated; no test leftovers remain under `image/`,
+   `work/` or the repository; the README is updated when user-visible behaviour changed.
+6. The report names what was not verified (hardware, PINs, speed) and any framework change that it
+   proposes.
 
 Gotchas
 -------
