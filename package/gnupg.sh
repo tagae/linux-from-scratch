@@ -23,14 +23,8 @@ prepare() {
                 ${wks_tools:+--enable-wks-tools=$wks_tools} \
                 ${gpgtar:+--enable-gpgtar=$gpgtar} \
                 ${tofu:+--enable-tofu=$tofu} \
-                ${sqlite:+--enable-sqlite=$sqlite} \
-                ${ldap:+--enable-ldap=$ldap} \
                 ${photo_viewers:+--enable-photo-viewers=$photo_viewers} \
-                ${ntbtls:+--enable-ntbtls=$ntbtls} \
-                ${gnutls:+--enable-gnutls=$gnutls} \
-                ${bzip2:+--enable-bzip2=$bzip2} \
                 ${ccid_driver:+--enable-ccid-driver=$ccid_driver} \
-                ${readline:+--with-readline=$readline} \
                 --disable-tests \
                 --disable-doc
             ;;

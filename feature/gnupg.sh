@@ -29,7 +29,7 @@ lfs_install_package libusb#dev
     # certificates. The CCID driver is required, so that a missing libusb is an error.
     sysconfdir=/etc
     gpgsm=no dirmngr=no keyboxd=no tpm2d=no wks_tools=no gpgtar=no
-    tofu=no sqlite=no ldap=no photo_viewers=no ntbtls=no gnutls=no bzip2=no readline=no
+    tofu=no photo_viewers=no
     ccid_driver=yes
     lfs_system_install gnupg
 )
@@ -38,8 +38,6 @@ lfs_install_package libusb#dev
     # Asks for passphrases and PINs on the terminal.
     pinentry_tty=yes
     pinentry_curses=no fallback_curses=no
-    pinentry_gtk2=no pinentry_gnome3=no libsecret=no pinentry_efl=no pinentry_fltk=no
-    pinentry_qt5=no pinentry_qt=no pinentry_qt4=no pinentry_tqt=no
     lfs_system_install pinentry
 )
 
