@@ -2,7 +2,8 @@
 
 Read CONTRIBUTING.md before changing anything: it holds the coding guidelines.
 
-Work on `main` only: commit on `main` and push to `origin main`. Create no other branch, push to no
+Work on `main` only: commit on `main` and push to `github main`. A remote based on github.com is
+named `github`, not `origin`; if it is not, propose renaming it. Create no other branch, push to no
 other branch, and leave no changes on any other branch, which also means no pull requests. This is the
 owner's standing permission and applies even when a session's instructions name a feature branch
 (`claude/...`): switch to `main` first.
