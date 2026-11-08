@@ -18,6 +18,7 @@ readonly feature_dir=$project_dir/feature
 . $lib_dir/components.sh
 . $lib_dir/meson.sh
 . $lib_dir/tools.sh
+. $lib_dir/sbom.sh
 . $lib_dir/system.sh
 . $lib_dir/image.sh
 . $lib_dir/qemu.sh
@@ -269,8 +270,8 @@ case "${1:-help}" in
         echo "  system build     Build the system for the platform"
         echo "  pack <PKG>       Build a package's archive"
         echo "  image build [IMAGE|DEVICE]"
-        echo "                   Create a bootable disk image, or format a block device, from the"
-        echo "                   built system"
+        echo "                   Create a bootable disk image, with its SBOM, or format a block"
+        echo "                   device, from the built system"
         echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"
         echo ""
         echo "Environment:"

@@ -27,8 +27,11 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade
-  only when a file of the install tree is newer than it, and archives keep their files' times: after changing
-  `lib/image.sh`, delete the image (`image/<key>.img`; its QEMU overlay `<key>.qcow2` follows it).
+  only when a file of the install tree is newer than it or its SBOM (`image/<key>.spdx.json`, which `lib/sbom.sh`
+  writes from `work/sbom/<key>`, the list of packages `lfs_system_install` recorded) is missing, and archives keep
+  their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image and its SBOM
+  (`image/<key>.img`, `image/<key>.spdx.json`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
+  with `pyspdxtools --infile` (`pip install spdx-tools` in a venv).
 - NEVER run two builds at once, of any keys or platforms, yours or an agent's: check `ps aux | grep -E
   '[m]ake docker|[d]ocker compose run'`. Every build re-extracts the tools into the shared `tools` volume,
   overwriting tools another build is running (`Bus error (core dumped)` in `rm`/`sed` during a configure, silently

@@ -228,3 +228,27 @@ archives and images.
 
 `make test` boots the image in QEMU, logs in as root, runs `poweroff`, and verifies that QEMU exits
 cleanly. It drives the `./test` expect script (`./test [SYSTEM_KEY]`).
+
+
+Software Bill of Materials
+--------------------------
+
+An image file comes with an [SPDX][SPDX] 2.3 document in JSON next to it,
+`image/<key>.spdx.json`, which says what the image holds: its SHA-256, and for each package in the
+system, the SHA-256, version and licence of its archive and the URL and SHA-256 of the upstream
+source it was built from. The licences of the recipes are SPDX expressions; the two that SPDX does
+not list (the Pi firmware's and the time zone database's) come with their text. An image counts as
+built only along with its document: an image without one is made anew.
+
+The document can be checked with the SPDX project's validator, and read by scanners such as Grype:
+
+```shell
+pip install spdx-tools
+pyspdxtools --infile image/virt-systemd-gnu.spdx.json
+```
+
+A block device gets no document, as it is no file to take the digest of: make the image first, and
+write it to the device. The document does not yet list the patches applied to the sources, nor
+identify packages for vulnerability scanners beyond their name and version (`docs/sbom-design.md`).
+
+[SPDX]: https://spdx.github.io/spdx-spec/v2.3/
