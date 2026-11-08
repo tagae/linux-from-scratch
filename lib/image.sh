@@ -14,10 +14,12 @@ image() {
 
 # The file systems are made from trees of files, with nothing mounted: the root file system by
 # mkfs.btrfs, the Pi layout's boot partition by mtools. On a device they are made on its partitions;
-# an image file is put together from them.
+# an image file is put together from them, and gets an SBOM next to it (see lib/sbom.sh). A device
+# gets none: it is no file to take the digest of.
 build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
     local target="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}" shrink=
+    local sbom="${target%.img}.spdx.json"
     # One install tree per system key, not a shared $INSTALL_DIR.
     local install_dir=$INSTALL_DIR/$SYSTEM_KEY
     [ -d "$install_dir" ] || bail "Install directory not found: $install_dir"
@@ -27,7 +29,8 @@ build_image() {
         # A device is made afresh, like a new image file.
         DEVICE=$(realpath "$target")
         confirm_erase
-    elif [ -e "$target" ] && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
+    elif [ -e "$target" ] && [ -e "$sbom" ] \
+        && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
         echo "image (done)"
         return
     fi
@@ -56,6 +59,11 @@ build_image() {
     create_filesystems $shrink
     if [ -n "${IMAGE:-}" ]; then
         assemble_image
+        lfs_sbom_document "${target##*/}" "$(sha256sum < "$IMAGE" | cut -d' ' -f1)" \
+            > "$IMAGE.spdx.json"
+        # The SBOM first, as the image tells that both are complete: an image without its SBOM
+        # is made anew.
+        mv "$IMAGE.spdx.json" "$sbom"
         mv "$IMAGE" "$target"
     fi
     clean_image
@@ -192,10 +200,10 @@ assemble_image() {
     dd if=$BASE_DEVICE of="$IMAGE" bs=1M seek=$start conv=notrunc,sparse status=none
 }
 
-# Removes what making an image leaves behind, the image itself if incomplete: at the end of
-# build_image, and as the EXIT trap it sets, when it fails.
+# Removes what making an image leaves behind, the image itself, and its SBOM, if incomplete: at the
+# end of build_image, and as the EXIT trap it sets, when it fails.
 clean_image() {
     [ -z "${PARTS_DIR:-}" ] || rm -rf "$PARTS_DIR"
-    [ -z "${IMAGE:-}" ] || rm -f "$IMAGE"
+    [ -z "${IMAGE:-}" ] || rm -f "$IMAGE" "$IMAGE.spdx.json"
     unset PARTS_DIR IMAGE
 }

@@ -79,6 +79,11 @@ fi
 for recipe in $(find package -type f -name '*.sh' | sort); do
     assigns $recipe package_license \
         || finding "$recipe: package_license is not set"
+    # The SBOM carries the text of a licence that SPDX does not list (lib/sbom.sh).
+    for ref in $(grep -Eo 'LicenseRef-[[:alnum:].-]+' $recipe); do
+        [ -f "${recipe%.sh}/$ref.txt" ] \
+            || finding "$recipe: ${recipe%.sh}/$ref.txt is missing, the text of $ref"
+    done
     # Fetched the way lib/package.sh decides: a tarball is downloaded and then checked.
     if assigns $recipe package_source 'https://.*(\.tar\.|\.tgz)'; then
         assigns $recipe package_source_hash \

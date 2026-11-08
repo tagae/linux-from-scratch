@@ -1,4 +1,7 @@
-# SBOMs for images: design proposal
+# SBOMs for images: design
+
+**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`. Not yet: the patches applied
+to the sources, CPEs, suppliers and signing (see *Choices for later*).
 
 **Question:** how should each image get a Software Bill of Materials, and can it be SPDX?
 
@@ -27,12 +30,12 @@ One document per image, `image/<SYSTEM_KEY>.spdx.json`, next to the image:
 
 | SPDX element | Here | Fields |
 |---|---|---|
-| Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` from `SOURCE_DATE_EPOCH` when builds become reproducible; `creators`: `Tool: lfs-<git describe>` |
+| Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` is the time the image is made (`SOURCE_DATE_EPOCH` when builds become reproducible); `creators`: `Tool: lfs-<LFS_RELEASE>`, as the scratch container has no git history to describe |
 | Package (root) | the image | file name, SHA-256 of the image; the document `DESCRIBES` it |
 | Package | each archive installed into the system (`lfs_system_install`): `bash`, `glibc`, `linux`, `firmware`, ... | `name`, `versionInfo`, `packageFileName` = archive name, `checksums` = the archive's SHA-256, `licenseDeclared` = `package_license`, `description`, `externalRefs`: purl (and CPE, see below) |
 | Package | each upstream source | `downloadLocation` = `package_source`, `checksums` = `package_source_hash`, `primaryPackagePurpose: SOURCE` |
-| Relationships | | image `CONTAINS` each archive; each archive `GENERATED_FROM` its source; patches `PATCH_APPLIED` to their source |
-| Extracted licences | `LicenseRef-*` (the Pi firmware's) | the licence text, taken from the source |
+| Relationships | | image `CONTAINS` each archive; each archive `GENERATED_FROM` its source (not yet: patches `PATCH_APPLIED` to their source) |
+| Extracted licences | `LicenseRef-*` (the Pi firmware's, the time zone database's) | the licence text, kept in the declaring package's files directory as `LicenseRef-<name>.txt`: the source may not be unpacked when the archive comes from a cache |
 
 **Example entry** (abridged):
 
@@ -58,18 +61,22 @@ One document per image, `image/<SYSTEM_KEY>.spdx.json`, next to the image:
 The `dev` component, which a system doesn't get, stays out. If it is unpacked into a system by
 hand, it is a separate archive and can be added the same way.
 
-## How it would be produced
+## How it is produced
 
-1. **Record what goes in.** `lfs_system_install` appends each package (product and archive name) to
-   a list for the system, `$WORK_DIR/$SYSTEM_KEY/packages`, which the build wipes and rewrites with
-   the tree. This is the only change to the system build.
-2. **Write the document.** A new `lib/sbom.sh` does it from that list. For each package it sources
-   the recipe through `lfs_source_package` (as `lfs_package_version` does) and reads the archive's
-   digest. It runs at the end of `./lfs image build`, which knows the image's digest, and writes next
-   to the image on the host. It's plain shell, `printf` plus a small JSON string-escaping helper,
-   like the rest of the framework; Python is available in the tools if escaping ever gets hard.
-3. **Check it.** Validate against the SPDX 2.3 schema (`pyspdxtools`, on the host or as a tool), and
-   check that every package in the list appears with a digest that matches.
+1. **Record what goes in.** `lfs_system_install` appends each package to a list for the system,
+   `$WORK_DIR/sbom/$SYSTEM_KEY`, which the system build empties first. A line holds the archive's name
+   and SHA-256 (the digest that the install has just checked), and what the recipe says: name,
+   version, licence, source, source digest and description. It is taken when the package is
+   installed, because only then does the recipe see the variables it was built with (the package
+   key, the Python version). This is the only change to the system build.
+2. **Write the document.** `lib/sbom.sh` does it from that list, at the end of `./lfs image build`,
+   which knows the image's digest, and writes next to the image on the host. It's plain shell,
+   `printf` plus a small JSON string-escaping helper, like the rest of the framework. The SBOM goes
+   into place before the image, which tells that both are complete: an image with no SBOM is made
+   anew.
+3. **Check it.** `pyspdxtools --infile image/<key>.spdx.json` validates against the SPDX 2.3 model:
+   licence expressions, identifiers and relationships. Not part of the build, which runs with the
+   tools alone.
 
 ## Tools to use
 
@@ -110,6 +117,10 @@ keep watching.
   twenty recipes for what the systems ship.
 - **Suppliers.** NTIA's minimum elements also ask for each component's supplier. A `package_supplier`
   (e.g. `Organization: GNU Project`), or `NOASSERTION` until then.
+- **Patches.** The patches applied to a source (`patch_source`, `apply_patch`) are calls in a recipe's
+  `prepare`, which does not run when the archive comes from the cache, so nothing records them. They
+  would need to be declared by the recipe (a list that `prepare` applies and the SBOM reads), so
+  that each becomes a package with a `PATCH_APPLIED` relationship to its source.
 - **Build tools.** The cross toolchain and the tools that built the system could be added with
   `BUILD_TOOL_OF` relationships. That makes the SBOM describe how the image was built, not only what
   it contains, which is most of what SPDX 3.0's build profile is for.

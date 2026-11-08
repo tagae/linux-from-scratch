@@ -43,6 +43,7 @@ lfs_system_build() {
     # The trees hold exactly what the packages below install, with the permissions they were
     # packaged with (setuid and sticky bits included), which tar drops for unprivileged users.
     rm -rf $system_dir $sysroot
+    lfs_sbom_start
     package_install_dir=$sysroot
     export TAR_OPTIONS=--same-permissions
 
@@ -192,10 +193,12 @@ lfs_system_build_toolchain() {
     )
 }
 
-# Installs a package into the system, and into the sysroot for the packages compiled after it.
+# Installs a package into the system, and into the sysroot for the packages compiled after it. The
+# system's SBOM lists the packages that it holds.
 lfs_system_install() {
     lfs_install_package $1
     ( package_install_dir=$system_dir; lfs_unarchive_package $1 )
+    lfs_sbom_record_package $1
 }
 
 # Prints the capabilities that a capability or a feature requires, from its `# Requires:` line.

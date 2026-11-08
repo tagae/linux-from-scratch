@@ -77,6 +77,12 @@ Images
   `install/$SYSTEM_KEY`, as populated by `./lfs system build`. Given a block device instead of an
   image file, it partitions the device and fills it the same way, with the root file system taking
   all of the space the boot partition leaves.
+* An image file gets its SBOM next to it, `<image>.spdx.json` (`lib/sbom.sh`): an SPDX 2.3 document
+  in JSON with the image's SHA-256 and the packages it holds, each with its archive's SHA-256,
+  version and SPDX licence, and the URL and SHA-256 of the source it was built from. The system
+  build lists the packages in `$WORK_DIR/sbom/$SYSTEM_KEY` as `lfs_system_install` installs them,
+  and `image build` writes the document from that list. An image counts as built only along with
+  its SBOM. A block device gets none, as it is no file to take the digest of.
 * The `./lfs qemu` command boots the built image through a qcow2 overlay next to it,
   `<image>.qcow2`, which takes what the system writes. The overlay is made anew with the image, and
   its size is a power of two, as QEMU requires of an SD card.
@@ -130,7 +136,9 @@ A package may list other packages in `package_fetch_dependencies`, whose sources
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir`.
 
-The `package_license` list the package's license in [SPDX format][SPDX License List].
+The `package_license` list the package's license in [SPDX format][SPDX License List]. A licence that
+the list does not have is a `LicenseRef-<name>`, whose text is the file
+`package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `.github/ci/lint` looks for.
 
 A package's install can set its development files (headers, static libraries, pkg-config files...)
 aside for its `dev` component with `move_to_dev_component` (see `lib/components.sh`), which is
@@ -221,6 +229,7 @@ Where Code Goes
 | Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
+| The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
 A capability is what the system supports (a kind of device), a feature a tool set for users. A
 capability installs no packages; a feature touches no kernel option: a kernel need becomes a
