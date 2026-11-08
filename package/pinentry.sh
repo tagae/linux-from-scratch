@@ -14,15 +14,6 @@ prepare() {
                 ${pinentry_tty:+--enable-pinentry-tty=$pinentry_tty} \
                 ${pinentry_curses:+--enable-pinentry-curses=$pinentry_curses} \
                 ${fallback_curses:+--enable-fallback-curses=$fallback_curses} \
-                ${pinentry_gtk2:+--enable-pinentry-gtk2=$pinentry_gtk2} \
-                ${pinentry_gnome3:+--enable-pinentry-gnome3=$pinentry_gnome3} \
-                ${libsecret:+--enable-libsecret=$libsecret} \
-                ${pinentry_qt5:+--enable-pinentry-qt5=$pinentry_qt5} \
-                ${pinentry_qt:+--enable-pinentry-qt=$pinentry_qt} \
-                ${pinentry_qt4:+--enable-pinentry-qt4=$pinentry_qt4} \
-                ${pinentry_tqt:+--enable-pinentry-tqt=$pinentry_tqt} \
-                ${pinentry_efl:+--enable-pinentry-efl=$pinentry_efl} \
-                ${pinentry_fltk:+--enable-pinentry-fltk=$pinentry_fltk} \
                 --disable-doc
             ;;
         *)
