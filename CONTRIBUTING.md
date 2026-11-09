@@ -57,8 +57,8 @@ Building the System
 The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
-system's features, compiled with that toolchain: the init's (`systemd`, and `gnu`, the base system
-from chapter 8, which it requires), the platform's (`linux`, the kernel, configured from the layers
+system's features, compiled with that toolchain: the init's (`systemd`, with the strict minimum of
+chapter 8 that it needs, and `bash`, root's shell, which it requires), the platform's (`linux`, the kernel, configured from the layers
 that every system gets, `package/linux/`: base, hardening, machine and architecture, and from the
 fragments that the system's features rely on, `package/linux/<fragment>.config`; `pi-boot` on the
 Pi), then the others. Each package is installed both into the system tree and into the toolchain's

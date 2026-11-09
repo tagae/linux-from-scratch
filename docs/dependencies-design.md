@@ -234,10 +234,10 @@ gnupg (zlib), libfido2 (zlib, libudev from systemd), pcsc-lite (systemd), ccid (
 libusb), procps-ng and util-linux (ncurses), shadow and systemd (libxcrypt), systemd (util-linux's
 libmount and libblkid, kmod), the target Python (zlib, libffi, openssl, ncurses, libuuid,
 libxcrypt), `python/cffi`, `python/cryptography` and `python/pyscard` (python; cryptography also
-openssl), mandoc (zlib). Two comments describe the order-dependence that declared dependencies
-remove: `feature/gnu.sh` (zlib comes after the packages that "would otherwise pick up zlib") and
-`package/bash.sh` (the termcap library "would then depend on what was installed before it"). Step 3
-reconsiders them and, for bash, its pinned `bash_cv_termcap_lib`.
+openssl), mandoc (zlib). A comment describes the order-dependence that declared dependencies
+remove: `package/bash.sh` (the termcap library "would then depend on what was installed before it").
+Step 3 reconsiders it, and its pinned `bash_cv_termcap_lib`. The features already declare the
+libraries that several of them link, zlib as a feature of its own.
 
 ## SBOM
 

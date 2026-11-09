@@ -4,9 +4,9 @@
 # interfaces through hidraw. GnuPG's scdaemon reaches the key through pcscd as well, instead of
 # through its own driver, so that gpg and ykman can share it. ykman is a Python program: it
 # needs ctypes, which needs libffi, cryptography, and pyscard for pcscd, besides pure Python
-# libraries. pcscd links systemd's libraries and is started by its socket.
+# libraries. pcscd links systemd's libraries and is started by its socket, and Python links zlib.
 
-# Requires: systemd
+# Requires: systemd zlib
 # Linux: hidraw usb
 
 # Without udev, libusb finds the devices through sysfs.
