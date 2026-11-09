@@ -1,7 +1,7 @@
 # Built systems: minimality and FHS 3.0, remaining work
 
 Open items from the minimality and FHS 3.0 assessment of 2026-10-11, for the `virt` (aarch64),
-`amd64` (x86-64) and `pi0` (armv6) `systemd-gnu` systems. Completed items were removed on
+`amd64` (x86-64) and `pi0` (armv6) `systemd` systems. Completed items were removed on
 2026-10-12. The state described below was checked on the current install trees.
 
 Documentation is not part of the product: systems ship none. Everything is judged against what these

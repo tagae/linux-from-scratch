@@ -14,7 +14,7 @@ platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu
 
 ```sh
 $Q/qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
-$Q/qemu-check pi0-systemd-gnu+fido2+gnupg+yubikey-manager "-device usb-ccid" 'ykman list --readers'
+$Q/qemu-check pi0-systemd+fido2+gnupg+yubikey-manager "-device usb-ccid" 'ykman list --readers'
 ```
 Boots a COPY of `image/KEY.img`, logs in as root (password `root`), runs ONE guest line, powers off, prints
 only that line's output (on failure: the end of the console and its path). `./lfs qemu` boots an image through

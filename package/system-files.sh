@@ -22,15 +22,10 @@ install() {
     ln -sfnv /run var/run
     ln -sfnv /run/lock var/lock
 
-    # Content shared by every userland flavor (common/) plus whatever is
-    # specific to this one ($USERLAND/, e.g. systemd's accounts). Flavor
-    # content is copied second, so its etc/passwd, etc/shadow and etc/group
-    # replace rather than merge with any common/ version.
-    cp -rv $package_files_dir/common/* .
-    cp -rv $package_files_dir/$USERLAND/* .
+    # Configuration that every system has, whatever its init. The accounts come with the init.
+    cp -rv $package_files_dir/etc .
 
     chmod -v 1777 tmp
-    chmod -v 0600 etc/shadow
 
     # File systems by the labels images give them. The Pi layout boots from a FAT partition, which
     # holds what the firmware loads.

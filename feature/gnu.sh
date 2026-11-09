@@ -1,6 +1,6 @@
-# The tools of the GNU userland, chapter 8 of the book: the shell, the core utilities, the tools to
-# manage users, disks, logs and processes, the readers of man and info pages, and the time zone
-# data. systemd builds on them.
+# The base tools, chapter 8 of the book: the GNU shell and core utilities, the tools to manage
+# users, disks, logs and processes, the readers of man and info pages, and the time zone data.
+# systemd builds on them.
 
 lfs_system_install tzdata
 

@@ -26,7 +26,7 @@ prepare() {
             # framework is installed), and what needs kernel features (core dumps, pressure stall
             # information for oomd, pstore, hibernation, quotas) or hardware (backlights, rfkill,
             # virtual consoles, EFI) that these systems lack.
-            # zlib, which the userland installs, is left out: only the image import uses it.
+            # zlib, which gnu installs, is left out: only the image import uses it.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
             # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
@@ -128,6 +128,11 @@ install() {
     case $package_component in
         systemd)
             DESTDIR=$package_install_dir env PATH=$TOOL_DIR/usr/bin:$PATH ninja install
+
+            # The static accounts (root and systemd's own users), the shell profile, and the
+            # hardening of the BPF compiler, which the kernel has for systemd.
+            cp -rv $package_files_dir/etc $package_files_dir/usr $package_install_dir/
+            chmod -v 0600 $package_install_dir/etc/shadow
 
             # Boards without a battery-backed clock start each boot at the date systemd was built.
             # timesyncd saves the clock every minute and on shutdown, and restores it at the next

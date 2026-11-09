@@ -35,7 +35,7 @@ The rules build directly on a Linux host, which needs:
   `make test`. The `virt` platform uses KVM.
 
 Hosts that are not Linux can make the image through Docker Compose instead, with the `docker-`
-goals: `make docker-image`, or `make docker-image/pi0-systemd-gnu.img` for a given system. The image
+goals: `make docker-image`, or `make docker-image/pi0-systemd.img` for a given system. The image
 then runs on the host, with QEMU and `expect`: `./lfs qemu` boots it, and `./test` also logs in and
 powers off (for a system other than `virt`, set `PLATFORM=pi0`, or pass its key to `./test`).
 `make docker-test` makes the image and runs `./test`, as `make test` does without Docker.
@@ -57,27 +57,29 @@ Features and Kernel Fragments
 
 A *feature* is a set of packages that the system holds, listed in `feature/<feature>.sh`. Everything
 in a system but its layout and the cross toolchain's C library and runtime comes from its features.
-The userland is a feature, and each platform brings the features that it needs, such as the kernel:
+The init system is a feature, and each platform brings the features that it needs, such as the
+kernel:
 
-| Feature       | Provides                                                                          | Requires      | Comes with             |
-|---------------|-----------------------------------------------------------------------------------|---------------|------------------------|
-| `gnu`         | The shell, the core utilities, the tools to manage users, disks, logs and processes, man and info readers | | `systemd-gnu` |
-| `systemd`     | systemd, the init system and service manager                                      | `gnu`         | `systemd-gnu`          |
-| `systemd-gnu` | The userland: systemd on the GNU tools                                            | `gnu systemd` | the default `USERLAND` |
-| `linux`       | The kernel, configured by the kernel fragments of the system's features          |               | every platform         |
-| `pi-boot`     | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt`   |               | `pi0`                  |
+| Feature   | Provides                                                                          | Requires | Comes with           |
+|-----------|-----------------------------------------------------------------------------------|----------|----------------------|
+| `systemd` | systemd, the init system and service manager, with the static accounts            | `gnu`    | the default `INIT`   |
+| `gnu`     | The shell, the core utilities, the tools to manage users, disks, logs and processes, man and info readers | | `systemd` |
+| `linux`   | The kernel, configured by the kernel fragments of the system's features          |          | every platform       |
+| `pi-boot` | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt`   |          | `pi0`                |
 
 The other features are tool sets for the system's users, and can be combined:
 
-| Feature           | Provides                                                                  | Kernel fragments  |
-|-------------------|---------------------------------------------------------------------------|-------------------|
-| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `hidraw usb`      |
-| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `usb usb-storage` |
-| `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `hidraw usb`      |
+| Feature           | Provides                                                                  | Requires  | Kernel fragments  |
+|-------------------|---------------------------------------------------------------------------|-----------|-------------------|
+| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `systemd` | `hidraw usb`      |
+| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `gnu`     | `usb usb-storage` |
+| `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `systemd` | `hidraw usb`      |
 
 A feature names on a `# Requires:` line of its file the features that it builds on, which the
-system gets along with it. The userland's features are installed first, then the platform's, then
-the others in alphabetical order, each after the features it requires.
+system gets along with it. A system has a single init system, `INIT`, a feature which the others
+build on: it and the features it requires are installed first, then the platform's, then the
+others in alphabetical order, each after the features it requires. Another init system would be a
+feature of its own, with requirements of its own.
 
 A *kernel fragment*, `package/linux/<fragment>.config`, is the kernel configuration for a kind of
 device. A feature lists on a `# Linux:` line of its file every fragment it relies on, as a fragment
@@ -97,7 +99,7 @@ A Raspberry Pi Zero running a system with the `gnupg` feature can make an OpenPG
 part never touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey:
 
 ```shell
-make docker-image/pi0-systemd-gnu+gnupg.img
+make docker-image/pi0-systemd+gnupg.img
 ```
 
 Write the image to an SD card. The Zero has one USB data port, the micro-USB one marked *USB*, so
@@ -151,7 +153,7 @@ Add the `yubikey-manager` feature to also have `ykman` on the Pi (Python, `crypt
 smart card daemon `pcscd` come with it, about 60 MB):
 
 ```shell
-make docker-image/pi0-systemd-gnu+gnupg+yubikey-manager.img
+make docker-image/pi0-systemd+gnupg+yubikey-manager.img
 ```
 
 With it, GnuPG reaches the YubiKey through `pcscd` rather than through its own USB driver
@@ -161,7 +163,7 @@ Without it, scdaemon drives the key itself and `ykman` is not installed.
 The same features build for the `virt` platform, to try the workflow in QEMU without a Pi:
 
 ```shell
-make docker-image/virt-systemd-gnu+gnupg+yubikey-manager.img
+make docker-image/virt-systemd+gnupg+yubikey-manager.img
 ```
 
 It boots on the Mac's own architecture with the host's accelerator, and QEMU takes the USB devices
@@ -204,23 +206,22 @@ make test             # check that the image boots and root can login/poweroff
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
-Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no features beyond
-theirs. The defaults can be changed through variables:
+Each target defaults to the `virt` platform, the `systemd` init, and no features beyond theirs. The defaults can be changed through variables:
 
 ```shell
 make image PLATFORM=pi0 FEATURES="fido2 gnupg"
 ```
 
-Those variables make up a *system key*, `<platform>-<userland>[+<feature>...]`, with the features
-in alphabetical order, which names every deliverable: the install tree, the boot files, and the
-image. A feature that the platform, the userland or another feature brings is left out of the key,
+Those variables make up a *system key*, `<platform>-<init>[+<feature>...]`, with the features in
+alphabetical order, which names every deliverable: the install tree, the boot files, and the
+image. A feature that the platform, the init or another feature brings is left out of the key,
 which comes to one per system. A target can be named by its system key directly:
 
 ```shell
-make pi0-systemd-gnu+gnupg-test
+make pi0-systemd+gnupg-test
 ```
 
-Images are file targets under that same key, so `make image/pi0-systemd-gnu+fido2.img` produces an
+Images are file targets under that same key, so `make image/pi0-systemd+fido2.img` produces an
 image for the `pi0` platform featuring `fido2`. An image is as small as its system allows: its root
 file system has only the room that btrfs leaves in it, which grows with the system (some 30 MB
 without features, 50 MB with those above). `IMAGE_SIZE` makes it larger (e.g. `IMAGE_SIZE=1G`), the
@@ -229,11 +230,11 @@ boot it through an overlay, `image/<key>.qcow2`, which keeps what the system wri
 is made anew, so that the image stays as it was made, to be written to a card.
 
 Package archives are filed under the key of the system as it stands when they are built: the
-toolchain's, and those of the features that the platform and the userland bring, under
-`<platform>-<userland>`, the kernel's under that key extended with the kernel fragments of all the
-system's features, in alphabetical order (`pi0-systemd-gnu+hidraw+usb` for `fido2`), and each other
-feature's under `<platform>-<userland>` extended with the features added so far, in the order they
-are installed. Systems thus share the archives of what they have in common: the userland's and the
+toolchain's, and those of the features that the platform and the init bring, under
+`<platform>-<init>`, the kernel's under that key extended with the kernel fragments of all the
+system's features, in alphabetical order (`pi0-systemd+hidraw+systemd+usb` for `fido2`), and each
+other feature's under `<platform>-<init>` extended with the features added so far, in the order
+they are installed. Systems thus share the archives of what they have in common: the init's and the
 platform's, the kernel of systems whose features rely on the same fragments, and the other
 features' of systems whose kernels differ.
 
@@ -258,7 +259,7 @@ The document can be checked with the SPDX project's validator, and read by scann
 
 ```shell
 pip install spdx-tools
-pyspdxtools --infile image/virt-systemd-gnu.spdx.json
+pyspdxtools --infile image/virt-systemd.spdx.json
 ```
 
 A block device gets no document, as it is no file to take the digest of: make the image first, and

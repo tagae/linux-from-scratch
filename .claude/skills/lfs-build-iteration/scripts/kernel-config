@@ -1,7 +1,7 @@
 #!/bin/sh
 # Shows options of the kernel configuration that a build resolved, from the `work` volume.
 #
-# Usage: kernel-config KEY OPTION...    e.g. kernel-config pi0-systemd-gnu+hidraw+usb PM HIDRAW
+# Usage: kernel-config KEY OPTION...    e.g. kernel-config pi0-systemd+hidraw+systemd+usb PM HIDRAW
 #
 # KEY is the kernel's: the base key with the kernel fragments that the system's features rely on,
 # in alphabetical order.

@@ -12,8 +12,8 @@
 # Layout: archive/<key>/<package>[-<variant>]-<version>[-<revision>][-<component>].tar.xz, next to
 # a .tar.xz.sha256. <package> is the path of the recipe under package/ without .sh, so that
 # python/click is archive/<key>/python/click-<version>.tar.xz. The key is the platform and the
-# userland (pi0-systemd-gnu) for the build tools, the toolchain and the features that the platform
-# and the userland bring, extended by +<fragment> for the kernel, and by +<feature> for each other
+# init system (pi0-systemd) for the build tools, the toolchain and the features that the platform
+# and the init bring, extended by +<fragment> for the kernel, and by +<feature> for each other
 # feature in turn.
 #
 # Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, feature/
@@ -32,7 +32,7 @@
 #       package/linux/usb.config is linux, the kernel). A path that belongs to no recipe falls to
 #       rule 9.
 #    3  feature/<f>.sh: every archive under a key with +<f> as one of its items (+usb is not
-#       +usb-storage). A feature that a platform or a userland brings is in no key, and every
+#       +usb-storage). A feature that a platform or an init brings is in no key, and every
 #       later package is built against what it installs: every archive but the build tools.
 #    4  lib/category/<c>.sh: everything under archive/*/<c>/.
 #    5  lib/meson.sh: rule 2 for each recipe at HEAD that calls meson_cross_file.
@@ -116,7 +116,7 @@ stale() {
             case $key in "$arg"-*) return 0 ;; esac
             ;;
         feature)
-            # The key lists its features after the userland, each preceded by a +.
+            # The key lists its features after the init, each preceded by a +.
             case $key in *"+$arg"|*"+$arg+"*) return 0 ;; esac
             ;;
         system)
@@ -173,21 +173,20 @@ add_required_features() {
     done
 }
 
-# Sets `brought` to the features that a platform or a userland brings, for rule 3: what the
-# platforms require, and the userland of each key under the archive directory, with what it
-# requires.
+# Sets `brought` to the features that a platform or an init brings, for rule 3: what the platforms
+# require, and the init of each key under the archive directory, with what it requires.
 find_brought_features() {
-    local path dir userland
+    local path dir init
     brought=
     for path in $(git ls-tree --name-only HEAD platform/); do
         add_required_features "$path"
     done
     for dir in $(find "$archive_dir" -mindepth 1 -maxdepth 1 -type d); do
-        userland=${dir##*/}
-        userland=${userland%%+*}
-        userland=${userland#*-}
-        brought="$brought $userland"
-        add_required_features "feature/$userland.sh"
+        init=${dir##*/}
+        init=${init%%+*}
+        init=${init#*-}
+        brought="$brought $init"
+        add_required_features "feature/$init.sh"
     done
 }
 
@@ -219,7 +218,8 @@ select_changed() {
         name=${name%.sh}
         case " $brought " in
         *" $name "*)
-            select_archives "$path: rule 3, brought by a platform or a userland: every archive but the build tools" system
+            select_archives \
+                "$path: rule 3, brought by a platform or an init: all but the build tools" system
             ;;
         *)
             select_archives "$path: rule 3, archives of the feature $name" feature "$name"
