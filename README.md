@@ -60,20 +60,27 @@ in a system but its layout and the cross toolchain's C library and runtime comes
 The init system is a feature, and each platform brings the features that it needs, such as the
 kernel:
 
-| Feature   | Provides                                                                          | Requires | Comes with           |
-|-----------|-----------------------------------------------------------------------------------|----------|----------------------|
-| `systemd` | systemd, the init system and service manager, with the static accounts            | `gnu`    | the default `INIT`   |
-| `gnu`     | The shell, the core utilities, the tools to manage users, disks, logs and processes, man and info readers | | `systemd` |
-| `linux`   | The kernel, configured by the kernel fragments of the system's features          |          | every platform       |
-| `pi-boot` | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt`   |          | `pi0`                |
+| Feature   | Provides                                                                        | Requires | Comes with         |
+|-----------|---------------------------------------------------------------------------------|----------|--------------------|
+| `systemd` | systemd, the init system and service manager, with the strict minimum it needs to boot and log root in: kmod, libxcrypt, shadow's `login`, util-linux (`mount`, `agetty`, `sulogin`, and the basic tools to manage disks and logs) with ncurses, and the static accounts | `bash` | the default `INIT` |
+| `bash`    | GNU bash, `/bin/sh` and root's shell                                            |          | `systemd`          |
+| `linux`   | The kernel, configured by the kernel fragments of the system's features        |          | every platform     |
+| `pi-boot` | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt` |          | `pi0`              |
 
-The other features are tool sets for the system's users, and can be combined:
+The other features are added as needed, and can be combined:
 
-| Feature           | Provides                                                                  | Requires  | Kernel fragments  |
-|-------------------|---------------------------------------------------------------------------|-----------|-------------------|
-| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `systemd` | `hidraw usb`      |
-| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `gnu`     | `usb usb-storage` |
-| `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `systemd` | `hidraw usb`      |
+| Feature           | Provides                                                                  | Requires       | Kernel fragments  |
+|-------------------|---------------------------------------------------------------------------|----------------|-------------------|
+| `gnu`             | The GNU tools: the core utilities, grep, sed and gawk                     |                |                   |
+| `procps`          | `ps`, `top`, `free` and the like                                          |                |                   |
+| `man`             | Readers of man and info pages                                             | `zlib`         |                   |
+| `tzdata`          | The time zone database, for `TIMEZONE`                                    |                |                   |
+| `zlib`            | The compression library                                                   |                |                   |
+| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `systemd zlib` | `hidraw usb`      |
+| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `gnu zlib`     | `usb usb-storage` |
+| `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `systemd zlib` | `hidraw usb`      |
+
+The rest of chapter 8 of the LFS book comes with `+gnu+man+procps+tzdata`.
 
 A feature names on a `# Requires:` line of its file the features that it builds on, which the
 system gets along with it. A system has a single init system, `INIT`, a feature which the others
@@ -182,10 +189,11 @@ systemd-timesyncd, which saves the clock every minute and at shutdown, and resto
 boot. Every image starts at the time it was made. No NTP servers are configured, as there is no
 network.
 
-Images are in UTC. `TIMEZONE`, set to a name from the time zone database, gives an image another
-zone, e.g. `make image TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how
-time is shown. The system carries the whole database, so `TZ` and `/etc/localtime` can name any
-other zone on the device.
+Images are in UTC. `TIMEZONE`, set to a name from the time zone database, gives an image of a
+system with the `tzdata` feature another zone, e.g. `make image FEATURES=tzdata
+TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how time is shown. The
+feature carries the whole database, so `TZ` and `/etc/localtime` can name any other zone on the
+device.
 
 Localisation and native language support (NLS) are unsupported. This might become an opt-in feature
 in the future.
@@ -223,8 +231,7 @@ make pi0-systemd+gnupg-test
 
 Images are file targets under that same key, so `make image/pi0-systemd+fido2.img` produces an
 image for the `pi0` platform featuring `fido2`. An image is as small as its system allows: its root
-file system has only the room that btrfs leaves in it, which grows with the system (some 30 MB
-without features, 50 MB with those above). `IMAGE_SIZE` makes it larger (e.g. `IMAGE_SIZE=1G`), the
+file system has only the room that btrfs leaves in it, which grows with the system. `IMAGE_SIZE` makes it larger (e.g. `IMAGE_SIZE=1G`), the
 root file system filling it. An image appears only once it is complete. `make qemu` and `make test`
 boot it through an overlay, `image/<key>.qcow2`, which keeps what the system writes until the image
 is made anew, so that the image stays as it was made, to be written to a card.

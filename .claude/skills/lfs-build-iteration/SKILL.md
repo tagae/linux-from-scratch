@@ -14,7 +14,8 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   (`pi0-systemd+fido2+gnupg+yubikey-manager`; lfs bails on `+usb`: a fragment is no feature). A feature is
   `feature/<feature>.sh`; a `# Linux:` line names every kernel fragment (`package/linux/<fragment>.config`) it
   relies on, a `# Requires:` line the features it builds on. Everything after the cross toolchain is a feature:
-  the init is one (`INIT=systemd`, which requires `gnu` = chapter 8, and names the `systemd` fragment), and the
+  the init is one (`INIT=systemd`: kmod, libxcrypt, shadow, ncurses, util-linux, systemd; it requires `bash` and
+  names the `systemd` fragment; the rest of chapter 8 is `+gnu+man+procps+tzdata`), and the
   platform file's `# Requires:` line names its own (`linux`; `pi-boot` on pi0); lfs bails on naming one in the
   key. lfs resolves `base_features` (the init's and the platform's), `features` (the others, each after what it
   requires) and `linux_fragments` (those of all features, sorted).

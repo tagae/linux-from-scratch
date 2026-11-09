@@ -2,7 +2,7 @@
 # fido2-assert), which drive the key's FIDO2 interface through /dev/hidraw*. libfido2 links
 # systemd's libudev, and gnu's zlib.
 
-# Requires: systemd
+# Requires: systemd zlib
 # Linux: hidraw usb
 
 (

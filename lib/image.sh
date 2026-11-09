@@ -175,10 +175,14 @@ stage_root() {
     # earlier than the time it was made.
     mkdir -p $ROOT_DIR/var/lib/systemd/timesync
     touch $ROOT_DIR/var/lib/systemd/timesync/clock
-    # The time zone belongs to the image, so that the system is the same for every zone.
+    # The time zone belongs to the image, so that the system is the same for every zone. A system
+    # without the tzdata feature keeps UTC, which needs no zone file.
     local timezone=${TIMEZONE:-UTC}
-    [ -f $ROOT_DIR/usr/share/zoneinfo/$timezone ] || bail "Unknown time zone '$timezone'"
-    ln -sfn /usr/share/zoneinfo/$timezone $ROOT_DIR/etc/localtime
+    if [ -f $ROOT_DIR/usr/share/zoneinfo/$timezone ]; then
+        ln -sfn /usr/share/zoneinfo/$timezone $ROOT_DIR/etc/localtime
+    elif [ -n "${TIMEZONE:-}" ]; then
+        bail "Unknown time zone '$timezone': time zones come with the tzdata feature"
+    fi
     # With a machine ID, the first boot is an ordinary one. Without it, systemd presets every unit
     # at the first boot, and warns about each unit that a generator made. The ID belongs to the
     # image: cards written from the same image share it.
