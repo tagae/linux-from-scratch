@@ -8,8 +8,8 @@ Overview
 * `lib/`: LFS framework
 * `lib/category/`: the helpers of the recipes of a package category, loaded for them alone
 * `platform/`: the machines that systems run on
-* `feature/`: what systems hold, as lists of packages: the userland, what platforms need (the
-  kernel), and tool sets for the systems' users
+* `feature/`: what systems hold, as lists of packages: the init system and what it builds on, what
+  platforms need (the kernel), and tool sets for the systems' users
 * `package/`: package recipes
 * `download/`: fetched archives
 * `source/`: unpacked sources
@@ -57,12 +57,12 @@ Building the System
 The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
-system's features, compiled with that toolchain: the userland's (`gnu`, the base system from chapter
-8, and `systemd`), the platform's (`linux`, the kernel, configured from the layers that every system
-gets, `package/linux/`: base, hardening, machine, architecture and userland, and from the fragments
-that the system's features rely on, `package/linux/<fragment>.config`; `pi-boot` on the Pi), then
-the others. Each package is installed both into the system tree and into the
-toolchain's sysroot, `work/<platform>-<userland>/sysroot`, which also receives what compiling
+system's features, compiled with that toolchain: the init's (`systemd`, and `gnu`, the base system
+from chapter 8, which it requires), the platform's (`linux`, the kernel, configured from the layers
+that every system gets, `package/linux/`: base, hardening, machine and architecture, and from the
+fragments that the system's features rely on, `package/linux/<fragment>.config`; `pi-boot` on the
+Pi), then the others. Each package is installed both into the system tree and into the toolchain's
+sysroot, `work/<platform>-<init>/sysroot`, which also receives what compiling
 against the packages needs: the Linux API headers and the packages' `dev` components. The kernel is
 also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
 
@@ -161,7 +161,7 @@ All shell code should be POSIX compliant.
 
 Shell variables are part of the **external API** if they are used to parameterise `lfs`.
 
-External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `FEATURES`)
+External API variables have uppercase names (e.g., `PLATFORM`, `INIT`, `FEATURES`)
 
 They are the only variables of its environment that `lfs` passes on to builds, along with `PATH`
 and `TMPDIR` (the list is `lfs_environment`, in `lfs`): every command but `qemu` and `help`
@@ -226,22 +226,24 @@ Where Code Goes
 | The features every system of a platform gets | `platform/<platform>.sh`: a `# Requires: <feature>...` line (`linux`, `pi-boot`) |
 | Helpers of one feature | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/category/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>,<userland>}.config`, each with its reason |
+| Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>}.config`, each with its reason |
 | Kernel options that are optional | `package/linux/<fragment>.config`, each with its reason, named by the `# Linux:` line of the features that rely on it |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
-| Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
+| Static users and groups | `package/systemd/etc/{passwd,group,shadow}`, shipped by the init |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
-A feature is what the system holds: the userland, what the platform needs, or a tool set for users.
-It sets no kernel option itself. A kernel need is a fragment, an
+A feature is what the system holds: the init system and what it builds on, what the platform
+needs, or a tool set for users. It sets no kernel option itself. A kernel need is a fragment, an
 option of the linux package: the feature names on a `# Linux:` line every fragment it relies on, as
-fragments do not build on each other. A system has one kernel, built before its features run, so
-`lfs` reads the lines of all its features up front, and the kernel gets the union of their fragments
-(`feature/linux.sh` passes it as the `fragments` option). The system key names features alone,
-without those that come with the platform, the userland or the others. Features install each in a
-subshell: the userland's first, then the platform's, then the others in alphabetical order, each after
-the features it requires; a feature that builds on another's packages requires it. Each file's
-header says what it enables and how it changes the others. Build-machine tools
+fragments do not build on each other. A system has one kernel, built before the features that the
+init and the platform do not bring, so `lfs` reads the lines of all its features up front, and the
+kernel gets the union of their fragments (`feature/linux.sh` passes it as the `fragments` option).
+A system has one init system, the feature that the key names after the platform (`INIT`); the key
+then names the other features, without those that come with the platform, the init or the others.
+Features install each in a subshell: the init's first, with what it requires, then the platform's,
+then the others in alphabetical order, each after the features it requires; a feature that builds
+on another's packages requires it. Each file's header says what it enables and how it changes the
+others. Build-machine tools
 that a system build needs (swig, the Rust seed, native Python modules) are installed into `TOOL_DIR`
 from the feature with `lfs_tools_install <package>`, archived `*-tools-*`, never shipped.
 

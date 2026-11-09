@@ -11,11 +11,11 @@
 #
 # Besides the tree's layout (system-files) and the toolchain's C library and runtime, everything in
 # the system comes from its features: a feature installs the packages listed in
-# feature/<feature>.sh. The userland is a feature, and the platform names those that every system on
-# it gets, such as the kernel, on a `# Requires:` line, as a feature names the features it builds
-# on. The kernel is configured from layers that every system gets, in package/linux/ (base,
-# hardening, machine, architecture, userland), and from the optional fragments there that the
-# system's features name on their `# Linux:` lines.
+# feature/<feature>.sh. The init system is a feature, and the platform names those that every
+# system on it gets, such as the kernel, on a `# Requires:` line, as a feature names the features it
+# builds on. The kernel is configured from layers that every system gets, in package/linux/ (base,
+# hardening, machine, architecture), and from the optional fragments there that the system's
+# features name on their `# Linux:` lines.
 
 lfs_system() {
     case "${1:-help}" in
@@ -70,7 +70,7 @@ lfs_system_build() {
     # The Python packages of the features are for this version, which lib/category/python.sh reads.
     python_version=$(lfs_package_version python)
 
-    # The key names the platform and the userland, and with them the features they bring.
+    # The key names the platform and the init, and with them the features they bring.
     for feature in $base_features; do
         ( . $feature_dir/$feature.sh )
     done

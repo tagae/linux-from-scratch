@@ -30,15 +30,15 @@ export LFS_RELEASE ?= r13.0-143
 # Making an image gives the system's files to root, which needs root access.
 SUDO ?= sudo --preserve-env
 
-# The system that the default targets build: its key is <platform>-<userland>[+<feature>...], with
+# The system that the default targets build: its key is <platform>-<init>[+<feature>...], with
 # its features in alphabetical order, as `lfs` names it, without those that come with the
-# platform, the userland or the others.
+# platform, the init or the others.
 PLATFORM ?= virt
-USERLAND ?= systemd-gnu
+INIT ?= systemd
 FEATURES ?=
 space := $(subst ,, )
 features := $(sort $(FEATURES))
-SYSTEM := $(PLATFORM)-$(USERLAND)$(subst $(space),,$(foreach feature,$(features),+$(feature)))
+SYSTEM := $(PLATFORM)-$(INIT)$(subst $(space),,$(foreach feature,$(features),+$(feature)))
 
 # Default targets.
 tools-bootstrap: $(SYSTEM)-tools-bootstrap

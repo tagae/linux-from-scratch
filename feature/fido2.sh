@@ -1,6 +1,8 @@
 # FIDO2 security keys, such as the YubiKey, through libfido2's tools (fido2-token, fido2-cred and
-# fido2-assert), which drive the key's FIDO2 interface through /dev/hidraw*.
+# fido2-assert), which drive the key's FIDO2 interface through /dev/hidraw*. libfido2 links
+# systemd's libudev, and gnu's zlib.
 
+# Requires: systemd
 # Linux: hidraw usb
 
 (

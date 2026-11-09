@@ -10,22 +10,22 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 
 ## Keys, archives, volumes
 
-- A system is `<platform>-<userland>[+<feature>...]`, features in ALPHABETICAL order
-  (`pi0-systemd-gnu+fido2+gnupg+yubikey-manager`; lfs bails on `+usb`: a fragment is no feature). A feature is
+- A system is `<platform>-<init>[+<feature>...]`, features in ALPHABETICAL order
+  (`pi0-systemd+fido2+gnupg+yubikey-manager`; lfs bails on `+usb`: a fragment is no feature). A feature is
   `feature/<feature>.sh`; a `# Linux:` line names every kernel fragment (`package/linux/<fragment>.config`) it
   relies on, a `# Requires:` line the features it builds on. Everything after the cross toolchain is a feature:
-  the userland is one (`systemd-gnu`: `gnu` = chapter 8, `systemd`), and the platform file's `# Requires:` line
-  names its own (`linux`; `pi-boot` on pi0); lfs bails on naming one in the key. lfs resolves `base_features`
-  (the userland's and the platform's), `features` (the others, each after what it requires) and
-  `linux_fragments` (those of all features, sorted).
+  the init is one (`INIT=systemd`, which requires `gnu` = chapter 8, and names the `systemd` fragment), and the
+  platform file's `# Requires:` line names its own (`linux`; `pi-boot` on pi0); lfs bails on naming one in the
+  key. lfs resolves `base_features` (the init's and the platform's), `features` (the others, each after what it
+  requires) and `linux_fragments` (those of all features, sorted).
 - Build: `make docker-image/<key>.img` (Linux hosts: `make image/<key>.img`); also `make image PLATFORM=pi0
   FEATURES="b c"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
 - Packages are archived once: `archive/<package_key>/<name>-<version>[-component].tar.xz` + `.sha256`. The
-  package key is the base key (`pi0-systemd-gnu`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: the
-  toolchain's and the base features' packages (userland, Pi firmware/boot) are shared by all systems; the kernel
-  sits under the base key plus ALL the fragments of the features, sorted (`pi0-systemd-gnu+hidraw+usb+usb-storage`;
-  the base key for a system with no fragments), shared by systems whose features need the same fragments; another
-  feature's packages under the base key plus the features up to it (`pi0-systemd-gnu+fido2+gnupg`). Build-machine
+  package key is the base key (`pi0-systemd`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: the
+  toolchain's and the base features' packages (init, Pi firmware/boot) are shared by all systems; the kernel sits
+  under the base key plus ALL the fragments of the features, sorted (`pi0-systemd+hidraw+systemd+usb+usb-storage`;
+  `pi0-systemd+systemd` with no other feature), shared by systems whose features need the same fragments; another
+  feature's packages under the base key plus the features up to it (`pi0-systemd+fido2+gnupg`). Build-machine
   packages are `<name>-tools-<version>`.
 - A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel fragment or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
@@ -42,8 +42,8 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 - NEVER run two builds at once, of any keys or platforms, yours or an agent's: check `ps aux | grep -E
   '[m]ake docker|[d]ocker compose run'`. Every build re-extracts the tools into the shared `tools` volume,
   overwriting tools another build is running (`Bus error (core dumped)` in `rm`/`sed` during a configure, silently
-  failing tests, nonsense follow-on errors), and all keys of a platform and userland share and wipe one sysroot
-  (`work/pi0-systemd-gnu/sysroot`).
+  failing tests, nonsense follow-on errors), and all keys of a platform and init share and wipe one sysroot
+  (`work/pi0-systemd/sysroot`).
 - `system-files` is merged BEFORE the other packages and the last file wins: a file a package installs cannot be
   overridden from `package/system-files`; change it in that package.
 - Sources and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
