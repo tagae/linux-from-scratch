@@ -1,4 +1,7 @@
 # A 64-bit ARM machine, tested as QEMU's virt machine.
+
+# Requires: linux
+
 readonly target_arch=aarch64
 readonly kernel_arch=arm64
 # Virtio devices on PCI Express, as in every QEMU virtual machine.

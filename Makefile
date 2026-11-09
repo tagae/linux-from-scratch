@@ -31,7 +31,8 @@ export LFS_RELEASE ?= r13.0-143
 SUDO ?= sudo --preserve-env
 
 # The system that the default targets build: its key is <platform>-<userland>[+<feature>...], with
-# its features in alphabetical order, as `lfs` names it.
+# its features in alphabetical order, as `lfs` names it, without those that come with the
+# platform, the userland or the others.
 PLATFORM ?= virt
 USERLAND ?= systemd-gnu
 FEATURES ?=

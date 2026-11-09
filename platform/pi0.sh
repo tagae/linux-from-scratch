@@ -1,3 +1,7 @@
+# A Raspberry Pi Zero, whose firmware boots the kernel from the FAT partition of the Pi layout.
+
+# Requires: linux pi-boot
+
 readonly kernel_arch=arm
 readonly kernel_machine=pi0
 readonly target_arch=arm

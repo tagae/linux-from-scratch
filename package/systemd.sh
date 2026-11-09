@@ -26,6 +26,7 @@ prepare() {
             # framework is installed), and what needs kernel features (core dumps, pressure stall
             # information for oomd, pstore, hibernation, quotas) or hardware (backlights, rfkill,
             # virtual consoles, EFI) that these systems lack.
+            # zlib, which the userland installs, is left out: only the image import uses it.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
             # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
@@ -65,6 +66,7 @@ prepare() {
                 -Dtpm2=disabled \
                 -Dp11kit=disabled \
                 -Dlibcryptsetup=disabled \
+                -Dzlib=disabled \
                 -Dnetworkd=false \
                 -Dresolve=false \
                 -Dtimesyncd=true \

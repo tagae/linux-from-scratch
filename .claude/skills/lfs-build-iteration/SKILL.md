@@ -13,15 +13,20 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 - A system is `<platform>-<userland>[+<feature>...]`, features in ALPHABETICAL order
   (`pi0-systemd-gnu+fido2+gnupg+yubikey-manager`; lfs bails on `+usb`: a fragment is no feature). A feature is
   `feature/<feature>.sh`; a `# Linux:` line names every kernel fragment (`package/linux/<fragment>.config`) it
-  relies on. lfs resolves `features` and `linux_fragments` (those of all features, sorted).
+  relies on, a `# Requires:` line the features it builds on. Everything after the cross toolchain is a feature:
+  the userland is one (`systemd-gnu`: `gnu` = chapter 8, `systemd`), and the platform file's `# Requires:` line
+  names its own (`linux`; `pi-boot` on pi0); lfs bails on naming one in the key. lfs resolves `base_features`
+  (the userland's and the platform's), `features` (the others, each after what it requires) and
+  `linux_fragments` (those of all features, sorted).
 - Build: `make docker-image/<key>.img` (Linux hosts: `make image/<key>.img`); also `make image PLATFORM=pi0
   FEATURES="b c"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
 - Packages are archived once: `archive/<package_key>/<name>-<version>[-component].tar.xz` + `.sha256`. The
-  package key is the base key (`pi0-systemd-gnu`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: base packages
-  are shared by all systems; the kernel (and Pi firmware/boot) sits under the base key plus ALL the fragments of the
-  features, sorted (`pi0-systemd-gnu+hidraw+usb+usb-storage`; the base key for a system with no features), shared
-  by systems whose features need the same fragments; a feature's packages under that key plus the features up to
-  it. Build-machine packages are `<name>-tools-<version>`.
+  package key is the base key (`pi0-systemd-gnu`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: the
+  toolchain's and the base features' packages (userland, Pi firmware/boot) are shared by all systems; the kernel
+  sits under the base key plus ALL the fragments of the features, sorted (`pi0-systemd-gnu+hidraw+usb+usb-storage`;
+  the base key for a system with no fragments), shared by systems whose features need the same fragments; another
+  feature's packages under the base key plus the features up to it (`pi0-systemd-gnu+fido2+gnupg`). Build-machine
+  packages are `<name>-tools-<version>`.
 - A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel fragment or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
   After a kernel fragment delete `linux-*.tar.xz*` of EVERY key that must change: those with the fragment, or all of
