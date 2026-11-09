@@ -5,7 +5,6 @@ lfs_install_package() {
 
 lfs_archive_package() (
     archive=$(lfs_package_archive "$1")
-    # An archive counts as built only along with its digest.
     if [ -s $archive ] && [ -s $archive.sha256 ]; then
         exit 0
     fi
