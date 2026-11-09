@@ -55,14 +55,29 @@ Supported Platforms
 Features and Kernel Fragments
 -----------------------------
 
-A *feature* is a tool set for the system's users. Its packages, listed in `feature/<feature>.sh`,
-are installed after the base system and the kernel. Features can be combined.
+A *feature* is a set of packages that the system holds, listed in `feature/<feature>.sh`. Everything
+in a system but its layout and the cross toolchain's C library and runtime comes from its features.
+The userland is a feature, and each platform brings the features that it needs, such as the kernel:
+
+| Feature       | Provides                                                                          | Requires      | Comes with             |
+|---------------|-----------------------------------------------------------------------------------|---------------|------------------------|
+| `gnu`         | The shell, the core utilities, the tools to manage users, disks, logs and processes, man and info readers | | `systemd-gnu` |
+| `systemd`     | systemd, the init system and service manager                                      | `gnu`         | `systemd-gnu`          |
+| `systemd-gnu` | The userland: systemd on the GNU tools                                            | `gnu systemd` | the default `USERLAND` |
+| `linux`       | The kernel, configured by the kernel fragments of the system's features          |               | every platform         |
+| `pi-boot`     | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt`   |               | `pi0`                  |
+
+The other features are tool sets for the system's users, and can be combined:
 
 | Feature           | Provides                                                                  | Kernel fragments  |
 |-------------------|---------------------------------------------------------------------------|-------------------|
 | `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `hidraw usb`      |
 | `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `usb usb-storage` |
 | `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `hidraw usb`      |
+
+A feature names on a `# Requires:` line of its file the features that it builds on, which the
+system gets along with it. The userland's features are installed first, then the platform's, then
+the others in alphabetical order, each after the features it requires.
 
 A *kernel fragment*, `package/linux/<fragment>.config`, is the kernel configuration for a kind of
 device. A feature lists on a `# Linux:` line of its file every fragment it relies on, as a fragment
@@ -189,8 +204,8 @@ make test             # check that the image boots and root can login/poweroff
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
-Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no features. The
-defaults can be changed through variables:
+Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no features beyond
+theirs. The defaults can be changed through variables:
 
 ```shell
 make image PLATFORM=pi0 FEATURES="fido2 gnupg"
@@ -198,7 +213,8 @@ make image PLATFORM=pi0 FEATURES="fido2 gnupg"
 
 Those variables make up a *system key*, `<platform>-<userland>[+<feature>...]`, with the features
 in alphabetical order, which names every deliverable: the install tree, the boot files, and the
-image. A target can be named by its system key directly:
+image. A feature that the platform, the userland or another feature brings is left out of the key,
+which comes to one per system. A target can be named by its system key directly:
 
 ```shell
 make pi0-systemd-gnu+gnupg-test
@@ -212,12 +228,14 @@ root file system filling it. An image appears only once it is complete. `make qe
 boot it through an overlay, `image/<key>.qcow2`, which keeps what the system writes until the image
 is made anew, so that the image stays as it was made, to be written to a card.
 
-Package archives are filed under the key of the system as it stands when they are built: the base
-system's under `<platform>-<userland>`, the kernel's under that key extended with the kernel
-fragments of all the system's features, in alphabetical order (`pi0-systemd-gnu+hidraw+usb` for
-`fido2`), and each feature's under that key extended with the features added so far, in alphabetical
-order. Systems thus share the archives of what they have in common: the base system's, and the
-kernel of systems whose features rely on the same fragments.
+Package archives are filed under the key of the system as it stands when they are built: the
+toolchain's, and those of the features that the platform and the userland bring, under
+`<platform>-<userland>`, the kernel's under that key extended with the kernel fragments of all the
+system's features, in alphabetical order (`pi0-systemd-gnu+hidraw+usb` for `fido2`), and each other
+feature's under `<platform>-<userland>` extended with the features added so far, in the order they
+are installed. Systems thus share the archives of what they have in common: the userland's and the
+platform's, the kernel of systems whose features rely on the same fragments, and the other
+features' of systems whose kernels differ.
 
 `make distclean` removes the build state and the tools; `make pristine` also removes downloads,
 archives and images.

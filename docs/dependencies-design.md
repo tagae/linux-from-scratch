@@ -24,7 +24,7 @@ framework code and one line per recipe.
   `$package_install_dir`, which the system build sets to the sysroot. `lfs_system_install X` also
   unpacks it into `system_dir`.
 - The sysroot is cumulative: a recipe sees every package installed before it. Dependencies are the
-  install order of `lib/system.sh` and of the features, kept by hand. The only declared dependency,
+  install order of the toolchain (`lib/system.sh`) and of the features, kept by hand. The only declared dependency,
   `package_fetch_dependencies`, is about sources built in-tree (gcc's gmp, mpfr and mpc).
 - A missing dependency builds whenever the order happens to be right, and `configure` picks up
   whatever the sysroot happens to hold. Options at the call sites (`sqlite=no`) exist to keep that
@@ -32,8 +32,8 @@ framework code and one line per recipe.
 - An archive is reused when it and its digest exist. Its key is the system key as it stood when it
   was built, so a changed dependency rebuilds nothing (`.github/ci/invalidate`: "The packages built
   against one that changed are not dropped with it").
-- 18 products have an `lfs_install_package X#dev` line, 20 lines in all, in `lib/system.sh` and
-  the features.
+- 18 products have an `lfs_install_package X#dev` line, 20 lines in all, in `lib/system.sh` (glibc)
+  and the features.
 
 ## Requirements and non-goals
 
@@ -235,7 +235,7 @@ libusb), procps-ng and util-linux (ncurses), shadow and systemd (libxcrypt), sys
 libmount and libblkid, kmod), the target Python (zlib, libffi, openssl, ncurses, libuuid,
 libxcrypt), `python/cffi`, `python/cryptography` and `python/pyscard` (python; cryptography also
 openssl), mandoc (zlib). Two comments describe the order-dependence that declared dependencies
-remove: `lib/system.sh` (zlib comes after the packages that "would otherwise pick up zlib") and
+remove: `feature/gnu.sh` (zlib comes after the packages that "would otherwise pick up zlib") and
 `package/bash.sh` (the termcap library "would then depend on what was installed before it"). Step 3
 reconsiders them and, for bash, its pinned `bash_cv_termcap_lib`.
 

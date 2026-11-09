@@ -115,23 +115,47 @@ readonly PLATFORM
 
 . $project_dir/platform/$PLATFORM.sh
 
-#-- Userland: init system and toolset.
+#-- Userland: the feature that the system is built on, with its init system and tools.
 
 : ${USERLAND:=systemd-gnu}
 
 readonly USERLAND
 
-#-- Features: tool sets for the system's users. Opt-in, and layered on top of the base system.
+#-- Features: what the system holds, as lists of packages: the userland, what the platform needs,
+#   such as the kernel, and tool sets for the system's users, which are opt-in.
 
 readonly FEATURES=$(printf '%s\n' ${FEATURES:-} | sort -u | xargs)
-readonly features=$FEATURES
 
-# The kernel fragments that the features rely on, from the `# Linux:` lines of their files. There is
-# one kernel per system, built before the features, so it holds what they all need. The fragments
-# are in alphabetical order, so that systems with the same fragments share their archives.
-linux_fragments=
+# The features that every system of the platform and the userland gets.
+features= lfs_adding=
+lfs_add_feature $USERLAND
+for feature in $(lfs_requires $project_dir/platform/$PLATFORM.sh); do
+    lfs_add_feature $feature
+done
+readonly base_features=$features
+
+# The features that come with the given ones. A system has a single key, which leaves them out.
 for feature in $FEATURES; do
     [ -f $feature_dir/$feature.sh ] || bail "Unknown feature '$feature'"
+    for required in $(lfs_requires $feature_dir/$feature.sh); do
+        lfs_add_feature $required
+    done
+done
+for feature in $FEATURES; do
+    case " $features " in
+        *" $feature "*) bail "Feature '$feature' comes with the others: leave it out" ;;
+    esac
+done
+for feature in $FEATURES; do
+    lfs_add_feature $feature
+done
+
+# The kernel fragments that the features rely on, from the `# Linux:` lines of their files. There is
+# one kernel per system, built before the features that the platform and the userland do not bring,
+# so it holds what they all need. The fragments are in alphabetical order, so that systems with the
+# same fragments share their kernel.
+linux_fragments=
+for feature in $features; do
     for fragment in $(sed -n 's/^# Linux://p' $feature_dir/$feature.sh); do
         [ -f $package_dir/linux/$fragment.config ] \
             || bail "Unknown kernel fragment '$fragment' of the feature '$feature'"
@@ -139,15 +163,18 @@ for feature in $FEATURES; do
     done
 done
 readonly linux_fragments=$(printf '%s\n' $linux_fragments | sort -u | xargs)
-unset feature fragment
+# The other features, each after those it requires.
+readonly features=$(echo ${features#"$base_features"})
+unset feature fragment required lfs_adding
 
 #-- System key: canonical marker for the platform/userland/features combination.
 
 readonly SYSTEM_KEY=$PLATFORM-$USERLAND${FEATURES:++$(set -- $FEATURES; IFS=+; echo "$*")}
 
 #-- Package key: the system key of the system as it stands when a package is built, under which
-#   the package is archived. The kernel's fragments, then the features, are added one by one, each
-#   extending it, so that systems share the archives of what they have in common.
+#   the package is archived. The features that the platform and the userland do not bring are added
+#   one by one, each extending it, so that systems share the archives of what they have in common.
+#   The kernel's adds the fragments that configure it.
 
 package_key=$PLATFORM-$USERLAND
 
@@ -251,8 +278,9 @@ case "${1:-help}" in
         echo ""
         echo "Environment:"
         echo "  PLATFORM         Target platform"
-        echo "  USERLAND         Userland flavor, init system included"
-        echo "  FEATURES         Features: tool sets, such as GnuPG"
+        echo "  USERLAND         Userland: the feature with the init system and the tools"
+        echo "  FEATURES         Features, such as GnuPG, beyond those of the platform and the"
+        echo "                   userland"
         echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
         echo "  IMAGE_SIZE       The image file's size, as truncate takes it (512M), with the root"
         echo "                   file system filling it; by default as small as the system allows"
