@@ -6,7 +6,7 @@
 # needs ctypes, which needs libffi, cryptography, and pyscard for pcscd, besides pure Python
 # libraries.
 
-# Requires: hidraw usb
+# Linux: hidraw usb
 
 # Without udev, libusb finds the devices through sysfs.
 ( udev=no; lfs_system_install libusb )

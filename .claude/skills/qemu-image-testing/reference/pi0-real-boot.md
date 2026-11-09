@@ -35,7 +35,7 @@ btrfs error counters (`/sys/fs/btrfs/*/devinfo/1/error_stats/*`) are 0.
 ## Absent by design (not faults)
 
 No networking (only `lo`), LED class, thermal or hwmon (undervoltage cannot be detected), RTC, input, graphics, cpufreq
-or swap. USB only with the `usb` capability (alone, or with a feature or capability that requires it). No D-Bus: `systemd-run --wait`/`--pipe` and `busctl`
+or swap. USB only with the `usb` fragment (a feature names it on its `# Linux:` line). No D-Bus: `systemd-run --wait`/`--pipe` and `busctl`
 fail with `Failed to connect to system scope bus` (journal); plain `systemd-run` and `--scope` work. No
 `/etc/hostname` (the name is `localhost`). The clock has no source: timesyncd saves it every minute and at shutdown and
 the next boot continues from it; a new image starts at its build time; real times need `date -u -s`. The machine ID is

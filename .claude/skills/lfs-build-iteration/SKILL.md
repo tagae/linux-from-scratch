@@ -1,6 +1,6 @@
 ---
 name: lfs-build-iteration
-description: Build, rebuild and verify systems of this LFS framework from the Mac (Docker via Colima) - system keys, archives and volumes, which stale state to delete after changing a recipe, kernel fragment or framework file, running long builds, inspecting images and volumes, proving a refactor changed nothing. Use before and during any change to package/*.sh, lib/*.sh, package/linux/*.config or a capability. Booting the result is qemu-image-testing; the conventions for writing the recipe are in CONTRIBUTING.md.
+description: Build, rebuild and verify systems of this LFS framework from the Mac (Docker via Colima) - system keys, archives and volumes, which stale state to delete after changing a recipe, kernel fragment or framework file, running long builds, inspecting images and volumes, proving a refactor changed nothing. Use before and during any change to package/*.sh, lib/*.sh, package/linux/*.config or a feature. Booting the result is qemu-image-testing; the conventions for writing the recipe are in CONTRIBUTING.md.
 model: sonnet
 ---
 
@@ -10,20 +10,22 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 
 ## Keys, archives, volumes
 
-- A system is `<platform>-<userland>[+<item>...]`, capabilities and features in ALPHABETICAL order, minus the
-  capabilities that come with the others (lfs bails on `+gnupg+usb`): `pi0-systemd-gnu+fido2+gnupg+yubikey-manager`.
-  A capability is `capability/<cap>.config`, a feature `feature/<feature>.sh`; both name what they need on a
-  `# Requires:` line. lfs resolves `capabilities` (all, sorted) and `features`.
+- A system is `<platform>-<userland>[+<feature>...]`, features in ALPHABETICAL order
+  (`pi0-systemd-gnu+fido2+gnupg+yubikey-manager`; lfs bails on `+usb`: a fragment is no feature). A feature is
+  `feature/<feature>.sh`; a `# Linux:` line names every kernel fragment (`package/linux/<fragment>.config`) it
+  relies on. lfs resolves `features` and `linux_fragments` (those of all features, sorted).
 - Build: `make docker-image/<key>.img` (Linux hosts: `make image/<key>.img`); also `make image PLATFORM=pi0
-  CAPS="a" FEATURES="b c"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
+  FEATURES="b c"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
 - Packages are archived once: `archive/<package_key>/<name>-<version>[-component].tar.xz` + `.sha256`. The
   package key is the base key (`pi0-systemd-gnu`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: base packages
-  are shared by all systems; the kernel (and Pi firmware/boot) sits under the base key plus ALL capabilities
-  (`pi0-systemd-gnu+hidraw+usb+usb-storage`), shared by systems with the same capabilities; a feature's packages
-  under that key plus the features up to it. Build-machine packages are `<name>-tools-<version>`.
+  are shared by all systems; the kernel (and Pi firmware/boot) sits under the base key plus ALL the fragments of the
+  features, sorted (`pi0-systemd-gnu+hidraw+usb+usb-storage`; the base key for a system with no features), shared
+  by systems whose features need the same fragments; a feature's packages under that key plus the features up to
+  it. Build-machine packages are `<name>-tools-<version>`.
 - A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel fragment or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
-  After a kernel fragment delete `linux-*.tar.xz*` of EVERY capability key that must change, base keys included.
+  After a kernel fragment delete `linux-*.tar.xz*` of EVERY key that must change: those with the fragment, or all of
+  them for a layer, base keys included.
   Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade

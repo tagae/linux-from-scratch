@@ -10,7 +10,6 @@ readonly lfs_version=13.1
 readonly project_dir=$(dirname $(realpath "$0"))
 readonly lib_dir=$project_dir/lib
 readonly package_dir=$project_dir/package
-readonly capability_dir=$project_dir/capability
 readonly feature_dir=$project_dir/feature
 
 . $lib_dir/base.sh
@@ -28,7 +27,7 @@ readonly feature_dir=$project_dir/feature
 # The variables that builds see of the environment lfs is started in: its external API, PATH and
 # TMPDIR. As in a container, nothing else of the caller's comes in, such as what steers compilers,
 # pkg-config or interpreters (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH...). QEMU runs in the caller's.
-readonly lfs_environment="PLATFORM USERLAND CAPS FEATURES SYSTEM_KEY TIMEZONE IMAGE_SIZE ERASE \
+readonly lfs_environment="PLATFORM USERLAND FEATURES SYSTEM_KEY TIMEZONE IMAGE_SIZE ERASE \
     MACHINE LFS_RELEASE VERSION_CODENAME RELEASE_TYPE DISTRIB_CODENAME DISTRIB_DESCRIPTION \
     ROOT_VOLUME STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR \
     IMAGE_DIR BOOTSTRAP_DIR PATH TMPDIR"
@@ -100,17 +99,10 @@ if [ -n "${SYSTEM_KEY:-}" ]; then
     if [ "$_platform" != "$_platform_userland" ]; then
         : ${USERLAND:=${_platform_userland#*-}}
     fi
-    # The rest is "" or "+item1+item2...", each item a capability or else a feature.
-    _caps= _features=
-    for _item in $(echo "${SYSTEM_KEY#"$_platform_userland"}" | tr '+' ' '); do
-        if [ -f $capability_dir/$_item.config ]; then
-            _caps="$_caps $_item"
-        else
-            _features="$_features $_item"
-        fi
-    done
-    : ${CAPS=$_caps} ${FEATURES=$_features}
-    unset _platform_userland _platform _item _caps _features
+    # The rest is "" or "+feature1+feature2...".
+    _features=$(echo "${SYSTEM_KEY#"$_platform_userland"}" | tr '+' ' ')
+    : ${FEATURES=$_features}
+    unset _platform_userland _platform _features
 fi
 
 #-- Platform: machine on which the built system will run.
@@ -129,50 +121,33 @@ readonly PLATFORM
 
 readonly USERLAND
 
-#-- Capabilities: what the system supports, such as USB devices, as kernel configuration. Features:
-#   tool sets for the system's users, which rely on capabilities. Both are opt-in, and layered on
-#   top of the base system.
+#-- Features: tool sets for the system's users. Opt-in, and layered on top of the base system.
 
-readonly CAPS=$(printf '%s\n' ${CAPS:-} | sort -u | xargs)
 readonly FEATURES=$(printf '%s\n' ${FEATURES:-} | sort -u | xargs)
-
-# The capabilities that come with the given ones and with the features. A system has a single key,
-# which leaves them out.
-capabilities=
-# The userland's own kernel support comes with it.
-lfs_add_capability $USERLAND
-for cap in $CAPS; do
-    [ -f $capability_dir/$cap.config ] || bail "Unknown capability '$cap'"
-    for required in $(lfs_requires $capability_dir/$cap.config); do
-        lfs_add_capability $required
-    done
-done
-for feature in $FEATURES; do
-    [ -f $feature_dir/$feature.sh ] || bail "Unknown feature '$feature'"
-    for required in $(lfs_requires $feature_dir/$feature.sh); do
-        lfs_add_capability $required
-    done
-done
-for cap in $CAPS; do
-    case " $capabilities " in
-        *" $cap "*) bail "Capability '$cap' comes with the others: leave it out" ;;
-    esac
-done
-
-# All the system's capabilities, in alphabetical order, so that systems with the same capabilities
-# share their archives.
-readonly capabilities=$(printf '%s\n' $capabilities $CAPS | sort | xargs)
 readonly features=$FEATURES
 
-#-- System key: canonical marker for the platform/userland/capabilities/features combination.
+# The kernel fragments that the features rely on, from the `# Linux:` lines of their files. There is
+# one kernel per system, built before the features, so it holds what they all need. The fragments
+# are in alphabetical order, so that systems with the same fragments share their archives.
+linux_fragments=
+for feature in $FEATURES; do
+    [ -f $feature_dir/$feature.sh ] || bail "Unknown feature '$feature'"
+    for fragment in $(sed -n 's/^# Linux://p' $feature_dir/$feature.sh); do
+        [ -f $package_dir/linux/$fragment.config ] \
+            || bail "Unknown kernel fragment '$fragment' of the feature '$feature'"
+        linux_fragments="$linux_fragments $fragment"
+    done
+done
+readonly linux_fragments=$(printf '%s\n' $linux_fragments | sort -u | xargs)
+unset feature fragment
 
-_all=$(printf '%s\n' $CAPS $FEATURES | sort | xargs)
-readonly SYSTEM_KEY=$PLATFORM-$USERLAND${_all:++$(set -- $_all; IFS=+; echo "$*")}
-unset cap feature required _all
+#-- System key: canonical marker for the platform/userland/features combination.
+
+readonly SYSTEM_KEY=$PLATFORM-$USERLAND${FEATURES:++$(set -- $FEATURES; IFS=+; echo "$*")}
 
 #-- Package key: the system key of the system as it stands when a package is built, under which
-#   the package is archived. Capabilities, then features, are added one by one, each extending it,
-#   so that systems share the archives of what they have in common.
+#   the package is archived. The kernel's fragments, then the features, are added one by one, each
+#   extending it, so that systems share the archives of what they have in common.
 
 package_key=$PLATFORM-$USERLAND
 
@@ -277,8 +252,6 @@ case "${1:-help}" in
         echo "Environment:"
         echo "  PLATFORM         Target platform"
         echo "  USERLAND         Userland flavor, init system included"
-        echo "  CAPS             Capabilities, such as USB devices, beyond those that come with the"
-        echo "                   features"
         echo "  FEATURES         Features: tool sets, such as GnuPG"
         echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
         echo "  IMAGE_SIZE       The image file's size, as truncate takes it (512M), with the root"
