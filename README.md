@@ -52,29 +52,27 @@ Supported Platforms
 | `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
 
 
-Capabilities and Features
--------------------------
+Features and Kernel Fragments
+-----------------------------
 
-A *capability* is something the system supports, such as a kind of device: the kernel support for
-it, described by `capability/<capability>.config`.
+A *feature* is a tool set for the system's users. Its packages, listed in `feature/<feature>.sh`,
+are installed after the base system and the kernel. Features can be combined.
 
-| Capability    | Supports                                                     | Requires |
-|---------------|--------------------------------------------------------------|----------|
-| `usb`         | USB devices, also from user space through `/dev/bus/usb`     |          |
-| `usb-storage` | USB sticks and card readers with a FAT file system           | `usb`    |
-| `hidraw`      | HID devices on USB, such as security keys, as `/dev/hidraw*` | `usb`    |
-
-A *feature* is a tool set for the system's users, which relies on capabilities. Its packages, listed
-in `feature/<feature>.sh`, are installed after the base system and the kernel.
-
-| Feature           | Provides                                                                  | Requires          |
+| Feature           | Provides                                                                  | Kernel fragments  |
 |-------------------|---------------------------------------------------------------------------|-------------------|
-| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `hidraw`          |
+| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `hidraw usb`      |
 | `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `usb usb-storage` |
 | `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `hidraw usb`      |
 
-Capabilities and features can be combined. Each names the capabilities it requires on a
-`# Requires:` line of its file, and the system gets them along with it.
+A *kernel fragment*, `package/linux/<fragment>.config`, is the kernel configuration for a kind of
+device. A feature lists on a `# Linux:` line of its file every fragment it relies on, as a fragment
+brings in no other, and the system's kernel gets the fragments of all its features.
+
+| Fragment      | Supports                                                     |
+|---------------|--------------------------------------------------------------|
+| `usb`         | USB devices, also from user space through `/dev/bus/usb`     |
+| `usb-storage` | USB sticks and card readers with a FAT file system           |
+| `hidraw`      | HID devices on USB, such as security keys, as `/dev/hidraw*` |
 
 
 Making OpenPGP Keys on a Raspberry Pi
@@ -191,37 +189,35 @@ make test             # check that the image boots and root can login/poweroff
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
-Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no capabilities or
-features. The defaults can be changed through variables:
+Each target defaults to the `virt` platform, the `systemd-gnu` userland, and no features. The
+defaults can be changed through variables:
 
 ```shell
 make image PLATFORM=pi0 FEATURES="fido2 gnupg"
 ```
 
-Those variables (`CAPS` for capabilities) make up a *system key*,
-`<platform>-<userland>[+<item>...]`, with the capabilities and features in alphabetical order,
-which names every deliverable: the install tree, the boot files, and the image. A capability that a
-feature or another capability requires is left out of the key, which comes to one per system. A
-target can be named by its system key directly:
+Those variables make up a *system key*, `<platform>-<userland>[+<feature>...]`, with the features
+in alphabetical order, which names every deliverable: the install tree, the boot files, and the
+image. A target can be named by its system key directly:
 
 ```shell
 make pi0-systemd-gnu+gnupg-test
 ```
 
-Images are file targets under that same key, so `make image/pi0-systemd-gnu+usb-storage.img`
-produces an image for the `pi0` platform featuring the `usb-storage` capability. An image is as
-small as its system allows: its root file system has only the room that btrfs leaves in it, which
-grows with the system (some 30 MB without features, 50 MB with those above). `IMAGE_SIZE` makes it
-larger (e.g. `IMAGE_SIZE=1G`), the root file system filling it. An image appears only once it is
-complete. `make qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps
-what the system writes until the image is made anew, so that the image stays as it was made, to be
-written to a card.
+Images are file targets under that same key, so `make image/pi0-systemd-gnu+fido2.img` produces an
+image for the `pi0` platform featuring `fido2`. An image is as small as its system allows: its root
+file system has only the room that btrfs leaves in it, which grows with the system (some 30 MB
+without features, 50 MB with those above). `IMAGE_SIZE` makes it larger (e.g. `IMAGE_SIZE=1G`), the
+root file system filling it. An image appears only once it is complete. `make qemu` and `make test`
+boot it through an overlay, `image/<key>.qcow2`, which keeps what the system writes until the image
+is made anew, so that the image stays as it was made, to be written to a card.
 
 Package archives are filed under the key of the system as it stands when they are built: the base
-system's under `<platform>-<userland>`, the kernel's under that key extended with all the system's
-capabilities, those required included, and each feature's under that key extended with the features
-added so far, in alphabetical order. Systems thus share the archives of what they have in common:
-the base system's, and the kernel of systems with the same capabilities.
+system's under `<platform>-<userland>`, the kernel's under that key extended with the kernel
+fragments of all the system's features, in alphabetical order (`pi0-systemd-gnu+hidraw+usb` for
+`fido2`), and each feature's under that key extended with the features added so far, in alphabetical
+order. Systems thus share the archives of what they have in common: the base system's, and the
+kernel of systems whose features rely on the same fragments.
 
 `make distclean` removes the build state and the tools; `make pristine` also removes downloads,
 archives and images.

@@ -202,7 +202,7 @@ Steps 0 to 5 keep the archive keys. Enforcement applies to packages that are bui
 cold build is where hidden dependencies show up. Editing a recipe's `package_dependencies` is a
 recipe edit: `.github/ci/invalidate` rule 2 drops its archive, and, as today, not its dependents.
 
-Step 6, separate and later: a signature, as sstate has, replaces the `+capability` and `+feature`
+Step 6, separate and later: a signature, as sstate has, replaces the `+fragment` and `+feature`
 key suffixes. It is the SHA-256 of the recipe, its files directory and category helper, the values
 of the options the recipe names, `target_*`, the flags, the component and the signatures of the
 resolved dependencies from the registry. A changed dependency then rebuilds its dependents, and

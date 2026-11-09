@@ -3,13 +3,13 @@
 #
 # Usage: kernel-config KEY OPTION...    e.g. kernel-config pi0-systemd-gnu+hidraw+usb PM HIDRAW
 #
-# KEY is the kernel's: the base key with all the system's capabilities, those that come with its
-# features included, in alphabetical order.
+# KEY is the kernel's: the base key with the kernel fragments that the system's features rely on,
+# in alphabetical order.
 #
 # OPTION is written without CONFIG_. Prints the line of .config, or "CONFIG_X absent" when the option
 # does not exist for the architecture or was dropped. Use it after editing a kernel configuration
-# fragment (package/linux/*.config, capability/*.config): allnoconfig turns every option off that the fragments and their dependencies do not set,
-# even those that default to y.
+# fragment (package/linux/*.config): allnoconfig turns every option off that the fragments and their
+# dependencies do not set, even those that default to y.
 set -eu
 key=${1:?Usage: kernel-config KEY OPTION...}
 shift

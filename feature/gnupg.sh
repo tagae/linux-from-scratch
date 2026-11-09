@@ -2,7 +2,7 @@
 # Smart cards, such as the OpenPGP card of a YubiKey, are reached through scdaemon's own CCID
 # driver over libusb. gpg-genkey makes a key in memory and exports it to a USB stick.
 
-# Requires: usb usb-storage
+# Linux: usb usb-storage
 
 ( languages=no; lfs_system_install libgpg-error )
 lfs_install_package libgpg-error#dev

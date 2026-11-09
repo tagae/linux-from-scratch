@@ -33,15 +33,18 @@ prepare() {
             fi
 
             # A platform with no configuration fragment for its machine builds its defconfig.
+            # The others add the optional fragments listed in `fragments` to the layers that every
+            # system gets, the userland's included.
             if [ -n "${kernel_machine:-}" ]; then
+                local fragment
                 {
                     cat $package_files_dir/base.config \
                         $package_files_dir/hardening.config \
                         $package_files_dir/$kernel_machine.config \
-                        $package_files_dir/$kernel_arch.config
-                    # Each capability is a fragment of its own, the userland's included.
-                    for cap in $capabilities; do
-                        cat $capability_dir/$cap.config
+                        $package_files_dir/$kernel_arch.config \
+                        $package_files_dir/$USERLAND.config
+                    for fragment in ${fragments:-}; do
+                        cat $package_files_dir/$fragment.config
                     done
                 } > $package_build_dir/$package_name.config
                 _make_target KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig

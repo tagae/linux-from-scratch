@@ -27,7 +27,6 @@ RUN printf '%s\n' 'lfs ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/lfs && chmod 044
 
 # Create mount points.
 RUN mkdir -pv \
-    /mnt/lfs/capability \
     /mnt/lfs/download \
     /mnt/lfs/feature \
     /mnt/lfs/image \
@@ -42,7 +41,6 @@ RUN mkdir -pv \
 # Docker copies this ownership into newly created named volumes.
 RUN chown lfs:lfs \
     /mnt/lfs \
-    /mnt/lfs/capability \
     /mnt/lfs/download \
     /mnt/lfs/feature \
     /mnt/lfs/image \

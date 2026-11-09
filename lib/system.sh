@@ -9,11 +9,10 @@
 # components. The toolchain finds the platform's headers and libraries there, with no extra flags.
 # Every platform goes through a cross toolchain, even one with the build machine's architecture.
 #
-# A capability is kernel support, configured by capability/<capability>.config. The kernel has
-# layers that every system gets, in package/linux/ (base, hardening, machine, architecture);
-# capabilities are the optional ones, and the userland's own, which comes with it. A feature adds the
-# packages listed in feature/<feature>.sh, installed the same way after the kernel. Either names the
-# capabilities it needs on a `# Requires:` line.
+# The kernel is configured from layers that every system gets, in package/linux/ (base, hardening,
+# machine, architecture, userland), and from the optional fragments there that the system's features
+# name on their `# Linux:` lines. A feature adds the packages listed in feature/<feature>.sh,
+# installed the same way after the kernel.
 
 lfs_system() {
     case "${1:-help}" in
@@ -126,14 +125,14 @@ lfs_system_build() {
     lfs_system_install mandoc
     lfs_system_install texinfo
 
-    # The kernel is archived under the capabilities that configure it, which the features leave
-    # unchanged. The key names the userland's already.
-    for cap in $capabilities; do
-        [ $cap = $USERLAND ] || package_key=$package_key+$cap
+    # The kernel is archived under the fragments that configure it, so that systems with the same
+    # ones share it, whatever their features.
+    for fragment in $linux_fragments; do
+        package_key=$package_key+$fragment
     done
 
     # Chapter 10: Making the LFS System Bootable
-    lfs_system_install linux
+    ( fragments=$linux_fragments; lfs_system_install linux )
     # The Pi layout's FAT partition holds what the Raspberry Pi firmware boots from.
     if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
         lfs_system_install firmware
@@ -199,24 +198,6 @@ lfs_system_install() {
     lfs_install_package $1
     ( package_install_dir=$system_dir; lfs_unarchive_package $1 )
     lfs_sbom_record_package $1
-}
-
-# Prints the capabilities that a capability or a feature requires, from its `# Requires:` line.
-lfs_requires() {
-    sed -n 's/^# Requires://p' $1
-}
-
-# Adds a capability to `capabilities`, with the capabilities that it requires.
-lfs_add_capability() {
-    case " $capabilities " in
-        *" $1 "*) return 0 ;;
-    esac
-    [ -f $capability_dir/$1.config ] || bail "Unknown capability '$1'"
-    capabilities="$capabilities $1"
-    local required
-    for required in $(lfs_requires $capability_dir/$1.config); do
-        lfs_add_capability $required
-    done
 }
 
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the

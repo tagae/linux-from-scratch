@@ -8,7 +8,6 @@ Overview
 * `lib/`: LFS framework
 * `lib/category/`: the helpers of the recipes of a package category, loaded for them alone
 * `platform/`: the machines that systems run on
-* `capability/`: what systems can support, as kernel configuration fragments: optional ones, and the userland's own
 * `feature/`: tool sets for the systems' users, as lists of packages
 * `package/`: package recipes
 * `download/`: fetched archives
@@ -57,13 +56,13 @@ Building the System
 The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
 an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
 first gcc, the Linux API headers and glibc, then the full cross gcc. The base system from chapter 8
-is then compiled with that toolchain, followed by the kernel, configured from the layers that
-every system gets (`package/linux/`: base, hardening, machine and architecture) and from the
-system's capabilities (`capability/`, the userland's own included), then the packages of the
-system's features. Each package is installed both into the
-system tree and into the toolchain's sysroot, `work/<platform>-<userland>/sysroot`, which also
-receives what compiling against the packages needs: the Linux API headers and the packages' `dev`
-components. The kernel is also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
+is then compiled with that toolchain, followed by the kernel, configured from the layers that every
+system gets (`package/linux/`: base, hardening, machine, architecture and userland) and from the
+fragments that the system's features rely on (`package/linux/<fragment>.config`), then the packages
+of the system's features. Each package is installed both into the system tree and into the
+toolchain's sysroot, `work/<platform>-<userland>/sysroot`, which also receives what compiling
+against the packages needs: the Linux API headers and the packages' `dev` components. The kernel is
+also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
 
 ```shell
 ./lfs system build
@@ -160,7 +159,7 @@ All shell code should be POSIX compliant.
 
 Shell variables are part of the **external API** if they are used to parameterise `lfs`.
 
-External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `CAPS`, `FEATURES`)
+External API variables have uppercase names (e.g., `PLATFORM`, `USERLAND`, `FEATURES`)
 
 They are the only variables of its environment that `lfs` passes on to builds, along with `PATH`
 and `TMPDIR` (the list is `lfs_environment`, in `lfs`): every command but `qemu` and `help`
@@ -221,24 +220,24 @@ Where Code Goes
 |---|---|
 | One package's build | `package/<name>.sh`: `case $package_component`, `default_*` for the rest |
 | Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
-| A capability (kernel support) | `capability/<cap>.config`: a fragment, with a `# Requires: <cap>...` line for the capabilities it builds on |
-| What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <cap>...` line |
+| What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Linux: <fragment>...` line for every kernel fragment it relies on |
 | Helpers of one feature | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/category/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>}.config`, each with its reason |
-| Kernel options that are optional, or the userland's | `capability/<cap>.config` (`capability/<userland>.config` comes with the userland), each with its reason |
+| Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>,<userland>}.config`, each with its reason |
+| Kernel options that are optional | `package/linux/<fragment>.config`, each with its reason, named by the `# Linux:` line of the features that rely on it |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/system-files/systemd-gnu/etc/{passwd,group,shadow}` |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
-A capability is what the system supports (a kind of device), a feature a tool set for users. A
-capability installs no packages; a feature touches no kernel option: a kernel need becomes a
-capability the feature requires. The system gets the required capabilities along (the key leaves
-them out). Features require capabilities only and install in alphabetical order, each in a subshell;
-one that needs another's packages installs them itself. Each file's header says what it enables and
-how it changes the others. Build-machine tools that a system build needs (swig, the Rust seed,
-native Python modules) are installed into `TOOL_DIR` from the feature with
-`lfs_tools_install <package>`, archived `*-tools-*`, never shipped.
+A feature is a tool set for users, and sets no kernel option itself. A kernel need is a fragment, an
+option of the linux package: the feature names on a `# Linux:` line every fragment it relies on, as
+fragments do not build on each other. A system has one kernel, built before its features run, so
+`lfs` reads the lines of all its features up front, and the kernel gets the union of their fragments
+(`lib/system.sh` passes it as the `fragments` option). The system key names features alone. Features
+install in alphabetical order, each in a subshell; one that needs another's packages installs them
+itself. Each file's header says what it enables and how it changes the others. Build-machine tools
+that a system build needs (swig, the Rust seed, native Python modules) are installed into `TOOL_DIR`
+from the feature with `lfs_tools_install <package>`, archived `*-tools-*`, never shipped.
 
 
 Writing Recipes

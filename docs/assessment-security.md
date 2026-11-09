@@ -25,7 +25,7 @@ section 2).
 console. The relevant attackers are therefore:
 - a compromised local process or unprivileged account, escalating to root or the kernel;
 - someone with physical access: the serial console, the SD card, or a USB stick (with the `usb`
-  capability);
+  fragment);
 - a compromised input to the build: an upstream tarball, a mirror, the Debian seed, or a cache on
   the build host;
 - tampering with images between the build and the device.
