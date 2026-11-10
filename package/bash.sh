@@ -41,7 +41,10 @@ install() {
             # The loadable builtins are examples, many of them duplicating standalone programs, and
             # the headers and makefiles for writing more.
             make install DESTDIR=$package_install_dir SHOBJ_STATUS=unsupported
-            ln -sfv bash $package_install_dir$prefix/bin/sh
+            # The tools' sh is this bash; a system's sh is dash's.
+            case ${sh_link:-yes} in
+                yes) ln -sfv bash $package_install_dir$prefix/bin/sh ;;
+            esac
             move_to_docs_component
             ;;
         *)

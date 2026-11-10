@@ -4,7 +4,7 @@
 # libblkid, and runs util-linux's mount, agetty and sulogin, and shadow's login, which starts root's
 # shell. It brings the static accounts, root's included.
 
-# Requires: bash
+# Requires: dash
 # Linux: systemd
 
 ( manpages=no; lfs_system_install kmod )
