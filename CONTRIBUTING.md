@@ -5,8 +5,8 @@ Overview
 --------
 
 * `lfs`: CLI frontend
-* `lib/`: LFS framework
-* `lib/category/`: the helpers of the recipes of a package category, loaded for them alone
+* `lib/`: LFS framework, with the helpers of the recipes of a package category, loaded for them
+  alone
 * `platform/`: the machines that systems run on
 * `feature/`: what systems hold, as lists of packages: the init system and what it builds on, what
   platforms need (the kernel), and tool sets for the systems' users
@@ -123,10 +123,11 @@ its archives. Packages of different categories therefore never share a path, wha
 versions or files are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks
 by hand uses the same directories.
 
-A category can have helpers for its recipes in `lib/category/<category>.sh`
-(`lib/category/python.sh` for `python`), which the framework loads for the recipes of that category
-and for no others. A recipe that uses them belongs to the category, whatever it installs:
-`python/yubikey-manager` is a program.
+A category can have helpers for its recipes in `lib/<category>.sh` (`lib/python.sh` for
+`python`), which the framework loads for the recipes of that category and for no others. A recipe
+that uses them belongs to the category, whatever it installs: `python/yubikey-manager` is a
+program. A category is named unlike the framework's own files (`lib/system.sh`, `lib/meson.sh`...),
+which its recipes would load again.
 
 A recipe changes an upstream source file with a patch, never by editing the file: `patch_source URL
 sha256:...` fetches and applies one, and `apply_patch` applies one kept in the package's files
@@ -196,8 +197,8 @@ Internal API variables must not be exported.
 
 A recipe owns the functions it defines: no other recipe, and no feature, calls them, as that would
 make a package depend on the inside of another. What several recipes need is a helper in
-`lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`), or in `lib/category/<category>.sh`, loaded for
-the recipes of that package category (`lib/category/python.sh`). A feature may define helpers of
+`lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`), or in `lib/<category>.sh`, loaded for the
+recipes of that package category (`lib/python.sh`). A feature may define helpers of
 its own, for its own use, but never one that a package uses: packages rely on the framework
 (`lib/`) alone.
 
@@ -234,7 +235,7 @@ Where Code Goes
 | What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <feature>...` line for the features it builds on and a `# Linux: <fragment>...` line for every kernel fragment it relies on |
 | The features every system of a platform gets | `platform/<platform>.sh`: a `# Requires: <feature>...` line (`linux`, `pi-boot`) |
 | Helpers of one feature | in its file, for its own use: no package uses them (see Encapsulation) |
-| Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/category/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
+| Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
 | Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>}.config`, each with its reason |
 | Kernel options that are optional | `package/linux/<fragment>.config`, each with its reason, named by the `# Linux:` line of the features that rely on it |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
@@ -329,7 +330,7 @@ Cross-Compiling
   sysroot misdirect later builds (delete them); guard same-arch cross builds, where `build` equals
   `host`.
 * Python (CPython 3.14, `python` and `dev` components): extensions and wheels are built by the
-  `TOOL_DIR` Python against the target's sysconfigdata (`lib/category/python.sh`: `python_wheel` and
+  `TOOL_DIR` Python against the target's sysconfigdata (`lib/python.sh`: `python_wheel` and
   `python_install_wheel` for a build backend, `python_install_modules` for pure Python,
   `python_site_packages`; templates `package/python/cffi.sh` and `package/python/pycparser.sh`).
   Recipes never mention `python_version`, which the framework sets. Bytecode is precompiled
