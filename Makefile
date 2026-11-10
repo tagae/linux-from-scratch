@@ -106,10 +106,9 @@ docker-%-tools-bootstrap docker-%-tools docker-%-system docker-image/%.img: expo
 # The bootstrap container builds the first tools,
 # and the scratch container (nothing but those tools) builds the rest.
 docker-%-tools-bootstrap: .env
-	# The directories that Docker Compose mounts from the host, as the user's: the Docker daemon
-	# would make them root's.
+	# Directories mounted by Docker Compose.
 	mkdir -p download archive work/bootstrap work/boot image
-	# A native toolchain plus the temporary tools needed to run the scratch container.
+	# Native toolchain plus the temporary tools needed to run the scratch container.
 	docker compose run --build --rm bootstrap ./lfs tools bootstrap
 
 docker-%-tools: docker-%-tools-bootstrap
@@ -126,7 +125,7 @@ docker-image/%.img: docker-%-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.
 	docker compose run --rm --user 0:0 scratch ./lfs image build
 
-# The image runs on the host, as the other Docker rules leave it there.
+# The image built through Docker runs on the host.
 docker-%-test: docker-image/%.img
 	./test $*
 
@@ -138,5 +137,5 @@ docker-distclean: docker-clean distclean
 	docker volume rm -f linux-from-scratch_tools
 
 docker-pristine: docker-distclean pristine
-	rm -rf .env
 	docker compose down -v
+	rm -f .env
