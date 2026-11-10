@@ -48,6 +48,7 @@ prepare() {
                 ${liblastlog2:+--enable-liblastlog2=$liblastlog2} \
                 ${python:+--with-python=$python} \
                 ${systemd:+--with-systemd=$systemd} \
+                ${udev:+--with-udev=$udev} \
                 ${systemdsystemunitdir:+--with-systemdsystemunitdir=$systemdsystemunitdir} \
                 ${ncurses:+--with-ncurses=$ncurses} \
                 ${ncursesw:+--with-ncursesw=$ncursesw} \

@@ -62,7 +62,7 @@ kernel:
 
 | Feature   | Provides                                                                        | Requires | Comes with         |
 |-----------|---------------------------------------------------------------------------------|----------|--------------------|
-| `systemd` | systemd, the init system and service manager, with the strict minimum it needs to boot and log root in: kmod, libxcrypt, shadow's `login`, util-linux (`mount`, `agetty`, `sulogin`, and the basic tools to manage disks and logs) with ncurses, and the static accounts | `bash` | the default `INIT` |
+| `systemd` | systemd, the init system and service manager, with the strict minimum it needs to boot and log root in: kmod, libxcrypt, shadow's `login`, util-linux's libmount, `mount`, `agetty` and `sulogin`, and the static accounts | `bash` | the default `INIT` |
 | `bash`    | GNU bash, `/bin/sh` and root's shell                                            |          | `systemd`          |
 | `linux`   | The kernel, configured by the kernel fragments of the system's features        |          | every platform     |
 | `pi-boot` | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt` |          | `pi0`              |
@@ -72,8 +72,10 @@ The other features are added as needed, and can be combined:
 | Feature           | Provides                                                                  | Requires       | Kernel fragments  |
 |-------------------|---------------------------------------------------------------------------|----------------|-------------------|
 | `gnu`             | The GNU tools: the core utilities, grep, sed and gawk                     |                |                   |
-| `procps`          | `ps`, `top`, `free` and the like                                          |                |                   |
-| `man`             | Readers of man and info pages                                             | `zlib`         |                   |
+| `util-linux`      | util-linux's tools: `lsblk`, `fdisk`, `losetup`, `dmesg`, `more` and the like | `ncurses`  |                   |
+| `procps`          | `ps`, `top`, `free` and the like                                          | `ncurses`      |                   |
+| `man`             | Readers of man and info pages, which page through `more`                  | `util-linux zlib` |                |
+| `ncurses`         | The terminal library                                                      |                |                   |
 | `tzdata`          | The time zone database, for `TIMEZONE`                                    |                |                   |
 | `zlib`            | The compression library                                                   |                |                   |
 | `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `systemd zlib` | `hidraw usb`      |
