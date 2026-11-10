@@ -79,6 +79,8 @@ install() {
     case $package_component in
         util-linux)
             make install DESTDIR=$package_install_dir
+            # agetty prints this before the login prompt.
+            cp -rv $package_files_dir/etc $package_install_dir/
             move_to_dev_component
             move_to_docs_component
             ;;
