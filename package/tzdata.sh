@@ -5,6 +5,7 @@
 : ${tzcode_source_hash:=sha256:cc3d27ca2a0d8399504551b920970d80af83bfb9c216e8082a15491921935d54}
 : ${package_description:=Time zone database.}
 : ${package_license:=LicenseRef-Public-Domain}
+: ${package_cpe:=none}
 
 # The data and the code that compiles it come in two tarballs, which unpack into the same
 # directory, without one of their own. The code is built for the build machine, as it compiles the

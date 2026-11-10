@@ -79,8 +79,9 @@ Images
   image file, it partitions the device and fills it the same way, with the root file system taking
   all of the space the boot partition leaves.
 * An image file gets its SBOM next to it, `<image>.spdx.json` (`lib/sbom.sh`): an SPDX 2.3 document
-  in JSON with the image's SHA-256 and the packages it holds, each with its archive's SHA-256,
-  version and SPDX licence, and the URL and SHA-256 of the source it was built from. The system
+  in JSON with the image's SHA-256 and the upstream packages it holds, each with its version, SPDX
+  licence, the URL and SHA-256 of its source, and its CPE or PyPI package URL, which vulnerability
+  scanners match (CI's scan is `.github/workflows/vulnerabilities.yaml`). The system
   build lists the packages in `$WORK_DIR/sbom/$SYSTEM_KEY` as `lfs_system_install` installs them,
   and `image build` writes the document from that list. An image counts as built only along with
   its SBOM. A block device gets none, as it is no file to take the digest of.
@@ -140,6 +141,14 @@ The framework fetches them before building the package, and exposes their locati
 The `package_license` list the package's license in [SPDX format][SPDX License List]. A licence that
 the list does not have is a `LicenseRef-<name>`, whose text is the file
 `package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `.github/ci/lint` looks for.
+
+The SBOM gives each package the CPE under which the NVD lists its vulnerabilities,
+`part:vendor:product:version`: by default `a:<vendor>:<name>:<version>`, where the vendor is the
+owner of the source's project on GitHub or GitLab, or else the name of the site that serves the
+source (`gnu` for `ftp.gnu.org`). A recipe whose package the NVD names otherwise sets
+`package_cpe` to its CPEs, separated by spaces, or to `none` where the NVD has none:
+`: ${package_cpe:=a:systemd_project:systemd:$package_version}`. A package from PyPI has no CPE, but
+a PyPI package URL (`lib/sbom.sh`).
 
 A package's install can set its development files (headers, static libraries, pkg-config files...)
 aside for its `dev` component with `move_to_dev_component` (see `lib/components.sh`), which is

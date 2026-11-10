@@ -1,0 +1,14 @@
+# Grype's configuration for the vulnerability scan (.github/workflows/vulnerabilities.yaml): the
+# findings that do not concern the images, which the report leaves out, each with its reason.
+ignore:
+  # Disputed by glibc's maintainers, and given by the NVD to every version of glibc.
+  - vulnerability: CVE-2010-4756
+  - vulnerability: CVE-2019-1010022
+  - vulnerability: CVE-2019-1010023
+  - vulnerability: CVE-2019-1010024
+  - vulnerability: CVE-2019-1010025
+  # The stack protector of AArch64, fixed in GCC in September 2023, long before the GCC that the
+  # images are built with: the NVD gives a date as its fixed version, which no version precedes.
+  - vulnerability: CVE-2023-4039
+    package:
+      name: gcc

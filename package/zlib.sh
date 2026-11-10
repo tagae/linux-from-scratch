@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3}
 : ${package_description:=Deflate compression library.}
 : ${package_license:=Zlib}
+: ${package_cpe:=a:zlib:zlib:$package_version}
 
 prepare() {
     case $package_component in

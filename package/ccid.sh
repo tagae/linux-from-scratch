@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:4ff98151a7feb828a711e2f9d68c6b6065a97c597a81c2cbbd11d7f7edcfe743}
 : ${package_description:=Driver for USB smart card readers, for pcscd.}
 : ${package_license:=LGPL-2.1-or-later AND LGPL-2.0-or-later AND BSD-3-Clause AND ISC}
+: ${package_cpe:=a:ccid_project:ccid:$package_version}
 
 prepare() {
     case $package_component in

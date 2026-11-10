@@ -1,6 +1,8 @@
 Linux From Scratch
 ==================
 
+[![Vulnerability scan](https://github.com/tagae/linux-from-scratch/actions/workflows/vulnerabilities.yaml/badge.svg)](https://github.com/tagae/linux-from-scratch/actions/workflows/vulnerabilities.yaml)
+
 Build [Linux From Scratch](https://www.linuxfromscratch.org/lfs/view/systemd/)
 and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-systemd/).
 
@@ -258,22 +260,29 @@ Software Bill of Materials
 --------------------------
 
 An image file comes with an [SPDX][SPDX] 2.3 document in JSON next to it,
-`image/<key>.spdx.json`, which says what the image holds: its SHA-256, and for each package in the
-system, the SHA-256, version and licence of its archive and the URL and SHA-256 of the upstream
-source it was built from. The licences of the recipes are SPDX expressions; the two that SPDX does
-not list (the Pi firmware's and the time zone database's) come with their text. An image counts as
-built only along with its document: an image without one is made anew.
+`image/<key>.spdx.json`, which says what the image holds: its SHA-256, and each upstream package in
+the system, with its version, licence, the URL and SHA-256 of its source, and the identifiers that
+vulnerability scanners match, its CPE as the NVD names it, or its PyPI package URL. The licences of
+the recipes are SPDX expressions; the two that SPDX does not list (the Pi firmware's and the time
+zone database's) come with their text. An image counts as built only along with its document: an
+image without one is made anew.
 
-The document can be checked with the SPDX project's validator:
+The document can be checked with the SPDX project's validator, and scanned for known
+vulnerabilities by [Grype](https://github.com/anchore/grype):
 
 ```shell
 pip install spdx-tools
 pyspdxtools --infile image/virt-systemd.spdx.json
+grype sbom:image/virt-systemd.spdx.json
 ```
 
+CI scans the document of the pi0 image after each of its runs on main, with the vulnerability data
+of the day: the badge above fails when Grype finds a vulnerability of high or critical severity
+that a newer version fixes, and the findings are in the repository's code scanning alerts. The scan
+reports, and leaves CI's own result alone.
+
 A block device gets no document, as it is no file to take the digest of: make the image first, and
-write it to the device. The document does not yet list the patches applied to the sources, nor
-identify packages for vulnerability scanners beyond their name and version: scanners such as Grype
-read it, but match none of its packages (`docs/sbom-design.md`).
+write it to the device. The document does not yet list the patches applied to the sources
+(`docs/sbom-design.md`).
 
 [SPDX]: https://spdx.github.io/spdx-spec/v2.3/

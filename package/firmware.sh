@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:f812f2f55efb97053c985cc285115e12caaa16f8040fe1a6f2f94666785257ac}
 : ${package_description:=Raspberry Pi bootloader and GPU firmware, which start the kernel.}
 : ${package_license:=LicenseRef-Broadcom-Firmware}
+: ${package_cpe:=none}
 
 package_source_dir=$SOURCE_DIR/raspi-firmware-$package_version
 

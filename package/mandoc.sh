@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:8bf0d570f01e70a6e124884088870cbed7537f36328d512909eb10cd53179d9c}
 : ${package_description:=Manual page compiler and viewer (man, apropos, whatis).}
 : ${package_license:=ISC AND BSD-2-Clause AND BSD-3-Clause}
+: ${package_cpe:=a:mandoc_project:mandoc:$package_version}
 
 # mandoc builds in its source tree, with a configure script that runs the test programs it compiles,
 # which cannot work for another architecture than the build machine's. It takes every result as

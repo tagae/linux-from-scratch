@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:8bd24b4f23a3065d6e5b26e98aba9ce783ea4fd781069c1b35d149694e90ca3e}
 : ${package_description:=Non-preemptive threads library of GnuPG.}
 : ${package_license:=LGPL-2.1-or-later}
+: ${package_cpe:=none}
 
 prepare() {
     case $package_component in

@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4}
 : ${package_description:=Library to call functions whose interface is known at run time.}
 : ${package_license:=MIT}
+: ${package_cpe:=a:libffi_project:libffi:$package_version}
 
 prepare() {
     case $package_component in

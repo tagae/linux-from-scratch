@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:ed1059ff964f5df35b6056434cc17cc83f86dc913f10489948a0b19b6081c5ec}
 : ${package_description:=System and service manager.}
 : ${package_license:=LGPL-2.1-or-later AND GPL-2.0-or-later AND MIT AND BSD-3-Clause}
+: ${package_cpe:=a:systemd_project:systemd:$package_version}
 
 prepare() {
     case $package_component in
