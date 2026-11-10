@@ -1,7 +1,10 @@
 # SBOMs for images: design
 
-**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`. Not yet: the patches applied
-to the sources, CPEs, suppliers and signing (see *Choices for later*).
+**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`. Not yet: CPEs and PyPI purls,
+without which no scanner finds a vulnerability in it (see *What scanners find*), the patches applied
+to the sources, suppliers and signing (see *Choices for later*). A system whose features install
+the same package twice (openssl with fido2 and yubikey-manager) gets a document that `pyspdxtools`
+rejects, as the two archives get the same identifier.
 
 **Question:** how should each image get a Software Bill of Materials, and can it be SPDX?
 
@@ -82,39 +85,71 @@ hand, it is a separate archive and can be added the same way.
 
 No existing generator understands these recipes, so `lib/sbom.sh` writes the document itself. Open
 source tools then validate it, scan it and sign it. These are the well-known, maintained ones; all
-are Apache-2.0 unless noted. Versions and release dates were not checked, so look at each project's
-releases page before pinning one.
+are Apache-2.0 unless noted. The scanners were tried on our documents (see *What scanners find*).
 
 | Job | Tool | Why / caveat |
 |---|---|---|
 | Validate | [`spdx-tools`](https://github.com/spdx/tools-python) (`pyspdxtools`) | The SPDX project's own library. Fully validates 2.2 and 2.3; 3.0 is experimental and write-only. Another reason to stay on 2.3. |
 | Score | [`sbomqs`](https://github.com/interlynk-io/sbomqs) | Scores an SPDX or CycloneDX file 0–10 and checks it against NTIA minimum elements, BSI TR-03183-2 and OpenChain Telco. Shows which fields (supplier, CPE) are still missing. |
-| Scan | [Grype](https://github.com/anchore/grype) | Scans an SBOM without the image; large user base. Matches NVD by CPE, so recipes need `package_cpe`. Its CPE matching is switched off for ecosystems covered by GitHub advisories, which is not our case, but check it on a real SBOM. |
-| Scan | [Trivy](https://github.com/aquasecurity/trivy) | Reads SPDX too, but matches mainly on purl and OS package types, so `pkg:generic` will find little. Use as a second opinion. |
-| Scan (embedded) | [`sbom-cve-check`](https://github.com/bootlin/sbom-cve-check) (Bootlin, GPL-2.0) | Made for embedded Linux and Yocto. Reads SPDX 2.2/3.0, uses NVD and the CVE List, drops kernel CVEs for source files not compiled in, and takes OpenVEX annotations. Young (first release Dec 2025) and documented for Yocto, so try it on our SBOM before relying on it. |
-| Scan (binaries) | [`cve-bin-tool`](https://github.com/intel/cve-bin-tool) | Intel's. Scans the built tree's binaries for known components and can read SBOMs, so it cross-checks the recipes' versions independently. Emits VEX (CycloneDX, CSAF, OpenVEX). |
-| Monitor | [OWASP Dependency-Track](https://github.com/DependencyTrack/dependency-track) | Takes SBOMs per product and version and re-evaluates them as vulnerability feeds update. Worth it once there are several images or releases. |
-| Triage | [OpenVEX / `vexctl`](https://github.com/openvex/vexctl) | Records "not affected" decisions (e.g. a kernel CVE for a driver we don't build) so they don't reappear on every scan. |
+| Scan | [Grype](https://github.com/anchore/grype) | The one scanner that finds our packages' vulnerabilities, from an SBOM alone, once they carry a CPE, or a PyPI purl for the Python libraries. Writes SARIF, which GitHub's code scanning takes. |
+| Monitor | [OWASP Dependency-Track](https://github.com/DependencyTrack/dependency-track) | Takes SBOMs per product and version and re-evaluates them as vulnerability feeds update. Needs a server; a scheduled scan in CI does the same for one image. |
+| Triage | [OpenVEX / `vexctl`](https://github.com/openvex/vexctl) | Records "not affected" decisions (e.g. a kernel CVE for a driver we don't build) so they don't reappear on every scan. Grype takes them. |
 | Licences | [ScanCode Toolkit](https://github.com/aboutcode-org/scancode-toolkit), [ORT](https://github.com/oss-review-toolkit/ort) | Scan the unpacked sources for licences, to check `package_license` and fill `licenseConcluded`. A one-off audit, not part of every build. |
 | Convert | [`bomctl`](https://github.com/bomctl/bomctl) | Converts and merges SPDX and CycloneDX. Describes itself as experimental, and has no diff yet. Only needed if a consumer insists on CycloneDX. |
-| Cross-check | [Syft](https://github.com/anchore/syft) | The most popular generator, but it finds packages from databases and manifests. An LFS tree has neither, so it would see little. Useful only to compare against. |
-| Sign | [cosign](https://github.com/sigstore/cosign), [minisign](https://github.com/jedisct1/minisign) | See Signing below. |
+| Sign | [cosign](https://github.com/sigstore/cosign), [minisign](https://github.com/jedisct1/minisign), GitHub's artifact attestations (`actions/attest-sbom`) | See Signing below. |
 
 **Prior art.** Yocto's `create-spdx` builds SPDX per recipe and image, and its `cve-check` takes a
 CPE product name per recipe (`CVE_PRODUCT`), the same idea as `package_cpe`. Buildroot has
-`make legal-info`. Both are worth reading before writing `lib/sbom.sh`.
+`make legal-info`, and names each package's CPE vendor and product (`<PKG>_CPE_ID_VENDOR`), a
+source for ours.
 
-**Starting set:** `pyspdxtools` and `sbomqs` in step 3, Grype and `sbom-cve-check` for scanning,
-ScanCode once for the licence audit. Add Dependency-Track and OpenVEX when there are releases to
-keep watching.
+## What scanners find
+
+Tried in CI in November 2026, on the documents that `lib/sbom.sh` writes for pi0, with no features
+and with every feature; on the same documents with NVD CPEs and PyPI purls added by hand; on both
+with old versions that have known vulnerabilities (bash 4.3, openssl 3.0.0, Linux 5.10.0,
+cryptography 3.2...), so that a scanner that finds nothing is told from one that matches nothing;
+and on the binaries of the pi0 image.
+
+| Scanner | As written (`pkg:generic`) | With CPEs and PyPI purls | The image's binaries |
+|---|---|---|---|
+| Grype 0.121.0 | Nothing, old versions included. `--add-cpes-if-none` guesses `<name>:<name>`, which is right for openssl, python, zlib, gnupg and libusb, and wrong for glibc, gcc, bash, the kernel, systemd, util-linux and shadow | The packages whose CPE is NVD's, old versions of bash, glibc, openssl, systemd, util-linux and the kernel included; the Python libraries through their purl, once named after their PyPI project (`cryptography`, not `python/cryptography`): 7151 findings on the old versions. ncurses 6.1 and procps-ng 3.3.16 matched nothing, so their CPEs need checking | Nothing: Syft knows packages from package databases and manifests, of which the tree has none |
+| Trivy 0.76.1 | Nothing | Nothing, cryptography 3.2 included | — |
+| OSV-Scanner 2.7.0 | Skips every package, as unscannable | The PyPI purls alone (24 for cryptography 3.2): it reads no CPE | — |
+| `sbom-cve-check` 1.3.5 | Cannot read it: its SPDX 2 reader takes Yocto's documents alone, which link each package to its recipe's | — | — |
+| `cve-bin-tool` (main of October 2026) | Matches by bare name, against every vendor that has a product of that name: beside openssl's 25 and glibc's, other vendors' products (gentoo's and redhat's `linux`, microsoft's `python`, sonicwall's `firmware`) and distributions' advisories, 211 findings for pi0 with every feature, most of them false | Adds the kernel through its CPE (138); the false matches stay | Recognises gcc, glibc and the kernel alone (142 findings), not bash, systemd, util-linux, kmod or shadow |
+
+`cve-bin-tool`'s last release (3.4) reads NVD feeds that NVD has retired, and its database, fetched
+from NVD's API without a key, takes 24 minutes and 3.8 GB.
+
+On the current versions, with CPEs, Grype finds what an update fixes: openssl 4.0.1 (25 CVEs, fixed
+in 4.0.2 and 4.0.3), python 3.14.7 (14, fixed up to 3.14.10), util-linux 2.42.2 (one of 3, in
+2.42.3), glibc 2.44 (6 of 17, in 2.45) and the kernel, 6.18.60 (126 of 193 with a fixed version).
+The rest is to triage: CVEs that NVD gives every version, which upstream disputes or which concern
+other builds (glibc's CVE-2010-4756 and CVE-2019-1010022 to -1010025, coreutils' CVE-2016-2781,
+shadow's CVE-2013-4235, gcc's CVE-2023-4039 for AArch64's stack protector), and the kernel's 67
+CVEs from 2016 to 2023. Grype cannot tell which of the kernel's CVEs concern code that a kernel
+configured from `allnoconfig` does not build.
+
+A document that lists the sources alone, each with the CPE and purl of what was built from it, and
+none of the archives, gives every finding of the one with archives, whether the sources keep their
+purpose (`SOURCE`) or not, and a few more for python and zlib, which Grype matches without a CPE as
+well.
+
+Commercial services that are free for open-source projects add little: Snyk's `sbom test` reads
+purls alone, of the types it knows; Sonatype OSS Index, Mend and Socket cover the packages of
+language ecosystems. GitHub's code scanning, free for public repositories, takes Grype's SARIF, and
+keeps its findings as alerts that can be dismissed with a reason.
 
 ## Choices for later
 
 - **CVE matching needs identifiers that scanners know.** purls of type `generic` identify packages
-  uniquely but match few vulnerability databases. NVD matches by CPE, so recipes would need a
+  uniquely but match no vulnerability database. NVD matches by CPE, so recipes would need a
   `package_cpe` (vendor and product), e.g. `cpe:2.3:a:gnu:bash:5.3`,
   `cpe:2.3:o:linux:linux_kernel:7.3.1`, `cpe:2.3:a:systemd_project:systemd:261.2`. That's about
-  twenty recipes for what the systems ship.
+  thirty recipes for what the systems ship. The Pi's kernel, whose version is a tag of its fork
+  (`stable_20261103`), needs the upstream version it carries (6.18.60). The Python libraries need a
+  `pkg:pypi` purl and their PyPI name, which their sources' URLs on PyPI give.
 - **Suppliers.** NTIA's minimum elements also ask for each component's supplier. A `package_supplier`
   (e.g. `Organization: GNU Project`), or `NOASSERTION` until then.
 - **Patches.** The patches applied to a source (`patch_source`, `apply_patch`) are calls in a recipe's
