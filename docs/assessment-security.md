@@ -40,7 +40,7 @@ pass's.
 | Critical | **Open:** S1 the same known root password in every image | — |
 | High | **Fixed:** S2 password hashing, S3 kernel self-protection, S4 CPU mitigations | **Partly fixed:** C2 cached archives (archives done, sources open). **Dropped:** C1 |
 | Medium | **Fixed:** S7 BPF, S8 setuid programs. **Open:** S5, S6, S9, S11. **Decided:** S10 modules stay | **Open:** C5, C7, C8, C9. **Partly fixed:** C6 (3 of 8 GitHub archives replaced). **Dropped:** C3, C4 |
-| Low | **Open:** S12–S16 | **Open:** C10, C12. **Fixed:** C13. **Designed:** C11 |
+| Low | **Open:** S12, S14–S16. **Fixed:** S13 | **Open:** C10, C12. **Fixed:** C13. **Designed:** C11 |
 
 **Already in good shape:**
 - **No remote attack surface:** no TCP/IP stack, no listening network service, no SSH, no D-Bus.
@@ -81,7 +81,7 @@ pass's.
 | S10 | Medium | Decided: modules stay | Kernel modules are enabled and unsigned, and there is a single one, `autofs4` | `CONFIG_MODULES=y`, `MODULE_SIG=n`; `lsmod` lists only `autofs4`; the only `=m` in `package/linux` is `AUTOFS_FS` | Dynamic module loading is kept on purpose (decision of 2026-10-12). If it ever needs hardening, sign the modules (`MODULE_SIG_FORCE`) rather than remove the loader |
 | S11 | Medium | Open | Nothing protects the integrity of the root file system or the boot chain. The root is a read-write btrfs subvolume, the Pi's `cmdline.txt` and `config.txt` sit on an unprotected FAT partition, and amd64 has no boot loader, so there is no Secure Boot. Anyone with the SD card or the disk is root (`init=/bin/sh`) | `/proc/mounts`; `FS_VERITY`, `DM_VERITY` and `IMA` are off | Depends on the threat model. Physical attackers can't be kept out on a Pi Zero (no secure boot), but tampering could be made detectable: a dm-verity root with a read-write data area, which pairs with the A/B upgrade plan. On amd64, a signed unified kernel image under UEFI Secure Boot |
 | S12 | Low | Open | pi0 has no driver for the board's hardware RNG, so it depends on jitter entropy | `HW_RANDOM=n`; `crng init done` at 9.7 s under QEMU, versus 1.1 s on virt with virtio-rng | `CONFIG_HW_RANDOM=y` and `CONFIG_HW_RANDOM_BCM2835=y` in `pi0.config` |
-| S13 | Low | Open | debugfs and tracefs are built and mounted; only root can read them, but they expose a large kernel interface | `DEBUG_FS=y` and `FTRACE=y` come from `package/linux/systemd.config`, only so that systemd's `sys-kernel-debug`/`tracing` mounts succeed | Drop both; systemd skips mounts for file systems the kernel lacks |
+| S13 | Low | **Fixed** | debugfs and tracefs are built and mounted; only root can read them, but they expose a large kernel interface | `DEBUG_FS=y` and `FTRACE=y` come from `package/linux/systemd.config`, only so that systemd's `sys-kernel-debug`/`tracing` mounts succeed | **Done:** `DEBUG_FS` and `FTRACE` are gone from `package/linux/systemd.config`, with `CONFIGFS_FS`, which nothing uses either. Verified on virt and pi0: neither file system is mounted, systemd skips their mount units (`inactive`, not `failed`), and the boot's warnings are unchanged |
 | S14 | Low | Open | Leftovers of disabled features: accounts (`messagebus`, `systemd-journal-{gateway,remote,upload}`, `-network`, `-resolve`, `-timesync`, `-coredump`, `-oom`, `uuidd`) and enabled units (`systemd-network-generator`, `systemd-journald-audit.socket`, `systemd-factory-reset.socket`, `getty@tty1` with no virtual console) | `/etc/passwd`; `systemctl list-unit-files --state=enabled` | All accounts are locked with `/usr/bin/false` as their shell, so this is hygiene: drop them from `system-files`, and the units with systemd's own switches where they exist |
 | S15 | Low | Open | Security events don't survive a reboot (volatile journal), and there is no audit subsystem | `journal-storage-default=auto` with no `/var/log/journal`; `AUDIT=n` | A deliberate trade-off for SD cards. On amd64, or for forensics, create `/var/log/journal` |
 | S16 | Low | Open | Account defaults: no `/etc/securetty`, so root may log in on any terminal (only the serial console exists); `UMASK 022`; login failures are delayed 3 s but attempts are unlimited | `login.defs` | `UMASK 027`. A strong root password (S1) makes brute force over serial impractical |
@@ -152,7 +152,6 @@ each released image, would cover both. This belongs with the licence-policy TODO
    - C7: mandatory SHA-256;
    - S6: `kptr_restrict`, and `dmesg_restrict` with `CONFIG_SECURITY`;
    - S12: the Pi's RNG driver;
-   - S13: no debugfs or tracefs;
    - S14, S16: leftover accounts and units, `UMASK 027`.
 3. **S9:** FORTIFY, `-z now` and stack-clash protection in the default flags, glibc and gcc
    hardening configure options, and BTI/PAC and CET markings.
