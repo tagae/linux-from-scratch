@@ -32,8 +32,10 @@ $Q/qemu-check KEY "" "$(cat $Q/check-boot.cmd)"   # state, failed units, dmesg a
 $Q/check-baseline [--save] KEY ["EXTRA ARGS"]      # the same, diffed against baselines/KEY.txt
 ```
 "No warnings" means those two lists, not the console. A baseline is per key and per extra args; recorded: the
-pi0 ykman key (with `-device usb-ccid`) and both virt keys. Without one the run is printed: judge it once by
-hand (real-Pi baseline: `reference/pi0-real-boot.md`), then `--save`. A new diff line is new: look.
+pi0 ykman key (with `-device usb-ccid`) and both virt keys, with `+man+procps+tzdata`, which hold the whole of
+chapter 8. Without one the run is printed: judge it once by hand (real-Pi baseline:
+`reference/pi0-real-boot.md`), then `--save`. A new diff line is new: look. Without util-linux's tools (`dmesg`),
+the check reads the kernel's warnings from the journal.
 
 Known noise. pi0 under QEMU: `initcall_blacklist requires CONFIG_KALLSYMS` (QEMU-only), two `dwc2_check_params:
 Invalid parameter max_packet_count/max_transfer_size` (QEMU's registers; unconfirmed on silicon), `sdhost ...

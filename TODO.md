@@ -6,7 +6,7 @@
 * A feature that requires systemd (`fido2`, `yubikey-manager`) brings it to a system with another
   init, which then has two. An init system other than systemd needs a way to refuse that, or
   features that rely on what both inits provide.
-* The minimum that systemd brings keeps ncurses, for util-linux's `more`, which man and systemd's
-  tools page through, and `cfdisk`: a package is built once per system, so util-linux cannot gain
-  them in a later feature. A stricter minimum would build util-linux without them (`cfdisk` needs
-  an option of its own), and give the `man` feature a pager.
+* The `util-linux` feature builds util-linux a second time, over the minimal one that systemd brings:
+  a package is built once per call, with the options of its call site. Building it once would take
+  features adding options to a package before it is built (the option table of
+  docs/dependencies-design.md).
