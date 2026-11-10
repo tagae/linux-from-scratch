@@ -264,7 +264,7 @@ source it was built from. The licences of the recipes are SPDX expressions; the 
 not list (the Pi firmware's and the time zone database's) come with their text. An image counts as
 built only along with its document: an image without one is made anew.
 
-The document can be checked with the SPDX project's validator, and read by scanners such as Grype:
+The document can be checked with the SPDX project's validator:
 
 ```shell
 pip install spdx-tools
@@ -273,6 +273,7 @@ pyspdxtools --infile image/virt-systemd.spdx.json
 
 A block device gets no document, as it is no file to take the digest of: make the image first, and
 write it to the device. The document does not yet list the patches applied to the sources, nor
-identify packages for vulnerability scanners beyond their name and version (`docs/sbom-design.md`).
+identify packages for vulnerability scanners beyond their name and version: scanners such as Grype
+read it, but match none of its packages (`docs/sbom-design.md`).
 
 [SPDX]: https://spdx.github.io/spdx-spec/v2.3/
