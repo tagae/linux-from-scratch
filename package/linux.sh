@@ -1,11 +1,14 @@
 case $PLATFORM in
     pi0)
-        package_version=stable_20261103 # 6.18.60
+        package_version=stable_20261103
+        # The tag of the Pi's fork, and the version of the kernel it holds.
+        package_cpe=o:linux:linux_kernel:6.18.60
         package_source=https://github.com/raspberrypi/linux/archive/refs/tags/$package_version/linux-$package_version.tar.gz
         package_source_hash=sha256:53a3967359cf1b68953bbfc5aef5d3c7fcf9ebf61518fbba108c6a8bfce0c079
         ;;
     *)
         package_version=7.3.1
+        package_cpe=o:linux:linux_kernel:$package_version
         package_source=https://www.kernel.org/pub/linux/kernel/v${package_version%%.*}.x/linux-$package_version.tar.xz
         package_source_hash=sha256:fa595aad93734f829c963c2a90ef7c3673224fd7fdae7b49406e397cde2de231
         ;;

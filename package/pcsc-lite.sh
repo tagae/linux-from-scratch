@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:fe2bb733ecf95e52768907eb00da9f9f3daf180960283e514a05dcc090afa3bd}
 : ${package_description:=Daemon and library to use smart card readers.}
 : ${package_license:=BSD-3-Clause AND ISC}
+: ${package_cpe:=a:muscle:pcsc-lite:$package_version}
 
 prepare() {
     case $package_component in

@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:9d2021f47a4501c667862c9942a92d1953694b21d11bcd1702e83eb594e3d67d}
 : ${package_description:=Utilities that report on processes and system resources.}
 : ${package_license:=GPL-2.0-or-later AND LGPL-2.1-or-later}
+: ${package_cpe:="a:procps-ng_project:procps-ng:$package_version a:procps_project:procps:$package_version"}
 
 prepare() {
     case $package_component in

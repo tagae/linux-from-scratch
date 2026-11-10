@@ -1,10 +1,9 @@
 # SBOMs for images: design
 
-**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`. Not yet: CPEs and PyPI purls,
-without which no scanner finds a vulnerability in it (see *What scanners find*), the patches applied
-to the sources, suppliers and signing (see *Choices for later*). A system whose features install
-the same package twice (openssl with fido2 and yubikey-manager) gets a document that `pyspdxtools`
-rejects, as the two archives get the same identifier.
+**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`, and scanned by Grype in CI
+(`.github/workflows/vulnerabilities.yaml`). The document names the upstream packages, with the CPEs
+and PyPI purls that scanners match (see *What scanners find*). Not yet: the patches applied to the
+sources, suppliers and signing (see *Choices for later*).
 
 **Question:** how should each image get a Software Bill of Materials, and can it be SPDX?
 
@@ -12,9 +11,10 @@ rejects, as the two archives get the same identifier.
 - **Licences:** the recipes already declare their licences as SPDX expressions (`package_license`).
 - **Provenance:** every source is pinned by URL and SHA-256 (`package_source`,
   `package_source_hash`).
-- **Built artefacts:** every package archive now carries its own SHA-256 (`<archive>.sha256`).
+- **Identity:** the recipes name their upstream packages and versions, from which a CPE follows for
+  most of them.
 
-What's missing is a record of which archives went into a system, and a writer for the format.
+What's missing is a record of which packages went into a system, and a writer for the format.
 
 ## Format
 
@@ -35,43 +35,77 @@ One document per image, `image/<SYSTEM_KEY>.spdx.json`, next to the image:
 |---|---|---|
 | Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` is the time the image is made (`SOURCE_DATE_EPOCH` when builds become reproducible); `creators`: `Tool: lfs-<LFS_RELEASE>`, as the scratch container has no git history to describe |
 | Package (root) | the image | file name, SHA-256 of the image; the document `DESCRIBES` it |
-| Package | each archive installed into the system (`lfs_system_install`): `bash`, `glibc`, `linux`, `firmware`, ... | `name`, `versionInfo`, `packageFileName` = archive name, `checksums` = the archive's SHA-256, `licenseDeclared` = `package_license`, `description`, `externalRefs`: purl (and CPE, see below) |
-| Package | each upstream source | `downloadLocation` = `package_source`, `checksums` = `package_source_hash`, `primaryPackagePurpose: SOURCE` |
-| Relationships | | image `CONTAINS` each archive; each archive `GENERATED_FROM` its source (not yet: patches `PATCH_APPLIED` to their source) |
+| Package | each upstream package that the system installs (`lfs_system_install`), once: `bash`, `glibc`, `linux`, `cryptography`, ... | `name`, `versionInfo`, `packageFileName` = the source's file name, `checksums` = `package_source_hash`, `downloadLocation` = `package_source`, `licenseDeclared` = `package_license`, `description`, `externalRefs`: purl and CPEs (see *Identifiers*) |
+| Relationships | | image `CONTAINS` each package (not yet: patches `PATCH_APPLIED` to their source) |
 | Extracted licences | `LicenseRef-*` (the Pi firmware's, the time zone database's) | the licence text, kept in the declaring package's files directory as `LicenseRef-<name>.txt`: the source may not be unpacked when the archive comes from a cache |
 
 **Example entry** (abridged):
 
 ```json
 {
-  "SPDXID": "SPDXRef-Package-bash",
+  "SPDXID": "SPDXRef-Package-bash-5.3",
   "name": "bash",
   "versionInfo": "5.3",
-  "packageFileName": "bash-5.3.tar.xz",
-  "checksums": [{ "algorithm": "SHA256", "checksumValue": "<from bash-5.3.tar.xz.sha256>" }],
+  "packageFileName": "bash-5.3.tar.gz",
+  "checksums": [{ "algorithm": "SHA256", "checksumValue": "0d5cd869..." }],
+  "downloadLocation": "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz",
   "licenseDeclared": "GPL-3.0-or-later",
   "licenseConcluded": "NOASSERTION",
   "copyrightText": "NOASSERTION",
-  "downloadLocation": "NOASSERTION",
   "externalRefs": [{
     "referenceCategory": "PACKAGE-MANAGER",
     "referenceType": "purl",
     "referenceLocator": "pkg:generic/bash@5.3?download_url=https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz&checksum=sha256:0d5cd869..."
+  }, {
+    "referenceCategory": "SECURITY",
+    "referenceType": "cpe23Type",
+    "referenceLocator": "cpe:2.3:a:gnu:bash:5.3:*:*:*:*:*:*:*"
   }]
 }
 ```
 
-The `dev` component, which a system doesn't get, stays out. If it is unpacked into a system by
-hand, it is a separate archive and can be added the same way.
+The document names packages, not the archives that the system build made of them: the archives are
+published nowhere, so their digests would tell nobody anything, and scanners match the packages'
+identities alone. A package that the system installs twice (util-linux, with the `util-linux`
+feature) or that two features install (openssl) is named once. A package without a source, such as
+`system-files`, holds this project's own files, which the image stands for. The `dev` component,
+which a system doesn't get, stays out.
+
+## Identifiers
+
+Scanners find a package's vulnerabilities by an identifier that their databases know: the NVD's
+CPE, for most packages, and a package URL of a language's ecosystem, for the Python libraries.
+
+- **CPE.** `part:vendor:product:version`, which the document completes into a CPE 2.3 name. By
+  default, the product is the package's name, the version its own, and the vendor the owner of the
+  source's project on GitHub or GitLab (`openssl`, `libusb`, `yubico`), or else the name of the site
+  that serves the source (`gnu` for `ftp.gnu.org`, `gnupg`, `kernel`, `python`). That is the NVD's
+  name of 22 of the 35 upstream packages of a pi0 system with every feature. A recipe whose package
+  the NVD names otherwise sets `package_cpe` to its CPEs: the NVD's `<name>_project` vendors
+  (systemd, libffi, procps-ng), other vendors (shadow is `debian`, pcsc-lite `muscle`), a source on
+  another site (zlib's on its author's GitHub, ncurses' on a mirror), the kernel
+  (`o:linux:linux_kernel`), or `none` where the NVD has nothing (the Pi's firmware, npth, the time
+  zone database). Scanners compare the version of the package with the vulnerable ones, so the
+  document gives a package the version of its first CPE: the Pi's kernel, whose version is a tag of
+  its fork (`stable_20261103`), is the 6.18.60 that the tag holds.
+- **PyPI.** A package whose source is on PyPI has the purl `pkg:pypi/<project>@<version>`, and the
+  name of its PyPI project (`python-dateutil`, not `python/dateutil`), which scanners match against
+  the advisories of Python's packages: they look a Python package up by its name. It has no CPE.
+- **Others.** A purl of type `generic`, with the source's URL and digest, which identifies the
+  package to people, and to no vulnerability database.
+
+The CPEs that the trial below confirmed are those with findings: gnu's bash, coreutils, gawk, gcc
+and glibc, gnupg's gnupg, libgcrypt and libksba, debian's shadow, kernel's util-linux, libusb,
+linux_kernel, openssl, python, systemd and zlib. The others rest on Buildroot's and cve-bin-tool's
+tables, or on the rule alone (mandoc and ccid).
 
 ## How it is produced
 
 1. **Record what goes in.** `lfs_system_install` appends each package to a list for the system,
-   `$WORK_DIR/sbom/$SYSTEM_KEY`, which the system build empties first. A line holds the archive's name
-   and SHA-256 (the digest that the install has just checked), and what the recipe says: name,
-   version, licence, source, source digest and description. It is taken when the package is
-   installed, because only then does the recipe see the variables it was built with (the package
-   key, the Python version). This is the only change to the system build.
+   `$WORK_DIR/sbom/$SYSTEM_KEY`, which the system build empties first. A line holds what the recipe
+   says: name, version, licence, source, source digest, CPEs and description. It is taken when the
+   package is installed, because only then does the recipe see the variables it was built with (the
+   package key, the Python version). This is the only change to the system build.
 2. **Write the document.** `lib/sbom.sh` does it from that list, at the end of `./lfs image build`,
    which knows the image's digest, and writes next to the image on the host. It's plain shell,
    `printf` plus a small JSON string-escaping helper, like the rest of the framework. The SBOM goes
@@ -80,6 +114,13 @@ hand, it is a separate archive and can be added the same way.
 3. **Check it.** `pyspdxtools --infile image/<key>.spdx.json` validates against the SPDX 2.3 model:
    licence expressions, identifiers and relationships. Not part of the build, which runs with the
    tools alone.
+4. **Scan it.** CI keeps the SBOM of the pi0 image that its test phase makes, and
+   `.github/workflows/vulnerabilities.yaml` scans the latest one with Grype after each run of CI on
+   main, with the vulnerability data of the day, building nothing. The findings go to the run's
+   summary and to GitHub's code scanning, where an alert can be dismissed with a reason. The scan is
+   a report: it leaves CI's result alone, and fails, as the README's badge shows, when a finding of
+   high or critical severity has a fixed version. `.github/ci/grype.yaml` leaves out the findings
+   that do not concern the images, each with its reason.
 
 ## Tools to use
 
@@ -143,13 +184,6 @@ keeps its findings as alerts that can be dismissed with a reason.
 
 ## Choices for later
 
-- **CVE matching needs identifiers that scanners know.** purls of type `generic` identify packages
-  uniquely but match no vulnerability database. NVD matches by CPE, so recipes would need a
-  `package_cpe` (vendor and product), e.g. `cpe:2.3:a:gnu:bash:5.3`,
-  `cpe:2.3:o:linux:linux_kernel:7.3.1`, `cpe:2.3:a:systemd_project:systemd:261.2`. That's about
-  thirty recipes for what the systems ship. The Pi's kernel, whose version is a tag of its fork
-  (`stable_20261103`), needs the upstream version it carries (6.18.60). The Python libraries need a
-  `pkg:pypi` purl and their PyPI name, which their sources' URLs on PyPI give.
 - **Suppliers.** NTIA's minimum elements also ask for each component's supplier. A `package_supplier`
   (e.g. `Organization: GNU Project`), or `NOASSERTION` until then.
 - **Patches.** The patches applied to a source (`patch_source`, `apply_patch`) are calls in a recipe's

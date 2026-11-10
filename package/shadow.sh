@@ -3,6 +3,7 @@
 : ${package_source_hash:=sha256:b89f432b75ae55a2d852b446d0365484795fdf533ab97d550e325fa15594a224}
 : ${package_description:=Login and user account management tools.}
 : ${package_license:=BSD-3-Clause AND BSD-2-Clause AND GPL-2.0-or-later AND Unlicense}
+: ${package_cpe:=a:debian:shadow:$package_version}
 
 : ${prefix:=/usr}
 
