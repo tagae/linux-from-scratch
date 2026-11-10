@@ -67,7 +67,7 @@ lfs_system_build() {
     export PKG_CONFIG_SYSTEM_INCLUDE_PATH=$sysroot/usr/include
     export PKG_CONFIG_SYSTEM_LIBRARY_PATH=$sysroot/usr/lib
 
-    # The Python packages of the features are for this version, which lib/category/python.sh reads.
+    # The Python packages of the features are for this version, which lib/python.sh reads.
     python_version=$(lfs_package_version python)
 
     # The key names the platform and the init, and with them the features they bring.

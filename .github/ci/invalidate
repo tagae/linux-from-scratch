@@ -34,7 +34,8 @@
 #    3  feature/<f>.sh: every archive under a key with +<f> as one of its items (+usb is not
 #       +usb-storage). A feature that a platform or an init brings is in no key, and every
 #       later package is built against what it installs: every archive but the build tools.
-#    4  lib/category/<c>.sh: everything under archive/*/<c>/.
+#    4  lib/<c>.sh, the helpers of a package category <c> (a directory of package/ that holds
+#       recipes at HEAD): everything under archive/*/<c>/.
 #    5  lib/meson.sh: rule 2 for each recipe at HEAD that calls meson_cross_file.
 #    6  lib/system.sh: every archive but the build tools (-bootstrap- and -tools- in the name).
 #    7  Makefile: archive/*/system-files-*, as its LFS_RELEASE ends up in os-release.
@@ -158,6 +159,11 @@ recipe_of() {
     done
 }
 
+# Succeeds when a name is a package category: a directory of package/ that holds recipes at HEAD.
+is_category() {
+    git ls-tree --name-only HEAD "package/$1/" 2>/dev/null | grep -q '\.sh$'
+}
+
 # Adds to `brought` the features that a file at HEAD requires, and those that they require in
 # turn.
 add_required_features() {
@@ -226,11 +232,6 @@ select_changed() {
             ;;
         esac
         ;;
-    lib/category/[!/]*.sh)
-        name=${path#lib/category/}
-        name=${name%.sh}
-        select_archives "$path: rule 4, archives of the category $name" category "$name"
-        ;;
     lib/meson.sh)
         # git grep fails when nothing matches.
         callers=$(git grep -l -F meson_cross_file HEAD -- package || true)
@@ -248,6 +249,15 @@ EOF
         name=${path#platform/}
         name=${name%.sh}
         select_archives "$path: rule 8, archives of the platform $name" platform "$name"
+        ;;
+    lib/[!/]*.sh)
+        name=${path#lib/}
+        name=${name%.sh}
+        if is_category "$name"; then
+            select_archives "$path: rule 4, archives of the category $name" category "$name"
+        else
+            select_archives "$path: rule 9, every archive" all
+        fi
         ;;
     lfs|lib/*|feature/*|platform/*)
         select_archives "$path: rule 9, every archive" all

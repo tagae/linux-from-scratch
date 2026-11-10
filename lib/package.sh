@@ -184,8 +184,9 @@ lfs_source_package() {
         verify_hash "$DOWNLOAD_DIR/$package_category/$file" "$hash"
     }
 
-    # The helpers of the package's category, if it has any, are for its recipes alone.
-    [ ! -f $lib_dir/category/$package_category.sh ] || . $lib_dir/category/$package_category.sh
+    # The helpers of the package's category, lib/<category>.sh, if it has any, are for its recipes
+    # alone. A category is named unlike the framework's files, which its recipes would load again.
+    [ ! -f $lib_dir/$package_category.sh ] || . $lib_dir/$package_category.sh
 
     . $package_dir/$package_name.sh
 
