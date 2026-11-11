@@ -1,6 +1,6 @@
-: ${package_version:=2.42.2}
+: ${package_version:=2.42.4}
 : ${package_source:=https://www.kernel.org/pub/linux/utils/util-linux/v${package_version%.*}/util-linux-$package_version.tar.xz}
-: ${package_source_hash:=sha256:03a05d3adf9602ef128f2da05b84b3205ce60c351e5737c0370f74000679ce8a}
+: ${package_source_hash:=sha256:fbd62a100ab7bb8746ba0661255c3c48185b1e9021507c624da01fbc696330ec}
 : ${package_description:=Essential Linux system utilities and libraries.}
 : ${package_license:=GPL-1.0-or-later AND GPL-2.0-or-later AND LGPL-2.1-or-later AND BSD-3-Clause}
 
