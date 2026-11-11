@@ -22,7 +22,7 @@ permissions:
 # Runs queue rather than cancel one another: a cancelled build loses its archives. The group is
 # the workflow's, not a job's, as a job in the same group would wait for the run that holds it.
 concurrency:
-  group: pi0
+  group: build
   cancel-in-progress: false
 
 jobs:
@@ -39,70 +39,18 @@ jobs:
       - name: Lint
         run: .github/ci/lint
 
-  # The pi0 system, built and booted in QEMU as `make pi0-test` does, one job per phase because a
-  # job has six hours and a cold build takes longer. Each phase relies on the archives that the
-  # one before it saved in the cache, so only the first can start from scratch. The Makefile's
-  # targets set SYSTEM_KEY and export LFS_RELEASE, which the system files bake into os-release;
-  # the phases that a target runs before its own only unpack their archives.
-  bootstrap:
-    uses: ./.github/workflows/pi0-phase.yaml
+  # The systems that CI builds and boots, one per platform: virt, the platform that the Makefile
+  # builds by default, and pi0, the one that runs on hardware. Each system is built apart from the
+  # other, so that a failure in one leaves the other to finish. The platforms are also in
+  # .github/ci/lint and .github/workflows/vulnerabilities.yaml.
+  virt:
+    uses: ./.github/workflows/system.yaml
     with:
-      name: bootstrap
-      command: make pi0-tools-bootstrap
+      platform: virt
       cold: ${{ inputs.cold == true }}
 
-  tools:
-    needs: bootstrap
-    uses: ./.github/workflows/pi0-phase.yaml
+  pi0:
+    uses: ./.github/workflows/system.yaml
     with:
-      name: tools
-      command: make pi0-tools
-
-  system:
-    needs: tools
-    uses: ./.github/workflows/pi0-phase.yaml
-    with:
-      name: system
-      command: make pi0-system
-
-  test:
-    needs: system
-    uses: ./.github/workflows/pi0-phase.yaml
-    with:
-      name: test
-      command: make pi0-test
-
-  # The same phases through Docker Compose, as on a Mac: the bootstrap container builds the first
-  # tools, the scratch container, which holds nothing but the tools, the rest, and the image boots on
-  # the runner. Their archives are cached apart from those above.
-  docker-bootstrap:
-    uses: ./.github/workflows/pi0-phase.yaml
-    with:
-      name: docker-bootstrap
-      command: make docker-pi0-tools-bootstrap
+      platform: pi0
       cold: ${{ inputs.cold == true }}
-      docker: true
-
-  docker-tools:
-    needs: docker-bootstrap
-    uses: ./.github/workflows/pi0-phase.yaml
-    with:
-      name: docker-tools
-      command: make docker-pi0-tools
-      docker: true
-
-  docker-system:
-    needs: docker-tools
-    uses: ./.github/workflows/pi0-phase.yaml
-    with:
-      name: docker-system
-      command: make docker-pi0-system
-      docker: true
-
-  docker-test:
-    needs: docker-system
-    uses: ./.github/workflows/pi0-phase.yaml
-    with:
-      name: docker-test
-      command: make docker-pi0-test
-      docker: true

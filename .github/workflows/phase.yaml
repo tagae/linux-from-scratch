@@ -1,15 +1,19 @@
-name: pi0 phase
+name: Phase
 
-# One phase of the pi0 build, as the Makefile does it on a Linux host, directly or through Docker
-# Compose. The
-# package archives and the downloads come from the cache, and go back into it whatever happens to
-# the build, so that a build too long for one run completes over several. A phase relies on the
-# archives that the phases before it saved: they only unpack, and the build goes on from there.
+# One phase of the build of a platform's system, as the Makefile does it on a Linux host, directly
+# or through Docker Compose. The package archives and the downloads come from the cache, and go
+# back into it whatever happens to the build, so that a build too long for one run completes over
+# several. A phase relies on the archives that the phases before it saved: they only unpack, and the
+# build goes on from there.
 on:
   workflow_call:
     inputs:
       name:
         description: The phase, which names the cache that it saves
+        type: string
+        required: true
+      platform:
+        description: The platform of the system, which the cache and the SBOM are named after
         type: string
         required: true
       command:
@@ -33,10 +37,10 @@ defaults:
     shell: bash
 
 # The archives of a build through Docker Compose record the containers' paths, those of a build on
-# the runner its own: neither can use the other's. Neither prefix begins the other, as a cache is
-# restored by the prefix of its key.
+# the runner its own: neither can use the other's, nor those of another platform. No prefix begins
+# another, as a cache is restored by the prefix of its key.
 env:
-  CACHE: ${{ inputs.docker && 'docker-lfs-pi0-' || 'lfs-pi0-' }}
+  CACHE: ${{ inputs.docker && 'docker-lfs-' || 'lfs-' }}${{ inputs.platform }}-
 
 jobs:
   phase:
@@ -57,13 +61,22 @@ jobs:
           df -h /
 
       # README.md, Requirements: the packages of Dockerfile.bootstrap, and `expect` and QEMU for
-      # `make test`.
+      # `make test`: the runner's architecture for virt, which has the host's, and ARM for pi0.
       - name: Install the host's packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential curl wget rsync gawk bison python3 patchelf ca-certificates \
-            expect qemu-system-arm qemu-utils
+            expect qemu-system-x86 qemu-system-arm qemu-utils
+
+      # virt boots with KVM, which the runner has but opens to root alone.
+      - name: Open KVM to the build
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || echo "::warning::The runner has no /dev/kvm: virt cannot boot"
 
       # Each phase saves its own cache, and restores the most recent one.
       - name: Restore the cache
@@ -90,7 +103,7 @@ jobs:
           echo "sum=$(find archive download -type f ! -path archive/.commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)" >> "$GITHUB_OUTPUT"
 
       # The build has its own timeout, so that the steps that save the cache get to run before the
-      # job's. QEMU emulates the raspi0 machine, which makes the boot slower than on a Pi.
+      # job's. pi0 boots in QEMU's emulation of the raspi0 machine, slower than on a Pi.
       - name: Build
         timeout-minutes: 330
         env:
@@ -107,7 +120,7 @@ jobs:
         if: ${{ hashFiles('image/*.spdx.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: sbom-${{ inputs.name }}
+          name: sbom-${{ inputs.platform }}-${{ inputs.name }}
           path: image/*.spdx.json
           retention-days: 90
 

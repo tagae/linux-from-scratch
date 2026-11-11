@@ -277,10 +277,11 @@ pyspdxtools --infile image/virt-systemd.spdx.json
 grype sbom:image/virt-systemd.spdx.json
 ```
 
-CI scans the document of the pi0 image after each of its runs on main, with the vulnerability data
-of the day: the badge above fails when Grype finds a vulnerability of high or critical severity
-that a newer version fixes, and the findings are in the repository's code scanning alerts. The scan
-reports, and leaves CI's own result alone.
+CI builds and boots the `virt` and `pi0` systems, and scans the document of each image after each of
+its runs on main, with the vulnerability data of the day: the badge above fails when Grype finds, in
+either image, a vulnerability of high or critical severity that a newer version fixes, and the
+findings are in the repository's code scanning alerts. The scan reports, and leaves CI's own result
+alone.
 
 A block device gets no document, as it is no file to take the digest of: make the image first, and
 write it to the device. The document does not yet list the patches applied to the sources
