@@ -1,5 +1,7 @@
 : ${package_version:=0.5.13.5}
-: ${package_source:=https://gondor.apana.org.au/~herbert/dash/files/dash-$package_version.tar.gz}
+# Debian's orig tarball is upstream's release tarball, byte for byte (same hash). Upstream's own server,
+# https://gondor.apana.org.au/~herbert/dash/files/, does not answer on HTTPS.
+: ${package_source:=https://deb.debian.org/debian/pool/main/d/dash/dash_$package_version.orig.tar.gz}
 : ${package_source_hash:=sha256:40090101a2a491f13e901d3d48e90414f26634628b9bfff35ff540363c227a7d}
 : ${package_description:=Debian Almquist shell, a small POSIX shell.}
 # The GPL is that of mksignames.c, a program that generates the list of signal names that dash links,
