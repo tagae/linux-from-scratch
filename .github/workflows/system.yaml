@@ -4,7 +4,8 @@ name: System
 # phase because a job has six hours and a cold build takes longer. Each phase relies on the archives
 # that the one before it saved in the cache, so only the first can start from scratch. The
 # Makefile's targets set SYSTEM_KEY and export LFS_RELEASE, which the system files bake into
-# os-release; the phases that a target runs before its own only unpack their archives.
+# os-release; the phases that a target runs before its own only unpack their archives. The tools
+# are those of every platform, and their phases name none.
 on:
   workflow_call:
     inputs:
@@ -26,7 +27,7 @@ jobs:
     with:
       name: bootstrap
       platform: ${{ inputs.platform }}
-      command: make ${{ inputs.platform }}-tools-bootstrap
+      command: make tools-bootstrap
       cold: ${{ inputs.cold }}
 
   tools:
@@ -35,7 +36,7 @@ jobs:
     with:
       name: tools
       platform: ${{ inputs.platform }}
-      command: make ${{ inputs.platform }}-tools
+      command: make tools
 
   system:
     needs: tools
@@ -61,7 +62,7 @@ jobs:
     with:
       name: docker-bootstrap
       platform: ${{ inputs.platform }}
-      command: make docker-${{ inputs.platform }}-tools-bootstrap
+      command: make docker-tools-bootstrap
       cold: ${{ inputs.cold }}
       docker: true
 
@@ -71,7 +72,7 @@ jobs:
     with:
       name: docker-tools
       platform: ${{ inputs.platform }}
-      command: make docker-${{ inputs.platform }}-tools
+      command: make docker-tools
       docker: true
 
   docker-system:

@@ -149,8 +149,22 @@ lfs_source_package() {
         # Only an archive as it was built is installed.
         ( cd ${archive%/*} && sha256sum --check --quiet ${archive##*/}.sha256 ) \
             || bail "$archive does not match its recorded digest"
+        # The builds that run at once share TOOL_DIR, and extracting a tool again rewrites the files
+        # that another build is running. So TOOL_DIR records the digest of the archive that it holds
+        # under the archive's name, and an archive is extracted only when it is not the one there:
+        # the name is shared by the archives of the systems that build the same tool apart, and the
+        # last to be extracted is the one installed.
+        local installed=
+        if [ "$package_install_dir" = "$TOOL_DIR" ]; then
+            installed=$TOOL_DIR/.installed/${archive##*/}
+            ! cmp -s $archive.sha256 $installed || return 0
+        fi
         mkdir -pv $package_install_dir
         tar xf $archive -C $package_install_dir
+        if [ -n "$installed" ]; then
+            mkdir -p ${installed%/*}
+            cp $archive.sha256 $installed
+        fi
     }
 
     patch_source() {

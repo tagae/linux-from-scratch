@@ -12,9 +12,10 @@
 # Layout: archive/<key>/<package>[-<variant>]-<version>[-<revision>][-<component>].tar.xz, next to
 # a .tar.xz.sha256. <package> is the path of the recipe under package/ without .sh, so that
 # python/click is archive/<key>/python/click-<version>.tar.xz. The key is the platform and the
-# init system (pi0-systemd) for the build tools, the toolchain and the features that the platform
-# and the init bring, extended by +<fragment> for the kernel, and by +<feature> for each other
-# feature in turn.
+# init system (pi0-systemd) for the toolchain and the features that the platform and the init bring,
+# extended by +<fragment> for the kernel, and by +<feature> for each other feature in turn. The key
+# is tools for the build tools, which every platform shares (-bootstrap- and -tools- in the name),
+# except those that a feature installs, which are filed under the key of its system.
 #
 # Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, feature/
 # and platform/. Every other path (documentation, .github/, .claude/, the Dockerfiles,
@@ -187,7 +188,7 @@ find_brought_features() {
     for path in $(git ls-tree --name-only HEAD platform/); do
         add_required_features "$path"
     done
-    for dir in $(find "$archive_dir" -mindepth 1 -maxdepth 1 -type d); do
+    for dir in $(find "$archive_dir" -mindepth 1 -maxdepth 1 -type d ! -name tools); do
         init=${dir##*/}
         init=${init%%+*}
         init=${init#*-}

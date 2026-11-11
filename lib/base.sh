@@ -22,9 +22,15 @@ stage() {
 
 # Download a URL into a directory.
 fetch_url() {
-    local url=$1 dest=$2
+    local url=$1 dest=$2 tmp
     mkdir -p "$dest"
-    wget -P "$dest" "$url"
+    # The download has a name of its own until it is complete: builds that run at once share
+    # downloads, and one would take another's partial file for the whole.
+    tmp=$(mktemp "$dest/${url##*/}.XXXXXX.tmp")
+    wget -O "$tmp" "$url" && chmod 644 "$tmp" && mv "$tmp" "$dest/${url##*/}" || {
+        rm -f "$tmp"
+        return 1
+    }
 }
 
 # Verify a file against an expected algo:hexdigest pair (e.g., sha256:abc...).
