@@ -114,9 +114,9 @@ tables, or on the rule alone (mandoc and ccid).
 3. **Check it.** `pyspdxtools --infile image/<key>.spdx.json` validates against the SPDX 2.3 model:
    licence expressions, identifiers and relationships. Not part of the build, which runs with the
    tools alone.
-4. **Scan it.** CI keeps the SBOM of the pi0 image that its test phase makes, and
-   `.github/workflows/vulnerabilities.yaml` scans the latest one with Grype after each run of CI on
-   main, with the vulnerability data of the day, building nothing. The findings go to the run's
+4. **Scan it.** CI keeps the SBOM of the virt and pi0 images that their test phases make, and
+   `.github/workflows/vulnerabilities.yaml` scans the latest of each with Grype after each run of CI
+   on main, with the vulnerability data of the day, building nothing. The findings go to the run's
    summary and to GitHub's code scanning, where an alert can be dismissed with a reason. The scan is
    a report: it leaves CI's result alone, and fails, as the README's badge shows, when a finding of
    high or critical severity has a fixed version. `.github/ci/grype.yaml` leaves out the findings

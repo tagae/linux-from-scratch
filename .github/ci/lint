@@ -10,8 +10,9 @@
 
 set -o errexit -o nounset
 
-# The system that CI builds: the Makefile's pi0-test goal.
-readonly ci_system_key=pi0
+# The systems that CI builds, one per platform of .github/workflows/ci.yaml: the Makefile's
+# <platform>-test goals.
+readonly ci_system_keys='virt pi0'
 
 failed=
 
@@ -94,8 +95,10 @@ done
 #===[ System key ]===
 
 # stdout goes to /dev/null and stderr to the output, which is why the redirections are in this order.
-if ! output=$(SYSTEM_KEY=$ci_system_key ./lfs help 2>&1 > /dev/null); then
-    finding "SYSTEM_KEY=$ci_system_key does not resolve: $output"
-fi
+for key in $ci_system_keys; do
+    if ! output=$(SYSTEM_KEY=$key ./lfs help 2>&1 > /dev/null); then
+        finding "SYSTEM_KEY=$key does not resolve: $output"
+    fi
+done
 
 [ -z "$failed" ] || exit 1
