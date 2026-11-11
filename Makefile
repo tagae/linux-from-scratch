@@ -1,14 +1,14 @@
 .PHONY: \
-	tools-bootstrap %-tools-bootstrap \
-	tools %-tools \
+	tools-bootstrap \
+	tools \
 	system %-system \
 	image \
 	qemu %-qemu \
 	test %-test \
 	clean distclean pristine \
 	FORCE \
-	docker-tools-bootstrap docker-%-tools-bootstrap \
-	docker-tools docker-%-tools \
+	docker-tools-bootstrap \
+	docker-tools \
 	docker-system docker-%-system \
 	docker-image \
 	docker-test docker-%-test \
@@ -41,25 +41,28 @@ features := $(sort $(FEATURES))
 SYSTEM := $(PLATFORM)-$(INIT)$(subst $(space),,$(foreach feature,$(features),+$(feature)))
 
 # Default targets.
-tools-bootstrap: $(SYSTEM)-tools-bootstrap
-tools: $(SYSTEM)-tools
 system: $(SYSTEM)-system
 image: image/$(SYSTEM).img
 qemu: $(SYSTEM)-qemu
 test: $(SYSTEM)-test
 
-%-tools-bootstrap %-tools %-system image/%.img %-qemu: export SYSTEM_KEY = $*
+%-system image/%.img %-qemu: export SYSTEM_KEY = $*
+
+# The tools run on the build machine, whatever the system is: they are built once, and every system
+# uses them, so that systems can be built at once (`make -j test pi0-test`). No system's key reaches
+# them, whichever system's target asks for them first.
+tools-bootstrap tools: export SYSTEM_KEY =
 
 # Build tools.
-%-tools-bootstrap:
+tools-bootstrap:
 	# A native toolchain plus the temporary tools needed to build the rest.
 	./lfs tools bootstrap
 
-%-tools: %-tools-bootstrap
+tools: tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	./lfs tools build
 
-%-system: %-tools
+%-system: tools
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable
@@ -88,8 +91,6 @@ pristine: distclean
 #---===[ Docker ]===---
 
 # Default Docker targets.
-docker-tools-bootstrap: docker-$(SYSTEM)-tools-bootstrap
-docker-tools: docker-$(SYSTEM)-tools
 docker-system: docker-$(SYSTEM)-system
 docker-image: docker-image/$(SYSTEM).img
 docker-test: docker-$(SYSTEM)-test
@@ -100,22 +101,23 @@ docker-test: docker-$(SYSTEM)-test
 	@echo HOST_GID=$$(id -g) >> $@
 	@echo LFS_RELEASE=$(LFS_RELEASE) >> $@
 
-docker-%-tools-bootstrap docker-%-tools docker-%-system docker-image/%.img: export SYSTEM_KEY = $*
+docker-%-system docker-image/%.img: export SYSTEM_KEY = $*
+docker-tools-bootstrap docker-tools: export SYSTEM_KEY =
 
 # The same rules through Docker Compose, up to the image.
 # The bootstrap container builds the first tools,
 # and the scratch container (nothing but those tools) builds the rest.
-docker-%-tools-bootstrap: .env
+docker-tools-bootstrap: .env
 	# Directories mounted by Docker Compose.
 	mkdir -p download archive work/bootstrap work/boot image
 	# Native toolchain plus the temporary tools needed to run the scratch container.
 	docker compose run --build --rm bootstrap ./lfs tools bootstrap
 
-docker-%-tools: docker-%-tools-bootstrap
+docker-tools: docker-tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	docker compose run --build --rm scratch ./lfs tools build
 
-docker-%-system: docker-%-tools
+docker-%-system: docker-tools
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable

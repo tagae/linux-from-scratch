@@ -27,8 +27,10 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   toolchain's and the base features' packages (init, Pi firmware/boot) are shared by all systems; the kernel sits
   under the base key plus ALL the fragments of the features, sorted (`pi0-systemd+hidraw+systemd+usb+usb-storage`;
   `pi0-systemd+systemd` with no other feature), shared by systems whose features need the same fragments; another
-  feature's packages under the base key plus the features up to it (`pi0-systemd+fido2+gnupg`). Build-machine
-  packages are `<name>-tools-<version>`.
+  feature's packages under the base key plus the features up to it (`pi0-systemd+fido2+gnupg`). The build
+  tools (`<name>-bootstrap-<version>`, `<name>-tools-<version>`) are under the key `tools`, built once for every
+  system; those a feature installs with `lfs_tools_install` stay under the system's key, as `rust` depends on the
+  platform.
 - A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel fragment or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
   After a kernel fragment delete `linux-*.tar.xz*` of EVERY key that must change: those with the fragment, or all of
@@ -41,14 +43,22 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image and its SBOM
   (`image/<key>.img`, `image/<key>.spdx.json`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
   with `pyspdxtools --infile` (`pip install spdx-tools` in a venv).
-- NEVER run two builds at once, of any keys or platforms, yours or an agent's: check `ps aux | grep -E
-  '[m]ake docker|[d]ocker compose run'`. Every build re-extracts the tools into the shared `tools` volume,
-  overwriting tools another build is running (`Bus error (core dumped)` in `rm`/`sed` during a configure, silently
-  failing tests, nonsense follow-on errors), and all keys of a platform and init share and wipe one sysroot
-  (`work/pi0-systemd/sysroot`).
+- Builds of DIFFERENT platforms run at once from ONE make (`make -j docker-test docker-pi0-test`, no job limit:
+  tools first, then the systems side by side; each build uses `-j$(nproc)`). They share the `tools` volume, the
+  downloads and `archive/tools`; each platform has its own sources (`source/<platform>-<init>`), work, archives and
+  image; the cross toolchains share a few files (`libcc1`, `bfd-plugins/libdep.so`, docs), rewritten when a build
+  extracts its own. Two cross gcc compiles at once got `Killed signal terminated program cc1plus` in a 12 GiB VM:
+  give the VM 24 GiB or more. NEVER run two builds of the same platform and init (they share and wipe one sysroot,
+  `work/pi0-systemd/sysroot`), nor two systems whose features install a platform-dependent build tool (`rust`, for
+  `yubikey-manager`): they overwrite each other's files in `tools`. Builds started apart on a cold state both build
+  the tools: run `make docker-tools` first. `build-image` refuses while any build runs: for several, use make.
+  Check with `ps aux | grep -E '[m]ake docker|[d]ocker compose run'`. A tool is extracted into `tools` only when
+  the digest recorded in `tools/.installed/<archive name>` differs, so a build never rewrites what another runs
+  (the old failure: `Bus error (core dumped)` in `rm`/`sed` during a configure, silently failing tests, nonsense
+  follow-on errors); after deleting a tool's archive the rebuilt one is extracted again.
 - `system-files` is merged BEFORE the other packages and the last file wins: a file a package installs cannot be
   overridden from `package/system-files`; change it in that package.
-- Sources and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
+- Sources (`source/<platform>-<init>`, `source/tools`) and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
   and compilers (the meson recipes wipe theirs in `prepare`); patches are stamped `.patched-*`, so a patch you
   change is not applied again to a source that has it: delete that source directory.
 - The kernel `.config` is regenerated from `allnoconfig` + fragments at every `prepare`; allnoconfig drops options
@@ -69,6 +79,11 @@ user's YubiKey touch).
 
 ## Docker, Colima, the Mac shell
 
+- Builds run in the Colima profile `lfs` (18 CPUs, 24 GiB, no Kubernetes), next to the user's default: prefix make
+  with `env DOCKER_CONTEXT=colima-lfs`, and give every `docker` command `--context colima-lfs` (its volumes and images are
+  not the default VM's). Start it with `colima start -p lfs --cpus 18 --memory 24 --disk 100 --runtime docker
+  --vm-type vz --mount-type virtiofs --kubernetes=false --vz-rosetta=false --binfmt=false --activate=false`
+  (the user's Colima template enables Kubernetes and Rosetta for new profiles, so the flags are not optional).
 - Colima shares only `$HOME`: `docker run -v /tmp/x:/x` mounts an EMPTY directory. Keep files in the repo or pipe
   a script: `docker run --rm -i IMG sh -s -- args < script`.
 - Volumes `linux-from-scratch_{source,work,tools,install}`; images `linux-from-scratch-dev` (Debian: readelf,

@@ -12,9 +12,10 @@ Overview
   platforms need (the kernel), and tool sets for the systems' users
 * `package/`: package recipes
 * `download/`: fetched archives
-* `source/`: unpacked sources
+* `source/`: unpacked sources, one directory per platform and init (`source/pi0-systemd`) and one
+  for the tools (`source/tools`), as sources are patched in place
 * `work/`: build dirs, and the sysroots of the cross toolchains
-* `tools/`: toolchains
+* `tools/`: the build tools, which every system shares, and the cross toolchain of each platform
 * `install/`: target install trees, one per system key
 * `archive/`: package tarballs, each with its SHA-256 digest
 * `image/`:  disk images
@@ -117,7 +118,7 @@ live in `package/python/` and are named `python/<name>`, after their PyPI projec
 
 The directory of a package's name is its category (`python` for `python/click`, `.` for `bash`).
 The framework puts everything of the package in the category's directory of `download/`,
-`source/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked sources (a
+`source/<key>/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked sources (a
 recipe cannot set `package_source_dir` elsewhere), its build, stage and component directories, and
 its archives. Packages of different categories therefore never share a path, whatever their names,
 versions or files are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks
@@ -255,7 +256,11 @@ then the others in alphabetical order, each after the features it requires; a fe
 on another's packages requires it. Each file's header says what it enables and how it changes the
 others. Build-machine tools
 that a system build needs (swig, the Rust seed, native Python modules) are installed into `TOOL_DIR`
-from the feature with `lfs_tools_install <package>`, archived `*-tools-*`, never shipped.
+from the feature with `lfs_tools_install <package>`, archived `*-tools-*` under the system's key,
+never shipped. The tools that `lfs tools` builds are archived under the key `tools` instead, and
+every system shares them, so their recipes use nothing of the platform (`target_arch`, `kernel_arch`
+and the like are the platform's). A tool of a feature may: `rust` does. Its files in `TOOL_DIR`
+are then the platform's, and two systems with such a feature cannot be built at once.
 
 
 Writing Recipes

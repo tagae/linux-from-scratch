@@ -12,6 +12,13 @@
 # When build == host != target, we have a cross toolchain.
 # When build != host == target, we have a cross-native toolchain.
 # When build != host != target, we have a Canadian toolchain.
+#
+# The tools run on the build machine whatever the platform, so they are built once, under a key of
+# their own, rather than the platform's, and every system uses them. The cross toolchain of a
+# platform, which runs on the build machine too, is built with the system (lib/system.sh) and
+# installed in the same directory, TOOL_DIR, in files that the platform's triplet names, but for a few
+# that platforms share (libcc1, bfd-plugins/libdep.so, documentation).
+readonly tools_key=tools
 
 # See https://www.airs.com/ian/configure/configure_5.html
 
@@ -34,6 +41,7 @@ lfs_tools_bootstrap() {
 
     readonly package_variant=bootstrap
     package_install_dir=$TOOL_DIR
+    package_key=$tools_key
 
     # Where the programs built from here on find their dynamic linker and libraries, whether
     # TOOL_DIR is mounted over /usr (the scratch container) or not (a Linux host).
@@ -119,6 +127,7 @@ lfs_tools_build() {
 
     readonly package_variant=tools
     package_install_dir=$TOOL_DIR
+    package_key=$tools_key
 
     lfs_tools_set_rtld_ldflags
 

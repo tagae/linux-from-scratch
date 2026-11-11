@@ -250,6 +250,27 @@ they are installed. Systems thus share the archives of what they have in common:
 platform's, the kernel of systems whose features rely on the same fragments, and the other
 features' of systems whose kernels differ.
 
+The build tools run on the build machine whatever the platform, so their archives are filed under
+the key `tools` and built once, for every system. Systems of different platforms can therefore be
+built at once, each build using all the cores:
+
+```shell
+make -j docker-test docker-pi0-test
+```
+
+Make builds the tools first, then the systems side by side. The builds share the tools directory
+(the cross toolchain of each platform lives there in files named after its triplet, but for a few,
+such as `libcc1` and the documentation, which each build rewrites when it extracts its own), the
+downloads and the tools' archives, and nothing else: each platform unpacks its sources, builds,
+installs and archives apart. Memory limits it more than cores do: each build runs `-j$(nproc)`, and
+two cross gcc compiles at once need more than 12 GiB (the compiler is killed while it compiles
+`gimple-match-*.cc`), so give the build machine, or the Colima VM, 24 GiB or more. Two limits remain. Systems of the same platform and init (`pi0-systemd` and
+`pi0-systemd+gnupg`) share a sysroot, so they are built one after the other. And a system with a
+feature that installs a build tool that depends on the platform (`yubikey-manager`, whose Rust
+targets the platform's architecture) cannot be built while another system with such a feature is,
+as both write the same files in the tools directory. Builds that start from scratch apart, rather
+than from one `make`, would both build the tools: build them first (`make docker-tools`).
+
 `make distclean` removes the build state and the tools; `make pristine` also removes downloads,
 archives and images.
 

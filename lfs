@@ -86,7 +86,8 @@ esac
 # Artefacts produced by bootstrap, needed to build a system from scratch.
 : ${BOOTSTRAP_DIR:=$WORK_DIR/bootstrap}
 
-readonly STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR \
+# SOURCE_DIR is made read-only below, once the key of what unpacks there is known.
+readonly STATE_DIR DOWNLOAD_DIR WORK_DIR TOOL_DIR \
          INSTALL_DIR ARCHIVE_DIR IMAGE_DIR BOOTSTRAP_DIR
 
 #===[ System Characteristics ]===
@@ -179,6 +180,16 @@ readonly SYSTEM_KEY=$PLATFORM-$INIT${FEATURES:++$(set -- $FEATURES; IFS=+; echo 
 #   The kernel's adds the fragments that configure it.
 
 package_key=$PLATFORM-$INIT
+
+#-- Source directory: sources are unpacked and patched in place, so the tools and each platform have a
+#   directory of their own in SOURCE_DIR. Builds of different platforms run at once, and one would
+#   patch, or discard after a failed patch, the source that another compiles. Downloads are shared,
+#   as they are written whole and checked by hash.
+
+case "${1:-help}" in
+    tools) readonly SOURCE_DIR=$SOURCE_DIR/$tools_key ;;
+    *)     readonly SOURCE_DIR=$SOURCE_DIR/$package_key ;;
+esac
 
 #===[ Compilation ]===
 
