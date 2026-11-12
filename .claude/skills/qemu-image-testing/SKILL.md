@@ -1,6 +1,6 @@
 ---
 name: qemu-image-testing
-description: Boot-test a built image (pi0, virt, arm64, amd64) under QEMU - run guest commands, diff the boot's warnings against a baseline, emulate USB sticks and readers, pass a real YubiKey through, answer PIN prompts, test the clock across boots. Use after any change that ends up in an image, and before burning a card or trusting a build. Not for the real Pi or for building (lfs-build-iteration).
+description: Boot-test a built image (pi0, virt) under QEMU - run guest commands, diff the boot's warnings against a baseline, emulate USB sticks and readers, pass a real YubiKey through, answer PIN prompts, test the clock across boots. Use after any change that ends up in an image, and before burning a card or trusting a build. Not for the real Pi or for building (lfs-build-iteration).
 model: sonnet
 ---
 
@@ -43,12 +43,17 @@ Memory resource size exceeds max for 32 bits`. An attached stick adds `sd 0:0:0:
 
 ## Platforms
 
-| | pi0 | virt | arm64, amd64 |
-|---|---|---|---|
-| Machine | `raspi0`, TCG, ~30 s per check | the Mac's arch with HVF (KVM on Linux), ~10 s | `virt`/`q35`, `-cpu max`, accelerator fallbacks |
-| Console, disk | `ttyAMA0`, `mmcblk0p2`, DTB | virtio `hvc0` on stdio shared with the monitor (Ctrl-A c), `vda1`, no DTB | `ttyAMA0`/`ttyS0`, `vda1` |
-| USB | DWC2 behind a hub | `qemu-xhci` | `qemu-xhci` |
-| Tested | end to end | end to end | dry run only |
+| | pi0 | virt |
+|---|---|---|
+| QEMU machine | `raspi0`, TCG, ~30 s per check | the Mac's arch with HVF (KVM on Linux), ~10 s |
+| Console, disk | `ttyAMA0`, `mmcblk0p2`, DTB | virtio `hvc0` on stdio shared with the monitor (Ctrl-A c), `vda1`, no DTB |
+| USB | DWC2 behind a hub (`usb` capability) | `qemu-xhci`, which the `virt` profile's kernel has no driver for: a profile that names `usb` gets it |
+| Tested | end to end | end to end |
+
+Without a pty (an agent sandbox that refuses them: `The system has no more ptys` from `expect`, so from
+`qemu-check`, `check-baseline` and `./test` too), boot the `--print` command with stdin from a pipe or FIFO
+and wait for markers (`login:`, `Password:`) in the output file instead; the same `check-boot.cmd` then
+works, joined on one line with `; ` before the last `echo`.
 
 New profile: `--print`, a plain `qemu-check KEY`, then `check-baseline --save`. Reader names carry the
 guest's bus path (`(1-0000:00:02.0-1)` virt, `(1-1.1)` pi0): do not match them literally. The Zero has one USB

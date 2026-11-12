@@ -1,6 +1,6 @@
 #!/bin/sh
 # Boots a built image under QEMU exactly as `./lfs qemu` does (so with the settings of its platform:
-# pi0, virt, arm64, amd64), logs in as root, runs one command line, powers off, and prints what the
+# pi0, virt), logs in as root, runs one command line, powers off, and prints what the
 # command printed. Or, with --print, prints the QEMU command line instead of running it.
 #
 # Usage: qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
