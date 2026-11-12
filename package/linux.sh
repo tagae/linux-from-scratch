@@ -121,8 +121,7 @@ _make() {
     make -C $package_source_dir O=$package_build_dir "$@"
 }
 
-# Headers describe the kernel interface to the libc of the host: the platform's when compiling for
-# it, the build machine's otherwise.
+# The headers describe the kernel interface to the libc of the host.
 _make_headers() {
     _make ${host:+ARCH=$kernel_arch} "$@"
 }
