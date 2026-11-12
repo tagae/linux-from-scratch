@@ -8,6 +8,8 @@
 prepare() {
     case $package_component in
         procps-ng)
+            : ${kill:=no}
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \

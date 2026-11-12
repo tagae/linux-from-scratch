@@ -7,6 +7,8 @@
 prepare() {
     case $package_component in
         libusb)
+            : ${udev:=no}
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \

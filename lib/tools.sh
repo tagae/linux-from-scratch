@@ -49,7 +49,7 @@ lfs_tools_bootstrap() {
 
     lfs_install_package linux#headers
     (
-        nscd=no enable_kernel=5.10 headers=$TOOL_DIR/usr/include
+        enable_kernel=5.10 headers=$TOOL_DIR/usr/include
         lfs_install_package glibc
         lfs_install_package glibc#dev
     )
@@ -64,7 +64,7 @@ lfs_tools_bootstrap() {
         # libraries) comes after LD_LIBRARY_PATH, which builds set to run what they just built
         # against the libraries they just built, rather than against those already in TOOL_DIR.
         (
-            shared=yes gprofng=no werror=no new_dtags=yes
+            shared=yes new_dtags=yes
             lfs_install_package binutils
         )
 
@@ -73,7 +73,6 @@ lfs_tools_bootstrap() {
             languages=c,c++
             shared=yes threads=yes libstdcxx=yes
             fixincludes=no
-            libatomic=no libgomp=no libquadmath=no libsanitizer=no libssp=no libvtv=no
             # The compilers after the first stage ignore LDFLAGS.
             boot_ldflags="$LDFLAGS -static-libstdc++ -static-libgcc"
             # Rather than the build machine's, whatever comes first in PATH. Its linker would load
@@ -137,7 +136,8 @@ lfs_tools_build() {
     lfs_install_package patch
     lfs_install_package zlib
     lfs_install_package zlib#dev
-    ( optimizations=no; lfs_install_package python )
+    # With pip, which builds the Python packages.
+    ( ensurepip=upgrade; lfs_install_package python )
     lfs_install_package gperf
     (
         python_version=$(lfs_package_version python)
@@ -152,7 +152,7 @@ lfs_tools_build() {
         sysroot=$TOOL_DIR shrplib=no relocatable=yes perlpath=$TOOL_DIR/usr/bin/perl
         lfs_install_package perl
     )
-    ( manpages=no; lfs_install_package kmod )
+    lfs_install_package kmod
     # The kernel's headers_install copies the headers with rsync.
     lfs_install_package rsync
     # The x86-64 kernel's objtool links libelf, from elfutils, whose sources come as .tar.bz2.
@@ -161,14 +161,12 @@ lfs_tools_build() {
     # libcbor and libfido2 build with CMake.
     lfs_install_package cmake
     (
-        shared=yes normal=no debug=no cxx_shared=yes
+        shared=yes cxx_binding=yes cxx_shared=yes db_install=yes
         lfs_install_package ncurses
         lfs_install_package ncurses#dev
     )
     (
         libdir=/usr/lib bindir=/usr/bin sbindir=/usr/sbin
-        makeinstall_chown=no makeinstall_setuid=no
-        all_programs=no
         libblkid=yes libuuid=yes libmount=yes libfdisk=yes libsmartcols=yes
         fdisks=yes
         lfs_install_package util-linux

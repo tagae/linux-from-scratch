@@ -7,6 +7,10 @@
 prepare() {
     case $package_component in
         util-linux)
+            # libudev and libsystemd are systemd's, which is built after util-linux.
+            : ${all_programs:=no} ${python:=no} ${systemd:=no} ${udev:=no}
+            : ${makeinstall_chown:=no} ${makeinstall_setuid:=no}
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
@@ -44,7 +48,6 @@ prepare() {
                 ${setpriv:+--enable-setpriv=$setpriv} \
                 ${runuser:+--enable-runuser=$runuser} \
                 ${pylibmount:+--enable-pylibmount=$pylibmount} \
-                ${static:+--enable-static=$static} \
                 ${liblastlog2:+--enable-liblastlog2=$liblastlog2} \
                 ${python:+--with-python=$python} \
                 ${systemd:+--with-systemd=$systemd} \
@@ -56,6 +59,7 @@ prepare() {
                 ${wall:+--enable-wall=$wall} \
                 ${makeinstall_chown:+--enable-makeinstall-chown=$makeinstall_chown} \
                 ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid} \
+                --disable-static \
                 --disable-bash-completion
             ;;
         *)

@@ -8,8 +8,8 @@ prepare() {
     case $package_component in
         openssl)
             # Configure cannot guess the platform from a cross compiler: it takes its name, and
-            # the prefix of the toolchain's programs. The features to leave out are listed in
-            # `disable`.
+            # the prefix of the toolchain's programs. The features to leave out besides the
+            # documentation are listed in `disable`.
             local configure_target feature
             configure_target=${host:+$(_target $host)}
             for feature in ${disable:-}; do
@@ -22,6 +22,7 @@ prepare() {
                 --openssldir=/etc/ssl \
                 --libdir=lib \
                 "$@" \
+                no-docs \
                 shared
             ;;
         *)

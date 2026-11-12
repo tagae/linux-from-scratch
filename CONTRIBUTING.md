@@ -267,6 +267,10 @@ Read two recipes like yours before starting: copy idioms, not ideas.
 * Use the upstream's own targets and options (`headers_install`, meson options, `make install`)
   over re-implementing them; add the missing tool rather than a workaround.
 * Link dynamically; static only where dynamic complicates things (gcc's in-tree gmp, mpfr and mpc).
+* A feature a recipe lets the caller switch (`gpgsm`, `libgomp`, `python`) is off unless the caller
+  turns it on: the recipe says `: ${gpgsm:=no}`, and a profile or `lib/tools.sh` sets `=yes` for
+  the features it uses and `=no` for none. Options that take a value or a place (`hashes`, `bindir`)
+  have no such default, and neither has one that is no feature (`stripping`, `ssldirs`).
 * No documentation: no man, info, doc, locale or NLS files; the install calls
   `move_to_docs_component`. No empty directories in a system, except mount points. Real hardware
   comes first: the Pi's boot partition is firmware, `config.txt`, `cmdline.txt` and a flat device
