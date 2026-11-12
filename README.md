@@ -9,38 +9,46 @@ and [additional packages](https://www.linuxfromscratch.org/blfs/view/stable-syst
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is put together.
 
 
-Quick Start
------------
-
-Build the whole chain, from the build tools to a disk image that is booted a virtual machine:
-
-```shell
-make image
-```
-
-Or if you want to also boot the built image:
-
-```shell
-make qemu
-```
-
-
 Requirements
 ------------
 
-The rules build directly on a Linux host, which needs:
+You can skip these requirements if you intend to work through Docker.
 
-* the tools that `Dockerfile.bootstrap` installs: a C and C++ toolchain (`build-essential`), `curl`,
-  `wget`, `rsync`, `gawk`, `bison`, `python3`, `patchelf` and CA certificates;
-* `sudo`, for `make image`, which makes the system's files root's (as root, run `make image SUDO=`);
-* `expect`, and QEMU for the platform's architecture with `qemu-img`, for `make qemu` and
-  `make test`. The `virt` platform uses KVM.
+Else, you need a Linux host with the following utilities.
 
-Hosts that are not Linux can make the image through Docker Compose instead, with the `docker-`
-goals: `make docker-image`, or `make docker-image/pi0-pgp.img` for a given profile. The image
-then runs on the host, with QEMU and `expect`: `./lfs qemu` boots it, and `./test` also logs in and
-powers off (for a profile other than `virt`, set `PROFILE=pi0-pgp`, or pass its name to `./test`).
-`make docker-test` makes the image and runs `./test`, as `make test` does without Docker.
+1. To build the tools (e.g., `make tools`),
+
+  * A C and C++ toolchain.
+  * The `curl`, `wget`, `rsync`, `gawk`, `bison`, `python3`, `patchelf` commands.
+  * CA certificates.
+
+2. To build images (e.g., `make image`),
+
+  * A working `sudo` command.
+
+3. To be able to boot images in a VM (e.g., `make qemu`),
+
+  * QEMU for your host's architecture, including `qemu-img`.
+
+4. To test booted images (e.g., `make test`),
+
+  * The `expect` command.
+
+
+Quick Start
+-----------
+
+Build the whole chain, from the build tools to a disk image, boot it, login and power off:
+
+```shell
+make test
+```
+
+If you prefer working through Docker:
+
+```shell
+make docker-test
+```
 
 
 Supported Platforms
@@ -54,31 +62,31 @@ Supported Platforms
 | `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
 
 
-Profiles and Kernel Capabilities
---------------------------------
 
-A *profile* is a whole system: the list of its packages, in the order they are installed, with the
-options of each package at its call site, in `profile/<profile>.sh`. The init system and the kernel
-are among the packages. A profile is named `<platform>[-<name>]`, after the platform it runs on
-(`pi0-pgp` runs on `pi0`), and its name is the key of everything that is built for it: the package archives, the install tree, the boot files and the
-image. Everything in a system but its layout and the cross toolchain's C library and runtime comes
-from its profile.
+Profiles
+--------
 
-| Profile   | Platform | System                                                                |
-|-----------|----------|-----------------------------------------------------------------------|
-| `virt`    | `virt`   | A bare-bones virtual machine that boots, logs root in, and powers off |
-| `pi0-pgp` | `pi0`    | A Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey   |
+A *profile* is a whole system specification: kernel, init system and further packages.
 
-`virt` holds systemd, dash and the kernel, and nothing else. `pi0-pgp` adds GnuPG with `gpg-genkey`,
-`ykman` and libfido2's tools for the YubiKey, the GNU tools, `dmesg` for the kernel log, procps, and
-the time zone database.
+Out of the box profiles are located in `profile/<profile>.sh`.
 
-The `amd64` and `arm64` platforms have no profile yet.
+A profile is named `<platform>[-<name>]`, after the platform it runs on (e.g., `pi0-pgp` runs on
+`pi0`), and its name is used as key of all built artefacts: package archives, install tree, boot
+files and image.
 
-A *kernel capability*, `package/linux/<capability>.config`, is the kernel configuration for a kind
-of device. A profile names in the `capabilities` option of the `linux` package every capability it
-relies on, as a capability brings in no other. A capability that differs by architecture has a part
-for each, `package/linux/<capability>.<architecture>.config`.
+| Profile   | Platform | System                                                                             |
+|-----------|----------|------------------------------------------------------------------------------------|
+| `virt`    | `virt`   | Bare-bones virtual machine with only a root account                                |
+| `pi0-pgp` | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
+
+
+Kernel Capabilities
+-------------------
+
+A *kernel capability*, `package/linux/<capability>.config`, is a kernel configuration bundle.
+
+A capability that differs by architecture has a part for each:
+`package/linux/<capability>.<architecture>.config`.
 
 | Capability    | Supports                                                     |
 |---------------|--------------------------------------------------------------|
