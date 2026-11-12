@@ -12,7 +12,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 
 - A system is a profile, `profile/<profile>.sh` (`virt`, `pi0-pgp`): the whole flat list of its packages, in
   install order, with the options of each at its call site, the init (`systemd`, `dash`) and the kernel among
-  them (`( capabilities="hidraw systemd usb usb-storage"; lfs_system_install linux )`, capabilities being
+  them (`( capabilities="btrfs console fat hardening hidraw serial-console systemd usb usb-storage"; lfs_system_install linux )`, capabilities being
   `package/linux/<capability>.config`, alphabetical). The profile's name starts with its platform
   (`pi0-pgp` runs on `pi0`) and is the key of everything: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`,
   `source/<profile>`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
@@ -27,7 +27,10 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 - A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel capability or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
   After a kernel capability delete `linux-*.tar.xz*` of EVERY profile that must change: those that name the capability,
-  or all of them for a layer.
+  or all of them for a layer. The glob also takes `linux-<version>-headers.tar.xz*`, which the toolchain needs
+  only to be re-extracted: name the kernel's archive (`linux-7.3.1.tar.xz*`, `linux-stable_20261103.tar.xz*`) to keep it.
+  To prove a kernel change moved nothing, save the resolved `.config` from the `work` volume
+  (`$B/kernel-config` shows single options), rebuild, and `diff`.
   Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade
