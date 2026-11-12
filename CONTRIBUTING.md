@@ -1,30 +1,24 @@
-Contributing
-============
+Contributing To This Project
+============================
 
 Overview
 --------
 
 * `lfs`: CLI frontend
-* `lib/`: LFS framework, with the helpers of the recipes of a package category, loaded for them
-  alone
+* `lib/`: framework implementation; contains the `lfs` subcommands
 * `platform/`: the machines that systems run on
-* `profile/`: the systems to build, each the whole list of its packages, the init system and the
-  kernel included
+* `profile/`: system recipes
 * `package/`: package recipes
 * `download/`: fetched archives
-* `source/`: unpacked sources, one directory per profile (`source/pi0-pgp`) and one for the tools
-  (`source/tools`), as sources are patched in place
+* `source/`: unpacked sources, per profile (e.g., `source/pi0-pgp`) and tools (`source/tools`)
 * `work/`: build dirs, and the sysroots of the cross toolchains
-* `tools/`: the build tools, which every system shares, and the cross toolchain of each platform
-* `install/`: target install trees, one per profile
-* `archive/`: package tarballs, each with its SHA-256 digest
-* `image/`:  disk images
-* `Makefile`: build rules, run directly on a Linux host; the `docker-` goals run them through Docker
-  Compose instead, up to the image
-* `Dockerfile.{bootstrap,scratch}`: build containers (for reproducibility)
+* `tools/`: built tools and cross toolchain for each platform
+* `install/`: target install trees, per profile
+* `archive/`: package tarballs and SHA-256 digests
+* `image/`:  built disk images
+* `Makefile`: build rules
+* `Dockerfile.{bootstrap,scratch,dev}`: build and dev containers (for reproducibility)
 * `test`: boot tester
-
-The `lfs` CLI frontend invokes the sub-commands implemented in `lib/*.sh`.
 
 
 Building the Toolchain
@@ -222,6 +216,12 @@ and every patch description.
 A change to the framework (`lib/*.sh`, `Makefile`, `Dockerfile.*`, `docker-compose.yaml`, `lfs`)
 starts from its design, shown before the change is made, unless the change is what was asked for.
 The archive step only archives. Profiles are written on request, not speculatively.
+
+### Markdown Conventions
+
+* Prefer ASCII art.
+  * In particular, prefer underlined headers over `#` and `##`.
+  * Align table dividers so that they look fine in plain text.
 
 
 Where Code Goes

@@ -1,4 +1,5 @@
-# SBOMs for images: design
+Image Source Bill Of Materials
+==============================
 
 **Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`, and scanned by Grype in CI
 (`.github/workflows/vulnerabilities.yaml`). The document names the upstream packages, with the CPEs
