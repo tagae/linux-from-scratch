@@ -60,11 +60,14 @@ lfs_install_package systemd#dev
 
 #===[ Kernel and boot ]===
 
-# The kernel, with its self-protection, the options that systemd relies on, USB devices (YubiKeys,
-# USB sticks and card readers, also from user space through /dev/bus/usb), HID devices on USB as
-# /dev/hidraw*, and FAT file systems on sticks. The firmware's bootloader and configuration start it from the FAT
-# partition of the Pi layout.
-( capabilities="hardening hidraw systemd usb usb-storage"; lfs_system_install linux )
+# The kernel, with the serial console, the btrfs root file system, its self-protection, the options
+# that systemd relies on, USB devices (YubiKeys, USB sticks and card readers, also from user space
+# through /dev/bus/usb), HID devices on USB as /dev/hidraw*, and FAT file systems on sticks. The
+# firmware's bootloader and configuration start it from the FAT partition of the Pi layout.
+(
+    capabilities="btrfs console hardening serial-console systemd hidraw usb usb-storage"
+    lfs_system_install linux
+)
 lfs_system_install firmware
 lfs_system_install boot
 

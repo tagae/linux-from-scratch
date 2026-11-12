@@ -88,13 +88,16 @@ A *kernel capability*, `package/linux/<capability>.config`, is a kernel configur
 A capability that differs by architecture has a part for each:
 `package/linux/<capability>.<architecture>.config`.
 
-| Capability    | Supports                                                     |
-|---------------|--------------------------------------------------------------|
-| `hardening`   | Kernel self-protection and CPU vulnerability mitigations     |
-| `systemd`     | What systemd relies on                                       |
-| `usb`         | USB devices, also from user space through `/dev/bus/usb`     |
-| `usb-storage` | USB sticks and card readers with a FAT file system           |
-| `hidraw`      | HID devices on USB, such as security keys, as `/dev/hidraw*` |
+| Capability       | Supports                                                     |
+|------------------|--------------------------------------------------------------|
+| `btrfs`          | BTRFS root file systems                                      |
+| `console`        | The terminal layer that consoles build on                    |
+| `hardening`      | Kernel self-protection and CPU vulnerability mitigations     |
+| `serial-console` | A UART as the kernel's console and early console             |
+| `systemd`        | systemd requirements                                         |
+| `usb`            | USB devices, also from user space through `/dev/bus/usb`     |
+| `usb-storage`    | USB sticks and card readers with a FAT file system           |
+| `hidraw`         | HID devices on USB, such as security keys, as `/dev/hidraw*` |
 
 
 Making OpenPGP Keys on a Raspberry Pi
