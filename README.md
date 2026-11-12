@@ -92,11 +92,12 @@ A capability that differs by architecture has a part for each:
 |------------------|--------------------------------------------------------------|
 | `btrfs`          | BTRFS root file systems                                      |
 | `console`        | The terminal layer that consoles build on                    |
+| `fat`            | FAT file systems, such as the Pi's boot partition and sticks |
 | `hardening`      | Kernel self-protection and CPU vulnerability mitigations     |
 | `serial-console` | A UART as the kernel's console and early console             |
 | `systemd`        | systemd requirements                                         |
 | `usb`            | USB devices, also from user space through `/dev/bus/usb`     |
-| `usb-storage`    | USB sticks and card readers with a FAT file system           |
+| `usb-storage`    | USB sticks and card readers                                  |
 | `hidraw`         | HID devices on USB, such as security keys, as `/dev/hidraw*` |
 
 
