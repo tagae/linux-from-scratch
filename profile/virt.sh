@@ -6,29 +6,20 @@
 
 lfs_system_install dash
 
-( manpages=no; lfs_system_install kmod )
+lfs_system_install kmod
 lfs_install_package kmod#dev
 (
-    # Strong hashes for new passwords, and glibc's for checking older ones; nothing here needs the
-    # interfaces of glibc's own libcrypt.
-    hashes=strong,glibc obsolete_api=no
+    # Strong hashes for new passwords, and glibc's for checking older ones.
+    hashes=strong,glibc
     lfs_system_install libxcrypt
     lfs_install_package libxcrypt#dev
 )
-(
-    # Root, the only account, needs no setuid programs. Subordinate ids serve user namespaces, which
-    # the kernels lack.
-    suidperms=0755 subordinate_ids=no
-    lfs_system_install shadow
-)
+lfs_system_install shadow
 (
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
     # What systemd links, libmount and libblkid under it, and runs: mount, and agetty and sulogin
     # for the console.
-    all_programs=no
     libblkid=yes libmount=yes mount=yes agetty=yes sulogin=yes
-    python=no systemd=no static=no
-    makeinstall_chown=no makeinstall_setuid=no
     lfs_system_install util-linux
     lfs_install_package util-linux#dev
 )

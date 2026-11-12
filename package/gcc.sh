@@ -24,6 +24,9 @@ prepare() {
             default_prepare
             ;;
         *)
+            : ${libatomic:=no} ${libgomp:=no} ${libquadmath:=no} ${libssp:=no} ${libvtv:=no}
+            : ${libsanitizer:=no}
+
             # Fetch dependencies are built in-tree, as part of GCC itself.
             ln -sfnv $gmp_source_dir $package_source_dir/gmp
             ln -sfnv $mpfr_source_dir $package_source_dir/mpfr

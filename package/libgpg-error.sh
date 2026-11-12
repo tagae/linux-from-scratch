@@ -7,6 +7,8 @@
 prepare() {
     case $package_component in
         libgpg-error)
+            : ${languages:=no}
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \

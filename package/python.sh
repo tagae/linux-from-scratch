@@ -12,7 +12,7 @@ prepare() {
     case $package_component in
         python)
             : ${shared:=yes}
-            : ${optimizations:=$([ -n "${host:-}" ] && echo no || echo yes)}
+            : ${optimizations:=no} ${ensurepip:=no} ${test_modules:=no}
             : ${static_libpython:=no}
 
             patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/Python-$package_version-openssl_4-1.patch \

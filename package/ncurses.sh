@@ -12,6 +12,8 @@ prepare() {
                 ${prefix:+--prefix=$prefix}
             ;;
         ncurses)
+            : ${normal:=no} ${debug:=no} ${ada:=no} ${cxx_binding:=no} ${db_install:=no}
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \

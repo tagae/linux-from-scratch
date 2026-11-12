@@ -15,6 +15,7 @@ prepare() {
                          sha256:500567ff0a22e295bfe3b55e9b397796f71a19f01e1ff7fb29c9189482ee1809
 
             : ${prefix:=/usr}
+            : ${nscd:=no}
 
             # rootsbindir: ensure that the ldconfig and sln utilities are installed alongside the
             # rest of this glibc, rather than glibc's default /sbin.

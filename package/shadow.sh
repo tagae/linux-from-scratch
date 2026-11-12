@@ -12,9 +12,13 @@
 # logind support would need libsystemd, which is built after this package.
 # New passwords are hashed with yescrypt, rather than with shadow's default, DES.
 # The system has no mail delivery, so login does not check for mail.
+# Unless a system says otherwise, root is its only account: no program is setuid, and there are no
+# subordinate ids, which serve user namespaces.
 prepare() {
     case $package_component in
         shadow)
+            : ${subordinate_ids:=no}
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
@@ -53,7 +57,9 @@ build() {
 install() {
     case $package_component in
         shadow)
-            make install DESTDIR=$package_install_dir ${suidperms:+suidperms=$suidperms}
+            : ${suidperms:=0755}
+
+            make install DESTDIR=$package_install_dir suidperms=$suidperms
             sed -i -e 's/^#ENCRYPT_METHOD .*/ENCRYPT_METHOD YESCRYPT/' \
                 -e 's/^MAIL_CHECK_ENAB[[:space:]].*/MAIL_CHECK_ENAB no/' $package_install_dir/etc/login.defs
             # Without PAM, login prints the file that login.defs' MOTD_FILE names after each login.

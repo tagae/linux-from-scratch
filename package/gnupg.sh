@@ -7,6 +7,9 @@
 prepare() {
     case $package_component in
         gnupg)
+            : ${gpgsm:=no} ${dirmngr:=no} ${keyboxd:=no} ${tpm2d:=no} ${wks_tools:=no} ${gpgtar:=no}
+            : ${tofu:=no} ${photo_viewers:=no}
+
             # The CCID driver looks for libusb's header in a list of directories that a sysroot
             # does not move, the first of which stands for the compiler's own search path.
             env ${sysroot:+CPPFLAGS=-I$sysroot/usr/include/libusb-1.0} \

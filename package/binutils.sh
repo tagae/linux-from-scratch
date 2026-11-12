@@ -5,6 +5,8 @@
 : ${package_license:=GPL-3.0-or-later}
 
 prepare() {
+    : ${gprofng:=no} ${werror:=no}
+
     $package_source_dir/configure \
         ${host:+--host=$host} \
         ${target:+--target=$target} \

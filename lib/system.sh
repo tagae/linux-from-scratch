@@ -86,7 +86,7 @@ lfs_system_build() {
 # Builds the cross toolchain into TOOL_DIR. Its C library, which the final compiler links against,
 # is the system's, installed into the system as well as the sysroot.
 lfs_system_build_toolchain() {
-    ( gprofng=no werror=no; lfs_install_tool binutils )
+    lfs_install_tool binutils
     (
         package_variant=pass1
         glibc_version=$(lfs_package_version glibc)
@@ -96,12 +96,12 @@ lfs_system_build_toolchain() {
         languages=c,c++
         newlib=yes headers=no
         shared=no threads=no
-        libatomic=no libgomp=no libquadmath=no libssp=no libvtv=no libstdcxx=no libsanitizer=no
+        libstdcxx=no
         lfs_install_tool gcc
     )
     lfs_install_package linux#headers
     (
-        nscd=no enable_kernel=5.10
+        enable_kernel=5.10
         # The time zone data is tzdata's, compiled by its own zic.
         timezone_tools=no
         lfs_system_install glibc
@@ -112,7 +112,8 @@ lfs_system_build_toolchain() {
         languages=c,c++
         shared=yes threads=posix
         default_pie=default-pie default_ssp=default-ssp
-        libgomp=no libquadmath=no libssp=no libvtv=no libsanitizer=no
+        # Shipped with the runtime, for the programs that need atomic operations the CPU lacks.
+        libatomic=yes
         lfs_install_tool gcc
     )
 }

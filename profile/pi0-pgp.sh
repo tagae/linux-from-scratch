@@ -16,26 +16,22 @@
 
 lfs_system_install dash
 
-( manpages=no; lfs_system_install kmod )
+lfs_system_install kmod
 lfs_install_package kmod#dev
 (
     # Strong hashes for new passwords, and glibc's for checking older ones.
-    hashes=strong,glibc obsolete_api=no
+    hashes=strong,glibc
     lfs_system_install libxcrypt
     lfs_install_package libxcrypt#dev
 )
-(
-    # Root, the only account, needs no setuid programs.
-    suidperms=0755 subordinate_ids=no
-    lfs_system_install shadow
-)
+lfs_system_install shadow
 
 # The terminal library that procps' top links.
 (
-    shared=yes normal=no debug=no ada=no cxx_binding=no stripping=no
+    shared=yes stripping=no
     # The descriptions of the terminals these systems meet are built into the library, instead of a
     # database of every known terminal.
-    fallbacks=dumb,linux,vt100,vt220,xterm,xterm-256color db_install=no
+    fallbacks=dumb,linux,vt100,vt220,xterm,xterm-256color
     pc_files=yes pkg_config_libdir=/usr/lib/pkgconfig
     lfs_system_install ncurses
     lfs_install_package ncurses#dev
@@ -45,12 +41,8 @@ lfs_install_package kmod#dev
 # and libmount, which systemd links; and dmesg, to read the kernel log.
 (
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
-    all_programs=no
     libblkid=yes libmount=yes
     mount=yes agetty=yes sulogin=yes dmesg=yes
-    # libudev is systemd's, which it installs after.
-    python=no systemd=no udev=no static=no
-    makeinstall_chown=no makeinstall_setuid=no
     lfs_system_install util-linux
     lfs_install_package util-linux#dev
 )
@@ -92,7 +84,7 @@ lfs_system_install gawk
 (
     # Only libcrypto is wanted, which libfido2 and cryptography link: not the openssl program, its
     # documentation or the legacy provider, nor the directories for certificates and configuration.
-    disable="apps docs legacy" ssldirs=no
+    disable="apps legacy" ssldirs=no
     lfs_system_install openssl
     lfs_install_package openssl#dev
 )
@@ -107,11 +99,11 @@ lfs_system_install libfido2
 
 #===[ GnuPG ]===
 
-( languages=no; lfs_system_install libgpg-error )
+lfs_system_install libgpg-error
 lfs_install_package libgpg-error#dev
 
 # Without udev, libusb finds the devices through sysfs. pcsc-lite and ccid below use it too.
-( udev=no; lfs_system_install libusb )
+lfs_system_install libusb
 lfs_install_package libusb#dev
 
 (
@@ -132,8 +124,6 @@ lfs_install_package libusb#dev
         # Only gpg, gpg-agent and scdaemon, with nothing that reaches the network or handles X.509
         # certificates. The CCID driver is required, so that a missing libusb is an error.
         sysconfdir=/etc
-        gpgsm=no dirmngr=no keyboxd=no tpm2d=no wks_tools=no gpgtar=no
-        tofu=no photo_viewers=no
         ccid_driver=yes
         lfs_system_install gnupg
     )
@@ -141,7 +131,6 @@ lfs_install_package libusb#dev
     (
         # Asks for passphrases and PINs on the terminal.
         pinentry_tty=yes
-        pinentry_curses=no fallback_curses=no
         lfs_system_install pinentry
     )
 )
@@ -152,7 +141,7 @@ lfs_system_install gpg-genkey
 #===[ Processes and memory ]===
 
 # ps, top, free, pgrep and the like, from procps-ng. top links ncurses; kill is dash's built-in.
-( kill=no; lfs_system_install procps-ng )
+lfs_system_install procps-ng
 
 #===[ Time zones ]===
 
@@ -173,9 +162,8 @@ lfs_system_install scdaemon-pcsc
 lfs_system_install libffi
 lfs_install_package libffi#dev
 (
-    # ykman and its libraries need neither pip, nor the test modules, nor IPv6, which the kernel
-    # lacks.
-    ensurepip=no test_modules=no ipv6=no
+    # The kernel lacks IPv6.
+    ipv6=no
     lfs_system_install python
     lfs_install_package python#dev
 )
