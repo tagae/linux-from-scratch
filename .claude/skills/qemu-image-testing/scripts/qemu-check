@@ -4,10 +4,10 @@
 # command printed. Or, with --print, prints the QEMU command line instead of running it.
 #
 # Usage: qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
-#   KEY            system key of the image, e.g. pi0-systemd+fido2+gnupg or virt-systemd
+#   KEY            profile of the image, e.g. pi0-pgp or virt
 #   EXTRA ARGS     appended to the QEMU command line (`lfs qemu` reads them from QEMU_EXTRA),
 #                  e.g. "-device usb-ccid"
-#   GUEST COMMAND  one line for the guest's shell (bash-like), default `systemctl is-system-running`
+#   GUEST COMMAND  one line for the guest's shell (dash: no bashisms), default `systemctl is-system-running`
 #   --print        print the command line, quoted for the shell, for the COPY of the image; the copy is
 #                  made if missing (image/KEY.qemu.img unless IMAGE_COPY is set), and so is its
 #                  overlay (image/KEY.qemu.qcow2). Use it to give the user a command to run under sudo,
@@ -56,12 +56,13 @@ fi
 if [ ! -s "$copy" ]; then
     /bin/cp -c "$image" "$copy" 2>/dev/null || cp "$image" "$copy"
 fi
-export SYSTEM_KEY=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
+export PROFILE=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
 
 if [ $mode = print ]; then
     # `lfs qemu` execs the platform's QEMU, whose name the platform file fixes (readonly), so a stand-in
     # of that name first in PATH prints the arguments it was given instead.
-    bin=$( . "platform/${key%%-*}.sh"; echo "${QEMU:-qemu-system-$target_arch}" )
+    platform=${key%%-*}
+    bin=$( . "platform/$platform.sh"; echo "${QEMU:-qemu-system-$target_arch}" )
     shim=$(mktemp -d "${TMPDIR:-/tmp}/qemu-shim.XXXXXX")
     trap 'rm -rf "$shim"' EXIT
     cat > "$shim/$bin" <<'SHIM'

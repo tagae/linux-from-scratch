@@ -1,7 +1,5 @@
 # A 64-bit x86 PC, tested as QEMU's q35 machine.
 
-# Requires: linux
-
 readonly target_arch=x86_64
 readonly kernel_arch=x86_64
 # Virtio devices on PCI Express, as in every QEMU virtual machine.

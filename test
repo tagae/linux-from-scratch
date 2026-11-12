@@ -4,10 +4,10 @@
 #
 # Exits 0 on success, 1 on any failure.
 #
-# Usage: [TEST_TIMEOUT=seconds] ./test [SYSTEM_KEY]
+# Usage: [TEST_TIMEOUT=seconds] ./test [PROFILE]
 
 if {[llength $argv] > 0} {
-    set env(SYSTEM_KEY) [lindex $argv 0]
+    set env(PROFILE) [lindex $argv 0]
 }
 
 # TEST_TIMEOUT overrides the default per-phase timeout.

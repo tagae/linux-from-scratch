@@ -4,20 +4,19 @@
 # an earlier one (the cache of the CI pipeline).
 #
 # Archives are named by package, variant and version (lib/package.sh), not by the content of the
-# recipe, kernel fragment or framework file that built them: an edit that keeps the version would
+# recipe, kernel capability or framework file that built them: an edit that keeps the version would
 # have the build reuse them. So the archives record the commit they were built from, in
 # archive/.commit, and what changed since decides which of them to drop. The packages built against
 # one that changed are not dropped with it: the rules below name the package alone.
 #
 # Layout: archive/<key>/<package>[-<variant>]-<version>[-<revision>][-<component>].tar.xz, next to
 # a .tar.xz.sha256. <package> is the path of the recipe under package/ without .sh, so that
-# python/click is archive/<key>/python/click-<version>.tar.xz. The key is the platform and the
-# init system (pi0-systemd) for the toolchain and the features that the platform and the init bring,
-# extended by +<fragment> for the kernel, and by +<feature> for each other feature in turn. The key
-# is tools for the build tools, which every platform shares (-bootstrap- and -tools- in the name),
-# except those that a feature installs, which are filed under the key of its system.
+# python/click is archive/<key>/python/click-<version>.tar.xz. The key is the name of the profile
+# (pi0-pgp) for the toolchain and everything that the profile installs. The key is tools for the
+# build tools, which every profile shares (-bootstrap- and -tools- in the name), except those that a
+# profile installs, which are filed under its key.
 #
-# Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, feature/
+# Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, profile/
 # and platform/. Every other path (documentation, .github/, .claude/, the Dockerfiles,
 # docker-compose.yaml, test, ...) has no effect. With --docker, for the archives of the build
 # through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml are
@@ -32,17 +31,17 @@
 #       (package/python/yubikey-manager/usr/bin/ykman is python/yubikey-manager, and
 #       package/linux/usb.config is linux, the kernel). A path that belongs to no recipe falls to
 #       rule 9.
-#    3  feature/<f>.sh: every archive under a key with +<f> as one of its items (+usb is not
-#       +usb-storage). A feature that a platform or an init brings is in no key, and every
-#       later package is built against what it installs: every archive but the build tools.
+#    3  profile/<p>.sh: the archives under the key <p> of the packages that the profile installs,
+#       which a change of its options or its order can affect. The toolchain, which it does not
+#       name, stays.
 #    4  lib/<c>.sh, the helpers of a package category <c> (a directory of package/ that holds
 #       recipes at HEAD): everything under archive/*/<c>/.
 #    5  lib/meson.sh: rule 2 for each recipe at HEAD that calls meson_cross_file.
 #    6  lib/system.sh: every archive but the build tools (-bootstrap- and -tools- in the name).
 #    7  Makefile: archive/*/system-files-*, as its LFS_RELEASE ends up in os-release.
-#    8  platform/<p>.sh: everything under archive/<p>-*/.
+#    8  platform/<p>.sh: everything under the key of each profile that runs on the platform.
 #    9  Any other input (lfs, lib/base.sh, lib/package.sh, lib/components.sh, lib/tools.sh, other
-#       paths of feature/, platform/ and lib/): every archive, which makes a build from scratch.
+#       paths of profile/, platform/ and lib/): every archive, which makes a build from scratch.
 #
 # A pattern like archive/*/make-* also drops make-ca-*, as a rebuild of a few archives too many is
 # cheaper than a stale one. download/ is never touched, as what it holds is checked by hash.
@@ -69,7 +68,7 @@ readonly archive_dir=archive
 readonly commit_file=$archive_dir/.commit
 
 # The archives to delete, as lines of "<kind> <argument>" that stale() reads: all, package <recipe>,
-# category <name>, platform <name>, feature <name> and system.
+# category <name>, profile <name>, profile_package <name> <recipe> and system.
 selectors=
 removed=0
 
@@ -114,12 +113,13 @@ stale() {
         category)
             case $name in "$arg"/*) return 0 ;; esac
             ;;
-        platform)
-            case $key in "$arg"-*) return 0 ;; esac
+        profile)
+            case $key in "$arg") return 0 ;; esac
             ;;
-        feature)
-            # The key lists its features after the init, each preceded by a +.
-            case $key in *"+$arg"|*"+$arg+"*) return 0 ;; esac
+        profile_package)
+            # The argument is the profile, then the recipe, anchored as for package.
+            [ "$key" = "${arg%% *}" ] || continue
+            case $name in "${arg#* }"-*) return 0 ;; esac
             ;;
         system)
             case ${name##*/} in
@@ -165,36 +165,20 @@ is_category() {
     git ls-tree --name-only HEAD "package/$1/" 2>/dev/null | grep -q '\.sh$'
 }
 
-# Adds to `brought` the features that a file at HEAD requires, and those that they require in
-# turn.
-add_required_features() {
-    local name
-    for name in $(git show "HEAD:$1" 2>/dev/null | sed -n 's/^# Requires://p'); do
-        case " $brought " in
-        *" $name "*) continue ;;
-        esac
-        if git cat-file -e "HEAD:feature/$name.sh" 2>/dev/null; then
-            brought="$brought $name"
-            add_required_features "feature/$name.sh"
-        fi
-    done
+# Rule 3, for a recipe that the profile installs: a line of the loop in select_changed.
+select_profile_package() {
+    select_archives "profile/$profile.sh: rule 3, archives of $1 in $profile" \
+        profile_package "$profile $1"
 }
 
-# Sets `brought` to the features that a platform or an init brings, for rule 3: what the platforms
-# require, and the init of each key under the archive directory, with what it requires.
-find_brought_features() {
-    local path dir init
-    brought=
-    for path in $(git ls-tree --name-only HEAD platform/); do
-        add_required_features "$path"
-    done
-    for dir in $(find "$archive_dir" -mindepth 1 -maxdepth 1 -type d ! -name tools); do
-        init=${dir##*/}
-        init=${init%%+*}
-        init=${init#*-}
-        brought="$brought $init"
-        add_required_features "feature/$init.sh"
-    done
+# Rule 8, for a path of profile/ at HEAD: the profile is selected if it runs on the platform that
+# changed.
+select_profile_of_platform() {
+    local profile=${1#profile/}
+    profile=${profile%.sh}
+    [ "${profile%%-*}" != "$platform" ] \
+        || select_archives "platform/$platform.sh: rule 8, archives of the profile $profile" \
+            profile "$profile"
 }
 
 # Rule 5, for a line of the output of git grep.
@@ -220,18 +204,18 @@ select_changed() {
             select_archives "$path: rule 9, in no recipe: every archive" all
         fi
         ;;
-    feature/[!/]*.sh)
-        name=${path#feature/}
-        name=${name%.sh}
-        case " $brought " in
-        *" $name "*)
-            select_archives \
-                "$path: rule 3, brought by a platform or an init: all but the build tools" system
-            ;;
-        *)
-            select_archives "$path: rule 3, archives of the feature $name" feature "$name"
-            ;;
-        esac
+    profile/[!/]*.sh)
+        profile=${path#profile/}
+        profile=${profile%.sh}
+        # The recipes that the profile installs, as its lines call lfs_system_install,
+        # lfs_install_package (with a component after #) or lfs_tools_install. grep fails when
+        # nothing matches.
+        names=$(git show "HEAD:$path" 2>/dev/null \
+            | grep -Eo '(lfs_system_install|lfs_install_package|lfs_tools_install) [^ #;)]+' \
+            | sed 's/^[^ ]* //' | sort -u || true)
+        each select_profile_package <<EOF
+$names
+EOF
         ;;
     lib/meson.sh)
         # git grep fails when nothing matches.
@@ -247,9 +231,12 @@ EOF
         select_archives "$path: rule 7, the system files" package system-files
         ;;
     platform/[!/]*.sh)
-        name=${path#platform/}
-        name=${name%.sh}
-        select_archives "$path: rule 8, archives of the platform $name" platform "$name"
+        platform=${path#platform/}
+        platform=${platform%.sh}
+        profiles=$(git ls-tree --name-only HEAD profile/)
+        each select_profile_of_platform <<EOF
+$profiles
+EOF
         ;;
     lib/[!/]*.sh)
         name=${path#lib/}
@@ -260,7 +247,7 @@ EOF
             select_archives "$path: rule 9, every archive" all
         fi
         ;;
-    lfs|lib/*|feature/*|platform/*)
+    lfs|lib/*|profile/*|platform/*)
         select_archives "$path: rule 9, every archive" all
         ;;
     Dockerfile.bootstrap|Dockerfile.scratch|docker-compose.yaml)
@@ -306,7 +293,6 @@ else
             echo "archives built from $built, HEAD is $head_commit"
             # Without renames, both the old and the new path of a moved file show.
             changed=$(git diff --no-renames --name-only "$built" HEAD)
-            find_brought_features
             each select_changed <<EOF
 $changed
 EOF

@@ -1,6 +1,6 @@
 name: Phase
 
-# One phase of the build of a platform's system, as the Makefile does it on a Linux host, directly
+# One phase of the build of a profile's system, as the Makefile does it on a Linux host, directly
 # or through Docker Compose. The package archives and the downloads come from the cache, and go
 # back into it whatever happens to the build, so that a build too long for one run completes over
 # several. A phase relies on the archives that the phases before it saved: they only unpack, and the
@@ -12,8 +12,8 @@ on:
         description: The phase, which names the cache that it saves
         type: string
         required: true
-      platform:
-        description: The platform of the system, which the cache and the SBOM are named after
+      profile:
+        description: The profile of the system, which the cache and the SBOM are named after
         type: string
         required: true
       command:
@@ -37,10 +37,10 @@ defaults:
     shell: bash
 
 # The archives of a build through Docker Compose record the containers' paths, those of a build on
-# the runner its own: neither can use the other's, nor those of another platform. No prefix begins
+# the runner its own: neither can use the other's, nor those of another profile. No prefix begins
 # another, as a cache is restored by the prefix of its key.
 env:
-  CACHE: ${{ inputs.docker && 'docker-lfs-' || 'lfs-' }}${{ inputs.platform }}-
+  CACHE: ${{ inputs.docker && 'docker-lfs-' || 'lfs-' }}${{ inputs.profile }}-
 
 jobs:
   phase:
@@ -61,7 +61,7 @@ jobs:
           df -h /
 
       # README.md, Requirements: the packages of Dockerfile.bootstrap, and `expect` and QEMU for
-      # `make test`: the runner's architecture for virt, which has the host's, and ARM for pi0.
+      # `make test`: the runner's architecture for virt, which has the host's, and ARM for pi0-pgp.
       - name: Install the host's packages
         run: |
           sudo apt-get update
@@ -103,7 +103,7 @@ jobs:
           echo "sum=$(find archive download -type f ! -path archive/.commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)" >> "$GITHUB_OUTPUT"
 
       # The build has its own timeout, so that the steps that save the cache get to run before the
-      # job's. pi0 boots in QEMU's emulation of the raspi0 machine, slower than on a Pi.
+      # job's. pi0-pgp boots in QEMU's emulation of the raspi0 machine, slower than on a Pi.
       - name: Build
         timeout-minutes: 330
         env:
@@ -120,7 +120,7 @@ jobs:
         if: ${{ hashFiles('image/*.spdx.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: sbom-${{ inputs.platform }}-${{ inputs.name }}
+          name: sbom-${{ inputs.profile }}-${{ inputs.name }}
           path: image/*.spdx.json
           retention-days: 90
 

@@ -1,11 +1,11 @@
 name: Vulnerability scan
 
-# The vulnerabilities of the images that CI builds, one per platform, as Grype finds them from each
+# The vulnerabilities of the images that CI builds, one per profile, as Grype finds them from each
 # image's SBOM, with the latest vulnerability data, after each run of CI on main. Every finding
 # goes to the run's summary and to GitHub's code scanning, and the run fails, as its badge shows,
 # when a finding of high or critical severity has a fixed version, in any image. The findings that
 # do not concern the images are left out by .github/ci/grype.yaml. Nothing is built, and CI's own
-# result is left alone. The platforms are those of .github/workflows/ci.yaml.
+# result is left alone. The profiles are those of .github/workflows/ci.yaml.
 on:
   workflow_run:
     workflows: [CI]
@@ -30,12 +30,12 @@ env:
 
 jobs:
   scan:
-    name: scan (${{ matrix.platform }})
+    name: scan (${{ matrix.profile }})
     strategy:
       # An image with a finding does not stop the scan of the others.
       fail-fast: false
       matrix:
-        platform: [virt, pi0]
+        profile: [virt, pi0-pgp]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -47,17 +47,17 @@ jobs:
         with:
           persist-credentials: false
 
-      # The SBOM of the last image of the platform that CI made on main, which is an earlier run's
+      # The SBOM of the last image of the profile that CI made on main, which is an earlier run's
       # when the run that ended stopped before the image.
       - name: Fetch the SBOM
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=sbom-${{ matrix.platform }}-test&per_page=50" \
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=sbom-${{ matrix.profile }}-test&per_page=50" \
             --jq '[.artifacts[] | select(.expired | not) | select(.workflow_run.head_branch == "main")]
               | sort_by(.created_at) | last | .id // empty')
           if [ -z "$artifact" ]; then
-            echo "::error::No SBOM of a ${{ matrix.platform }} image of CI on main"
+            echo "::error::No SBOM of a ${{ matrix.profile }} image of CI on main"
             exit 1
           fi
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > sbom.zip
@@ -105,7 +105,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: grype-located.sarif
-          category: grype-${{ matrix.platform }}
+          category: grype-${{ matrix.profile }}
 
       - name: Fail on a fixed vulnerability of high or critical severity
         run: |

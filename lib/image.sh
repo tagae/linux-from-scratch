@@ -18,10 +18,10 @@ image() {
 # gets none: it is no file to take the digest of.
 build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
-    local target="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}" shrink=
+    local target="${1:-$IMAGE_DIR/$PROFILE.img}" shrink=
     local sbom="${target%.img}.spdx.json"
     # One install tree per system key, not a shared $INSTALL_DIR.
-    local install_dir=$INSTALL_DIR/$SYSTEM_KEY
+    local install_dir=$INSTALL_DIR/$PROFILE
     [ -d "$install_dir" ] || bail "Install directory not found: $install_dir"
 
     stage image
@@ -148,14 +148,14 @@ create_filesystems() {
         [ -b $BOOT_DEVICE ] || truncate -s ${boot_size}M $BOOT_DEVICE
         mkfs.fat -c -f 1 -F 32 -n BOOT $BOOT_DEVICE
         # FAT has no owners, so the boot files are copied as they are.
-        mcopy -s -i $BOOT_DEVICE $INSTALL_DIR/$SYSTEM_KEY/boot/* ::
+        mcopy -s -i $BOOT_DEVICE $INSTALL_DIR/$PROFILE/boot/* ::
     fi
 }
 
 # Copies the files of the root file system: the system's, owned by root, the Pi layout's boot files
 # aside, as they have a partition of their own; and those that belong to the image.
 stage_root() {
-    local install_dir=$INSTALL_DIR/$SYSTEM_KEY
+    local install_dir=$INSTALL_DIR/$PROFILE
     stage "Staging the root file system from $install_dir"
     # The file system's top level, which holds the root subvolume.
     BASE_DIR=$PARTS_DIR/base
@@ -176,12 +176,12 @@ stage_root() {
     mkdir -p $ROOT_DIR/var/lib/systemd/timesync
     touch $ROOT_DIR/var/lib/systemd/timesync/clock
     # The time zone belongs to the image, so that the system is the same for every zone. A system
-    # without the tzdata feature keeps UTC, which needs no zone file.
+    # without tzdata keeps UTC, which needs no zone file.
     local timezone=${TIMEZONE:-UTC}
     if [ -f $ROOT_DIR/usr/share/zoneinfo/$timezone ]; then
         ln -sfn /usr/share/zoneinfo/$timezone $ROOT_DIR/etc/localtime
     elif [ -n "${TIMEZONE:-}" ]; then
-        bail "Unknown time zone '$timezone': time zones come with the tzdata feature"
+        bail "Unknown time zone '$timezone': time zones come with the tzdata package"
     fi
     # With a machine ID, the first boot is an ordinary one. Without it, systemd presets every unit
     # at the first boot, and warns about each unit that a generator made. The ID belongs to the

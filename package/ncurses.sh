@@ -57,6 +57,11 @@ install() {
             ;;
         ncurses)
             make install DESTDIR=$package_install_dir
+            # The tools of the terminfo database: to compile, compare, list and convert descriptions,
+            # which the systems have no use for with the few that the library holds built in.
+            for tool in tic infocmp toe captoinfo infotocap; do
+                rm -v $package_install_dir$prefix/bin/$tool
+            done
             # Plus the script that tells the flags for compiling against it.
             move_to_dev_component 'usr/bin/ncurses*-config'
             move_to_docs_component

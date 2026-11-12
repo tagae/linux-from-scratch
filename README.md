@@ -37,9 +37,9 @@ The rules build directly on a Linux host, which needs:
   `make test`. The `virt` platform uses KVM.
 
 Hosts that are not Linux can make the image through Docker Compose instead, with the `docker-`
-goals: `make docker-image`, or `make docker-image/pi0-systemd.img` for a given system. The image
+goals: `make docker-image`, or `make docker-image/pi0-pgp.img` for a given profile. The image
 then runs on the host, with QEMU and `expect`: `./lfs qemu` boots it, and `./test` also logs in and
-powers off (for a system other than `virt`, set `PLATFORM=pi0`, or pass its key to `./test`).
+powers off (for a profile other than `virt`, set `PROFILE=pi0-pgp`, or pass its name to `./test`).
 `make docker-test` makes the image and runs `./test`, as `make test` does without Docker.
 
 
@@ -54,51 +54,36 @@ Supported Platforms
 | `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
 
 
-Features and Kernel Fragments
------------------------------
+Profiles and Kernel Capabilities
+--------------------------------
 
-A *feature* is a set of packages that the system holds, listed in `feature/<feature>.sh`. Everything
-in a system but its layout and the cross toolchain's C library and runtime comes from its features.
-The init system is a feature, and each platform brings the features that it needs, such as the
-kernel:
+A *profile* is a whole system: the list of its packages, in the order they are installed, with the
+options of each package at its call site, in `profile/<profile>.sh`. The init system and the kernel
+are among the packages. A profile is named `<platform>[-<name>]`, after the platform it runs on
+(`pi0-pgp` runs on `pi0`), and its name is the key of everything that is built for it: the package archives, the install tree, the boot files and the
+image. Everything in a system but its layout and the cross toolchain's C library and runtime comes
+from its profile.
 
-| Feature   | Provides                                                                        | Requires | Comes with         |
-|-----------|---------------------------------------------------------------------------------|----------|--------------------|
-| `systemd` | systemd, the init system and service manager, with the strict minimum it needs to boot and log root in: kmod, libxcrypt, shadow's `login`, util-linux's libmount, `mount`, `agetty` and `sulogin`, and the static accounts | `dash` | the default `INIT` |
-| `dash`    | dash, `/bin/sh` and root's shell                                                |          | `systemd`          |
-| `linux`   | The kernel, configured by the kernel fragments of the system's features        |          | every platform     |
-| `pi-boot` | What the Pi's firmware boots from: the firmware, `config.txt` and `cmdline.txt` |          | `pi0`              |
+| Profile   | Platform | System                                                                |
+|-----------|----------|-----------------------------------------------------------------------|
+| `virt`    | `virt`   | A bare-bones virtual machine that boots, logs root in, and powers off |
+| `pi0-pgp` | `pi0`    | A Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey   |
 
-The other features are added as needed, and can be combined:
+`virt` holds systemd, dash and the kernel, and nothing else. `pi0-pgp` adds GnuPG with `gpg-genkey`,
+`ykman` and libfido2's tools for the YubiKey, the GNU tools, `dmesg` for the kernel log, procps, and
+the time zone database.
 
-| Feature           | Provides                                                                  | Requires       | Kernel fragments  |
-|-------------------|---------------------------------------------------------------------------|----------------|-------------------|
-| `bash`            | GNU bash, a shell with line editing and history                           |                |                   |
-| `gnu`             | The GNU tools: the core utilities, grep, sed and gawk                     |                |                   |
-| `util-linux`      | util-linux's tools: `lsblk`, `fdisk`, `losetup`, `dmesg`, `more` and the like | `ncurses`  |                   |
-| `procps`          | `ps`, `top`, `free` and the like                                          | `ncurses`      |                   |
-| `man`             | Readers of man and info pages, which page through `more`                  | `util-linux zlib` |                |
-| `ncurses`         | The terminal library                                                      |                |                   |
-| `tzdata`          | The time zone database, for `TIMEZONE`                                    |                |                   |
-| `zlib`            | The compression library                                                   |                |                   |
-| `fido2`           | libfido2's tools for FIDO2 security keys, such as a YubiKey               | `systemd zlib` | `hidraw usb`      |
-| `gnupg`           | GnuPG, smart cards included, and `gpg-genkey`, which makes keys in memory | `gnu zlib`     | `usb usb-storage` |
-| `yubikey-manager` | `ykman`, to configure a YubiKey; `pcscd` serves the card                  | `systemd zlib` | `hidraw usb`      |
+The `amd64` and `arm64` platforms have no profile yet.
 
-The rest of chapter 8 of the LFS book comes with `+gnu+man+procps+tzdata`.
+A *kernel capability*, `package/linux/<capability>.config`, is the kernel configuration for a kind
+of device. A profile names in the `capabilities` option of the `linux` package every capability it
+relies on, as a capability brings in no other. A capability that differs by architecture has a part
+for each, `package/linux/<capability>.<architecture>.config`.
 
-A feature names on a `# Requires:` line of its file the features that it builds on, which the
-system gets along with it. A system has a single init system, `INIT`, a feature which the others
-build on: it and the features it requires are installed first, then the platform's, then the
-others in alphabetical order, each after the features it requires. Another init system would be a
-feature of its own, with requirements of its own.
-
-A *kernel fragment*, `package/linux/<fragment>.config`, is the kernel configuration for a kind of
-device. A feature lists on a `# Linux:` line of its file every fragment it relies on, as a fragment
-brings in no other, and the system's kernel gets the fragments of all its features.
-
-| Fragment      | Supports                                                     |
+| Capability    | Supports                                                     |
 |---------------|--------------------------------------------------------------|
+| `hardening`   | Kernel self-protection and CPU vulnerability mitigations     |
+| `systemd`     | What systemd relies on                                       |
 | `usb`         | USB devices, also from user space through `/dev/bus/usb`     |
 | `usb-storage` | USB sticks and card readers with a FAT file system           |
 | `hidraw`      | HID devices on USB, such as security keys, as `/dev/hidraw*` |
@@ -107,11 +92,11 @@ brings in no other, and the system's kernel gets the fragments of all its featur
 Making OpenPGP Keys on a Raspberry Pi
 -------------------------------------
 
-A Raspberry Pi Zero running a system with the `gnupg` feature can make an OpenPGP key whose secret
-part never touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey:
+A Raspberry Pi Zero running the `pi0-pgp` profile can make an OpenPGP key whose secret part never
+touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey:
 
 ```shell
-make docker-image/pi0-systemd+gnupg.img
+make docker-image/pi0-pgp.img
 ```
 
 Write the image to an SD card. The Zero has one USB data port, the micro-USB one marked *USB*, so
@@ -161,25 +146,14 @@ the serial console.
 `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal (`echo hi | gpg --clearsign`),
 for the PIN prompt to find it.
 
-Add the `yubikey-manager` feature to also have `ykman` on the Pi (Python, `cryptography` and the
-smart card daemon `pcscd` come with it, about 60 MB):
+The system also has `ykman`, to configure the YubiKey (Python, `cryptography` and the smart card
+daemon `pcscd` come with it, about 60 MB). GnuPG reaches the YubiKey through `pcscd` rather than
+through its own USB driver (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and
+`ykman` can use the key in turn.
 
-```shell
-make docker-image/pi0-systemd+gnupg+yubikey-manager.img
-```
-
-With it, GnuPG reaches the YubiKey through `pcscd` rather than through its own USB driver
-(`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and `ykman` can use the key in turn.
-Without it, scdaemon drives the key itself and `ykman` is not installed.
-
-The same features build for the `virt` platform, to try the workflow in QEMU without a Pi:
-
-```shell
-make docker-image/virt-systemd+gnupg+yubikey-manager.img
-```
-
-It boots on the Mac's own architecture with the host's accelerator, and QEMU takes the USB devices
-(`QEMU_EXTRA="-device usb-host,hostbus=…,hostport=…"`, a stick as a `usb-storage` drive).
+`make pi0-pgp-test` boots the system in QEMU's emulation of the Zero, which takes emulated USB
+devices (`QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey: the
+key can only be tried on the Pi.
 
 
 Restrictions
@@ -195,13 +169,13 @@ boot. Every image starts at the time it was made. No NTP servers are configured,
 network.
 
 Images are in UTC. `TIMEZONE`, set to a name from the time zone database, gives an image of a
-system with the `tzdata` feature another zone, e.g. `make image FEATURES=tzdata
+profile that installs `tzdata` another zone, e.g. `make image PROFILE=pi0-pgp
 TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how time is shown. The
-feature carries the whole database, so `TZ` and `/etc/localtime` can name any other zone on the
+package carries the whole database, so `TZ` and `/etc/localtime` can name any other zone on the
 device.
 
-Localisation and native language support (NLS) are unsupported. This might become an opt-in feature
-in the future.
+Localisation and native language support (NLS) are unsupported. This might become opt-in in the
+future.
 
 
 Make Targets
@@ -219,63 +193,56 @@ make test             # check that the image boots and root can login/poweroff
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
-Each target defaults to the `virt` platform, the `systemd` init, and no features beyond theirs. The defaults can be changed through variables:
+Each target defaults to the `virt` profile. The default can be changed through a variable:
 
 ```shell
-make image PLATFORM=pi0 FEATURES="fido2 gnupg"
+make image PROFILE=pi0-pgp
 ```
 
-Those variables make up a *system key*, `<platform>-<init>[+<feature>...]`, with the features in
-alphabetical order, which names every deliverable: the install tree, the boot files, and the
-image. A feature that the platform, the init or another feature brings is left out of the key,
-which comes to one per system. A target can be named by its system key directly:
+The profile's name is the key of every deliverable: the install tree, the boot files, and the image. A
+target can be named by its profile directly:
 
 ```shell
-make pi0-systemd+gnupg-test
+make pi0-pgp-test
 ```
 
-Images are file targets under that same key, so `make image/pi0-systemd+fido2.img` produces an
-image for the `pi0` platform featuring `fido2`. An image is as small as its system allows: its root
-file system has only the room that btrfs leaves in it, which grows with the system. `IMAGE_SIZE` makes it larger (e.g. `IMAGE_SIZE=1G`), the
-root file system filling it. An image appears only once it is complete. `make qemu` and `make test`
-boot it through an overlay, `image/<key>.qcow2`, which keeps what the system writes until the image
-is made anew, so that the image stays as it was made, to be written to a card.
+Images are file targets under that same key, so `make image/pi0-pgp.img` produces the image of the
+`pi0-pgp` profile. An image is as small as its system allows: its root file system has only the room
+that btrfs leaves in it, which grows with the system. `IMAGE_SIZE` makes it larger (e.g.
+`IMAGE_SIZE=1G`), the root file system filling it. An image appears only once it is complete. `make
+qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps what the system
+writes until the image is made anew, so that the image stays as it was made, to be written to a
+card.
 
-Package archives are filed under the key of the system as it stands when they are built: the
-toolchain's, and those of the features that the platform and the init bring, under
-`<platform>-<init>`, the kernel's under that key extended with the kernel fragments of all the
-system's features, in alphabetical order (`pi0-systemd+hidraw+systemd+usb` for `fido2`), and each
-other feature's under `<platform>-<init>` extended with the features added so far, in the order
-they are installed. Systems thus share the archives of what they have in common: the init's and the
-platform's, the kernel of systems whose features rely on the same fragments, and the other
-features' of systems whose kernels differ.
+Package archives are filed under the key of the profile, `archive/<profile>/`: the cross toolchain's,
+the kernel's and those of every package the profile installs. Profiles share no archive but those of
+the build tools.
 
 The build tools run on the build machine whatever the platform, so their archives are filed under
-the key `tools` and built once, for every system. Systems of different platforms can therefore be
+the key `tools` and built once, for every system. Systems of different profiles can therefore be
 built at once, each build using all the cores:
 
 ```shell
-make -j docker-test docker-pi0-test
+make -j docker-test docker-pi0-pgp-test
 ```
 
 Make builds the tools first, then the systems side by side. The builds share the tools directory
 (the cross toolchain of each platform lives there in files named after its triplet, but for a few,
 such as `libcc1` and the documentation, which each build rewrites when it extracts its own), the
-downloads and the tools' archives, and nothing else: each platform unpacks its sources, builds,
+downloads and the tools' archives, and nothing else: each profile unpacks its sources, builds,
 installs and archives apart. Memory limits it more than cores do: each build runs `-j$(nproc)`, and
 two cross gcc compiles at once need more than 12 GiB (the compiler is killed while it compiles
-`gimple-match-*.cc`), so give the build machine, or the Colima VM, 24 GiB or more. Two limits remain. Systems of the same platform and init (`pi0-systemd` and
-`pi0-systemd+gnupg`) share a sysroot, so they are built one after the other. And a system with a
-feature that installs a build tool that depends on the platform (`yubikey-manager`, whose Rust
-targets the platform's architecture) cannot be built while another system with such a feature is,
-as both write the same files in the tools directory. Builds that start from scratch apart, rather
-than from one `make`, would both build the tools: build them first (`make docker-tools`).
+`gimple-match-*.cc`), so give the build machine, or the Colima VM, 24 GiB or more. One limit
+remains: a profile that installs a build tool that depends on the platform (`pi0-pgp`, whose Rust
+targets the platform's architecture) cannot be built while another profile that does is, as both
+write the same files in the tools directory. Builds that start from scratch apart, rather than from
+one `make`, would both build the tools: build them first (`make docker-tools`).
 
 `make distclean` removes the build state and the tools; `make pristine` also removes downloads,
 archives and images.
 
 `make test` boots the image in QEMU, logs in as root, runs `poweroff`, and verifies that QEMU exits
-cleanly. It drives the `./test` expect script (`./test [SYSTEM_KEY]`).
+cleanly. It drives the `./test` expect script (`./test [PROFILE]`).
 
 
 Software Bill of Materials
@@ -298,7 +265,7 @@ pyspdxtools --infile image/virt-systemd.spdx.json
 grype sbom:image/virt-systemd.spdx.json
 ```
 
-CI builds and boots the `virt` and `pi0` systems, and scans the document of each image after each of
+CI builds and boots the `virt` and `pi0-pgp` systems, and scans the document of each image after each of
 its runs on main, with the vulnerability data of the day: the badge above fails when Grype finds, in
 either image, a vulnerability of high or critical severity that a newer version fixes, and the
 findings are in the repository's code scanning alerts. The scan reports, and leaves CI's own result

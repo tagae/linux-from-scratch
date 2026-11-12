@@ -2,13 +2,13 @@
 
 qemu() {
     [ $# -le 1 ] || usage "qemu [IMAGE]"
-    IMAGE="${1:-$IMAGE_DIR/$SYSTEM_KEY.img}"
-    local kernel="$WORK_DIR/boot/$SYSTEM_KEY/kernel.img"
+    IMAGE="${1:-$IMAGE_DIR/$PROFILE.img}"
+    local kernel="$WORK_DIR/boot/$PROFILE/kernel.img"
     [ -f "$kernel" ] || bail "Kernel not found: $kernel"
     [ -f "$IMAGE" ] || bail "Image not found: $IMAGE"
     set -- -kernel "$kernel"
     if [ -n "${dev_tree_blob:-}" ]; then
-        local dtb="$WORK_DIR/boot/$SYSTEM_KEY/${dev_tree_blob##*/}"
+        local dtb="$WORK_DIR/boot/$PROFILE/${dev_tree_blob##*/}"
         [ -f "$dtb" ] || bail "DTB not found: $dtb"
         set -- "$@" -dtb "$dtb"
     fi

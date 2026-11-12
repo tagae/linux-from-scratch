@@ -15,7 +15,7 @@ framework code and one line per recipe.
 ## Today
 
 - `lfs_system_build` makes two trees and empties both at the start (`lib/system.sh`):
-  `system_dir` (`$INSTALL_DIR/$SYSTEM_KEY`, which the image is made from) and one `sysroot`
+  `system_dir` (`$INSTALL_DIR/$PROFILE`, which the image is made from) and one `sysroot`
   (`$WORK_DIR/$package_key/sysroot`), which holds the system's packages plus the kernel headers and
   every `dev` component. The cross gcc is configured with that sysroot (`--with-sysroot`), and
   pkg-config (`PKG_CONFIG_SYSROOT_DIR`, `PKG_CONFIG_LIBDIR`), the meson cross file (`sys_root`) and
@@ -24,16 +24,16 @@ framework code and one line per recipe.
   `$package_install_dir`, which the system build sets to the sysroot. `lfs_system_install X` also
   unpacks it into `system_dir`.
 - The sysroot is cumulative: a recipe sees every package installed before it. Dependencies are the
-  install order of the toolchain (`lib/system.sh`) and of the features, kept by hand. The only declared dependency,
+  install order of the toolchain (`lib/system.sh`) and of the profile, kept by hand. The only declared dependency,
   `package_fetch_dependencies`, is about sources built in-tree (gcc's gmp, mpfr and mpc).
 - A missing dependency builds whenever the order happens to be right, and `configure` picks up
   whatever the sysroot happens to hold. Options at the call sites (`sqlite=no`) exist to keep that
   result fixed.
-- An archive is reused when it and its digest exist. Its key is the system key as it stood when it
-  was built, so a changed dependency rebuilds nothing (`.github/ci/invalidate`: "The packages built
+- An archive is reused when it and its digest exist. Its key is the profile's name, so a changed
+  dependency rebuilds nothing (`.github/ci/invalidate`: "The packages built
   against one that changed are not dropped with it").
 - 18 products have an `lfs_install_package X#dev` line, 20 lines in all, in `lib/system.sh` (glibc)
-  and the features.
+  and the profiles.
 
 ## Requirements and non-goals
 
@@ -45,7 +45,7 @@ framework code and one line per recipe.
    that names both. An undeclared dependency is not in the sysroot, so its `configure` test or its
    link fails.
 4. Kept: `dev` files never reach `system_dir`; `lfs_system_install` stays the record of what goes
-   into the system (the SBOM's input); POSIX shell, no new tools; feature lists stay flat and
+   into the system (the SBOM's input); POSIX shell, no new tools; profile lists stay flat and
    ordered, with options at the call site.
 5. A build that changes nothing stays free: no population when every archive exists.
 
@@ -130,19 +130,17 @@ they would only restate the sysroot's content.
 ### The registry
 
 `lfs_system_build` already rewrites a list of the system's packages (the SBOM design's step 1,
-`$WORK_DIR/$SYSTEM_KEY/packages`). It becomes the registry. `lfs_install_package` and
+`$WORK_DIR/$PROFILE/packages`). It becomes the registry. `lfs_install_package` and
 `lfs_system_install` append one line per product:
 
 ```
 <product> <archive path relative to ARCHIVE_DIR> <system|build> <resolved dependencies...>
 ```
 
-- A file, not a variable: features run in subshells.
+- A file, not a variable: a profile runs in a subshell.
 - The resolved dependencies are those of the product as installed, with its own options.
-- Archive paths, not names: dependencies sit under other keys (glibc under the base key, openssl
-  under `+fido2` or `+yubikey-manager`).
-- A product installed twice (openssl, in two features) resolves to its last line, as the last
-  unpack wins today.
+- Archive paths, not names: dependencies can sit under other keys (the build tools under `tools`).
+- A product installed twice resolves to its last line, as the last unpack wins today.
 - `system` lines are what the image contains (the SBOM's `CONTAINS`); `build` lines are not
   shipped.
 
@@ -186,7 +184,7 @@ Recommended: A. Its limit: the closure over-approximates, so direct use of an un
 *transitive* dependency is not caught. The check at step 5 (`DT_NEEDED` against the declared
 dependencies) closes most of that. Yocto has the same gap.
 
-### Feature lists
+### Profile lists
 
 - `lfs_install_package X` builds and registers `X#dev` by itself when X's install set one aside, so
   the 20 `lfs_install_package X#dev` lines go (step 4). `lfs_system_install X` goes into the
@@ -202,8 +200,8 @@ Steps 0 to 5 keep the archive keys. Enforcement applies to packages that are bui
 cold build is where hidden dependencies show up. Editing a recipe's `package_dependencies` is a
 recipe edit: `.github/ci/invalidate` rule 2 drops its archive, and, as today, not its dependents.
 
-Step 6, separate and later: a signature, as sstate has, replaces the `+fragment` and `+feature`
-key suffixes. It is the SHA-256 of the recipe, its files directory and category helper, the values
+Step 6, separate and later: a signature, as sstate has, replaces the profile's name as the archive
+key. It is the SHA-256 of the recipe, its files directory and category helper, the values
 of the options the recipe names, `target_*`, the flags, the component and the signatures of the
 resolved dependencies from the registry. A changed dependency then rebuilds its dependents, and
 systems with equal inputs share archives. It needs an archive prune command, reproducible archives
@@ -226,7 +224,7 @@ build, QEMU).
 | 5 | `package_tool_dependencies` checked against the tools installed; `DT_NEEDED` check of each built archive against its declared closure; optional `package_runtime_dependencies` for what `NEEDED` cannot see (Python imports); `lfs system graph` | new checks pass on the current tree |
 | 6 | Signatures (above) | archive paths change once; the next build is a no-op |
 
-The minimal first slice is steps 0 to 2: no change to the features, the keys, the toolchain,
+The minimal first slice is steps 0 to 2: no change to the profiles, the keys, the toolchain,
 `lib/meson.sh` or the pkg-config environment.
 
 Expected hidden dependencies of step 2 (predictions from reading the recipes, not confirmed):
@@ -236,8 +234,8 @@ libmount and libblkid, kmod), the target Python (zlib, libffi, openssl, ncurses,
 libxcrypt), `python/cffi`, `python/cryptography` and `python/pyscard` (python; cryptography also
 openssl), mandoc (zlib). A comment describes the order-dependence that declared dependencies
 remove: `package/bash.sh` (the termcap library "would then depend on what was installed before it").
-Step 3 reconsiders it, and its pinned `bash_cv_termcap_lib`. The features already declare the
-libraries that several of them link, zlib as a feature of its own.
+Step 3 reconsiders it, and its pinned `bash_cv_termcap_lib`. The profiles already install the
+libraries that several packages link, zlib among them.
 
 ## SBOM
 
@@ -255,11 +253,11 @@ is exact, and a `<archive>.deps` file next to each archive makes it a provenance
 - Transitive closure hides direct use of transitive dependencies (see above).
 - `TOOL_DIR` stays shared and cumulative: build-machine files are kept out by the existing rules,
   not by enforcement.
-- Population cost for Python-heavy features is not measured.
+- Population cost for Python-heavy systems is not measured.
 - Detecting that a package has a `dev` component (step 4) needs the work directory or the `dev`
   archive.
 - Noticed on the way: `package/mpfr.sh` and `package/mpc.sh` pass
-  `--with-sysroot=$INSTALL_DIR/$SYSTEM_KEY`. They are built in-tree by gcc, so this is probably
+  `--with-sysroot=$INSTALL_DIR/$PROFILE`. They are built in-tree by gcc, so this is probably
   dead.
 - Should `gcc#runtime` stay in the base set? The compiler finds libgcc in its own directory; kept
   for parity at first.
@@ -277,7 +275,7 @@ Each with the recommendation; none is made yet.
    separate from `package_fetch_dependencies`.** Yes: sources and sysroot content differ.
 3. **A bare dependency name implies its `dev` component, and the `#dev` lines go.** Yes: one line
    per package; `dev` still never reaches `system_dir`.
-4. **Feature order checked, not derived; no automatic building of dependencies.** Checked: the
+4. **Install order checked, not derived; no automatic building of dependencies.** Checked: the
    options live at the call sites.
 5. **Transitive closure, not direct dependencies only.** Transitive: `.pc` and `.la` files need it.
 6. **The registry shared with the SBOM.** Yes: one record for enforcement and SBOM.

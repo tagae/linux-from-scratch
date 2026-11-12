@@ -14,7 +14,7 @@ platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu
 
 ```sh
 $Q/qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
-$Q/qemu-check pi0-systemd+fido2+gnupg+yubikey-manager "-device usb-ccid" 'ykman list --readers'
+$Q/qemu-check pi0-pgp "-device usb-ccid" 'ykman list --readers'
 ```
 Boots a COPY of `image/KEY.img`, logs in as root (password `root`), runs ONE guest line, powers off, prints
 only that line's output (on failure: the end of the console and its path). `./lfs qemu` boots an image through
@@ -31,9 +31,8 @@ to hand the user a command that needs root.
 $Q/qemu-check KEY "" "$(cat $Q/check-boot.cmd)"   # state, failed units, dmesg and journal warnings
 $Q/check-baseline [--save] KEY ["EXTRA ARGS"]      # the same, diffed against baselines/KEY.txt
 ```
-"No warnings" means those two lists, not the console. A baseline is per key and per extra args; recorded: the
-pi0 ykman key (with `-device usb-ccid`) and both virt keys, with `+man+procps+tzdata`, which hold the whole of
-chapter 8. Without one the run is printed: judge it once by hand (real-Pi baseline:
+"No warnings" means those two lists, not the console. A baseline is per profile and per extra args; recorded:
+`pi0-pgp` (with `-device usb-ccid`) and `virt`. Without one the run is printed: judge it once by hand (real-Pi baseline:
 `reference/pi0-real-boot.md`), then `--save`. A new diff line is new: look. Without util-linux's tools (`dmesg`),
 the check reads the kernel's warnings from the journal.
 
@@ -49,9 +48,9 @@ Memory resource size exceeds max for 32 bits`. An attached stick adds `sd 0:0:0:
 | Machine | `raspi0`, TCG, ~30 s per check | the Mac's arch with HVF (KVM on Linux), ~10 s | `virt`/`q35`, `-cpu max`, accelerator fallbacks |
 | Console, disk | `ttyAMA0`, `mmcblk0p2`, DTB | virtio `hvc0` on stdio shared with the monitor (Ctrl-A c), `vda1`, no DTB | `ttyAMA0`/`ttyS0`, `vda1` |
 | USB | DWC2 behind a hub | `qemu-xhci` | `qemu-xhci` |
-| Tested | end to end | end to end; a real key through HVF as root untested | dry run only |
+| Tested | end to end | end to end | dry run only |
 
-New platform: `--print`, a plain `qemu-check KEY`, then `check-baseline --save`. Reader names carry the
+New profile: `--print`, a plain `qemu-check KEY`, then `check-baseline --save`. Reader names carry the
 guest's bus path (`(1-0000:00:02.0-1)` virt, `(1-1.1)` pi0): do not match them literally. The Zero has one USB
 data port, so real use needs a hub. The emulated reader is 08E6:4433 (in ccid's Info.plist).
 
@@ -86,8 +85,8 @@ the key must not be the one used for sudo.
 Ignore 14 lines `libusb_kernel_driver_active: -5 [NOT_FOUND]` (QEMU probes 16 interface slots, the key has 2).
 `libusb_detach_kernel_driver: -3 [ACCESS]` and `can't set config #1, error -32` mean not root, not passed
 through. A real key behind pi0's dwc2 aborts QEMU (`!usb_packet_is_inflight`, a dwc2 model bug) on the first
-transfer: `fido2-token -L` and `gpg --card-status` both trigger it. The pi0 key can only be tried on the Pi; virt's
-`qemu-xhci` carries it (tested). In the Terminal panel a fresh fish tab swallows its first command (a 10 s terminal-query
+transfer: `fido2-token -L` and `gpg --card-status` both trigger it. The key can only be tried on the Pi: virt's
+`qemu-xhci` would carry it, but the `virt` profile has none of the tools. In the Terminal panel a fresh fish tab swallows its first command (a 10 s terminal-query
 wait); `set -Ua fish_features no-query-term` fixes it, and is the user's configuration.
 
 ## Prompts

@@ -25,7 +25,7 @@ section 2).
 console. The relevant attackers are therefore:
 - a compromised local process or unprivileged account, escalating to root or the kernel;
 - someone with physical access: the serial console, the SD card, or a USB stick (with the `usb`
-  fragment);
+  capability);
 - a compromised input to the build: an upstream tarball, a mirror, the Debian seed, or a cache on
   the build host;
 - tampering with images between the build and the device.
@@ -185,6 +185,6 @@ scratch, booting each under QEMU, and re-measuring the trees and kernels.
 
 Along the way, kernel options defaulting to `y` turned out not to survive `allnoconfig` (for example
 `HARDENED_USERCOPY_DEFAULT_ON` and each x86 `MITIGATION_*`), so they are listed explicitly, and each
-fragment was checked against a generated `.config` before building. The download cache is keyed by
+configuration file was checked against a generated `.config` before building. The download cache is keyed by
 file name, so a source that moves to another URL under the same file name must have its stale
 download removed; the hash check refuses the stale file, so this fails closed.

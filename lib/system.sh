@@ -1,8 +1,8 @@
 # Target System
 # -------------
 #
-# Builds the system that runs on the platform into its own tree, $INSTALL_DIR/$SYSTEM_KEY, from
-# which images are made, and which holds only what the running system needs.
+# Builds the system that a profile lists into its own tree, $INSTALL_DIR/$PROFILE, from which
+# images are made, and which holds only what the running system needs.
 #
 # The cross toolchain that compiles the system has a sysroot of its own, which holds the same
 # packages, plus what compiling against them needs: the kernel headers and the packages' dev
@@ -10,12 +10,11 @@
 # Every platform goes through a cross toolchain, even one with the build machine's architecture.
 #
 # Besides the tree's layout (system-files) and the toolchain's C library and runtime, everything in
-# the system comes from its features: a feature installs the packages listed in
-# feature/<feature>.sh. The init system is a feature, and the platform names those that every
-# system on it gets, such as the kernel, on a `# Requires:` line, as a feature names the features it
-# builds on. The kernel is configured from layers that every system gets, in package/linux/ (base,
-# hardening, machine, architecture), and from the optional fragments there that the system's
-# features name on their `# Linux:` lines.
+# the system comes from its profile, profile/<profile>.sh: the whole list of packages, in the order
+# they are installed, with the options of each at its call site. The init system and the kernel are
+# among them. The kernel is configured from layers that every system gets, in package/linux/ (base,
+# machine, architecture), and from the capabilities there that the profile names in the
+# `capabilities` option of the linux package.
 
 lfs_system() {
     case "${1:-help}" in
@@ -33,7 +32,7 @@ lfs_system_build() {
     readonly nls=no
     readonly multilib=no
     readonly prefix=/usr
-    readonly system_dir=$INSTALL_DIR/$SYSTEM_KEY
+    readonly system_dir=$INSTALL_DIR/$PROFILE
     # Under the key the cross toolchain is archived under, as the toolchain records the path.
     readonly sysroot=$WORK_DIR/$package_key/sysroot
 
@@ -60,25 +59,26 @@ lfs_system_build() {
     lfs_system_build_toolchain
     lfs_system_install gcc#runtime
 
-    # pkg-config sees the platform's libraries only, which the features install in the sysroot.
+    # pkg-config sees the platform's libraries only, which the profile installs in the sysroot.
     # Their .pc files record /usr paths.
     export PKG_CONFIG_LIBDIR=$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig
     export PKG_CONFIG_SYSROOT_DIR=$sysroot
     export PKG_CONFIG_SYSTEM_INCLUDE_PATH=$sysroot/usr/include
     export PKG_CONFIG_SYSTEM_LIBRARY_PATH=$sysroot/usr/lib
 
-    # The Python packages of the features are for this version, which lib/python.sh reads.
+    # The Python packages of the profile are for this version, which lib/python.sh reads.
     python_version=$(lfs_package_version python)
 
-    # The key names the platform and the init, and with them the features they bring.
-    for feature in $base_features; do
-        ( . $feature_dir/$feature.sh )
-    done
-    # Each other feature extends it, so that systems share the archives of what they have in common.
-    for feature in $features; do
-        package_key=$package_key+$feature
-        ( . $feature_dir/$feature.sh )
-    done
+    ( . $profile_dir/$PROFILE.sh )
+
+    # QEMU runs on the host, which cannot see the install tree (a Docker volume), but sees
+    # WORK_DIR/boot: the kernel that the profile installed, and the platform's device tree.
+    rm -rf $WORK_DIR/boot/$PROFILE
+    mkdir -pv $WORK_DIR/boot/$PROFILE
+    (
+        cd $system_dir/boot
+        cp -v kernel.img ${dev_tree_blob:+${dev_tree_blob##*/}} $WORK_DIR/boot/$PROFILE/
+    )
 }
 
 # Chapter 5: Compiling a Cross-Toolchain
@@ -115,29 +115,6 @@ lfs_system_build_toolchain() {
         libgomp=no libquadmath=no libssp=no libvtv=no libsanitizer=no
         lfs_install_tool gcc
     )
-}
-
-# Prints what a platform or a feature requires, from its `# Requires:` line.
-lfs_requires() {
-    sed -n 's/^# Requires://p' $1
-}
-
-# Adds a feature to `features`, after those it requires, in the order of its `# Requires:` line.
-lfs_add_feature() {
-    case " $features " in
-        *" $1 "*) return 0 ;;
-    esac
-    [ -f $feature_dir/$1.sh ] || bail "Unknown feature '$1'"
-    # A feature that requires itself, through others, would never be added.
-    case " $lfs_adding " in
-        *" $1 "*) bail "Feature '$1' requires itself" ;;
-    esac
-    lfs_adding="$lfs_adding $1"
-    local required
-    for required in $(lfs_requires $feature_dir/$1.sh); do
-        lfs_add_feature $required
-    done
-    features="$features $1"
 }
 
 # Installs a package into the system, and into the sysroot for the packages compiled after it. The

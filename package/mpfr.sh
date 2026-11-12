@@ -9,7 +9,7 @@ prepare() {
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
-        ${host:+--with-sysroot=$INSTALL_DIR/$SYSTEM_KEY} \
+        ${host:+--with-sysroot=$INSTALL_DIR/$PROFILE} \
         --disable-static \
         ${thread_safe:+--enable-thread-safe=$thread_safe}
 }

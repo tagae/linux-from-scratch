@@ -35,6 +35,9 @@ install() {
     case $package_component in
         gawk)
             make install DESTDIR=$package_install_dir
+            # gawkbug mails bug reports, and the program with the version is a second name for gawk.
+            rm -v $package_install_dir$prefix/bin/gawkbug \
+                $package_install_dir$prefix/bin/gawk-$package_version
             move_to_dev_component
             move_to_docs_component
             ;;

@@ -36,6 +36,10 @@ install() {
     case $package_component in
         libgcrypt)
             make install DESTDIR=$package_install_dir
+            # Programs to develop libgcrypt: a dumper of S-expressions, a calculator of
+            # multi-precision integers, and the HMAC-SHA256 of its self-checks.
+            rm -v $package_install_dir$prefix/bin/dumpsexp $package_install_dir$prefix/bin/mpicalc \
+                $package_install_dir$prefix/bin/hmac256
             # Plus the script that tells the flags for compiling against it.
             move_to_dev_component usr/bin/libgcrypt-config
             move_to_docs_component

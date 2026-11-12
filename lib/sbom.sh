@@ -30,7 +30,7 @@ readonly sbom_pypi_sources=https://files.pythonhosted.org/packages/source
 
 # The list of the packages of the system being built.
 _sbom_packages_file() {
-    echo $WORK_DIR/sbom/$SYSTEM_KEY
+    echo $WORK_DIR/sbom/$PROFILE
 }
 
 # Empties the list, for a system build that starts anew.
@@ -93,8 +93,8 @@ lfs_sbom_document() {
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": $(_sbom_string "$SYSTEM_KEY"),
-  "documentNamespace": $(_sbom_string "https://spdx.org/spdxdocs/lfs-$SYSTEM_KEY-$digest"),
+  "name": $(_sbom_string "$PROFILE"),
+  "documentNamespace": $(_sbom_string "https://spdx.org/spdxdocs/lfs-$PROFILE-$digest"),
   "creationInfo": {
     "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
     "creators": [$(_sbom_string "Tool: lfs${LFS_RELEASE:+-$LFS_RELEASE}")]
@@ -147,7 +147,7 @@ _sbom_image_package() {
     cat <<EOF
     {
       "SPDXID": "SPDXRef-Image",
-      "name": $(_sbom_string "$SYSTEM_KEY"),
+      "name": $(_sbom_string "$PROFILE"),
       $version_line
       "packageFileName": $(_sbom_string "$1"),
       $(_sbom_checksums sha256:$2)
