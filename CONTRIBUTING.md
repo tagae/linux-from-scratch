@@ -6,7 +6,7 @@ Overview
 
 * `lfs`: CLI frontend
 * `lib/`: framework implementation; contains the `lfs` subcommands
-* `platform/`: the machines that systems run on
+* `platform/`: the platforms that systems run on
 * `profile/`: system recipes
 * `package/`: package recipes
 * `download/`: fetched archives
@@ -55,7 +55,7 @@ gcc, the Linux API headers and glibc, then the full cross gcc. Everything else c
 profile, `profile/$PROFILE.sh`, compiled with that toolchain: the packages of the system in the
 order they are installed, the init (`systemd`, with the strict minimum of chapter 8 that it needs,
 and `dash`, root's shell, which it requires) and the kernel (`linux`, configured from the layers
-that every system gets, `package/linux/`: base, machine and architecture, and from the
+that every system gets, `package/linux/`: base, platform and architecture, and from the
 capabilities that the profile names, `package/linux/<capability>.config`) among them. Each package is
 installed both into the system tree and into the toolchain's sysroot, `work/$PROFILE/sysroot`, which
 also receives what compiling against the packages needs: the Linux API headers and the packages'
@@ -234,8 +234,8 @@ Where Code Goes
 | What a system installs | `profile/<profile>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, the options of a package at its call site, and the kernel, `( capabilities="<capability>..."; lfs_system_install linux )`, among the packages |
 | Helpers of one profile | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options every system needs | `package/linux/{base,<machine>,<arch>}.config`, each with its reason |
-| Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a machine, `package/linux/<capability>.<machine>.config` |
+| Kernel options every system needs | `package/linux/{base,<platform>,<arch>}.config`, each with its reason |
+| Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a platform, `package/linux/<capability>.<platform>.config` |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/systemd/etc/{passwd,group,shadow}`, shipped by the init |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |

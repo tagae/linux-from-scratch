@@ -13,7 +13,7 @@
 # the system comes from its profile, profile/<profile>.sh: the whole list of packages, in the order
 # they are installed, with the options of each at its call site. The init system and the kernel are
 # among them. The kernel is configured from layers that every system gets, in package/linux/ (base,
-# machine, architecture), and from the capabilities there that the profile names in the
+# platform, architecture), and from the capabilities there that the profile names in the
 # `capabilities` option of the linux package.
 
 lfs_system() {

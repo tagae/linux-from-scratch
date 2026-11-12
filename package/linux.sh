@@ -42,21 +42,21 @@ prepare() {
                     || bail "Unknown kernel capability '$capability'"
             done
 
-            # A platform with no configuration for its machine builds its defconfig. The others add
+            # A platform with no configuration of its own builds its defconfig. The others add
             # the capabilities listed in `capabilities`, each with its part for the architecture
-            # (<capability>.<architecture>.config) and its part for the machine
-            # (<capability>.<machine>.config) if it has them, to the layers that every system gets.
-            if [ -n "${kernel_machine:-}" ]; then
+            # (<capability>.<architecture>.config) and its part for the platform
+            # (<capability>.<platform>.config) if it has them, to the layers that every system gets.
+            if [ -f $package_files_dir/$platform.config ]; then
                 {
                     cat $package_files_dir/base.config \
-                        $package_files_dir/$kernel_machine.config \
+                        $package_files_dir/$platform.config \
                         $package_files_dir/$kernel_arch.config
                     for capability in ${capabilities:-}; do
                         cat $package_files_dir/$capability.config
                         [ ! -f $package_files_dir/$capability.$kernel_arch.config ] \
                             || cat $package_files_dir/$capability.$kernel_arch.config
-                        [ ! -f $package_files_dir/$capability.$kernel_machine.config ] \
-                            || cat $package_files_dir/$capability.$kernel_machine.config
+                        [ ! -f $package_files_dir/$capability.$platform.config ] \
+                            || cat $package_files_dir/$capability.$platform.config
                     done
                 } > $package_build_dir/$package_name.config
                 _make_target KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig

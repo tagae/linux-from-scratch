@@ -34,6 +34,6 @@ lfs_install_package kmod#dev
 )
 lfs_system_install systemd
 
-# The kernel, with a console (virtio's hvc0, from the machine's layer), the btrfs root file system, its
+# The kernel, with a console (virtio's hvc0, from the platform's layer), the btrfs root file system, its
 # self-protection and the options that systemd relies on.
 ( capabilities="btrfs console hardening systemd"; lfs_system_install linux )

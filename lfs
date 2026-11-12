@@ -102,7 +102,7 @@ readonly STATE_DIR DOWNLOAD_DIR WORK_DIR TOOL_DIR \
 
 readonly PROFILE
 
-#-- Platform: machine on which the built system will run, the start of the profile's name, up to its
+#-- Platform: hardware on which the built system will run, the start of the profile's name, up to its
 #   first `-`: `pi0` for `pi0-pgp`, `virt` for `virt`.
 
 readonly platform=${PROFILE%%-*}
