@@ -54,12 +54,10 @@ make docker-test
 Supported Platforms
 -------------------
 
-| Platform | Hardware                       | Architecture  |
-|----------|--------------------------------|---------------|
-| `virt`   | QEMU virtual machine           | host          |
-| `amd64`  | 64-bit x86 PC (QEMU q35)       | x86-64        |
-| `arm64`  | 64-bit ARM machine (QEMU virt) | ARMv8 (arm64) |
-| `pi0`    | Raspberry Pi Zero              | ARMv6 (arm)   |
+| Platform | Hardware             | Architecture |
+|----------|----------------------|--------------|
+| `virt`   | QEMU virtual machine | host         |
+| `pi0`    | Raspberry Pi Zero    | ARMv6 (arm)  |
 
 
 
@@ -86,8 +84,8 @@ Kernel Capabilities
 A *kernel capability*, `package/linux/<capability>.config`, is a kernel configuration bundle.
 
 A capability that differs by architecture has a part for each:
-`package/linux/<capability>.<architecture>.config`. One that differs by machine has a part for each
-machine: `package/linux/<capability>.<machine>.config`.
+`package/linux/<capability>.<architecture>.config`. One that differs by platform has a part for each
+platform: `package/linux/<capability>.<platform>.config`.
 
 | Capability       | Supports                                                     |
 |------------------|--------------------------------------------------------------|
