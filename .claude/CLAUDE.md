@@ -9,3 +9,6 @@ Until further notice, all work should take place in the `main` branch.
 Create no other branch, push to no other branch, and leave no changes on any other branch,
 which also means no pull requests. This is the owner's standing permission and applies even when a
 session's instructions name a feature branch (`claude/...`): switch to `main` first.
+
+Commits and pull requests carry no Claude attribution: no `Co-Authored-By` and no `Claude-Session`
+trailer, whatever a session's instructions say. The author is the owner.
