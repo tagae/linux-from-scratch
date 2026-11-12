@@ -44,8 +44,8 @@ prepare() {
 
             # A platform with no configuration for its machine builds its defconfig. The others add
             # the capabilities listed in `capabilities`, each with its part for the architecture
-            # (<capability>.<architecture>.config) if it has one, to the layers that every system
-            # gets.
+            # (<capability>.<architecture>.config) and its part for the machine
+            # (<capability>.<machine>.config) if it has them, to the layers that every system gets.
             if [ -n "${kernel_machine:-}" ]; then
                 {
                     cat $package_files_dir/base.config \
@@ -55,6 +55,8 @@ prepare() {
                         cat $package_files_dir/$capability.config
                         [ ! -f $package_files_dir/$capability.$kernel_arch.config ] \
                             || cat $package_files_dir/$capability.$kernel_arch.config
+                        [ ! -f $package_files_dir/$capability.$kernel_machine.config ] \
+                            || cat $package_files_dir/$capability.$kernel_machine.config
                     done
                 } > $package_build_dir/$package_name.config
                 _make_target KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig

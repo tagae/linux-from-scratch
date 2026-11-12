@@ -86,7 +86,8 @@ Kernel Capabilities
 A *kernel capability*, `package/linux/<capability>.config`, is a kernel configuration bundle.
 
 A capability that differs by architecture has a part for each:
-`package/linux/<capability>.<architecture>.config`.
+`package/linux/<capability>.<architecture>.config`. One that differs by machine has a part for each
+machine: `package/linux/<capability>.<machine>.config`.
 
 | Capability       | Supports                                                     |
 |------------------|--------------------------------------------------------------|
