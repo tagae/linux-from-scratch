@@ -235,7 +235,7 @@ Where Code Goes
 | Helpers of one profile | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
 | Kernel options every system needs | `package/linux/{base,<machine>,<arch>}.config`, each with its reason |
-| Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config` |
+| Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a machine, `package/linux/<capability>.<machine>.config` |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/systemd/etc/{passwd,group,shadow}`, shipped by the init |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
@@ -314,7 +314,8 @@ Pi facts:
   `dlopen` of libcrypto faults without it.
 * `HW_RANDOM_BCM2835` and `COMPAT_32BIT_TIME` are set.
 * DMA stays off, for the regression of the bcm2835-dma driver in 6.18.
-* virt takes USB (xHCI), RNG (virtio-rng) and its console (`hvc0`) from `virt.config`.
+* virt takes RNG (virtio-rng) and its console (`hvc0`) from `virt.config`, and its USB host controller
+  (xHCI) from `usb.virt.config`.
 
 
 Cross-Compiling
