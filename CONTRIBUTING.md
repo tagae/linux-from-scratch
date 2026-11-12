@@ -8,15 +8,15 @@ Overview
 * `lib/`: LFS framework, with the helpers of the recipes of a package category, loaded for them
   alone
 * `platform/`: the machines that systems run on
-* `feature/`: what systems hold, as lists of packages: the init system and what it builds on, what
-  platforms need (the kernel), and tool sets for the systems' users
+* `profile/`: the systems to build, each the whole list of its packages, the init system and the
+  kernel included
 * `package/`: package recipes
 * `download/`: fetched archives
-* `source/`: unpacked sources, one directory per platform and init (`source/pi0-systemd`) and one
-  for the tools (`source/tools`), as sources are patched in place
+* `source/`: unpacked sources, one directory per profile (`source/pi0-pgp`) and one for the tools
+  (`source/tools`), as sources are patched in place
 * `work/`: build dirs, and the sysroots of the cross toolchains
 * `tools/`: the build tools, which every system shares, and the cross toolchain of each platform
-* `install/`: target install trees, one per system key
+* `install/`: target install trees, one per profile
 * `archive/`: package tarballs, each with its SHA-256 digest
 * `image/`:  disk images
 * `Makefile`: build rules, run directly on a Linux host; the `docker-` goals run them through Docker
@@ -55,17 +55,18 @@ With this the tools are fully functional and can be used to build packages.
 Building the System
 -------------------
 
-The following command builds the system for the platform into `install/$SYSTEM_KEY`, starting from
-an empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a
-first gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
-system's features, compiled with that toolchain: the init's (`systemd`, with the strict minimum of
-chapter 8 that it needs, and `dash`, root's shell, which it requires), the platform's (`linux`, the kernel, configured from the layers
-that every system gets, `package/linux/`: base, hardening, machine and architecture, and from the
-fragments that the system's features rely on, `package/linux/<fragment>.config`; `pi-boot` on the
-Pi), then the others. Each package is installed both into the system tree and into the toolchain's
-sysroot, `work/<platform>-<init>/sysroot`, which also receives what compiling
-against the packages needs: the Linux API headers and the packages' `dev` components. The kernel is
-also copied to `work/boot/$SYSTEM_KEY`, where QEMU on the host finds it.
+The following command builds the system of the profile into `install/$PROFILE`, starting from an
+empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a first
+gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
+profile, `profile/$PROFILE.sh`, compiled with that toolchain: the packages of the system in the
+order they are installed, the init (`systemd`, with the strict minimum of chapter 8 that it needs,
+and `dash`, root's shell, which it requires) and the kernel (`linux`, configured from the layers
+that every system gets, `package/linux/`: base, machine and architecture, and from the
+capabilities that the profile names, `package/linux/<capability>.config`) among them. Each package is
+installed both into the system tree and into the toolchain's sysroot, `work/$PROFILE/sysroot`, which
+also receives what compiling against the packages needs: the Linux API headers and the packages'
+`dev` components. The kernel is also copied, with the platform's device tree, to
+`work/boot/$PROFILE`, where QEMU on the host finds it.
 
 ```shell
 ./lfs system build
@@ -76,14 +77,14 @@ Images
 ------
 
 * The `./lfs image build` command makes a disk image from the install tree at
-  `install/$SYSTEM_KEY`, as populated by `./lfs system build`. Given a block device instead of an
+  `install/$PROFILE`, as populated by `./lfs system build`. Given a block device instead of an
   image file, it partitions the device and fills it the same way, with the root file system taking
   all of the space the boot partition leaves.
 * An image file gets its SBOM next to it, `<image>.spdx.json` (`lib/sbom.sh`): an SPDX 2.3 document
   in JSON with the image's SHA-256 and the upstream packages it holds, each with its version, SPDX
   licence, the URL and SHA-256 of its source, and its CPE or PyPI package URL, which vulnerability
   scanners match (CI's scan is `.github/workflows/vulnerabilities.yaml`). The system
-  build lists the packages in `$WORK_DIR/sbom/$SYSTEM_KEY` as `lfs_system_install` installs them,
+  build lists the packages in `$WORK_DIR/sbom/$PROFILE` as `lfs_system_install` installs them,
   and `image build` writes the document from that list. An image counts as built only along with
   its SBOM. A block device gets none, as it is no file to take the digest of.
 * The `./lfs qemu` command boots the built image through a qcow2 overlay next to it,
@@ -158,9 +159,7 @@ installed only where wanted: into build trees, not into systems. Systems ship wi
 so a package's install also sets aside its man and info pages and whatever it installs under
 `/usr/share/doc` with `move_to_docs_component`, for a `docs` component that nothing makes a package
 of; wanting it again takes a `docs` branch in the recipes' install, like `dev`'s. Programs and
-libraries are stripped as they are linked. The system carries readers for man and info pages: `man`
-from mandoc, which needs zlib, and `info` from texinfo, of which only the reader and `install-info`
-are built.
+libraries are stripped as they are linked.
 
 
 Conventions
@@ -172,7 +171,7 @@ All shell code should be POSIX compliant.
 
 Shell variables are part of the **external API** if they are used to parameterise `lfs`.
 
-External API variables have uppercase names (e.g., `PLATFORM`, `INIT`, `FEATURES`)
+External API variables have uppercase names (e.g., `PROFILE`, `TIMEZONE`, `IMAGE_SIZE`)
 
 They are the only variables of its environment that `lfs` passes on to builds, along with `PATH`
 and `TMPDIR` (the list is `lfs_environment`, in `lfs`): every command but `qemu` and `help`
@@ -196,12 +195,11 @@ Internal API variables must not be exported.
 
 ### Encapsulation
 
-A recipe owns the functions it defines: no other recipe, and no feature, calls them, as that would
+A recipe owns the functions it defines: no other recipe, and no profile, calls them, as that would
 make a package depend on the inside of another. What several recipes need is a helper in
 `lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`), or in `lib/<category>.sh`, loaded for the
-recipes of that package category (`lib/python.sh`). A feature may define helpers of
-its own, for its own use, but never one that a package uses: packages rely on the framework
-(`lib/`) alone.
+recipes of that package category (`lib/python.sh`). A profile may define helpers of its own, for its
+own use, but never one that a package uses: packages rely on the framework (`lib/`) alone.
 
 
 ### Simplicity
@@ -223,7 +221,7 @@ and every patch description.
 
 A change to the framework (`lib/*.sh`, `Makefile`, `Dockerfile.*`, `docker-compose.yaml`, `lfs`)
 starts from its design, shown before the change is made, unless the change is what was asked for.
-The archive step only archives. Features are written on request, not speculatively.
+The archive step only archives. Profiles are written on request, not speculatively.
 
 
 Where Code Goes
@@ -233,34 +231,32 @@ Where Code Goes
 |---|---|
 | One package's build | `package/<name>.sh`: `case $package_component`, `default_*` for the rest |
 | Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
-| What a feature installs | `feature/<feature>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, with a `# Requires: <feature>...` line for the features it builds on and a `# Linux: <fragment>...` line for every kernel fragment it relies on |
-| The features every system of a platform gets | `platform/<platform>.sh`: a `# Requires: <feature>...` line (`linux`, `pi-boot`) |
-| Helpers of one feature | in its file, for its own use: no package uses them (see Encapsulation) |
+| What a system installs | `profile/<profile>.sh`: flat `lfs_system_install X` (+ `lfs_install_package X#dev` for build-time files), in dependency order, the options of a package at its call site, and the kernel, `( capabilities="<capability>..."; lfs_system_install linux )`, among the packages |
+| Helpers of one profile | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*` (`lfs_tools_install`, `lfs_system_install`) |
-| Kernel options every system needs | `package/linux/{base,hardening,<machine>,<arch>}.config`, each with its reason |
-| Kernel options that are optional | `package/linux/<fragment>.config`, each with its reason, named by the `# Linux:` line of the features that rely on it |
+| Kernel options every system needs | `package/linux/{base,<machine>,<arch>}.config`, each with its reason |
+| Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config` |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/systemd/etc/{passwd,group,shadow}`, shipped by the init |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
-A feature is what the system holds: the init system and what it builds on, what the platform
-needs, or a tool set for users. It sets no kernel option itself. A kernel need is a fragment, an
-option of the linux package: the feature names on a `# Linux:` line every fragment it relies on, as
-fragments do not build on each other. A system has one kernel, built before the features that the
-init and the platform do not bring, so `lfs` reads the lines of all its features up front, and the
-kernel gets the union of their fragments (`feature/linux.sh` passes it as the `fragments` option).
-A system has one init system, the feature that the key names after the platform (`INIT`); the key
-then names the other features, without those that come with the platform, the init or the others.
-Features install each in a subshell: the init's first, with what it requires, then the platform's,
-then the others in alphabetical order, each after the features it requires; a feature that builds
-on another's packages requires it. Each file's header says what it enables and how it changes the
-others. Build-machine tools
-that a system build needs (swig, the Rust seed, native Python modules) are installed into `TOOL_DIR`
-from the feature with `lfs_tools_install <package>`, archived `*-tools-*` under the system's key,
-never shipped. The tools that `lfs tools` builds are archived under the key `tools` instead, and
-every system shares them, so their recipes use nothing of the platform (`target_arch`, `kernel_arch`
-and the like are the platform's). A tool of a feature may: `rust` does. Its files in `TOOL_DIR`
-are then the platform's, and two systems with such a feature cannot be built at once.
+A profile is a whole system: the packages it holds, the init system and the kernel among them, as a
+flat list in the order they are installed, with the options of each package at its call site. Its
+name, `<platform>[-<name>]`, starts with the platform it runs on, and is the key of everything built
+for it: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`, `source/<profile>` and
+the image. A profile installs in a subshell, after the toolchain. It sets no kernel option itself. A
+kernel need is a capability, an option of the linux package: the profile names in the
+`capabilities` option every capability it relies on, in alphabetical order, as capabilities do not
+build on each other. Every profile installs the kernel, which `lfs` then copies, with the platform's device tree,
+to `work/boot/<profile>`. Profiles share nothing but the build tools: a package that two profiles
+install is built under each one's key, and the profiles of one platform build their toolchains
+apart. Build-machine tools that a system build needs (swig, the Rust seed, native Python modules)
+are installed into `TOOL_DIR` from the profile with `lfs_tools_install <package>`, archived
+`*-tools-*` under the profile's key, never shipped. The tools that `lfs tools` builds are archived
+under the key `tools` instead, and every system shares them, so their recipes use nothing of the
+platform (`target_arch`, `kernel_arch` and the like are the platform's). A tool of a profile may:
+`rust` does. Its files in `TOOL_DIR` are then the platform's, and two systems with such a tool
+cannot be built at once.
 
 
 Writing Recipes
@@ -303,10 +299,10 @@ systemd
 Kernel
 ------
 
-The kernel is configured from `allnoconfig` and fragments. Write down every option relied on, even
+The kernel is configured from `allnoconfig`, layers and capabilities. Write down every option relied on, even
 the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NET`,
 `NETWORK_FILESYSTEMS`, `NETDEVICES`: each bit once). Find dependencies in the Kconfig, which
-`tar --include` extracts from the tarball, and verify the resolved `.config`, never the fragment.
+`tar --include` extracts from the tarball, and verify the resolved `.config`, never the files of `package/linux/`.
 Archives are named by package and version, not by content: after a change, delete the `linux-*`
 archive of every key that must pick it up (`.github/ci/invalidate` does so for CI's cache).
 
@@ -381,7 +377,7 @@ Before Calling a Change Done
    and no error.
 2. No library is newly needed but unshipped; `readelf -A` is right; licences and hashes are
    verified.
-3. The system boots in QEMU: the standard checks are clean, and the feature is exercised with
+3. The system boots in QEMU: the standard checks are clean, and the change is exercised with
    emulated devices.
 4. The real build command, run again, is a no-op.
 5. Comments are timeless and nothing is duplicated; no test leftovers remain under `image/`,

@@ -10,7 +10,7 @@ readonly lfs_version=13.1
 readonly project_dir=$(dirname $(realpath "$0"))
 readonly lib_dir=$project_dir/lib
 readonly package_dir=$project_dir/package
-readonly feature_dir=$project_dir/feature
+readonly profile_dir=$project_dir/profile
 
 . $lib_dir/base.sh
 . $lib_dir/package.sh
@@ -27,7 +27,7 @@ readonly feature_dir=$project_dir/feature
 # The variables that builds see of the environment lfs is started in: its external API, PATH and
 # TMPDIR. As in a container, nothing else of the caller's comes in, such as what steers compilers,
 # pkg-config or interpreters (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH...). QEMU runs in the caller's.
-readonly lfs_environment="PLATFORM INIT FEATURES SYSTEM_KEY TIMEZONE IMAGE_SIZE ERASE \
+readonly lfs_environment="PROFILE TIMEZONE IMAGE_SIZE ERASE \
     MACHINE LFS_RELEASE VERSION_CODENAME RELEASE_TYPE DISTRIB_CODENAME DISTRIB_DESCRIPTION \
     ROOT_VOLUME STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR \
     IMAGE_DIR BOOTSTRAP_DIR PATH TMPDIR"
@@ -92,97 +92,32 @@ readonly STATE_DIR DOWNLOAD_DIR WORK_DIR TOOL_DIR \
 
 #===[ System Characteristics ]===
 
-# Parse the given system key, when provided.
-if [ -n "${SYSTEM_KEY:-}" ]; then
-    _platform_init=${SYSTEM_KEY%%+*}
-    _platform=${_platform_init%%-*}
-    : ${PLATFORM:=$_platform}
-    if [ "$_platform" != "$_platform_init" ]; then
-        : ${INIT:=${_platform_init#*-}}
-    fi
-    # The rest is "" or "+feature1+feature2...".
-    _features=$(echo "${SYSTEM_KEY#"$_platform_init"}" | tr '+' ' ')
-    : ${FEATURES=$_features}
-    unset _platform_init _platform _features
-fi
+#-- Profile: the whole system to build, as the list of packages in profile/<profile>.sh. Its name is
+#   the key of everything the build makes: the packages' archives, the install tree, the sysroot, the
+#   kernel in WORK_DIR/boot and the image.
 
-#-- Platform: machine on which the built system will run.
+: ${PROFILE:=virt}
 
-: ${PLATFORM:=virt}
+[ -f $profile_dir/$PROFILE.sh ] || bail "Unknown profile '$PROFILE'"
 
-[ -f $project_dir/platform/$PLATFORM.sh ] || bail "Unsupported platform '$PLATFORM'"
+readonly PROFILE
 
-readonly PLATFORM
+#-- Platform: machine on which the built system will run, the start of the profile's name, up to its
+#   first `-`: `pi0` for `pi0-pgp`, `virt` for `virt`.
 
-. $project_dir/platform/$PLATFORM.sh
+readonly platform=${PROFILE%%-*}
 
-#-- Init: the feature with the init system, which the system's other features are built on. A system
-#   has a single one.
+[ -f $project_dir/platform/$platform.sh ] \
+    || bail "Unsupported platform '$platform': a profile is named <platform>[-<name>] ('$PROFILE')"
 
-: ${INIT:=systemd}
+. $project_dir/platform/$platform.sh
 
-readonly INIT
+#-- Package key: the key under which the system's packages are archived.
 
-#-- Features: what the system holds, as lists of packages: the init system and what it requires,
-#   what the platform needs, such as the kernel, and tool sets for the system's users, which are
-#   opt-in.
+package_key=$PROFILE
 
-readonly FEATURES=$(printf '%s\n' ${FEATURES:-} | sort -u | xargs)
-
-# The features that every system of the platform and the init system gets.
-features= lfs_adding=
-lfs_add_feature $INIT
-for feature in $(lfs_requires $project_dir/platform/$PLATFORM.sh); do
-    lfs_add_feature $feature
-done
-readonly base_features=$features
-
-# The features that come with the given ones. A system has a single key, which leaves them out.
-for feature in $FEATURES; do
-    [ -f $feature_dir/$feature.sh ] || bail "Unknown feature '$feature'"
-    for required in $(lfs_requires $feature_dir/$feature.sh); do
-        lfs_add_feature $required
-    done
-done
-for feature in $FEATURES; do
-    case " $features " in
-        *" $feature "*) bail "Feature '$feature' comes with the others: leave it out" ;;
-    esac
-done
-for feature in $FEATURES; do
-    lfs_add_feature $feature
-done
-
-# The kernel fragments that the features rely on, from the `# Linux:` lines of their files. There is
-# one kernel per system, built before the features that the platform and the init do not bring,
-# so it holds what they all need. The fragments are in alphabetical order, so that systems with the
-# same fragments share their kernel.
-linux_fragments=
-for feature in $features; do
-    for fragment in $(sed -n 's/^# Linux://p' $feature_dir/$feature.sh); do
-        [ -f $package_dir/linux/$fragment.config ] \
-            || bail "Unknown kernel fragment '$fragment' of the feature '$feature'"
-        linux_fragments="$linux_fragments $fragment"
-    done
-done
-readonly linux_fragments=$(printf '%s\n' $linux_fragments | sort -u | xargs)
-# The other features, each after those it requires.
-readonly features=$(echo ${features#"$base_features"})
-unset feature fragment required lfs_adding
-
-#-- System key: canonical marker for the platform/init/features combination.
-
-readonly SYSTEM_KEY=$PLATFORM-$INIT${FEATURES:++$(set -- $FEATURES; IFS=+; echo "$*")}
-
-#-- Package key: the system key of the system as it stands when a package is built, under which
-#   the package is archived. The features that the platform and the init do not bring are added
-#   one by one, each extending it, so that systems share the archives of what they have in common.
-#   The kernel's adds the fragments that configure it.
-
-package_key=$PLATFORM-$INIT
-
-#-- Source directory: sources are unpacked and patched in place, so the tools and each platform have a
-#   directory of their own in SOURCE_DIR. Builds of different platforms run at once, and one would
+#-- Source directory: sources are unpacked and patched in place, so the tools and each profile have a
+#   directory of their own in SOURCE_DIR. Builds of different profiles run at once, and one would
 #   patch, or discard after a failed patch, the source that another compiles. Downloads are shared,
 #   as they are written whole and checked by hash.
 
@@ -290,9 +225,7 @@ case "${1:-help}" in
         echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU"
         echo ""
         echo "Environment:"
-        echo "  PLATFORM         Target platform"
-        echo "  INIT             The feature with the init system, systemd by default"
-        echo "  FEATURES         Features, such as GnuPG, beyond those of the platform and the init"
+        echo "  PROFILE          The system to build, as profile/<profile>.sh lists it; virt by default"
         echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
         echo "  IMAGE_SIZE       The image file's size, as truncate takes it (512M), with the root"
         echo "                   file system filling it; by default as small as the system allows"

@@ -1,11 +1,10 @@
-# systemd, the init system and service manager, with the strict minimum it needs to boot the system
-# and log root in on the console: it mounts the file systems, runs the services and the journal,
-# and keeps the clock across boots. It links kmod, libxcrypt, and util-linux's libmount and
-# libblkid, and runs util-linux's mount, agetty and sulogin, and shadow's login, which starts root's
-# shell. It brings the static accounts, root's included.
+# A bare-bones virtual machine, to show that the system boots cleanly, that root logs in on the
+# console, and that it powers off: systemd, with the strict minimum it needs to boot the system and
+# log root in, dash, root's shell and /bin/sh, and the kernel. It links kmod, libxcrypt, and
+# util-linux's libmount and libblkid, and runs util-linux's mount, agetty and sulogin, and shadow's
+# login, which starts root's shell. It brings the static accounts, root's included.
 
-# Requires: dash
-# Linux: systemd
+lfs_system_install dash
 
 ( manpages=no; lfs_system_install kmod )
 lfs_install_package kmod#dev
@@ -25,7 +24,7 @@ lfs_install_package kmod#dev
 (
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
     # What systemd links, libmount and libblkid under it, and runs: mount, and agetty and sulogin
-    # for the console. The other tools come with the util-linux feature.
+    # for the console.
     all_programs=no
     libblkid=yes libmount=yes mount=yes agetty=yes sulogin=yes
     python=no systemd=no static=no
@@ -33,6 +32,7 @@ lfs_install_package kmod#dev
     lfs_system_install util-linux
     lfs_install_package util-linux#dev
 )
-
 lfs_system_install systemd
-lfs_install_package systemd#dev
+
+# The kernel, with its self-protection and the options that systemd relies on.
+( capabilities="hardening systemd"; lfs_system_install linux )

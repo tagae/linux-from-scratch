@@ -1,6 +1,6 @@
 # Boots the image under QEMU exactly as `./lfs qemu` does, logs in as root, and leaves the shell ready
 # for input. Source it at the top level of an expect script, from the repo root. It reads the
-# environment that qemu-check sets: SYSTEM_KEY, IMAGE_COPY (the image to boot), QEMU_EXTRA (more QEMU
+# environment that qemu-check sets: PROFILE, IMAGE_COPY (the image to boot), QEMU_EXTRA (more QEMU
 # arguments, read by `lfs qemu`) and TIMEOUT (seconds, default 400).
 
 set timeout [expr {[info exists env(TIMEOUT)] ? $env(TIMEOUT) : 400}]

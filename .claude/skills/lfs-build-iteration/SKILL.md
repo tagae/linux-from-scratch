@@ -1,6 +1,6 @@
 ---
 name: lfs-build-iteration
-description: Build, rebuild and verify systems of this LFS framework from the Mac (Docker via Colima) - system keys, archives and volumes, which stale state to delete after changing a recipe, kernel fragment or framework file, running long builds, inspecting images and volumes, proving a refactor changed nothing. Use before and during any change to package/*.sh, lib/*.sh, package/linux/*.config or a feature. Booting the result is qemu-image-testing; the conventions for writing the recipe are in CONTRIBUTING.md.
+description: Build, rebuild and verify systems of this LFS framework from the Mac (Docker via Colima) - profile keys, archives and volumes, which stale state to delete after changing a recipe, kernel capability or framework file, running long builds, inspecting images and volumes, proving a refactor changed nothing. Use before and during any change to package/*.sh, lib/*.sh, package/linux/*.config or a profile. Booting the result is qemu-image-testing; the conventions for writing the recipe are in CONTRIBUTING.md.
 model: sonnet
 ---
 
@@ -10,31 +10,24 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
 
 ## Keys, archives, volumes
 
-- A system is `<platform>-<init>[+<feature>...]`, features in ALPHABETICAL order
-  (`pi0-systemd+fido2+gnupg+yubikey-manager`; lfs bails on `+usb`: a fragment is no feature). A feature is
-  `feature/<feature>.sh`; a `# Linux:` line names every kernel fragment (`package/linux/<fragment>.config`) it
-  relies on, a `# Requires:` line the features it builds on. Everything after the cross toolchain is a feature:
-  the init is one (`INIT=systemd`: kmod, libxcrypt, shadow, a minimal util-linux, systemd; it requires `bash` and
-  names the `systemd` fragment; the rest of chapter 8 is `+gnu+man+procps+tzdata`, whose `util-linux` feature
-  builds util-linux again with the tools), and the
-  platform file's `# Requires:` line names its own (`linux`; `pi-boot` on pi0); lfs bails on naming one in the
-  key. lfs resolves `base_features` (the init's and the platform's), `features` (the others, each after what it
-  requires) and `linux_fragments` (those of all features, sorted).
-- Build: `make docker-image/<key>.img` (Linux hosts: `make image/<key>.img`); also `make image PLATFORM=pi0
-  FEATURES="b c"`. Result: `image/<key>.img` and `work/boot/<key>/{kernel.img,*.dtb}`.
-- Packages are archived once: `archive/<package_key>/<name>-<version>[-component].tar.xz` + `.sha256`. The
-  package key is the base key (`pi0-systemd`) extended AS IT STOOD WHEN THE PACKAGE WAS BUILT: the
-  toolchain's and the base features' packages (init, Pi firmware/boot) are shared by all systems; the kernel sits
-  under the base key plus ALL the fragments of the features, sorted (`pi0-systemd+hidraw+systemd+usb+usb-storage`;
-  `pi0-systemd+systemd` with no other feature), shared by systems whose features need the same fragments; another
-  feature's packages under the base key plus the features up to it (`pi0-systemd+fido2+gnupg`). The build
+- A system is a profile, `profile/<profile>.sh` (`virt`, `pi0-pgp`): the whole flat list of its packages, in
+  install order, with the options of each at its call site, the init (`systemd`, `dash`) and the kernel among
+  them (`( capabilities="hidraw systemd usb usb-storage"; lfs_system_install linux )`, capabilities being
+  `package/linux/<capability>.config`, alphabetical). The profile's name starts with its platform
+  (`pi0-pgp` runs on `pi0`) and is the key of everything: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`,
+  `source/<profile>`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
+  `FEATURES`: to add a package, add its lines to the profile.
+- Build: `make docker-image/<profile>.img` (Linux hosts: `make image/<profile>.img`); also `make image
+  PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb}`.
+- Packages are archived once: `archive/<profile>/<name>-<version>[-component].tar.xz` + `.sha256`: the
+  toolchain, the kernel and every package of the profile under one key, so profiles share no archive. The build
   tools (`<name>-bootstrap-<version>`, `<name>-tools-<version>`) are under the key `tools`, built once for every
-  system; those a feature installs with `lfs_tools_install` stay under the system's key, as `rust` depends on the
-  platform.
-- A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel fragment or installed file
+  system; those a profile installs with `lfs_tools_install` stay under the profile's key, as `rust` depends on
+  the platform.
+- A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel capability or installed file
   changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
-  After a kernel fragment delete `linux-*.tar.xz*` of EVERY key that must change: those with the fragment, or all of
-  them for a layer, base keys included.
+  After a kernel capability delete `linux-*.tar.xz*` of EVERY profile that must change: those that name the capability,
+  or all of them for a layer.
   Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade
@@ -43,14 +36,14 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image and its SBOM
   (`image/<key>.img`, `image/<key>.spdx.json`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
   with `pyspdxtools --infile` (`pip install spdx-tools` in a venv).
-- Builds of DIFFERENT platforms run at once from ONE make (`make -j docker-test docker-pi0-test`, no job limit:
+- Builds of DIFFERENT profiles run at once from ONE make (`make -j docker-test docker-pi0-pgp-test`, no job limit:
   tools first, then the systems side by side; each build uses `-j$(nproc)`). They share the `tools` volume, the
-  downloads and `archive/tools`; each platform has its own sources (`source/<platform>-<init>`), work, archives and
+  downloads and `archive/tools`; each profile has its own sources (`source/<profile>`), work, archives and
   image; the cross toolchains share a few files (`libcc1`, `bfd-plugins/libdep.so`, docs), rewritten when a build
   extracts its own. Two cross gcc compiles at once got `Killed signal terminated program cc1plus` in a 12 GiB VM:
-  give the VM 24 GiB or more. NEVER run two builds of the same platform and init (they share and wipe one sysroot,
-  `work/pi0-systemd/sysroot`), nor two systems whose features install a platform-dependent build tool (`rust`, for
-  `yubikey-manager`): they overwrite each other's files in `tools`. Builds started apart on a cold state both build
+  give the VM 24 GiB or more. NEVER run two builds of the same profile (they share and wipe one sysroot,
+  `work/<profile>/sysroot`), nor two profiles that install a platform-dependent build tool (`rust`, for
+  `pi0-pgp`'s `cryptography`): they overwrite each other's files in `tools`. Builds started apart on a cold state both build
   the tools: run `make docker-tools` first. `build-image` refuses while any build runs: for several, use make.
   Check with `ps aux | grep -E '[m]ake docker|[d]ocker compose run'`. A tool is extracted into `tools` only when
   the digest recorded in `tools/.installed/<archive name>` differs, so a build never rewrites what another runs
@@ -58,10 +51,10 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   follow-on errors); after deleting a tool's archive the rebuilt one is extracted again.
 - `system-files` is merged BEFORE the other packages and the last file wins: a file a package installs cannot be
   overridden from `package/system-files`; change it in that package.
-- Sources (`source/<platform>-<init>`, `source/tools`) and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
+- Sources (`source/<profile>`, `source/tools`) and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
   and compilers (the meson recipes wipe theirs in `prepare`); patches are stamped `.patched-*`, so a patch you
   change is not applied again to a source that has it: delete that source directory.
-- The kernel `.config` is regenerated from `allnoconfig` + fragments at every `prepare`; allnoconfig drops options
+- The kernel `.config` is regenerated from `allnoconfig` + layers and capabilities at every `prepare`; allnoconfig drops options
   that default to y (KUSER_HELPERS, COMPAT_32BIT_TIME, ...): set them, then confirm with `$B/kernel-config KEY
   OPTION...` (the resolved lines, from the volume).
 

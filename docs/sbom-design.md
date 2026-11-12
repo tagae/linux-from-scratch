@@ -29,7 +29,7 @@ assessment).
 
 ## What an image's SBOM contains
 
-One document per image, `image/<SYSTEM_KEY>.spdx.json`, next to the image:
+One document per image, `image/<PROFILE>.spdx.json`, next to the image:
 
 | SPDX element | Here | Fields |
 |---|---|---|
@@ -66,10 +66,9 @@ One document per image, `image/<SYSTEM_KEY>.spdx.json`, next to the image:
 
 The document names packages, not the archives that the system build made of them: the archives are
 published nowhere, so their digests would tell nobody anything, and scanners match the packages'
-identities alone. A package that the system installs twice (util-linux, with the `util-linux`
-feature) or that two features install (openssl) is named once. A package without a source, such as
-`system-files`, holds this project's own files, which the image stands for. The `dev` component,
-which a system doesn't get, stays out.
+identities alone. A package that the system installs twice is named once. A package without a
+source, such as `system-files`, holds this project's own files, which the image stands for. The
+`dev` component, which a system doesn't get, stays out.
 
 ## Identifiers
 
@@ -102,7 +101,7 @@ tables, or on the rule alone (mandoc and ccid).
 ## How it is produced
 
 1. **Record what goes in.** `lfs_system_install` appends each package to a list for the system,
-   `$WORK_DIR/sbom/$SYSTEM_KEY`, which the system build empties first. A line holds what the recipe
+   `$WORK_DIR/sbom/$PROFILE`, which the system build empties first. A line holds what the recipe
    says: name, version, licence, source, source digest, CPEs and description. It is taken when the
    package is installed, because only then does the recipe see the variables it was built with (the
    package key, the Python version). This is the only change to the system build.

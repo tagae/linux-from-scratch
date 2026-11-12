@@ -6,13 +6,6 @@
   which saves one build of the tools per platform. A build on the runner and one through Docker
   Compose cannot share it, as their archives record different paths, and the runner's architecture
   is part of the cache's key. `.github/ci/invalidate` already files the tools apart.
-* `yubikey-manager` and `fido2` each build their own OpenSSL, which builds it twice in systems that
-  have both. Features can require features: a feature for libcrypto that both require would build it
-  once.
-* A feature that requires systemd (`fido2`, `yubikey-manager`) brings it to a system with another
-  init, which then has two. An init system other than systemd needs a way to refuse that, or
-  features that rely on what both inits provide.
-* The `util-linux` feature builds util-linux a second time, over the minimal one that systemd brings:
-  a package is built once per call, with the options of its call site. Building it once would take
-  features adding options to a package before it is built (the option table of
-  docs/dependencies-design.md).
+* The profiles repeat the block that installs systemd and what it links (`profile/virt.sh` and
+  `profile/pi0-pgp.sh`, with options of their own for util-linux). A third profile is the time to
+  share it, as a file that profiles source or as a package the profile names.

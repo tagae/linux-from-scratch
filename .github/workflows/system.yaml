@@ -1,16 +1,16 @@
 name: System
 
-# The system of a platform, built and booted in QEMU as `make <platform>-test` does, one job per
+# The system of a profile, built and booted in QEMU as `make <profile>-test` does, one job per
 # phase because a job has six hours and a cold build takes longer. Each phase relies on the archives
 # that the one before it saved in the cache, so only the first can start from scratch. The
-# Makefile's targets set SYSTEM_KEY and export LFS_RELEASE, which the system files bake into
+# Makefile's targets set PROFILE and export LFS_RELEASE, which the system files bake into
 # os-release; the phases that a target runs before its own only unpack their archives. The tools
-# are those of every platform, and their phases name none.
+# are those of every profile, and their phases name none.
 on:
   workflow_call:
     inputs:
-      platform:
-        description: The platform of the system, as the Makefile's targets name it
+      profile:
+        description: The profile of the system, as the Makefile's targets name it
         type: string
         required: true
       cold:
@@ -26,7 +26,7 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: bootstrap
-      platform: ${{ inputs.platform }}
+      profile: ${{ inputs.profile }}
       command: make tools-bootstrap
       cold: ${{ inputs.cold }}
 
@@ -35,7 +35,7 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: tools
-      platform: ${{ inputs.platform }}
+      profile: ${{ inputs.profile }}
       command: make tools
 
   system:
@@ -43,16 +43,16 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: system
-      platform: ${{ inputs.platform }}
-      command: make ${{ inputs.platform }}-system
+      profile: ${{ inputs.profile }}
+      command: make ${{ inputs.profile }}-system
 
   test:
     needs: system
     uses: ./.github/workflows/phase.yaml
     with:
       name: test
-      platform: ${{ inputs.platform }}
-      command: make ${{ inputs.platform }}-test
+      profile: ${{ inputs.profile }}
+      command: make ${{ inputs.profile }}-test
 
   # The same phases through Docker Compose, as on a Mac: the bootstrap container builds the first
   # tools, the scratch container, which holds nothing but the tools, the rest, and the image boots on
@@ -61,7 +61,7 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: docker-bootstrap
-      platform: ${{ inputs.platform }}
+      profile: ${{ inputs.profile }}
       command: make docker-tools-bootstrap
       cold: ${{ inputs.cold }}
       docker: true
@@ -71,7 +71,7 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: docker-tools
-      platform: ${{ inputs.platform }}
+      profile: ${{ inputs.profile }}
       command: make docker-tools
       docker: true
 
@@ -80,8 +80,8 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: docker-system
-      platform: ${{ inputs.platform }}
-      command: make docker-${{ inputs.platform }}-system
+      profile: ${{ inputs.profile }}
+      command: make docker-${{ inputs.profile }}-system
       docker: true
 
   docker-test:
@@ -89,6 +89,6 @@ jobs:
     uses: ./.github/workflows/phase.yaml
     with:
       name: docker-test
-      platform: ${{ inputs.platform }}
-      command: make docker-${{ inputs.platform }}-test
+      profile: ${{ inputs.profile }}
+      command: make docker-${{ inputs.profile }}-test
       docker: true

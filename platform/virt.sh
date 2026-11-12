@@ -1,7 +1,5 @@
 # A QEMU virtual machine of the build machine's architecture.
 
-# Requires: linux
-
 # The guest has the build machine's architecture, so that the accelerator can run it.
 case "$(uname -m)" in
     arm64|aarch64)

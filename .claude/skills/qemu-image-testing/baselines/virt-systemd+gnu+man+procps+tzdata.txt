@@ -1,6 +1,0 @@
-state: running
-failed units: 0
---- dmesg, warnings and worse
-cacheinfo: Unable to detect cache hierarchy for CPU 0
-pci-host-generic 4010000000.pcie: Memory resource size exceeds max for 32 bits
---- journal, warnings and worse, not the kernel

@@ -1,4 +1,7 @@
-case $PLATFORM in
+: ${package_description:=Linux kernel.}
+: ${package_license:=GPL-2.0-only WITH Linux-syscall-note}
+
+case $platform in
     pi0)
         package_version=stable_20261103
         # The tag of the Pi's fork, and the version of the kernel it holds.
@@ -22,9 +25,6 @@ case $kernel_arch in
     *)      bail "Unsupported kernel architecture '$kernel_arch'" ;;
 esac
 
-: ${package_description:=Linux kernel.}
-: ${package_license:=GPL-2.0-only WITH Linux-syscall-note}
-
 prepare() {
     case $package_component in
         linux)
@@ -35,18 +35,26 @@ prepare() {
                 apply_patch $package_files_dir/${board%.dtb}.patch
             fi
 
-            # A platform with no configuration fragment for its machine builds its defconfig.
-            # The others add the optional fragments listed in `fragments` to the layers that every
-            # system gets.
+            # A misspelled capability in a profile fails here, instead of configuring a kernel without it.
+            local capability
+            for capability in ${capabilities:-}; do
+                [ -f $package_files_dir/$capability.config ] \
+                    || bail "Unknown kernel capability '$capability'"
+            done
+
+            # A platform with no configuration for its machine builds its defconfig. The others add
+            # the capabilities listed in `capabilities`, each with its part for the architecture
+            # (<capability>.<architecture>.config) if it has one, to the layers that every system
+            # gets.
             if [ -n "${kernel_machine:-}" ]; then
-                local fragment
                 {
                     cat $package_files_dir/base.config \
-                        $package_files_dir/hardening.config \
                         $package_files_dir/$kernel_machine.config \
                         $package_files_dir/$kernel_arch.config
-                    for fragment in ${fragments:-}; do
-                        cat $package_files_dir/$fragment.config
+                    for capability in ${capabilities:-}; do
+                        cat $package_files_dir/$capability.config
+                        [ ! -f $package_files_dir/$capability.$kernel_arch.config ] \
+                            || cat $package_files_dir/$capability.$kernel_arch.config
                     done
                 } > $package_build_dir/$package_name.config
                 _make_target KCONFIG_ALLCONFIG=$package_build_dir/$package_name.config allnoconfig
@@ -54,7 +62,7 @@ prepare() {
                 _make_target $defconfig
             fi
             ${MACHINE:+_set_kernel_config DEFAULT_HOSTNAME "$MACHINE"}
-            ${PLATFORM:+_set_kernel_config LOCALVERSION "-$PLATFORM"}
+            _set_kernel_config LOCALVERSION "-$platform"
             _make_target olddefconfig
             ;;
         *)

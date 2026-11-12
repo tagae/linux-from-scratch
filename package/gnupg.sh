@@ -49,6 +49,14 @@ install() {
     case $package_component in
         gnupg)
             make install DESTDIR=$package_install_dir
+            # Programs that no option leaves out, and that neither keys nor cards need: for mail and
+            # the Web Key Service, for users' home directories and Windows code signing, and to
+            # debug logs, keyboxes and OpenPGP packets.
+            local bin=$package_install_dir$prefix/bin sbin=$package_install_dir$prefix/sbin
+            rm -v $bin/gpg-mail-tube $bin/gpgparsemail $bin/gpg-wks-client \
+                $package_install_dir$prefix/libexec/gpg-wks-client \
+                $bin/gpg-authcode-sign.sh $sbin/addgnupghome $sbin/applygnupgdefaults \
+                $bin/watchgnupg $bin/gpgsplit $bin/kbxutil
             move_to_dev_component
             move_to_docs_component
             ;;

@@ -6,9 +6,7 @@ services:
         HOST_UID:
         HOST_GID:
     environment:
-      PLATFORM:
-      FEATURES:
-      SYSTEM_KEY:
+      PROFILE:
     volumes:
       - type: bind
         source: lfs
@@ -23,8 +21,8 @@ services:
         source: platform
         target: /mnt/lfs/platform
       - type: bind
-        source: feature
-        target: /mnt/lfs/feature
+        source: profile
+        target: /mnt/lfs/profile
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download
@@ -56,9 +54,7 @@ services:
         HOST_UID:
         HOST_GID:
     environment:
-      PLATFORM:
-      FEATURES:
-      SYSTEM_KEY:
+      PROFILE:
       ERASE:
       TIMEZONE:
       INSTALL_DIR:
@@ -82,8 +78,8 @@ services:
         source: platform
         target: /mnt/lfs/platform
       - type: bind
-        source: feature
-        target: /mnt/lfs/feature
+        source: profile
+        target: /mnt/lfs/profile
       - type: bind
         source: $PWD/download
         target: /mnt/lfs/download

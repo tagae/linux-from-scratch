@@ -27,7 +27,8 @@ prepare() {
             # framework is installed), and what needs kernel features (core dumps, pressure stall
             # information for oomd, pstore, hibernation, quotas) or hardware (backlights, rfkill,
             # virtual consoles, EFI) that these systems lack.
-            # zlib, which gnu installs, is left out: only the image import uses it.
+            # zlib is left out: only the image import uses it. So is libfdisk, which util-linux
+            # installs: only repart uses it.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
             # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
@@ -68,6 +69,7 @@ prepare() {
                 -Dp11kit=disabled \
                 -Dlibcryptsetup=disabled \
                 -Dzlib=disabled \
+                -Dfdisk=disabled \
                 -Dnetworkd=false \
                 -Dresolve=false \
                 -Dtimesyncd=true \

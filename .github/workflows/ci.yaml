@@ -39,18 +39,18 @@ jobs:
       - name: Lint
         run: .github/ci/lint
 
-  # The systems that CI builds and boots, one per platform: virt, the platform that the Makefile
-  # builds by default, and pi0, the one that runs on hardware. Each system is built apart from the
-  # other, so that a failure in one leaves the other to finish. The platforms are also in
+  # The systems that CI builds and boots, one per profile: virt, the profile that the Makefile
+  # builds by default, and pi0-pgp, the one that runs on hardware. Each system is built apart from
+  # the other, so that a failure in one leaves the other to finish. The profiles are also in
   # .github/ci/lint and .github/workflows/vulnerabilities.yaml.
   virt:
     uses: ./.github/workflows/system.yaml
     with:
-      platform: virt
+      profile: virt
       cold: ${{ inputs.cold == true }}
 
-  pi0:
+  pi0-pgp:
     uses: ./.github/workflows/system.yaml
     with:
-      platform: pi0
+      profile: pi0-pgp
       cold: ${{ inputs.cold == true }}
