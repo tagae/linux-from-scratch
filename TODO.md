@@ -1,5 +1,3 @@
-* Patches downloaded from LFS roll with the LFS version, and previous patch versions are removed,
-  breaking the builds of packages that use those patches.
 * CI builds the tools in the jobs of every platform, though they are the same for all of them. The
   `tools-bootstrap` and `tools` phases could run once, in jobs that the platforms' jobs `need`,
   saving the archives under `archive/tools` (and `download/`) in a cache that the platforms restore,

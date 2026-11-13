@@ -168,17 +168,6 @@ lfs_source_package() {
         fi
     }
 
-    patch_source() {
-        local url=$1
-        local hash=$2 # Expected to be in "algo:hexdigest" form.
-        local file=${url##*/}
-        local download_dir=$DOWNLOAD_DIR/$package_category
-        mkdir -p $download_dir
-        [ -f $download_dir/$file ] || fetch_url "$url" "$download_dir"
-        verify_hash "$download_dir/$file" "$hash"
-        apply_patch $download_dir/$file
-    }
-
     # Applies a patch kept in the package's files directory. A recipe changes a source file with a
     # patch, never by editing the file.
     apply_patch() {
