@@ -12,6 +12,7 @@
 # logind support would need libsystemd, which is built after this package.
 # New passwords are hashed with yescrypt, rather than with shadow's default, DES.
 # The system has no mail delivery, so login does not check for mail.
+# glibc has no nscd, whose caches the account tools would flush.
 # Unless a system says otherwise, root is its only account: no program is setuid, and there are no
 # subordinate ids, which serve user namespaces.
 prepare() {
@@ -31,6 +32,7 @@ prepare() {
                 --disable-static \
                 --disable-logind \
                 --without-libpam \
+                --without-nscd \
                 --without-libbsd \
                 --with-group-name-max-length=32 \
                 --with-yescrypt \

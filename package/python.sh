@@ -18,6 +18,8 @@ prepare() {
             patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/Python-$package_version-openssl_4-1.patch \
                 sha256:707a0c457192ac2f3b5b8a51481bc5ebd12db22d57c1dbe0256138ee6e070792
 
+            # The remote debugger, which attaches to a running process, is left out.
+
             # When cross-compiling, configure cannot look at the platform's device files: it has
             # /dev/ptmx, and /dev/ptc belongs to AIX. Nor can it tell whether getaddrinfo works,
             # unless told whether the platform has IPv6 (`ipv6`).
@@ -32,6 +34,7 @@ prepare() {
                 ${optimizations:+--enable-optimizations=$optimizations} \
                 ${ipv6:+--enable-ipv6=$ipv6} \
                 ${ensurepip:+--with-ensurepip=$ensurepip} \
+                --without-remote-debug \
                 ${test_modules:+--enable-test-modules=$test_modules} \
                 ${host:+ac_cv_file__dev_ptmx=yes ac_cv_file__dev_ptc=no}
             ;;

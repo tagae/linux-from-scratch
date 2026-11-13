@@ -26,7 +26,9 @@ prepare() {
             # over the network, desktop autostart, kernel-install, shell completions (no completion
             # framework is installed), and what needs kernel features (core dumps, pressure stall
             # information for oomd, pstore, hibernation, quotas) or hardware (backlights, rfkill,
-            # virtual consoles, EFI) that these systems lack.
+            # virtual consoles, EFI) that these systems lack. Also out: binary formats, the installer,
+            # the services for an initrd, which they do not have, environment.d for the user
+            # manager, and the IMA, IPE and SMACK security modules.
             # zlib is left out: only the image import uses it. So is libfdisk, which util-linux
             # installs: only repart uses it.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
@@ -66,6 +68,9 @@ prepare() {
                 -Drepart=disabled \
                 -Dopenssl=disabled \
                 -Dtpm2=disabled \
+                -Dima=false \
+                -Dipe=false \
+                -Dsmack=false \
                 -Dp11kit=disabled \
                 -Dlibcryptsetup=disabled \
                 -Dzlib=disabled \
@@ -102,6 +107,10 @@ prepare() {
                 -Dremote=disabled \
                 -Dxdg-autostart=false \
                 -Dkernel-install=false \
+                -Dbinfmt=false \
+                -Dsysinstall=false \
+                -Dinitrd=false \
+                -Denvironment-d=false \
                 -Dbashcompletiondir=no \
                 -Dzshcompletiondir=no \
                 -Djournal-storage-default=auto \

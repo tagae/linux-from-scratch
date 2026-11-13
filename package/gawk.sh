@@ -7,12 +7,15 @@
 prepare() {
     case $package_component in
         gawk)
+            # No dynamic extensions, nor the allocator for persistent memory.
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
                 --sysconfdir=/etc \
-                ${nls:+--enable-nls=$nls}
+                ${nls:+--enable-nls=$nls} \
+                --disable-extensions \
+                --disable-pma
             ;;
         *)
             default_prepare
