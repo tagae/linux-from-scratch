@@ -140,7 +140,7 @@ an unpacked source.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
-`<dependency>_source_dir`.
+`<dependency>_source_dir` (`libgpg_error_source_dir` for `libgpg-error`).
 
 The `package_license` list the package's license in [SPDX format][SPDX License List]. A licence that
 the list does not have is a `LicenseRef-<name>`, whose text is the file
@@ -159,8 +159,12 @@ aside for its `dev` component with `move_to_dev_component` (see `lib/components.
 installed only where wanted: into build trees, not into systems. Systems ship without documentation,
 so a package's install also sets aside its man and info pages and whatever it installs under
 `/usr/share/doc` with `move_to_docs_component`, for a `docs` component that nothing makes a package
-of; wanting it again takes a `docs` branch in the recipes' install, like `dev`'s. Programs and
-libraries are stripped as they are linked.
+of. The exception is `man=yes` and `info=yes`, which a platform (`platform/pi0.sh`) or a profile
+sets for the systems it builds: `move_to_docs_component` then leaves the man or the info pages in the
+package. A recipe that has to be told to build them says `: ${man:=no}` and reads it (`openssl`,
+`libfido2`), or asks `docs_wanted` for either (`gnupg` and its libraries: `--$doc-doc`). The tools
+never have them: `lib/tools.sh` and `lfs_install_tool` set `man=no info=no`. Programs and libraries
+are stripped as they are linked.
 
 
 Conventions
@@ -278,8 +282,8 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   turns it on: the recipe says `: ${gpgsm:=no}`, and a profile or `lib/tools.sh` sets `=yes` for
   the features it uses and `=no` for none. Options that take a value or a place (`hashes`, `bindir`)
   have no such default, and neither has one that is no feature (`stripping`, `ssldirs`).
-* No documentation: no man, info, doc, locale or NLS files; the install calls
-  `move_to_docs_component`. No empty directories in a system, except mount points. Real hardware
+* No documentation: no man (unless `man=yes`), info (unless `info=yes`), doc, locale or NLS files; the
+  install calls `move_to_docs_component`. No empty directories in a system, except mount points. Real hardware
   comes first: the Pi's boot partition is firmware, `config.txt`, `cmdline.txt` and a flat device
   tree blob.
 * Pin everything: `package_source_hash=sha256:<hex>` of the tarball, checked against the upstream's

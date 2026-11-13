@@ -39,6 +39,9 @@ lfs_tools_bootstrap() {
     readonly multilib=no
     readonly prefix=/usr
 
+    # The tools are the same for every system, whatever documentation it has.
+    man=no info=no
+
     readonly package_variant=bootstrap
     package_install_dir=$TOOL_DIR
     package_key=$tools_key
@@ -124,6 +127,8 @@ lfs_tools_build() {
     readonly prefix=/usr
     readonly nls=no
 
+    man=no info=no
+
     readonly package_variant=tools
     package_install_dir=$TOOL_DIR
     package_key=$tools_key
@@ -181,6 +186,7 @@ lfs_tools_build() {
 # another phase, such as the system's.
 lfs_tools_install() (
     unset host
+    man=no info=no
     package_variant=tools
     package_install_dir=$TOOL_DIR
     lfs_tools_set_env

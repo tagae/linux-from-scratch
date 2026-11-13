@@ -17,9 +17,27 @@ move_to_dev_component() {
         -o -name '*.a' -o -name '*.la' -o -name '*.o' -o -path './usr/lib/lib*.so' "$@"
 }
 
-# Moves aside the documentation installed by the package.
+# Moves aside the documentation installed by the package: whatever it installs under /usr/share/doc,
+# its man pages unless `man` is `yes`, and its info pages unless `info` is `yes`. The man pages that
+# stay are those of the C locale: the translations, which packages install in a directory for each
+# language next to those of the sections (usr/share/man/de), are left out, as is all localisation.
 move_to_docs_component() {
-    _move_component_files docs -path ./usr/share/man -o -path ./usr/share/info -o -path ./usr/share/doc
+    local dir
+    for dir in $package_install_dir/usr/share/man/*; do
+        [ -d "$dir" ] || continue
+        case ${dir##*/} in man[0-9]*) ;; *) rm -rf "$dir" ;; esac
+    done
+
+    set -- -path ./usr/share/doc
+    [ "${man:-no}" = yes ] || set -- "$@" -o -path ./usr/share/man
+    [ "${info:-no}" = yes ] || set -- "$@" -o -path ./usr/share/info
+    _move_component_files docs "$@"
+}
+
+# Succeeds where the package's documentation is wanted, as man or info pages: for a recipe that has
+# to be told to build it (`--$(docs_wanted && echo enable || echo disable)-doc`).
+docs_wanted() {
+    [ "${man:-no}" = yes ] || [ "${info:-no}" = yes ]
 }
 
 # Installs what the package's install set aside for the component being installed.
