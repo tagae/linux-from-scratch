@@ -140,6 +140,23 @@ EOF
     printf '\n}\n'
 }
 
+# Prints the line that tells the revision of this project the image is made from, if it is known.
+_sbom_revision_line() {
+    [ -z "${LFS_REVISION:-}" ] \
+        || echo "\"sourceInfo\": $(_sbom_string "Made by lfs at revision $LFS_REVISION"),"
+}
+
+# Whether the SBOM in FILE tells the revision that is current, in which case the image is the one
+# that this project makes, and a new commit makes another.
+lfs_sbom_has_revision() {
+    local line=$(_sbom_revision_line)
+    if [ -n "$line" ]; then
+        grep -qF -- "$line" "$1"
+    else
+        ! grep -qF '"sourceInfo"' "$1"
+    fi
+}
+
 # Prints the image as the package that the document describes.
 _sbom_image_package() {
     local version_line=
@@ -149,6 +166,7 @@ _sbom_image_package() {
       "SPDXID": "SPDXRef-Image",
       "name": $(_sbom_string "$PROFILE"),
       $version_line
+      $(_sbom_revision_line)
       "packageFileName": $(_sbom_string "$1"),
       $(_sbom_checksums sha256:$2)
       "downloadLocation": "NOASSERTION",
