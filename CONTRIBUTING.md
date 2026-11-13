@@ -281,6 +281,9 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   included (Rust crates too).
 * A file that another package installs is changed in that package's install (`system-files` is
   merged first, and the last file wins).
+* Every program of a system has its interpreter in it: a script's shell (the systems have `dash`,
+  not `bash`), an executable's dynamic linker. `image build` fails otherwise, naming the programs.
+  Move such a program to the `dev` component, or leave it out.
 
 
 systemd
