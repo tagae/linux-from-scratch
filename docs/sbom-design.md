@@ -34,8 +34,8 @@ One document per image, `image/<PROFILE>.spdx.json`, next to the image:
 
 | SPDX element | Here | Fields |
 |---|---|---|
-| Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` is the time the image is made (`SOURCE_DATE_EPOCH` when builds become reproducible); `creators`: `Tool: lfs-<LFS_RELEASE>`, as the scratch container has no git history to describe |
-| Package (root) | the image | file name, SHA-256 of the image; the document `DESCRIBES` it |
+| Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` is the time the image is made (`SOURCE_DATE_EPOCH` when builds become reproducible); `creators`: `Tool: lfs-<LFS_RELEASE>` |
+| Package (root) | the image | file name, SHA-256 of the image, `versionInfo` = `LFS_RELEASE`, `sourceInfo` = the revision of this project (`LFS_REVISION`: the abbreviated commit hash, with `-dirty` when files differ from it; the Makefile computes it, as the containers have no git history); the document `DESCRIBES` it |
 | Package | each upstream package that the system installs (`lfs_system_install`), once: `bash`, `glibc`, `linux`, `cryptography`, ... | `name`, `versionInfo`, `packageFileName` = the source's file name, `checksums` = `package_source_hash`, `downloadLocation` = `package_source`, `licenseDeclared` = `package_license`, `description`, `externalRefs`: purl and CPEs (see *Identifiers*) |
 | Relationships | | image `CONTAINS` each package (not yet: patches `PATCH_APPLIED` to their source) |
 | Extracted licences | `LicenseRef-*` (the Pi firmware's, the time zone database's) | the licence text, kept in the declaring package's files directory as `LicenseRef-<name>.txt`: the source may not be unpacked when the archive comes from a cache |

@@ -27,6 +27,17 @@ FORCE:
 # The release for built systems.
 export LFS_RELEASE ?= r13.0-143
 
+# The revision of this project that systems are made from, which the image records (os-release's
+# BUILD_ID, the SBOM): the abbreviated hash of HEAD, with -dirty when a file differs from it.
+# Computed here, as the containers have no .git. Empty outside a git checkout.
+ifeq ($(origin LFS_REVISION),undefined)
+LFS_REVISION := $(shell git rev-parse --short=12 HEAD 2>/dev/null)
+ifneq ($(and $(LFS_REVISION),$(shell git --no-optional-locks status --porcelain 2>/dev/null)),)
+LFS_REVISION := $(LFS_REVISION)-dirty
+endif
+endif
+export LFS_REVISION
+
 # Making an image gives the system's files to root, which needs root access.
 SUDO ?= sudo --preserve-env
 

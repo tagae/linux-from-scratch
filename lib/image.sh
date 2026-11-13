@@ -29,7 +29,7 @@ build_image() {
         # A device is made afresh, like a new image file.
         DEVICE=$(realpath "$target")
         confirm_erase
-    elif [ -e "$target" ] && [ -e "$sbom" ] \
+    elif [ -e "$target" ] && [ -e "$sbom" ] && lfs_sbom_has_revision "$sbom" \
         && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
         echo "image (done)"
         return
@@ -250,6 +250,10 @@ stage_root() {
     # image: cards written from the same image share it.
     tr -d - < /proc/sys/kernel/random/uuid > $ROOT_DIR/etc/machine-id
     chmod 444 $ROOT_DIR/etc/machine-id
+    # The revision of this project the image is made from, to tell images of one release apart.
+    if [ -n "${LFS_REVISION:-}" ]; then
+        echo "BUILD_ID=\"$LFS_REVISION\"" >> $ROOT_DIR/etc/os-release
+    fi
 }
 
 # Puts the image file together: the partition table, and each file system where its partition is.

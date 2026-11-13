@@ -60,6 +60,7 @@ services:
       INSTALL_DIR:
       IMAGE_SIZE:
       LFS_RELEASE:
+      LFS_REVISION:
       VERSION_CODENAME:
       RELEASE_TYPE:
       DISTRIB_CODENAME:
