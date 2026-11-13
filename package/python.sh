@@ -1,6 +1,6 @@
-: ${package_version:=3.14.7}
+: ${package_version:=3.14.10}
 : ${package_source:=https://www.python.org/ftp/python/$package_version/Python-$package_version.tar.xz}
-: ${package_source_hash:=sha256:3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81}
+: ${package_source_hash:=sha256:de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032}
 : ${package_description:=Python programming language.}
 : ${package_license:=Python-2.0.1}
 
@@ -15,7 +15,9 @@ prepare() {
             : ${optimizations:=no} ${ensurepip:=no} ${test_modules:=no}
             : ${static_libpython:=no}
 
-            patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/Python-$package_version-openssl_4-1.patch \
+            # LFS names this patch after the Python of its book, 3.14.7; it applies, with offsets, to
+            # the later releases of 3.14.
+            patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/Python-3.14.7-openssl_4-1.patch \
                 sha256:707a0c457192ac2f3b5b8a51481bc5ebd12db22d57c1dbe0256138ee6e070792
 
             # The remote debugger, which attaches to a running process, is left out.
