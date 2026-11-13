@@ -116,9 +116,11 @@ tables, or on the rule alone (mandoc and ccid).
    `printf` plus a small JSON string-escaping helper, like the rest of the framework. The SBOM goes
    into place before the image, which tells that both are complete: an image with no SBOM is made
    anew.
-3. **Check it.** `pyspdxtools --infile image/<key>.spdx.json` validates against the SPDX 2.3 model:
-   licence expressions, identifiers and relationships. Not part of the build, which runs with the
-   tools alone.
+3. **Check it.** `make sbom-check` runs `pyspdxtools --infile` on every `image/*.spdx.json`, which
+   validates against the SPDX 2.3 model: licence expressions, identifiers and relationships. The
+   target installs the validator, pinned by version in the Makefile, into a virtual environment
+   under `work/`, so that CI runs, after each phase that makes an image, what a developer runs. Not
+   part of the build, which runs with the tools alone.
 4. **Scan it.** CI keeps the SBOM of the virt and pi0 images that their test phases make, and
    `.github/workflows/vulnerabilities.yaml` scans the latest of each with Grype after each run of CI
    on main, with the vulnerability data of the day, building nothing. The findings go to the run's

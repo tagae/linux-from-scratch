@@ -114,6 +114,11 @@ jobs:
           PATH: /usr/sbin:/usr/bin:/sbin:/bin
         run: eval "$COMMAND"
 
+      # The SBOM of an image, of a phase that makes one, must be valid SPDX: the scan reads it.
+      - name: Validate the SBOM
+        if: ${{ hashFiles('image/*.spdx.json') != '' }}
+        run: make sbom-check
+
       # The SBOM of the image, of a phase that makes one, for the vulnerability scan
       # (vulnerabilities.yaml).
       - name: Keep the SBOM
