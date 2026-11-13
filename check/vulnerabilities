@@ -1,0 +1,94 @@
+#!/bin/sh
+
+# The vulnerabilities of the images, as Grype finds them from each image's SBOM, with the latest
+# vulnerability data. For each SBOM it writes, under work/check/vulnerabilities, the findings
+# (<name>.json), their SARIF for GitHub's code scanning (<name>.sarif) and a summary (<name>.md),
+# which it prints as well. The findings that do not concern the images are left out by
+# check/grype.yaml.
+#
+# Exits non-zero if a finding of high or critical severity has a fixed version, in any SBOM.
+#
+# Usage, from the repository root: check/vulnerabilities GRYPE [SBOM...]
+# The SBOMs are those of image/*.spdx.json by default. `make vulnerability-check` runs it.
+
+set -o errexit -o nounset
+
+# The findings that fail the run.
+readonly urgent='.matches[] | select(.vulnerability.fix.state == "fixed"
+    and (.vulnerability.severity == "High" or .vulnerability.severity == "Critical"))'
+
+readonly out=work/check/vulnerabilities
+
+[ -f check/grype.yaml ] || {
+    echo "Run $0 from the repository root" >&2
+    exit 2
+}
+[ $# -ge 1 ] || {
+    echo "Usage: $0 GRYPE [SBOM...]" >&2
+    exit 2
+}
+command -v jq > /dev/null 2>&1 || {
+    echo "jq is needed" >&2
+    exit 2
+}
+
+grype=$1
+shift
+[ $# -gt 0 ] || set -- image/*.spdx.json
+[ -e "$1" ] || {
+    echo "No SBOM to scan: make an image" >&2
+    exit 1
+}
+
+# The vulnerability data stays next to the program, rather than in the home directory.
+run_grype() {
+    GRYPE_DB_CACHE_DIR=$(dirname "$grype")/db "$grype" "$@"
+}
+
+mkdir -p $out
+run_grype db update
+
+failed=
+for sbom; do
+    name=$(basename "$sbom" .spdx.json)
+    run_grype --config check/grype.yaml \
+        -o json=$out/$name.json -o sarif=$out/$name.sarif.tmp "sbom:$sbom"
+
+    # Grype gives the findings of an SBOM no file, which code scanning requires: they are given
+    # the SBOM's.
+    jq --arg uri "image/$name.spdx.json" \
+        '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation.uri)
+            |= (if (. // "") == "" then $uri else . end)' \
+        $out/$name.sarif.tmp > $out/$name.sarif
+    rm $out/$name.sarif.tmp
+
+    count=$(jq "[$urgent] | length" $out/$name.json)
+    {
+        echo "## $name"
+        echo
+        echo "$(jq '.matches | length' $out/$name.json) findings in" \
+            "$(jq '[.matches[].artifact.name] | unique | length' $out/$name.json) packages," \
+            "$count of high or critical severity with a fixed version."
+        echo
+        echo "| Package | Findings | With a fixed version |"
+        echo "|---|---|---|"
+        jq -r '.matches | group_by(.artifact.name + " " + .artifact.version)[]
+            | "| \(.[0].artifact.name) \(.[0].artifact.version) | \(length) | \(map(select(.vulnerability.fix.state == "fixed")) | length) |"' \
+            $out/$name.json
+        echo
+        echo "### High or critical, with a fixed version"
+        echo
+        echo "| Package | Vulnerability | Severity | Fixed in |"
+        echo "|---|---|---|---|"
+        jq -r "$urgent"' | "| \(.artifact.name) \(.artifact.version) | \(.vulnerability.id) | \(.vulnerability.severity) | \(.vulnerability.fix.versions | join(", ")) |"' \
+            $out/$name.json
+    } > $out/$name.md
+    cat $out/$name.md
+
+    if [ "$count" -gt 0 ]; then
+        echo "$name: $count findings of high or critical severity have a fixed version" >&2
+        failed=yes
+    fi
+done
+
+[ -z "$failed" ] || exit 1

@@ -16,6 +16,8 @@ Overview
 * `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
 * `image/`:  built disk images
+* `check/`: the checks (`make lint`, `make sbom-check`, `make vulnerability-check`), with a Makefile
+  that the main one includes
 * `Makefile`: build rules
 * `Dockerfile.{bootstrap,scratch,dev}`: build and dev containers (for reproducibility)
 * `test`: boot tester
@@ -137,7 +139,7 @@ The framework fetches them before building the package, and exposes their locati
 
 The `package_license` list the package's license in [SPDX format][SPDX License List]. A licence that
 the list does not have is a `LicenseRef-<name>`, whose text is the file
-`package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `.github/ci/lint` looks for.
+`package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `check/lint` looks for.
 
 The SBOM gives each package the CPE under which the NVD lists its vulnerabilities,
 `part:vendor:product:version`: by default `a:<vendor>:<name>:<version>`, where the vendor is the

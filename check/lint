@@ -6,7 +6,7 @@
 #
 # Prints one line per finding, and exits non-zero if there is any.
 #
-# Usage, from the repository root: .github/ci/lint
+# Usage, from the repository root: check/lint (`make lint`)
 
 set -o errexit -o nounset
 
@@ -34,8 +34,8 @@ for tool in dash shellcheck; do
     }
 done
 
-# Whether the file is a script for sh, by its first line. The scripts that run as commands, CI's and
-# those that systems ship, have no .sh in their names.
+# Whether the file is a script for sh, by its first line. The scripts that run as commands, the project's
+# and those that systems ship, have no .sh in their names.
 is_sh_script() {
     case $(head -n 1 "$1") in
         '#!/bin/sh' | '#!/bin/sh '*) return 0 ;;
@@ -55,7 +55,7 @@ shell_files=$(
     {
         echo lfs
         find lib platform profile package -type f -name '*.sh'
-        for file in .github/ci/* $(find package -type f -path '*/usr/bin/*'); do
+        for file in check/* .github/ci/* $(find package -type f -path '*/usr/bin/*'); do
             if is_sh_script $file; then echo $file; fi
         done
     } | sort

@@ -5,7 +5,6 @@
 	image \
 	qemu %-qemu \
 	test %-test \
-	sbom-check \
 	clean distclean pristine \
 	FORCE \
 	docker-tools-bootstrap \
@@ -86,20 +85,9 @@ image/%.img: %-system FORCE
 %-qemu: image/%.img
 	./lfs qemu
 
-# Validates the SBOMs under image/ against the SPDX 2.3 model, with the pyspdxtools of spdx-tools,
-# which CI runs the same way. The validator is no build tool: it comes from PyPI into a virtual
-# environment of its own, per version, which needs python3 and a network.
-SPDX_TOOLS_VERSION := 0.8.5
-pyspdxtools := work/spdx-tools-$(SPDX_TOOLS_VERSION)/bin/pyspdxtools
-
-$(pyspdxtools):
-	python3 -m venv $(abspath $(dir $@)..)
-	$(dir $@)pip install --quiet --disable-pip-version-check spdx-tools==$(SPDX_TOOLS_VERSION)
-
-sbom-check: $(pyspdxtools)
-	@set -- image/*.spdx.json; \
-	[ -e "$$1" ] || { echo "No SBOM under image/: make an image" >&2; exit 1; }; \
-	for sbom; do echo "$$sbom"; $(pyspdxtools) --infile "$$sbom" || exit 1; done
+# The checks (`make lint`, `make sbom-check`, `make vulnerability-check`) have a Makefile of their
+# own.
+include check/Makefile
 
 clean:
 	rm -rf source/ work/ install/

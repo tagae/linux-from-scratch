@@ -38,7 +38,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   writes from `work/sbom/<key>`, the list of packages `lfs_system_install` recorded) is missing, and archives keep
   their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image and its SBOM
   (`image/<key>.img`, `image/<key>.spdx.json`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
-  with `pyspdxtools --infile` (`pip install spdx-tools` in a venv).
+  with `make sbom-check`.
 - Builds of DIFFERENT profiles run at once from ONE make (`make -j docker-test docker-pi0-pgp-test`, no job limit:
   tools first, then the systems side by side; each build uses `-j$(nproc)`). They share the `tools` volume, the
   downloads and `archive/tools`; each profile has its own sources (`source/<profile>`), work, archives and
