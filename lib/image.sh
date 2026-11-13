@@ -74,21 +74,24 @@ build_image() {
 # line names, or the dynamic linker that an executable asks for. The kernel runs neither, and the
 # shell reports the program as not found, rather than what is missing.
 check_interpreters() {
-    local root=$1 elf=$(printf '\177ELF') missing file magic interpreter
-    missing=$(
-        find "$root" -type f -perm /111 | while read -r file; do
-            magic=$(head -c 4 "$file" | tr -d '\000')
-            case $magic in
-                '#!'*) interpreter=$(_script_interpreter "$file") ;;
-                "$elf") interpreter=$(_dynamic_linker "$file") ;;
-                *) continue ;;
-            esac
-            [ -z "$interpreter" ] || _system_has_file "$root" "$interpreter" \
-                || echo "  ${file#"$root"}: $interpreter"
-        done
-    )
+    local missing=$(_programs_without_interpreter "$1")
     [ -z "$missing" ] || bail "Programs without their interpreter in the system:
 $missing"
+}
+
+# Prints the programs in the system at ROOT that lack their interpreter there, and the interpreter.
+_programs_without_interpreter() {
+    local root=$1 elf=$(printf '\177ELF') file magic interpreter
+    find "$root" -type f -perm /111 | while read -r file; do
+        magic=$(head -c 4 "$file" | tr -d '\000')
+        case $magic in
+            '#!'*) interpreter=$(_script_interpreter "$file") ;;
+            "$elf") interpreter=$(_dynamic_linker "$file") ;;
+            *) continue ;;
+        esac
+        [ -z "$interpreter" ] || _system_has_file "$root" "$interpreter" \
+            || echo "  ${file#"$root"}: $interpreter"
+    done
 }
 
 # Prints the interpreter that the script's first line names: the program that `env` runs, when it
