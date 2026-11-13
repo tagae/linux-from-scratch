@@ -1,30 +1,33 @@
 # Checks
 # ------
 #
-# `lfs check PACKAGE` examines what a package put in the system, after the system is built (the
-# archive says which files are the package's, the install tree is where they run).
+# `lfs check [PACKAGE]` examines the built system, or what one package put in it (the package's
+# archive says which files are its own; the install tree is where they run).
 #
 # Interpreters: every program has its interpreter in the system, the one that a script's first line
 # names, or the dynamic linker that an executable asks for. The kernel runs neither, and the shell
 # reports the program as not found, rather than what is missing.
 
-lfs_check_package() {
-    local install_dir=$INSTALL_DIR/$PROFILE
+lfs_check() {
+    local install_dir=$INSTALL_DIR/$PROFILE what= archive missing
     [ -d "$install_dir" ] || bail "Install directory not found: $install_dir: build the system"
-    local archive
-    archive=$(lfs_package_archive "$1")
-    [ -s "$archive" ] || bail "No archive of $1: $archive"
-
-    local missing=$(_programs_without_interpreter $install_dir "$archive")
-    [ -z "$missing" ] || bail "Programs of $1 without their interpreter in the system:
+    if [ $# -eq 0 ]; then
+        missing=$(cd $install_dir && find . -type f | _programs_without_interpreter $install_dir)
+    else
+        what=$1
+        archive=$(lfs_package_archive "$1")
+        [ -s "$archive" ] || bail "No archive of $1: $archive"
+        missing=$(tar -tf "$archive" | _programs_without_interpreter $install_dir)
+    fi
+    [ -z "$missing" ] || bail "Programs${what:+ of $what} without their interpreter in the system:
 $missing"
 }
 
-# Prints the programs in the archive that lack their interpreter in the system at ROOT, with the
-# interpreter that is missing.
+# Prints those of the files that it reads, one path per line, that are programs lacking their
+# interpreter in the system at ROOT, with the interpreter that is missing.
 _programs_without_interpreter() {
     local root=$1 elf=$(printf '\177ELF') path file magic interpreter
-    tar -tf "$2" | while read -r path; do
+    while read -r path; do
         file=$root/${path#./}
         [ -f "$file" ] && [ ! -L "$file" ] && [ -x "$file" ] || continue
         magic=$(head -c 4 "$file" | tr -d '\000')

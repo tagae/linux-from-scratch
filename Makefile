@@ -72,6 +72,7 @@ tools: tools-bootstrap
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable
 	./lfs system build
+	./lfs check
 
 image/%.img: %-system FORCE
 	# The image directory is the user's, rather than root's.
@@ -127,6 +128,7 @@ docker-%-system: docker-tools
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable
 	docker compose run --rm scratch ./lfs system build
+	docker compose run --rm scratch ./lfs check
 
 docker-image/%.img: docker-%-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.

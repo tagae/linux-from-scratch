@@ -195,8 +195,9 @@ case "${1:-help}" in
         ;;
 
     check)
-        [ $# -eq 2 ] || usage "$1 <PACKAGE>"
-        lfs_check_package "$2"
+        [ $# -le 2 ] || usage "$1 [PACKAGE]"
+        shift
+        lfs_check "$@"
         ;;
 
     tools)
@@ -226,7 +227,7 @@ case "${1:-help}" in
         echo "  tools            Build the build tools"
         echo "  system build     Build the system for the platform"
         echo "  pack <PKG>       Build a package's archive"
-        echo "  check <PKG>      Check what the package put in the built system"
+        echo "  check [PKG]      Check the built system, or what the package put in it"
         echo "  image build [IMAGE|DEVICE]"
         echo "                   Create a bootable disk image, with its SBOM, or format a block"
         echo "                   device, from the built system"
