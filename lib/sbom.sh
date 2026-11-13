@@ -23,10 +23,18 @@
 # with the vulnerable ones. A package from PyPI has no CPE: it is named after its PyPI project, and
 # its package URL is a PyPI one, which scanners match against Python's advisories.
 #
+# A package's concluded licence is its declared one: the recipes take package_license from the
+# source's own licence files. Nothing gathers the copyright notices of the sources, so those stay
+# NOASSERTION; the image's own is this project's.
+#
 # A licence that SPDX does not list is a LicenseRef-<name>, whose text is in the files directory of
 # the package that declares it, as package/<package>/LicenseRef-<name>.txt.
 
 readonly sbom_pypi_sources=https://files.pythonhosted.org/packages/source
+
+# The copyright of this project's own files, which the image stands for (LICENSE's first line; the
+# containers do not have the file).
+readonly sbom_copyright='Copyright (c) 2024 Sebastián González Montesinos'
 
 # The list of the packages of the system being built.
 _sbom_packages_file() {
@@ -169,11 +177,11 @@ _sbom_image_package() {
       $(_sbom_revision_line)
       "packageFileName": $(_sbom_string "$1"),
       $(_sbom_checksums sha256:$2)
-      "downloadLocation": "NOASSERTION",
+      "downloadLocation": "NONE",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
+      "copyrightText": $(_sbom_string "$sbom_copyright"),
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     }
 EOF
@@ -193,7 +201,7 @@ _sbom_package() {
       $(_sbom_checksums "$source_hash")
       "downloadLocation": $(_sbom_string "$source"),
       "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
+      "licenseConcluded": $(_sbom_string "$license"),
       "licenseDeclared": $(_sbom_string "$license"),
       "copyrightText": "NOASSERTION",
       $description_line
