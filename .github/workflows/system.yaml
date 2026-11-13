@@ -53,6 +53,7 @@ jobs:
       name: test
       profile: ${{ inputs.profile }}
       command: make ${{ inputs.profile }}-test
+      qemu: true
 
   # The same phases through Docker Compose, as on a Mac: the bootstrap container builds the first
   # tools, the scratch container, which holds nothing but the tools, the rest, and the image boots on
@@ -92,3 +93,4 @@ jobs:
       profile: ${{ inputs.profile }}
       command: make docker-${{ inputs.profile }}-test
       docker: true
+      qemu: true

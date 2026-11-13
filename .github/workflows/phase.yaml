@@ -28,6 +28,10 @@ on:
         description: The command builds through Docker Compose, whose archives have a cache of their own
         type: boolean
         default: false
+      qemu:
+        description: The command boots the image in QEMU, which the phase installs a recent release of
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,14 +64,29 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
 
-      # README.md, Requirements: the packages of Dockerfile.bootstrap, and `expect` and QEMU for
-      # `make test`: the runner's architecture for virt, which has the host's, and ARM for pi0-pgp.
+      # README.md, Requirements: the packages of Dockerfile.bootstrap, and `expect` for `make test`.
       - name: Install the host's packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential curl wget rsync gawk bison python3 patchelf ca-certificates \
-            expect qemu-system-x86 qemu-system-arm qemu-utils
+            build-essential curl wget rsync gawk bison python3 patchelf ca-certificates expect
+
+      # `make test` boots the image in QEMU: the runner's architecture for virt, which has the host's,
+      # and ARM for pi0-pgp. virt's command line has `-object monitor-hmp`, new in QEMU 11.1, which
+      # Ubuntu's packages lack (8.2 on 24.04, 10.2 on 26.04). Homebrew, which the runner has but
+      # leaves off its PATH, has the current release: the Build step puts its QEMU first in PATH.
+      # Only the release of the day is known, so the log tells which one ran.
+      - name: Install a recent QEMU
+        if: ${{ inputs.qemu }}
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_ANALYTICS: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: |
+          /home/linuxbrew/.linuxbrew/bin/brew install qemu
+          for qemu in qemu-system-x86_64 qemu-system-arm qemu-img; do
+            /home/linuxbrew/.linuxbrew/opt/qemu/bin/$qemu --version | head -1
+          done
 
       # virt boots with KVM, which the runner has but opens to root alone.
       - name: Open KVM to the build
@@ -110,8 +129,8 @@ jobs:
           COMMAND: ${{ inputs.command }}
           TEST_TIMEOUT: 600
           # The host's tools, as a container has them, rather than the runner's own, which sit in
-          # /usr/local, /opt and the home directory.
-          PATH: /usr/sbin:/usr/bin:/sbin:/bin
+          # /usr/local, /opt and the home directory; but for QEMU, if the phase boots an image.
+          PATH: ${{ inputs.qemu && '/home/linuxbrew/.linuxbrew/opt/qemu/bin:' || '' }}/usr/sbin:/usr/bin:/sbin:/bin
         run: eval "$COMMAND"
 
       # The SBOM of an image, of a phase that makes one, must be valid SPDX: the scan reads it.
