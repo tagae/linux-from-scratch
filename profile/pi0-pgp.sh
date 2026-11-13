@@ -37,6 +37,14 @@ lfs_system_install shadow
     lfs_install_package ncurses#dev
 )
 
+# bash, root's shell, for the line editing, file completion and history that readline gives it; dash
+# stays the system's sh, which scripts run in. Readline reads the terminal descriptions that ncurses
+# holds. No bashbug, which mails bug reports.
+(
+    sh_link=no bashbug=no termcap_lib=ncursesw
+    lfs_system_install bash
+)
+
 # util-linux: mount and umount, agetty and sulogin, which systemd and the key procedure run; libblkid
 # and libmount, which systemd links; dmesg, to read the kernel log; and more, which man shows the
 # manual pages in.
@@ -48,7 +56,10 @@ lfs_system_install shadow
     lfs_install_package util-linux#dev
 )
 
-lfs_system_install systemd
+(
+    root_shell=/bin/bash
+    lfs_system_install systemd
+)
 lfs_install_package systemd#dev
 
 #===[ Kernel and boot ]===

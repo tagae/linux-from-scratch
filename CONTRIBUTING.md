@@ -57,7 +57,7 @@ empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does
 gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
 profile, `profile/$PROFILE.sh`, compiled with that toolchain: the packages of the system in the
 order they are installed, the init (`systemd`, with the strict minimum of chapter 8 that it needs,
-and `dash`, root's shell, which it requires) and the kernel (`linux`, configured from the layers
+and `dash`, the `sh` that it requires, and root's shell unless the profile says `root_shell`) and the kernel (`linux`, configured from the layers
 that every system gets, `package/linux/`: base, platform and architecture, and from the
 capabilities that the profile names, `package/linux/<capability>.config`) among them. Each package is
 installed both into the system tree and into the toolchain's sysroot, `work/$PROFILE/sysroot`, which
@@ -294,8 +294,9 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   included (Rust crates too).
 * A file that another package installs is changed in that package's install (`system-files` is
   merged first, and the last file wins).
-* Every program of a system has its interpreter in it: a script's shell (the systems have `dash`,
-  not `bash`), an executable's dynamic linker. `make <profile>-system` runs `./lfs check`, which
+* Every program of a system has its interpreter in it: a script's shell (`/bin/sh` is `dash`, and
+  a system that has `bash` for its users' sake has no script of its own that runs in it), an
+  executable's dynamic linker. `make <profile>-system` runs `./lfs check`, which
   names those that lack it (`ldd` is a bash script); `./lfs check <package>` examines one package.
   Move such a program to the `dev` component, or leave it out.
 

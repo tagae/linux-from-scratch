@@ -3,3 +3,11 @@ export SYSTEMD_LOG_TARGET=journal
 
 # Prompt: user@host:directory, with # for root
 PS1='\u@\h:\w\$ '
+
+# bash keeps its history in memory, for the session: commands carry passphrases, and what a system
+# like pi0-pgp makes is not meant to reach its disk. Set HISTFILE to keep it.
+if [ -n "${BASH_VERSION:-}" ]; then
+    unset HISTFILE
+    HISTSIZE=1000
+    HISTCONTROL=ignoreboth
+fi

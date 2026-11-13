@@ -144,6 +144,8 @@ install() {
             # The static accounts (root and systemd's own users), the shell profile, and the
             # hardening of the BPF compiler, which the kernel has for systemd.
             cp -rv $package_files_dir/etc $package_files_dir/usr $package_install_dir/
+            # root's shell is the system's sh, unless `root_shell` says otherwise.
+            sed -i "s|^\(root:.*:\)/bin/sh\$|\1${root_shell:-/bin/sh}|" $package_install_dir/etc/passwd
             chmod -v 0600 $package_install_dir/etc/shadow
 
             # Boards without a battery-backed clock start each boot at the date systemd was built.
