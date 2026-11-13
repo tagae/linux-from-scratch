@@ -24,14 +24,12 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   tools (`<name>-bootstrap-<version>`, `<name>-tools-<version>`) are under the key `tools`, built once for every
   system; those a profile installs with `lfs_tools_install` stay under the profile's key, as `rust` depends on
   the platform.
-- A recipe re-runs ONLY when its archive is missing. Editing a recipe, patch, kernel capability or installed file
-  changes nothing until you delete its archive (`command rm archive/<key>/<name>-*`: tarball, `.sha256`, `-dev`).
-  After a kernel capability delete `linux-*.tar.xz*` of EVERY profile that must change: those that name the capability,
-  or all of them for a layer. The glob also takes `linux-<version>-headers.tar.xz*`, which the toolchain needs
-  only to be re-extracted: name the kernel's archive (`linux-7.3.1.tar.xz*`, `linux-stable_20261103.tar.xz*`) to keep it.
+- A recipe re-runs ONLY when its archive is missing. After editing a recipe, patch, kernel capability, installed
+  file or framework file, run `make docker-invalidate` (Linux hosts: `make invalidate`) before the build: it deletes
+  the archives that what changed since its last run makes stale, uncommitted edits included, and says why. Its first
+  run, with no recorded state, deletes every archive.
   To prove a kernel change moved nothing, save the resolved `.config` from the `work` volume
   (`$B/kernel-config` shows single options), rebuild, and `diff`.
-  Packages after the deleted one are not rebuilt unless their own archive is gone.
 - `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade
   only when a file of the install tree is newer than it or its SBOM (`image/<key>.spdx.json`, which `lib/sbom.sh`
@@ -115,7 +113,7 @@ Say which of these ran.
 
 ## Traps
 
-- A build that "passes" while a recipe is stale: ask which archive the change must invalidate.
+- A build that "passes" while a recipe is stale: `make docker-invalidate` was not run after the change.
 - A no-op build has no compile lines (`compiled: 0`).
 - A failure that makes no sense (sed's gnulib-tests wanting `windows.h` because the `ioctl` configure test died
   with `Bus error` in `rm`) is first a COLLISION: rerun alone before debugging; look for `Bus error`,

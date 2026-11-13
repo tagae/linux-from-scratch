@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
-      # .github/ci/invalidate compares HEAD with the commit that the cache was built from.
+      # `make invalidate` compares HEAD with the commit that the cache was built from.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -90,11 +90,11 @@ jobs:
           restore-keys: ${{ env.CACHE }}
 
       - name: Drop the stale archives
-        run: .github/ci/invalidate ${{ inputs.docker && '--docker' || '' }}
+        run: make ${{ inputs.docker && 'docker-' || '' }}invalidate
 
       # The files that the cache holds, by name, size and modification time, to tell afterwards
       # whether the build changed them: an archive rebuilt under the same name and size has a new
-      # time. Not archive/.commit, which .github/ci/invalidate has just written, nor an archive that
+      # time. Not archive/.commit, which `make invalidate` has just written, nor an archive that
       # is still being made.
       - name: Fingerprint the cache
         id: before

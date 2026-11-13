@@ -5,6 +5,7 @@
 	image \
 	qemu %-qemu \
 	test %-test \
+	invalidate \
 	clean distclean pristine \
 	FORCE \
 	docker-tools-bootstrap \
@@ -12,6 +13,7 @@
 	docker-system docker-%-system \
 	docker-image \
 	docker-test docker-%-test \
+	docker-invalidate \
 	docker-clean docker-distclean docker-pristine
 
 # Keep all intermediate files, in particular image/*.img. Otherwise, make deletes them.
@@ -85,6 +87,11 @@ image/%.img: %-system FORCE
 %-qemu: image/%.img
 	./lfs qemu
 
+# Deletes the archives that what has changed since the last run makes stale, uncommitted changes
+# included: a recipe runs again only when its archive is gone (see ./invalidate).
+invalidate:
+	./invalidate
+
 # The checks (`make lint`, `make sbom-check`, `make vulnerability-check`) have a Makefile of their
 # own.
 include check/Makefile
@@ -141,6 +148,10 @@ docker-image/%.img: docker-%-system FORCE
 # The image built through Docker runs on the host.
 docker-%-test: docker-image/%.img
 	./test $*
+
+# The same, for the archives of the build through Docker Compose, whose containers are inputs too.
+docker-invalidate:
+	./invalidate --docker
 
 # Besides the directories, these remove the volumes that Docker Compose keeps in their place.
 docker-clean: clean

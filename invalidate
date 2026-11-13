@@ -1,13 +1,15 @@
 #!/bin/sh
 #
 # Deletes the package archives that a change makes stale, before a build that reuses the archives of
-# an earlier one (the cache of the CI pipeline).
+# an earlier one. `make invalidate` runs it; no build may be running.
 #
 # Archives are named by package, variant and version (lib/package.sh), not by the content of the
 # recipe, kernel capability or framework file that built them: an edit that keeps the version would
-# have the build reuse them. So the archives record the commit they were built from, in
-# archive/.commit, and what changed since decides which of them to drop. The packages built against
-# one that changed are not dropped with it: the rules below name the package alone.
+# have the build reuse them. So the archives record the state of the tree they were built from, in
+# archive/.commit, and what changed since decides which of them to drop. That state is HEAD, or a
+# commit of the working tree (uncommitted and new files included, ignored ones not) when it differs
+# from HEAD, which refs/lfs/archive keeps from being collected. The packages built against one that
+# changed are not dropped with it: the rules below name the package alone.
 #
 # Layout: archive/<key>/<package>[-<variant>]-<version>[-<revision>][-<component>].tar.xz, next to
 # a .tar.xz.sha256. <package> is the path of the recipe under package/ without .sh, so that
@@ -17,18 +19,18 @@
 # profile installs, which are filed under its key.
 #
 # Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, profile/
-# and platform/. Every other path (documentation, .github/, .claude/, the Dockerfiles,
+# and platform/. Every other path (documentation, check/, .github/, .claude/, the Dockerfiles,
 # docker-compose.yaml, test, ...) has no effect. With --docker, for the archives of the build
 # through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml are
 # inputs too, which drop every archive, as they make the machines that every package is built on.
-# Every input path that changed between archive/.commit and HEAD is mapped by the first rule that
-# fits:
+# Every input path that changed between archive/.commit and the tree now is mapped by the first rule
+# that fits:
 #
 #    1  lib/check.sh, lib/image.sh, lib/qemu.sh and lib/sbom.sh: no effect (nothing in them goes into
 #       an archive).
 #    2  package/<path>: the archive/*/<recipe>-* of the recipe that the path belongs to. That is
 #       the path itself when it is a recipe, existing or deleted (package/python/cffi.sh is
-#       python/cffi, not python), else the longest directory of the path that has a recipe at HEAD
+#       python/cffi, not python), else the longest directory of the path that has a recipe now
 #       (package/python/yubikey-manager/usr/bin/ykman is python/yubikey-manager, and
 #       package/linux/usb.config is linux, the kernel). A path that belongs to no recipe falls to
 #       rule 9.
@@ -36,8 +38,8 @@
 #       which a change of its options or its order can affect. The toolchain, which it does not
 #       name, stays.
 #    4  lib/<c>.sh, the helpers of a package category <c> (a directory of package/ that holds
-#       recipes at HEAD): everything under archive/*/<c>/.
-#    5  lib/meson.sh: rule 2 for each recipe at HEAD that calls meson_cross_file.
+#       recipes now): everything under archive/*/<c>/.
+#    5  lib/meson.sh: rule 2 for each recipe that calls meson_cross_file.
 #    6  lib/system.sh: every archive but the build tools (-bootstrap- and -tools- in the name).
 #    7  Makefile: archive/*/system-files-*, as its LFS_RELEASE ends up in os-release.
 #    8  platform/<p>.sh: everything under the key of each profile that runs on the platform.
@@ -50,7 +52,7 @@
 # Without archive/.commit, or with one that names a commit that this clone lacks (a shallow clone,
 # or rewritten history), nothing says what the archives were built from: they all go. A CI checkout
 # therefore fetches the whole history. Leftover *.tmp files of an interrupted archive step go in
-# any case. The script ends by recording HEAD in archive/.commit, for the next run.
+# any case. The script ends by recording the state of the tree in archive/.commit, for the next run.
 
 set -o errexit -o nounset
 
@@ -63,10 +65,33 @@ case ${1:-} in
 esac
 
 # The paths of git and of the rules are those of the repository, wherever the script is run from.
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")"
 
 readonly archive_dir=archive
 readonly commit_file=$archive_dir/.commit
+
+# Prints the state of the tree: HEAD, or a commit of the working tree when that differs from it. The
+# tree is made in an index of its own, which `add -A` fills as the working tree is, leaving out what
+# git ignores.
+tree_state() {
+    local dir index tree
+    dir=$(mktemp -d)
+    index=$dir/index
+    GIT_INDEX_FILE=$index git read-tree HEAD
+    GIT_INDEX_FILE=$index git add -A
+    tree=$(GIT_INDEX_FILE=$index git write-tree)
+    rm -rf "$dir"
+    if [ "$tree" = "$(git rev-parse 'HEAD^{tree}')" ]; then
+        git rev-parse HEAD
+    else
+        GIT_AUTHOR_NAME=lfs GIT_AUTHOR_EMAIL=lfs@localhost \
+            GIT_COMMITTER_NAME=lfs GIT_COMMITTER_EMAIL=lfs@localhost \
+            git commit-tree --no-gpg-sign -p HEAD -m 'Working tree of the archives' "$tree"
+    fi
+}
+
+state=$(tree_state)
+readonly state
 
 # The archives to delete, as lines of "<kind> <argument>" that stale() reads: all, package <recipe>,
 # category <name>, profile <name>, profile_package <name> <recipe> and system.
@@ -154,16 +179,16 @@ recipe_of() {
     dir=$rel
     while [ "$dir" != "${dir%/*}" ]; do
         dir=${dir%/*}
-        if git cat-file -e "HEAD:package/$dir.sh" 2>/dev/null; then
+        if git cat-file -e "$state:package/$dir.sh" 2>/dev/null; then
             echo "$dir"
             return
         fi
     done
 }
 
-# Succeeds when a name is a package category: a directory of package/ that holds recipes at HEAD.
+# Succeeds when a name is a package category: a directory of package/ that holds recipes.
 is_category() {
-    git ls-tree --name-only HEAD "package/$1/" 2>/dev/null | grep -q '\.sh$'
+    git ls-tree --name-only "$state" "package/$1/" 2>/dev/null | grep -q '\.sh$'
 }
 
 # Rule 3, for a recipe that the profile installs: a line of the loop in select_changed.
@@ -172,7 +197,7 @@ select_profile_package() {
         profile_package "$profile $1"
 }
 
-# Rule 8, for a path of profile/ at HEAD: the profile is selected if it runs on the platform that
+# Rule 8, for a path of profile/: the profile is selected if it runs on the platform that
 # changed.
 select_profile_of_platform() {
     local profile=${1#profile/}
@@ -185,7 +210,7 @@ select_profile_of_platform() {
 # Rule 5, for a line of the output of git grep.
 select_meson_recipe() {
     local recipe
-    recipe=$(recipe_of "${1#HEAD:}")
+    recipe=$(recipe_of "${1#"$state":}")
     [ -z "$recipe" ] \
         || select_archives "lib/meson.sh: rule 5, archives of $recipe" package "$recipe"
 }
@@ -211,7 +236,7 @@ select_changed() {
         # The recipes that the profile installs, as its lines call lfs_system_install,
         # lfs_install_package (with a component after #) or lfs_tools_install. grep fails when
         # nothing matches.
-        names=$(git show "HEAD:$path" 2>/dev/null \
+        names=$(git show "$state:$path" 2>/dev/null \
             | grep -Eo '(lfs_system_install|lfs_install_package|lfs_tools_install) [^ #;)]+' \
             | sed 's/^[^ ]* //' | sort -u || true)
         each select_profile_package <<EOF
@@ -220,7 +245,7 @@ EOF
         ;;
     lib/meson.sh)
         # git grep fails when nothing matches.
-        callers=$(git grep -l -F meson_cross_file HEAD -- package || true)
+        callers=$(git grep -l -F meson_cross_file "$state" -- package || true)
         each select_meson_recipe <<EOF
 $callers
 EOF
@@ -234,7 +259,7 @@ EOF
     platform/[!/]*.sh)
         platform=${path#platform/}
         platform=${platform%.sh}
-        profiles=$(git ls-tree --name-only HEAD profile/)
+        profiles=$(git ls-tree --name-only "$state" profile/)
         each select_profile_of_platform <<EOF
 $profiles
 EOF
@@ -265,7 +290,6 @@ EOF
     esac
 }
 
-head_commit=$(git rev-parse HEAD)
 files=
 
 if [ -d "$archive_dir" ]; then
@@ -291,9 +315,9 @@ else
         ;;
     *)
         if git rev-parse --verify --quiet "$built^{commit}" >/dev/null; then
-            echo "archives built from $built, HEAD is $head_commit"
+            echo "archives built from $built, the tree is $state"
             # Without renames, both the old and the new path of a moved file show.
-            changed=$(git diff --no-renames --name-only "$built" HEAD)
+            changed=$(git diff --no-renames --name-only "$built" "$state")
             each select_changed <<EOF
 $changed
 EOF
@@ -312,4 +336,5 @@ fi
 echo "deleted $removed files"
 
 mkdir -p "$archive_dir"
-echo "$head_commit" > "$commit_file"
+git update-ref refs/lfs/archive "$state"
+echo "$state" > "$commit_file"

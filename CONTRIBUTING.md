@@ -16,6 +16,7 @@ Overview
 * `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
 * `image/`:  built disk images
+* `invalidate`: deletes the archives that a change makes stale
 * `check/`: the checks (`make lint`, `make sbom-check`, `make vulnerability-check`), with a Makefile
   that the main one includes
 * `Makefile`: build rules
@@ -107,7 +108,11 @@ Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
 `fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults. `install` runs into
 an empty stage, so an archive holds exactly what it installed. The default `archive` records the
 archive's SHA-256 digest next to it, and the default `unarchive` installs an archive only if it
-still matches.
+still matches. Archives are named by package and version, not by content, so a package builds again
+only when its archive is gone: `make invalidate` (`make docker-invalidate` for the build through
+Docker) deletes the ones that what has changed since its last run makes stale, uncommitted changes
+included. The header of `invalidate` holds the rules. A package built against one that changed is
+not dropped with it.
 
 A package's name is the path of its recipe under `package/`, without the `.sh`. The Python libraries
 live in `package/python/` and are named `python/<name>`, after their PyPI project without any
@@ -313,8 +318,6 @@ The kernel is configured from `allnoconfig`, layers and capabilities. Write down
 the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NET`,
 `NETWORK_FILESYSTEMS`, `NETDEVICES`: each bit once). Find dependencies in the Kconfig, which
 `tar --include` extracts from the tarball, and verify the resolved `.config`, never the files of `package/linux/`.
-Archives are named by package and version, not by content: after a change, delete the `linux-*`
-archive of every key that must pick it up (`.github/ci/invalidate` does so for CI's cache).
 
 Pi facts:
 

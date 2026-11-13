@@ -30,7 +30,7 @@ framework code and one line per recipe.
   whatever the sysroot happens to hold. Options at the call sites (`sqlite=no`) exist to keep that
   result fixed.
 - An archive is reused when it and its digest exist. Its key is the profile's name, so a changed
-  dependency rebuilds nothing (`.github/ci/invalidate`: "The packages built
+  dependency rebuilds nothing (`invalidate`: "The packages built
   against one that changed are not dropped with it").
 - 18 products have an `lfs_install_package X#dev` line, 20 lines in all, in `lib/system.sh` (glibc)
   and the profiles.
@@ -198,7 +198,7 @@ dependencies) closes most of that. Yocto has the same gap.
 
 Steps 0 to 5 keep the archive keys. Enforcement applies to packages that are built, so the first
 cold build is where hidden dependencies show up. Editing a recipe's `package_dependencies` is a
-recipe edit: `.github/ci/invalidate` rule 2 drops its archive, and, as today, not its dependents.
+recipe edit: `invalidate` rule 2 drops its archive, and, as today, not its dependents.
 
 Step 6, separate and later: a signature, as sstate has, replaces the profile's name as the archive
 key. It is the SHA-256 of the recipe, its files directory and category helper, the values
@@ -206,7 +206,7 @@ of the options the recipe names, `target_*`, the flags, the component and the si
 resolved dependencies from the registry. A changed dependency then rebuilds its dependents, and
 systems with equal inputs share archives. It needs an archive prune command, reproducible archives
 (`tar --sort=name`, `SOURCE_DATE_EPOCH`) to stop cascades of unchanged output, and it changes the
-stale-state rules of the build-iteration skill and of `.github/ci/invalidate`. It deserves its own
+stale-state rules of `invalidate`. It deserves its own
 design.
 
 ## Migration
