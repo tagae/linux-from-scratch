@@ -204,6 +204,11 @@ make test             # check that the image boots and root can login/poweroff
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
+A package builds again only when its archive is gone, so after changing a recipe, a patch, a kernel
+option or a framework file, run `make invalidate` (`make docker-invalidate` for the build through
+Docker): it deletes the archives that the changes since its last run make stale, uncommitted ones
+included. Its first run, with nothing recorded, deletes them all.
+
 Each target defaults to the `virt` profile. The default can be changed through a variable:
 
 ```shell
