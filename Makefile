@@ -92,8 +92,7 @@ image/%.img: %-system FORCE
 invalidate:
 	./invalidate
 
-# The checks (`make lint`, `make sbom-check`, `make vulnerability-check`) have a Makefile of their
-# own.
+# The checks have a Makefile of their own.
 include check/Makefile
 
 clean:

@@ -1,7 +1,4 @@
-# Checks of the code, and of the images and their SBOMs. The checks of the images need tools that no
-# build does: they come from PyPI and GitHub into work/check/, and need a network. The Makefile
-# includes this one, so that `make lint` works from the repository root, and so does
-# `make -f check/Makefile lint`. The paths are those of the repository root.
+# Quality checks.
 
 .PHONY: lint sbom-check vulnerability-check
 
