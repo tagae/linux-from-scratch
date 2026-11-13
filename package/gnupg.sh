@@ -10,6 +10,8 @@ prepare() {
             : ${gpgsm:=no} ${dirmngr:=no} ${keyboxd:=no} ${tpm2d:=no} ${wks_tools:=no} ${gpgtar:=no}
             : ${tofu:=no} ${photo_viewers:=no}
 
+            # Without dirmngr there is no DNS client to build, nor a dirmngr to start, and no
+            # external program (photo viewer, keyserver helper) to run.
             # The CCID driver looks for libusb's header in a list of directories that a sysroot
             # does not move, the first of which stands for the compiler's own search path.
             env ${sysroot:+CPPFLAGS=-I$sysroot/usr/include/libusb-1.0} \
@@ -28,6 +30,9 @@ prepare() {
                 ${tofu:+--enable-tofu=$tofu} \
                 ${photo_viewers:+--enable-photo-viewers=$photo_viewers} \
                 ${ccid_driver:+--enable-ccid-driver=$ccid_driver} \
+                --disable-libdns \
+                --disable-dirmngr-auto-start \
+                --disable-exec \
                 --disable-tests \
                 --disable-doc
             ;;
