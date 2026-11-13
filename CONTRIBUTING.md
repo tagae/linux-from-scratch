@@ -86,7 +86,9 @@ Images
   its SBOM. A block device gets none, as it is no file to take the digest of.
 * The `./lfs qemu` command boots the built image through a qcow2 overlay next to it,
   `<image>.qcow2`, which takes what the system writes. The overlay is made anew with the image, and
-  its size is a power of two, as QEMU requires of an SD card.
+  its size is a power of two, as QEMU requires of an SD card. Unless PROFILE is set, the profile
+  that boots is the one that the image's name, `<profile>.img`, gives (`./lfs qemu
+  image/pi0-pgp.img`), when a profile has that name.
 
 Nothing is mounted: `mkfs.btrfs --rootdir` makes the root file system from a copy of the install
 tree, and mtools fills the FAT boot partition. For an image file, each file system is made in a
