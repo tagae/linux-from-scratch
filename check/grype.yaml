@@ -7,6 +7,11 @@ ignore:
   - vulnerability: CVE-2019-1010023
   - vulnerability: CVE-2019-1010024
   - vulnerability: CVE-2019-1010025
+  # A JFS flaw of 2020, fixed in 5.10.4, which every later kernel has: the NVD's ranges for it include
+  # `> 4.4.249`, which every kernel after it matches.
+  - vulnerability: CVE-2020-27815
+    package:
+      name: linux
   # The stack protector of AArch64, fixed in GCC in September 2023, long before the GCC that the
   # images are built with: the NVD gives a date as its fixed version, which no version precedes.
   - vulnerability: CVE-2023-4039
