@@ -28,7 +28,8 @@ Else, you need a Linux host with the following utilities.
 
 3. To be able to boot images in a VM (e.g., `make qemu`),
 
-  * QEMU for your host's architecture, including `qemu-img`.
+  * QEMU for your host's architecture, including `qemu-img`. The `virt` platform's command line
+    needs QEMU 11.1 or later (`-object monitor-hmp`).
 
 4. To test booted images (e.g., `make test`),
 
