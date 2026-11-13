@@ -20,12 +20,12 @@ sbom-check: $(pyspdxtools)
 	for sbom; do echo "$$sbom"; $(pyspdxtools) --infile "$$sbom" || exit 1; done
 
 # Scans the SBOMs under image/ for vulnerabilities with Grype.
-GRYPE_VERSION := 0.121.0
+GRYPE_VERSION := 0.121.3
 grype_platform := $(shell uname -s | tr A-Z a-z)_$(subst x86_64,amd64,$(subst aarch64,arm64,$(shell uname -m)))
-grype_sha256_darwin_amd64 := 27eef17e42f0340af6582cdbc33ad18faf9f601c613ab81d2e1658a94cbc357f
-grype_sha256_darwin_arm64 := 7be39d3a0428c664ce0183e4aba31ed9accffce9eda7e7f6fa84e9c512285f27
-grype_sha256_linux_amd64 := 64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519
-grype_sha256_linux_arm64 := 86f570f75ca947ea3dd6486309232bcff6d78e44ba081ae75ab14eab72be3dae
+grype_sha256_darwin_amd64 := 65bfb1b3b30d32e9dab156a60003c7146e619f649992be227bf09c9ccbf44f7e
+grype_sha256_darwin_arm64 := 54336f2cd8cdee8b3d8ea83462561ff7fa9293498054c7c53a193db44bfea4c8
+grype_sha256_linux_amd64 := e9da18cc1429e786722e32161288103600efffd8e483c90761f90485bd1bec85
+grype_sha256_linux_arm64 := b7815598d48da78bfd16f5b98ef28e1bb09c03d34fc8c3e350f99b6ccb3c7cba
 grype := work/check/grype-$(GRYPE_VERSION)/grype
 
 $(grype):
