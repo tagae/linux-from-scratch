@@ -37,12 +37,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Lint
-        run: .github/ci/lint
+        run: make lint
 
   # The systems that CI builds and boots, one per profile: virt, the profile that the Makefile
   # builds by default, and pi0-pgp, the one that runs on hardware. Each system is built apart from
   # the other, so that a failure in one leaves the other to finish. The profiles are also in
-  # .github/ci/lint and .github/workflows/vulnerabilities.yaml.
+  # check/lint and .github/workflows/vulnerabilities.yaml.
   virt:
     uses: ./.github/workflows/system.yaml
     with:

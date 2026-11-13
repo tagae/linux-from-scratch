@@ -271,14 +271,14 @@ The document can be checked with the SPDX project's validator, and scanned for k
 vulnerabilities by [Grype](https://github.com/anchore/grype):
 
 ```shell
-make sbom-check      # validates every document under image/ (fetches the validator from PyPI)
-grype sbom:image/virt-systemd.spdx.json
+make sbom-check            # validates every document under image/ (fetches the validator from PyPI)
+make vulnerability-check   # scans them with Grype, as CI does (fetches Grype and its data)
 ```
 
 CI builds and boots the `virt` and `pi0-pgp` systems, validates the document of each image with the
-same `make sbom-check`, and scans the document of each image after each of
-its runs on main, with the vulnerability data of the day: the badge above fails when Grype finds, in
-either image, a vulnerability of high or critical severity that a newer version fixes, and the
+same `make sbom-check`, and scans the document of each image after each of its runs on main, with
+the vulnerability data of the day, as `make vulnerability-check` does: the badge above fails when
+Grype finds, in either image, a vulnerability of high or critical severity that a newer version fixes, and the
 findings are in the repository's code scanning alerts. The scan reports, and leaves CI's own result
 alone.
 

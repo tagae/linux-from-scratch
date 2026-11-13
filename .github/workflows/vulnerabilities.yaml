@@ -4,8 +4,9 @@ name: Vulnerability scan
 # image's SBOM, with the latest vulnerability data, after each run of CI on main. Every finding
 # goes to the run's summary and to GitHub's code scanning, and the run fails, as its badge shows,
 # when a finding of high or critical severity has a fixed version, in any image. The findings that
-# do not concern the images are left out by .github/ci/grype.yaml. Nothing is built, and CI's own
-# result is left alone. The profiles are those of .github/workflows/ci.yaml.
+# do not concern the images are left out by check/grype.yaml. `make vulnerability-check` does
+# the scan, here and locally. Nothing is built, and CI's own result is left alone. The profiles are
+# those of .github/workflows/ci.yaml.
 on:
   workflow_run:
     workflows: [CI]
@@ -19,14 +20,6 @@ permissions:
 defaults:
   run:
     shell: bash
-
-env:
-  GRYPE_VERSION: 0.121.0
-  GRYPE_SHA256: 64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519
-  # The findings that fail the run.
-  URGENT: >-
-    .matches[] | select(.vulnerability.fix.state == "fixed"
-      and (.vulnerability.severity == "High" or .vulnerability.severity == "Critical"))
 
 jobs:
   scan:
@@ -61,56 +54,23 @@ jobs:
             exit 1
           fi
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > sbom.zip
-          mkdir sbom
-          unzip -q sbom.zip -d sbom
-          ls sbom
+          mkdir image
+          unzip -q sbom.zip -d image
+          ls image
 
-      - name: Install Grype
-        run: |
-          curl -sSfLo grype.tar.gz \
-            "https://github.com/anchore/grype/releases/download/v$GRYPE_VERSION/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
-          echo "$GRYPE_SHA256  grype.tar.gz" | sha256sum -c
-          tar -xzf grype.tar.gz grype
-
-      # Grype gives the findings of an SBOM no file, which code scanning requires: they are given
-      # the SBOM's, as the image build writes it.
+      # `make vulnerability-check` is what a developer runs: it fails on a finding of high or
+      # critical severity that a newer version fixes, after the findings are written for the steps
+      # below, which run whatever its result.
       - name: Scan
-        run: |
-          ./grype db update
-          sbom=$(echo sbom/*.spdx.json)
-          ./grype --config .github/ci/grype.yaml -o json=grype.json -o sarif=grype.sarif "sbom:$sbom"
-          jq --arg uri "image/${sbom#sbom/}" \
-            '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation.uri)
-              |= (if (. // "") == "" then $uri else . end)' grype.sarif > grype-located.sarif
-          {
-            echo "## $(basename "$sbom" .spdx.json)"
-            echo
-            echo "$(jq '.matches | length' grype.json) findings in" \
-              "$(jq '[.matches[].artifact.name] | unique | length' grype.json) packages," \
-              "$(jq "[$URGENT] | length" grype.json) of high or critical severity with a fixed version."
-            echo
-            echo "| Package | Findings | With a fixed version |"
-            echo "|---|---|---|"
-            jq -r '.matches | group_by(.artifact.name + " " + .artifact.version)[]
-              | "| \(.[0].artifact.name) \(.[0].artifact.version) | \(length) | \(map(select(.vulnerability.fix.state == "fixed")) | length) |"' grype.json
-            echo
-            echo "### High or critical, with a fixed version"
-            echo
-            echo "| Package | Vulnerability | Severity | Fixed in |"
-            echo "|---|---|---|---|"
-            jq -r "$URGENT"' | "| \(.artifact.name) \(.artifact.version) | \(.vulnerability.id) | \(.vulnerability.severity) | \(.vulnerability.fix.versions | join(", ")) |"' grype.json
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: make vulnerability-check
+
+      - name: Summarize the findings
+        if: ${{ !cancelled() }}
+        run: cat work/check/vulnerabilities/*.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Send the findings to code scanning
+        if: ${{ !cancelled() && hashFiles('work/check/vulnerabilities/*.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: grype-located.sarif
+          sarif_file: work/check/vulnerabilities
           category: grype-${{ matrix.profile }}
-
-      - name: Fail on a fixed vulnerability of high or critical severity
-        run: |
-          count=$(jq "[$URGENT] | length" grype.json)
-          if [ "$count" -gt 0 ]; then
-            echo "::error::$count findings of high or critical severity have a fixed version"
-            exit 1
-          fi

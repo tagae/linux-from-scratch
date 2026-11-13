@@ -118,16 +118,19 @@ tables, or on the rule alone (mandoc and ccid).
    anew.
 3. **Check it.** `make sbom-check` runs `pyspdxtools --infile` on every `image/*.spdx.json`, which
    validates against the SPDX 2.3 model: licence expressions, identifiers and relationships. The
-   target installs the validator, pinned by version in the Makefile, into a virtual environment
-   under `work/`, so that CI runs, after each phase that makes an image, what a developer runs. Not
-   part of the build, which runs with the tools alone.
+   target installs the validator, pinned by version in `check/Makefile`, into a virtual environment
+   under `work/check/`, so that CI runs, after each phase that makes an image, what a developer
+   runs. Not part of the build, which runs with the tools alone.
 4. **Scan it.** CI keeps the SBOM of the virt and pi0 images that their test phases make, and
    `.github/workflows/vulnerabilities.yaml` scans the latest of each with Grype after each run of CI
    on main, with the vulnerability data of the day, building nothing. The findings go to the run's
    summary and to GitHub's code scanning, where an alert can be dismissed with a reason. The scan is
    a report: it leaves CI's result alone, and fails, as the README's badge shows, when a finding of
-   high or critical severity has a fixed version. `.github/ci/grype.yaml` leaves out the findings
-   that do not concern the images, each with its reason.
+   high or critical severity has a fixed version. `check/grype.yaml` leaves out the findings
+   that do not concern the images, each with its reason. `make vulnerability-check` is the scan:
+   `check/vulnerabilities` runs Grype, pinned and checked against its digest in `check/Makefile`,
+   on each `image/*.spdx.json`, and the workflow only fetches the SBOM into `image/`, runs it, and
+   sends its SARIF and summary on. A developer's scan gives CI's verdict.
 
 ## Tools to use
 
