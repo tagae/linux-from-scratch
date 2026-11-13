@@ -18,6 +18,11 @@ readonly dev_tree_blob=broadcom/bcm2835-rpi-zero.dtb
 # that starts the kernel.
 readonly firmware_files="bootcode.bin start.elf fixup.dat"
 
+# The systems of this platform ship the man and info pages of their packages (and programs to read
+# them), unless a profile says otherwise. The tools never do.
+man=yes
+info=yes
+
 readonly QEMU=qemu-system-arm
 
 # raspi0 emulates a BCM2835 SOC.
