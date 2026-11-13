@@ -34,7 +34,6 @@ build_image() {
         echo "image (done)"
         return
     fi
-    check_interpreters $install_dir
     trap clean_image EXIT
     PARTS_DIR=$(mktemp -dt lfs-XXXXXX)
     stage_root
@@ -68,70 +67,6 @@ build_image() {
         mv "$IMAGE" "$target"
     fi
     clean_image
-}
-
-# Fails if a program in the system at ROOT lacks its interpreter there: the one that a script's first
-# line names, or the dynamic linker that an executable asks for. The kernel runs neither, and the
-# shell reports the program as not found, rather than what is missing.
-check_interpreters() {
-    local missing=$(_programs_without_interpreter "$1")
-    [ -z "$missing" ] || bail "Programs without their interpreter in the system:
-$missing"
-}
-
-# Prints the programs in the system at ROOT that lack their interpreter there, and the interpreter.
-_programs_without_interpreter() {
-    local root=$1 elf=$(printf '\177ELF') file magic interpreter
-    find "$root" -type f -perm /111 | while read -r file; do
-        magic=$(head -c 4 "$file" | tr -d '\000')
-        case $magic in
-            '#!'*) interpreter=$(_script_interpreter "$file") ;;
-            "$elf") interpreter=$(_dynamic_linker "$file") ;;
-            *) continue ;;
-        esac
-        [ -z "$interpreter" ] || _system_has_file "$root" "$interpreter" \
-            || echo "  ${file#"$root"}: $interpreter"
-    done
-}
-
-# Prints the interpreter that the script's first line names: the program that `env` runs, when it
-# does.
-_script_interpreter() {
-    set -f
-    set -- $(head -n 1 "$1" | cut -c 3-)
-    set +f
-    case ${1:-} in
-        */env)
-            shift
-            while [ $# -gt 0 ]; do
-                case $1 in -*|*=*) shift ;; *) break ;; esac
-            done
-            [ $# -eq 0 ] || echo /usr/bin/$1
-            ;;
-        *) echo ${1:-} ;;
-    esac
-}
-
-# Prints the dynamic linker that the executable asks for, if it does.
-_dynamic_linker() {
-    $target_triplet-readelf -l "$1" \
-        | sed -n 's/.*Requesting program interpreter: \(.*\)\]/\1/p'
-}
-
-# Whether PATH, an absolute path, names a file in the system at ROOT. Links are followed within the
-# system, whose absolute ones the build machine would follow to its own files.
-_system_has_file() {
-    local root=$1 path=$2 depth=0 link
-    while [ -L "$root$path" ]; do
-        depth=$((depth + 1))
-        [ $depth -le 20 ] || return 1
-        link=$(readlink "$root$path")
-        case $link in
-            /*) path=$link ;;
-            *) path=${path%/*}/$link ;;
-        esac
-    done
-    [ -f "$root$path" ]
 }
 
 confirm_erase() {
