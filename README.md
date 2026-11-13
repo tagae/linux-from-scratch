@@ -114,7 +114,8 @@ make docker-image/pi0-pgp.img
 Write the image to an SD card. The Zero has one USB data port, the micro-USB one marked *USB*, so
 connect a hub to it (through an OTG adapter) and plug both the YubiKey and a USB stick in the hub.
 The stick holds a FAT file system, on its first partition or on the whole device. Log in as root on
-the serial console.
+the serial console, whose shell is bash: arrow keys, Tab completion and a history of the session,
+which is not saved, as commands carry passphrases.
 
 1. The Pi has no battery-backed clock. It restores the time it last saved, and a new image starts at
    the time it was made. Keys record the time they are made at, so set it:
