@@ -38,11 +38,12 @@ lfs_system_install shadow
 )
 
 # util-linux: mount and umount, agetty and sulogin, which systemd and the key procedure run; libblkid
-# and libmount, which systemd links; and dmesg, to read the kernel log.
+# and libmount, which systemd links; dmesg, to read the kernel log; and more, which man shows the
+# manual pages in.
 (
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
     libblkid=yes libmount=yes
-    mount=yes agetty=yes sulogin=yes dmesg=yes
+    mount=yes agetty=yes sulogin=yes dmesg=yes more=yes
     lfs_system_install util-linux
     lfs_install_package util-linux#dev
 )
@@ -81,9 +82,15 @@ lfs_system_install grep
 lfs_system_install sed
 lfs_system_install gawk
 
+# man and info, which read the manual and Info pages that the packages install (the platform has
+# `man=yes` and `info=yes`).
+lfs_system_install mandoc
+lfs_system_install texinfo
+
 (
-    # Only libcrypto is wanted, which libfido2 and cryptography link: not the openssl program, its
-    # documentation or the legacy provider, nor the directories for certificates and configuration.
+    # Only libcrypto is wanted, which libfido2 and cryptography link: not the openssl program or the
+    # legacy provider, nor the directories for certificates and configuration. The manual pages are
+    # the library's.
     disable="apps legacy" ssldirs=no
     lfs_system_install openssl
     lfs_install_package openssl#dev
@@ -200,3 +207,19 @@ lfs_system_install python/jaraco-functools
 lfs_system_install python/keyring
 lfs_system_install python/fido2
 lfs_system_install python/yubikey-manager
+
+#===[ Documentation ]===
+
+# The index of the man pages, which man and apropos search, and the directory of the Info pages, which
+# info starts from. They are made here, with mandoc and texinfo built for the build machine, as the
+# system's cannot run on it. A page that has no entry for the directory is left out of it.
+if [ "${man:-no}" = yes ]; then
+    lfs_tools_install mandoc
+    makewhatis $system_dir/usr/share/man
+fi
+if [ "${info:-no}" = yes ]; then
+    lfs_tools_install texinfo
+    for file in $system_dir/usr/share/info/*.info; do
+        install-info --dir-file=$system_dir/usr/share/info/dir $file || :
+    done
+fi

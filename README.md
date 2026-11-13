@@ -170,9 +170,12 @@ key can only be tried on the Pi.
 Restrictions
 ------------
 
-Systems ship without documentation: the man pages, info pages and other documentation a package
-installs are left out. Documentation that needs extra tools to build (e.g. systemd's man pages) is
-not built.
+Systems ship without documentation, except the man and info pages of the platforms that have `man=yes`
+and `info=yes` in `platform/<platform>.sh` (`pi0`): the packages of their profiles install their
+pages, and the profile installs `mandoc` and `texinfo` to read them (`man gpg`, `info gnupg`). The
+other documentation a package installs (`/usr/share/doc`) is left out. Pages that need tools that no
+build has are not made: the man pages of systemd and shadow (they need `xsltproc`) and of kmod
+(`scdoc`). A profile can turn either off with `man=no` or `info=no`.
 
 Boards without a battery-backed clock (the Raspberry Pi) keep time across reboots through
 systemd-timesyncd, which saves the clock every minute and at shutdown, and restores it at the next
