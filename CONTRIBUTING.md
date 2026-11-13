@@ -134,11 +134,11 @@ that uses them belongs to the category, whatever it installs: `python/yubikey-ma
 program. A category is named unlike the framework's own files (`lib/system.sh`, `lib/meson.sh`...),
 which its recipes would load again.
 
-A recipe changes an upstream source file with a patch, never by editing the file: `patch_source URL
-sha256:...` fetches and applies one, and `apply_patch` applies one kept in the package's files
-directory (`package/<name>/<change>.patch`, made with `diff -u` against the pristine file, so that
-it applies with `-p1`, and starting with the reason for the change). Each patch is applied once to
-an unpacked source.
+A recipe changes an upstream source file with a patch, never by editing the file: `apply_patch`
+applies one kept in the package's files directory (`package/<name>/<change>.patch`, made with `diff
+-u` against the pristine file, so that it applies with `-p1`, and starting with the reason for the
+change). A patch taken from elsewhere, such as the LFS book's, is kept as it is, with the header
+that names its origin. Each patch is applied once to an unpacked source.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -289,7 +289,7 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   comes first: the Pi's boot partition is firmware, `config.txt`, `cmdline.txt` and a flat device
   tree blob.
 * Pin everything: `package_source_hash=sha256:<hex>` of the tarball, checked against the upstream's
-  digest or PyPI's JSON API; patches via `patch_source URL sha256:...`.
+  digest or PyPI's JSON API; patches are kept in the repository.
 * `package_license` is in SPDX for every recipe, from the real LICENSE files, bundled code
   included (Rust crates too).
 * A file that another package installs is changed in that package's install (`system-files` is

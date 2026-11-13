@@ -5,7 +5,6 @@ umask 022
 
 #===[ Framework ]===
 
-readonly lfs_version=13.1
 
 readonly project_dir=$(dirname $(realpath "$0"))
 readonly lib_dir=$project_dir/lib

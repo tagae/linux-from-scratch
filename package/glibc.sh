@@ -9,10 +9,11 @@ readonly package_license='LGPL-2.1-or-later AND GPL-2.0-or-later'
 prepare() {
     case $package_component in
         glibc|headers)
-            patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/glibc-fhs-1.patch \
-                         sha256:643552db030e2f2d7ffde4f558e0f5f83d3fabf34a2e0e56ebdb49750ac27b0d
-            patch_source  https://www.linuxfromscratch.org/patches/lfs/$lfs_version/glibc-${package_version}-upstream_fixes-1.patch \
-                         sha256:500567ff0a22e295bfe3b55e9b397796f71a19f01e1ff7fb29c9189482ee1809
+            # Both patches come from the LFS book's patches, 13.1: the first moves what glibc keeps
+            # in /var/db to where the FHS puts it, the second brings upstream's fixes of the release
+            # branch. The second is for this release: a new glibc needs the book's own.
+            apply_patch $package_files_dir/glibc-fhs-1.patch
+            apply_patch $package_files_dir/glibc-${package_version}-upstream_fixes-1.patch
 
             : ${prefix:=/usr}
             : ${nscd:=no}

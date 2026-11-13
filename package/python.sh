@@ -15,10 +15,10 @@ prepare() {
             : ${optimizations:=no} ${ensurepip:=no} ${test_modules:=no}
             : ${static_libpython:=no}
 
-            # LFS names this patch after the Python of its book, 3.14.7; it applies, with offsets, to
-            # the later releases of 3.14.
-            patch_source https://www.linuxfromscratch.org/patches/lfs/$lfs_version/Python-3.14.7-openssl_4-1.patch \
-                sha256:707a0c457192ac2f3b5b8a51481bc5ebd12db22d57c1dbe0256138ee6e070792
+            # OpenSSL 4 support, from the LFS book's patches, 13.1, which names it for the Python of
+            # the book, 3.14.7. It is several patches in a row and applies, with offsets, to the
+            # later releases of 3.14.
+            apply_patch $package_files_dir/Python-3.14.7-openssl_4-1.patch
 
             # The remote debugger, which attaches to a running process, is left out.
 
