@@ -35,8 +35,8 @@ One document per image, `image/<PROFILE>.spdx.json`, next to the image:
 | SPDX element | Here | Fields |
 |---|---|---|
 | Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` is the time the image is made (`SOURCE_DATE_EPOCH` when builds become reproducible); `creators`: `Tool: lfs-<LFS_RELEASE>` |
-| Package (root) | the image | file name, SHA-256 of the image, `versionInfo` = `LFS_RELEASE`, `sourceInfo` = the revision of this project (`LFS_REVISION`: the abbreviated commit hash, with `-dirty` when files differ from it; the Makefile computes it, as the containers have no git history); the document `DESCRIBES` it |
-| Package | each upstream package that the system installs (`lfs_system_install`), once: `bash`, `glibc`, `linux`, `cryptography`, ... | `name`, `versionInfo`, `packageFileName` = the source's file name, `checksums` = `package_source_hash`, `downloadLocation` = `package_source`, `licenseDeclared` = `package_license`, `description`, `externalRefs`: purl and CPEs (see *Identifiers*) |
+| Package (root) | the image | file name, `downloadLocation` `NONE` (it is published nowhere), `copyrightText` = this project's own, SHA-256 of the image, `versionInfo` = `LFS_RELEASE`, `sourceInfo` = the revision of this project (`LFS_REVISION`: the abbreviated commit hash, with `-dirty` when files differ from it; the Makefile computes it, as the containers have no git history); the document `DESCRIBES` it |
+| Package | each upstream package that the system installs (`lfs_system_install`), once: `bash`, `glibc`, `linux`, `cryptography`, ... | `name`, `versionInfo`, `packageFileName` = the source's file name, `checksums` = `package_source_hash`, `downloadLocation` = `package_source`, `licenseDeclared` and `licenseConcluded` = `package_license`, `description`, `externalRefs`: purl and CPEs (see *Identifiers*) |
 | Relationships | | image `CONTAINS` each package (not yet: patches `PATCH_APPLIED` to their source) |
 | Extracted licences | `LicenseRef-*` (the Pi firmware's, the time zone database's) | the licence text, kept in the declaring package's files directory as `LicenseRef-<name>.txt`: the source may not be unpacked when the archive comes from a cache |
 
@@ -51,7 +51,7 @@ One document per image, `image/<PROFILE>.spdx.json`, next to the image:
   "checksums": [{ "algorithm": "SHA256", "checksumValue": "0d5cd869..." }],
   "downloadLocation": "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz",
   "licenseDeclared": "GPL-3.0-or-later",
-  "licenseConcluded": "NOASSERTION",
+  "licenseConcluded": "GPL-3.0-or-later",
   "copyrightText": "NOASSERTION",
   "externalRefs": [{
     "referenceCategory": "PACKAGE-MANAGER",
@@ -64,6 +64,11 @@ One document per image, `image/<PROFILE>.spdx.json`, next to the image:
   }]
 }
 ```
+
+`licenseConcluded` repeats `licenseDeclared`: the recipes take `package_license` from the source's own
+licence files, so no further audit stands behind the conclusion (ScanCode or ORT, under *Tools to
+use*, would give one). `copyrightText` stays `NOASSERTION` for the packages: the notices are in the
+sources, which the SBOM's writer does not see, and nothing gathers them.
 
 The document names packages, not the archives that the system build made of them: the archives are
 published nowhere, so their digests would tell nobody anything, and scanners match the packages'
@@ -135,7 +140,7 @@ are Apache-2.0 unless noted. The scanners were tried on our documents (see *What
 | Scan | [Grype](https://github.com/anchore/grype) | The one scanner that finds our packages' vulnerabilities, from an SBOM alone, once they carry a CPE, or a PyPI purl for the Python libraries. Writes SARIF, which GitHub's code scanning takes. |
 | Monitor | [OWASP Dependency-Track](https://github.com/DependencyTrack/dependency-track) | Takes SBOMs per product and version and re-evaluates them as vulnerability feeds update. Needs a server; a scheduled scan in CI does the same for one image. |
 | Triage | [OpenVEX / `vexctl`](https://github.com/openvex/vexctl) | Records "not affected" decisions (e.g. a kernel CVE for a driver we don't build) so they don't reappear on every scan. Grype takes them. |
-| Licences | [ScanCode Toolkit](https://github.com/aboutcode-org/scancode-toolkit), [ORT](https://github.com/oss-review-toolkit/ort) | Scan the unpacked sources for licences, to check `package_license` and fill `licenseConcluded`. A one-off audit, not part of every build. |
+| Licences | [ScanCode Toolkit](https://github.com/aboutcode-org/scancode-toolkit), [ORT](https://github.com/oss-review-toolkit/ort) | Scan the unpacked sources for licences, to check `package_license` and `licenseConcluded`, and to fill `copyrightText`. A one-off audit, not part of every build. |
 | Convert | [`bomctl`](https://github.com/bomctl/bomctl) | Converts and merges SPDX and CycloneDX. Describes itself as experimental, and has no diff yet. Only needed if a consumer insists on CycloneDX. |
 | Sign | [cosign](https://github.com/sigstore/cosign), [minisign](https://github.com/jedisct1/minisign), GitHub's artifact attestations (`actions/attest-sbom`) | See Signing below. |
 
