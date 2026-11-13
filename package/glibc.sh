@@ -86,11 +86,12 @@ install() {
 
             # Plus the tools for tracing, profiling and debugging programs, the compilers of
             # locales and message catalogs, and the tools for locales and character sets, which
-            # have no data here (no locales, no conversion modules).
+            # have no data here (no locales, no conversion modules). And ldd, a bash script: the
+            # system has no bash, and `ld.so --list` does the same.
             move_to_dev_component \
                 usr/bin/mtrace usr/bin/pcprofiledump usr/bin/sotruss usr/bin/sprof usr/bin/xtrace \
                 usr/lib/audit usr/lib/libc_malloc_debug.so.0 usr/lib/libthread_db.so.1 \
-                usr/bin/gencat usr/bin/localedef \
+                usr/bin/gencat usr/bin/localedef usr/bin/ldd \
                 usr/bin/locale usr/bin/iconv usr/sbin/iconvconfig usr/bin/makedb \
                 usr/lib/libBrokenLocale.so.1
             ;;

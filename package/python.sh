@@ -82,6 +82,10 @@ install() {
                        $lib/turtledemo $lib/turtle.py $lib/pydoc_data $lib/site-packages
                 rm -f $package_install_dir$prefix/bin/idle3* $package_install_dir$prefix/bin/pydoc3*
 
+                # A module is no program, and this one is marked as one: its first line runs
+                # `python`, which the system lacks (only python3).
+                chmod -v -x $lib/encodings/rot_13.py
+
                 # Byte code for what is left, which nothing at run time has to write. A hash of
                 # the source that is never checked ties each file to its source, whatever times
                 # the files get. The paths in the byte code are those of the installed system.
