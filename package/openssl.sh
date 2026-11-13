@@ -1,6 +1,6 @@
-: ${package_version:=4.0.1}
+: ${package_version:=4.0.3}
 : ${package_source:=https://github.com/openssl/openssl/releases/download/openssl-$package_version/openssl-$package_version.tar.gz}
-: ${package_source_hash:=sha256:2db3f3a0d6ea4b59e1f094ace2c8cd536dffb87cdc39084c5afa1e6f7f37dd09}
+: ${package_source_hash:=sha256:325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9}
 : ${package_description:=TLS and general-purpose cryptography toolkit.}
 : ${package_license:=Apache-2.0}
 
