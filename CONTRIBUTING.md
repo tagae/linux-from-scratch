@@ -282,8 +282,9 @@ Read two recipes like yours before starting: copy idioms, not ideas.
 * A file that another package installs is changed in that package's install (`system-files` is
   merged first, and the last file wins).
 * Every program of a system has its interpreter in it: a script's shell (the systems have `dash`,
-  not `bash`), an executable's dynamic linker. `./lfs check <package>` names those that lack it
-  (`ldd` is a bash script). Move such a program to the `dev` component, or leave it out.
+  not `bash`), an executable's dynamic linker. `make <profile>-system` runs `./lfs check`, which
+  names those that lack it (`ldd` is a bash script); `./lfs check <package>` examines one package.
+  Move such a program to the `dev` component, or leave it out.
 
 
 systemd
