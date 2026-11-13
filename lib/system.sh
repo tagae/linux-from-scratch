@@ -130,6 +130,7 @@ lfs_system_install() {
 # platform, tuned for its CPU.
 lfs_install_tool() (
     unset host
+    man=no info=no
     target=$target_triplet
     arch=${target_gcc_arch:-} tune=${target_gcc_tune:-} abi=${target_gcc_abi:-}
     fpu=${target_gcc_fpu:-} float=${target_gcc_float:-}

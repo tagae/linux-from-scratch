@@ -55,12 +55,13 @@ lfs_fetch_package() (
 )
 
 # Fetches the sources from a package's `package_fetch_dependencies`,
-# exposing each one's location as `<dependency>_source_dir`.
+# exposing each one's location as `<dependency>_source_dir`, with a `_` for every character of its
+# name that is no letter or digit (`libgpg_error_source_dir`).
 lfs_fetch_dependencies() {
     local dependency source_dir
     for dependency in $(lfs_source_package "$1"; echo ${package_fetch_dependencies:-}); do
         source_dir=$(lfs_fetch_package $dependency)
-        eval "${dependency}_source_dir=\$source_dir"
+        eval "$(printf %s "$dependency" | tr -c '[:alnum:]' _)_source_dir=\$source_dir"
     done
 }
 
