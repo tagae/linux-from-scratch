@@ -7,6 +7,8 @@
 prepare() {
     case $package_component in
         libgpg-error)
+            if docs_wanted; then doc=enable; else doc=disable; fi
+
             : ${languages:=no}
 
             $package_source_dir/configure \
@@ -18,7 +20,7 @@ prepare() {
                 ${languages:+--enable-languages=$languages} \
                 --disable-static \
                 --disable-tests \
-                --disable-doc
+                --$doc-doc
             ;;
         *)
             default_prepare
@@ -44,8 +46,9 @@ install() {
             # Its libtool archive makes libtool put the sysroot in the run-time path of the
             # libraries that link against it.
             rm -fv $package_install_dir$prefix/lib/libgpg-error.la
-            # Plus the script that tells the flags for compiling against it.
-            move_to_dev_component usr/bin/gpgrt-config
+            # Plus the script that tells the flags for compiling against it, and the program that
+            # makes man pages, which the build of the documentation installs for the platform.
+            move_to_dev_component usr/bin/gpgrt-config usr/bin/yat2m
             move_to_docs_component
             ;;
         dev)

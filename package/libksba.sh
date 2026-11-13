@@ -7,13 +7,15 @@
 prepare() {
     case $package_component in
         libksba)
+            if docs_wanted; then doc=enable; else doc=disable; fi
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
                 ${sysroot:+--with-sysroot=$sysroot} \
                 --disable-static \
-                --disable-doc
+                --$doc-doc
             ;;
         *)
             default_prepare

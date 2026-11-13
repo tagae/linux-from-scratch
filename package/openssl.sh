@@ -7,10 +7,14 @@
 prepare() {
     case $package_component in
         openssl)
+            : ${man:=no}
+
             # Configure cannot guess the platform from a cross compiler: it takes its name, and
             # the prefix of the toolchain's programs. The features to leave out besides the
-            # documentation are listed in `disable`.
+            # documentation are listed in `disable`. Without `man`, nothing of the documentation is
+            # built, and its HTML is never installed.
             local configure_target feature
+            case $man in yes) ;; *) set -- "$@" no-docs ;; esac
             configure_target=${host:+$(_target $host)}
             for feature in ${disable:-}; do
                 set -- "$@" no-$feature
@@ -22,7 +26,6 @@ prepare() {
                 --openssldir=/etc/ssl \
                 --libdir=lib \
                 "$@" \
-                no-docs \
                 shared
             ;;
         *)
@@ -46,6 +49,17 @@ install() {
     case $package_component in
         openssl)
             make DESTDIR=$package_install_dir install_sw
+            # The pages carry the suffix `ssl`, so that they do not take the names of other packages'
+            # (passwd, config).
+            case ${man:-no} in
+                yes)
+                    make DESTDIR=$package_install_dir MANSUFFIX=ssl install_man_docs
+                    # The pages of the programs that were left out.
+                    case " ${disable:-} " in
+                        *" apps "*) rm -rf $package_install_dir$prefix/share/man/man1 ;;
+                    esac
+                    ;;
+            esac
             rm -fv $package_install_dir/$prefix/lib/libcrypto.a \
                    $package_install_dir/$prefix/lib/libssl.a
             # A native build, which is a tool for the build machine, keeps its development files

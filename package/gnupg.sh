@@ -4,17 +4,34 @@
 : ${package_description:=OpenPGP encryption and signing tools.}
 : ${package_license:=GPL-3.0-or-later AND LGPL-2.1-or-later AND (LGPL-3.0-or-later OR GPL-2.0-or-later)}
 
+# The sources of the program that makes the man pages.
+: ${package_fetch_dependencies:=libgpg-error}
+
 prepare() {
     case $package_component in
         gnupg)
             : ${gpgsm:=no} ${dirmngr:=no} ${keyboxd:=no} ${tpm2d:=no} ${wks_tools:=no} ${gpgtar:=no}
             : ${tofu:=no} ${photo_viewers:=no}
+            # The man pages come from the documentation's sources, which the package builds with
+            # its own tool. The Info files come built in the tarball.
+            if docs_wanted; then doc=enable; else doc=disable; fi
+
+            # The man pages are made by yat2m, a program of libgpg-error's source, which configure
+            # looks for among the programs that run here: libgpg-error installs the platform's.
+            yat2m=
+            if docs_wanted; then
+                mkdir -p yat2m-for-build
+                gcc -o yat2m-for-build/yat2m $libgpg_error_source_dir/doc/yat2m.c
+                yat2m=$PWD/yat2m-for-build/yat2m
+            fi
 
             # Without dirmngr there is no DNS client to build, nor a dirmngr to start, and no
             # external program (photo viewer, keyserver helper) to run.
             # The CCID driver looks for libusb's header in a list of directories that a sysroot
             # does not move, the first of which stands for the compiler's own search path.
-            env ${sysroot:+CPPFLAGS=-I$sysroot/usr/include/libusb-1.0} \
+            # The documentation builds helper programs to run on the build machine, with the
+            # compiler that the tools have.
+            env ${sysroot:+CPPFLAGS=-I$sysroot/usr/include/libusb-1.0} CC_FOR_BUILD=gcc ${yat2m:+YAT2M=$yat2m} \
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
@@ -34,7 +51,7 @@ prepare() {
                 --disable-dirmngr-auto-start \
                 --disable-exec \
                 --disable-tests \
-                --disable-doc
+                --$doc-doc
             ;;
         *)
             default_prepare
