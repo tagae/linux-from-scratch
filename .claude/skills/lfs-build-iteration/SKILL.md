@@ -37,13 +37,13 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image and its SBOM
   (`image/<key>.img`, `image/<key>.spdx.json`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
   with `make sbom-check`.
-- Builds of DIFFERENT profiles run at once from ONE make (`make -j docker-test docker-pi0-pgp-test`, no job limit:
+- Builds of DIFFERENT profiles can run at once from ONE make (`make -j docker-test docker-pi0-pgp-test`, no job limit:
   tools first, then the systems side by side; each build uses `-j$(nproc)`). They share the `tools` volume, the
   downloads and `archive/tools`; each profile has its own sources (`source/<profile>`), work, archives and
   image; the cross toolchains share a few files (`libcc1`, `bfd-plugins/libdep.so`, docs), rewritten when a build
-  extracts its own. Two cross gcc compiles at once got `Killed signal terminated program cc1plus` in a 12 GiB VM:
-  give the VM 24 GiB or more. NEVER run two builds of the same profile (they share and wipe one sysroot,
-  `work/<profile>/sysroot`), nor two profiles that install a platform-dependent build tool (`rust`, for
+  extracts its own. Two cross gcc compiles at once got `Killed signal terminated program cc1plus` in a 12 GiB VM,
+  and need 24 GiB or more: the `default` VM has 16 GiB, so build one profile at a time there. NEVER run two builds
+  of the same profile (they share and wipe one sysroot, `work/<profile>/sysroot`), nor two profiles that install a platform-dependent build tool (`rust`, for
   `pi0-pgp`'s `cryptography`): they overwrite each other's files in `tools`. Builds started apart on a cold state both build
   the tools: run `make docker-tools` first. `build-image` refuses while any build runs: for several, use make.
   Check with `ps aux | grep -E '[m]ake docker|[d]ocker compose run'`. A tool is extracted into `tools` only when
@@ -73,11 +73,10 @@ user's YubiKey touch).
 
 ## Docker, Colima, the Mac shell
 
-- Builds run in the Colima profile `lfs` (18 CPUs, 24 GiB, no Kubernetes), next to the user's default: prefix make
-  with `env DOCKER_CONTEXT=colima-lfs`, and give every `docker` command `--context colima-lfs` (its volumes and images are
-  not the default VM's). Start it with `colima start -p lfs --cpus 18 --memory 24 --disk 100 --runtime docker
-  --vm-type vz --mount-type virtiofs --kubernetes=false --vz-rosetta=false --binfmt=false --activate=false`
-  (the user's Colima template enables Kubernetes and Rosetta for new profiles, so the flags are not optional).
+- Builds run in the Colima `default` VM (18 CPUs, 16 GiB), the active docker context `colima`, which holds the
+  project's volumes and images: plain `make docker-...` and `docker ...`, no profile of its own, no
+  `DOCKER_CONTEXT` or `--context`. The user's other profile (`collibra`) is not for this project. With 16 GiB, run
+  one build at a time.
 - Colima shares only `$HOME`: `docker run -v /tmp/x:/x` mounts an EMPTY directory. Keep files in the repo or pipe
   a script: `docker run --rm -i IMG sh -s -- args < script`.
 - Volumes `linux-from-scratch_{source,work,tools,install}`; images `linux-from-scratch-dev` (Debian: readelf,
