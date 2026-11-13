@@ -67,6 +67,7 @@ install() {
             # Without PAM, login prints the file that login.defs' MOTD_FILE names after each login.
             cp -rv $package_files_dir/etc $package_install_dir/
             move_to_dev_component
+            move_to_docs_component
             ;;
         dev)
             install_component

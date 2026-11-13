@@ -7,6 +7,8 @@
 prepare() {
     case $package_component in
         pinentry)
+            if docs_wanted; then doc=enable; else doc=disable; fi
+
             : ${pinentry_curses:=no} ${fallback_curses:=no}
 
             $package_source_dir/configure \
@@ -16,7 +18,7 @@ prepare() {
                 ${pinentry_tty:+--enable-pinentry-tty=$pinentry_tty} \
                 ${pinentry_curses:+--enable-pinentry-curses=$pinentry_curses} \
                 ${fallback_curses:+--enable-fallback-curses=$fallback_curses} \
-                --disable-doc
+                --$doc-doc
             ;;
         *)
             default_prepare

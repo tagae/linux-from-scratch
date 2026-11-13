@@ -42,6 +42,8 @@ install() {
             rm -v $package_install_dir$prefix/bin/gawkbug \
                 $package_install_dir$prefix/bin/gawk-$package_version
             move_to_dev_component
+            # The figures of the manual, which the Info file does not need.
+            rm -fv $package_install_dir$prefix/share/info/*.png $package_install_dir$prefix/share/info/*.jpg
             move_to_docs_component
             ;;
         dev)
