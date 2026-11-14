@@ -140,14 +140,16 @@ jobs:
         if: ${{ !cancelled() && hashFiles('image/*.spdx.json') != '' }}
         run: make sbom-check
 
-      # The SBOM of the image, of a phase that makes one, for the vulnerability scan
-      # (vulnerabilities.yaml).
+      # The SBOM of the image, of a phase that makes one, and the files that its kernel was built
+      # from, for the vulnerability scan (vulnerabilities.yaml).
       - name: Keep the SBOM
         if: ${{ !cancelled() && hashFiles('image/*.spdx.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: sbom-${{ inputs.profile }}-${{ inputs.name }}
-          path: image/*.spdx.json
+          path: |
+            image/*.spdx.json
+            image/*.kernel-files
           retention-days: 90
 
       - name: Report disk usage

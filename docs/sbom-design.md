@@ -76,6 +76,10 @@ identities alone. A package that the system installs twice is named once. A pack
 source, such as `system-files`, holds this project's own files, which the image stands for. The
 `dev` component, which a system doesn't get, stays out.
 
+Beside the document, `image/<PROFILE>.kernel-files` lists the files that the image's kernel was
+built from, one path of the kernel's source tree per line. It is not in the image. The kernel's
+recipe makes it, and the vulnerability scan reads it (see *What scanners find*).
+
 ## Identifiers
 
 Scanners find a package's vulnerabilities by an identifier that their databases know: the NVD's
@@ -126,13 +130,14 @@ tables, or on the rule alone (mandoc and ccid).
    on main, with the vulnerability data of the day, building nothing. The findings go to the run's
    summary and to GitHub's code scanning, where an alert can be dismissed with a reason. The scan is
    a report: it leaves CI's result alone, and fails, as the README's badge shows, when a finding of
-   high or critical severity has a fixed version. `check/grype.yaml` leaves out the findings
-   that do not concern the images, each with its reason, and `check/kernel-vex` those of the
-   kernel that its own CVE records say are fixed in its line, which it writes as an OpenVEX
-   document that CI keeps beside the findings (see *What scanners find*). `make vulnerability-check` is the scan:
-   `check/vulnerabilities` runs Grype, pinned and checked against its digest in `check/Makefile`,
-   on each `image/*.spdx.json`, and the workflow only fetches the SBOM into `image/`, runs it, and
-   sends its SARIF and summary on. A developer's scan gives CI's verdict.
+   high or critical severity has a fixed version. `check/grype.yaml` leaves out the findings that do
+   not concern the images, each with its reason, and `check/kernel-vex` those of the kernel that its
+   own CVE records show it does not have, as fixed in its line or as in code that its build did not
+   read, which it writes as an OpenVEX document that CI keeps beside the findings (see *What
+   scanners find*). `make vulnerability-check` is the scan: `check/vulnerabilities` runs Grype,
+   pinned and checked against its digest in `check/Makefile`, on each `image/*.spdx.json`, and the
+   workflow only fetches the SBOM into `image/`, runs it, and sends its SARIF and summary on. A
+   developer's scan gives CI's verdict.
 
 ## Tools to use
 
@@ -190,13 +195,19 @@ protector), a CVE of 2020 whose NVD range matches every kernel (CVE-2020-27815, 
 version numbers: 6.18.60 is in the range of any CVE that is fixed in a later mainline version,
 though the long-term line 6.18 may have the fix. The kernel's own CVE records give the versions that
 fix a CVE in each stable line, which `check/kernel-vex` reads: for the 128 findings with a fixed
-version they say that 106 are fixed in 6.18 at or before 6.18.60, and the scan leaves those out, and
-that 21 have no fix recorded for 6.18 (one more, of medium severity, concerns transparent huge
-pages, which the kernel does not build). Of the 9 of high or critical severity among those 21, 8
-concern code that the kernel, configured from `allnoconfig`, does not build: ACPI, MPLS, Greybus,
-DPLL (the zl3073x driver), netfs (the layer of the network file systems, two findings), ksmbd and
-JFS. The ninth, CVE-2026-53091, is in the core of networking, which the kernel has, and nothing in
-the record or the configuration clears it.
+version they say that 106 are fixed in 6.18 at or before 6.18.60, and the scan leaves those out. The
+records also name the files that a CVE concerns. The kernel's recipe saves the list of the files
+that its build read, the source of each object and the headers it includes, as Kbuild records them
+(3,340 files for the Pi's kernel); the image step keeps the list beside the image, as
+`image/<PROFILE>.kernel-files`, and out of it; and `check/kernel-vex` leaves out a CVE none of whose
+source files (.c and .S) is in it, as code that the kernel is not made of. Of the 22 findings with a
+fixed version that the records do not settle, 20 are such: ACPI, MPLS, Greybus, DPLL (the zl3073x
+driver), netfs, ksmbd, JFS, USB gadgets and sound among them. Headers do not count, as every build
+reads headers whose code it never uses (`struct netns_mpls` is in every kernel, with or without
+MPLS); a record that names no source file is judged by its files. A fix of a header's inline
+function that leaves its built users alone would be missed. What is left, CVE-2026-53091 (in
+net/core/dev.c, which the kernel builds) and CVE-2026-53106, is read by a person. The records are
+the kernel CNA's, which a fork of the kernel, the Pi's, follows by version alone.
 
 A document that lists the sources alone, each with the CPE and purl of what was built from it, and
 none of the archives, gives every finding of the one with archives, whether the sources keep their
@@ -217,14 +228,6 @@ keeps its findings as alerts that can be dismissed with a reason.
   the cache, so nothing records them. They would need to be declared by the recipe (a list that
   `prepare` applies and the SBOM reads), so that each becomes a package, with the digest of its
   file, and a `PATCH_APPLIED` relationship to its source.
-- **The kernel's other findings.** What the kernel's records leave, the findings that name code the
-  kernel does not build (8 of the 10 that fail the scan of a pi0 image), could be dropped by the
-  source files that a record names as affected, against those the kernel compiled: the kernel's
-  recipe would save the list of its object files with the image, and a finding whose files are not
-  among them would get a `not_affected` statement in the same OpenVEX document, with the
-  justification `vulnerable_code_not_present`. What is left, such as CVE-2026-53091, is read by a
-  person. The records are the kernel CNA's, which a fork of the kernel, the Pi's, follows by version
-  alone.
 - **Build tools.** The cross toolchain and the tools that built the system could be added with
   `BUILD_TOOL_OF` relationships. That makes the SBOM describe how the image was built, not only what
   it contains, which is most of what SPDX 3.0's build profile is for.

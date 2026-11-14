@@ -61,6 +61,13 @@ build_image() {
         assemble_image
         lfs_sbom_document "${target##*/}" "$(sha256sum < "$IMAGE" | cut -d' ' -f1)" \
             > "$IMAGE.spdx.json"
+        # The files that the kernel was built from, which the vulnerability scan reads with the SBOM.
+        local kernel_files="${target%.img}.kernel-files"
+        if [ -f $install_dir/usr/share/lfs/kernel-files ]; then
+            cp $install_dir/usr/share/lfs/kernel-files "$kernel_files"
+        else
+            rm -f "$kernel_files"
+        fi
         # The SBOM first, as the image tells that both are complete: an image without its SBOM
         # is made anew.
         mv "$IMAGE.spdx.json" "$sbom"
@@ -170,6 +177,8 @@ stage_root() {
         # Where the boot partition is mounted.
         mkdir $ROOT_DIR/boot
     fi
+    # What the kernel was built from is kept next to the image (build_image), not in it.
+    rm -rf $ROOT_DIR/usr/share/lfs
     # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd
     # never start the clock earlier than the modification time of this file, so an image boots no
     # earlier than the time it was made.

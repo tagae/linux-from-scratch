@@ -110,6 +110,25 @@ install() {
                 cp -v $package_build_dir/${kernel_image%/*}/dts/$dev_tree_blob \
                    $package_install_dir/boot/
             fi
+
+            # The files that the build read, as Kbuild records them: the source of each object and
+            # the headers it includes. The image keeps the list out of itself, for the
+            # vulnerability scan (check/kernel-vex), which takes a CVE in files that the build did
+            # not read for one that this kernel does not have.
+            mkdir -pv $package_install_dir/usr/share/lfs
+            find $package_build_dir -name '.*.cmd' -exec awk '
+                /^source_[^ ]* := \// { print $3; next }
+                /^deps_[^ ]* := \\$/ { deps = 1; next }
+                deps {
+                    line = $0
+                    sub(/^[ \t]+/, "", line)
+                    more = (line ~ / \\$/)
+                    sub(/ \\$/, "", line)
+                    if (line ~ /^\//) print line
+                    if (!more) deps = 0
+                }' {} + | sed "s|^$package_source_dir/||" | grep -v '^/' \
+                | sed ':a; s|[^/][^/]*/\.\./||; ta' | sort -u \
+                > $package_install_dir/usr/share/lfs/kernel-files
             ;;
         *)
             default_install
