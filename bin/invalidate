@@ -2,8 +2,10 @@
 #
 # Deletes stale package archives.
 #
-# Archives record the state of the tree they were built from, in archive/.commit, and what changed
-# since decides which of them to drop. That state is HEAD, or a commit of the working tree
+# Archives record the state of the tree they were built from, in archive/<key>/.commit, and what
+# changed since decides which of them to drop. Each key has a record of its own, so that archives
+# that come from different places (CI restores the tools' from a cache apart from the profile's)
+# keep the state that each was built from. That state is HEAD, or a commit of the working tree
 # (uncommitted and new files included, ignored ones not) when it differs from HEAD, which
 # refs/lfs/archive keeps from being collected. The packages built against one that changed are not
 # dropped with it: the rules below name the package alone.
@@ -20,8 +22,8 @@
 # Dockerfiles, docker-compose.yaml, bin/, ...) has no effect. With --docker, for the archives of the build
 # through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml are
 # inputs too, which drop every archive, as they make the machines that every package is built on.
-# Every input path that changed between archive/.commit and the tree now is mapped by the first rule
-# that fits:
+# Every input path that changed between archive/<key>/.commit and the tree now is mapped by the
+# first rule that fits:
 #
 #    1  lib/check.sh, lib/image.sh, lib/qemu.sh and lib/sbom.sh: no effect (nothing in them goes into
 #       an archive). The Makefile has none either, as it holds no input of an archive: the release
@@ -46,10 +48,11 @@
 # A pattern like archive/*/make-* also drops make-ca-*, as a rebuild of a few archives too many is
 # cheaper than a stale one. download/ is never touched, as what it holds is checked by hash.
 #
-# Without archive/.commit, or with one that names a commit that this clone lacks (a shallow clone,
-# or rewritten history), nothing says what the archives were built from: they all go. A CI checkout
-# therefore fetches the whole history. Leftover *.tmp files of an interrupted archive step go in
-# any case. The script ends by recording the state of the tree in archive/.commit, for the next run.
+# Without archive/<key>/.commit, or with one that names a commit that this clone lacks (a shallow
+# clone, or rewritten history), nothing says what the key's archives were built from: they all go.
+# A CI checkout therefore fetches the whole history. Leftover *.tmp files of an interrupted archive
+# step go in any case. The script ends by recording the state of the tree in the .commit of every
+# key (the tools', each profile's, and any other directory of archive/), for the next run.
 
 set -o errexit -o nounset
 
@@ -69,7 +72,6 @@ cd "$(dirname "$0")/.."
 export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
 
 readonly archive_dir=archive
-readonly commit_file=$archive_dir/.commit
 
 # Prints the state of the tree: HEAD, or a commit of the working tree when that differs from it. The
 # tree is made in an index of its own, which `add -A` fills as the working tree is, leaving out what
@@ -288,51 +290,72 @@ EOF
     esac
 }
 
-files=
-
-if [ -d "$archive_dir" ]; then
-    # Left by an archive step that was interrupted before it moved the archive into place.
-    leftovers=$(find "$archive_dir" -type f -name '*.tmp' | sort)
-    each remove <<EOF
-$leftovers
-EOF
-    files=$(find "$archive_dir" -type f \( -name '*.tar.xz' -o -name '*.tar.xz.sha256' \) | sort)
-fi
-
-if [ -z "$files" ]; then
-    echo "$archive_dir holds no archive"
-else
-    built=
-    [ ! -f "$commit_file" ] || built=$(cat "$commit_file")
-    case $built in
-    '')
-        select_archives "$commit_file is missing: every archive" all
-        ;;
-    *[!0-9a-f]*)
-        select_archives "$commit_file does not hold a commit: every archive" all
-        ;;
-    *)
-        if git rev-parse --verify --quiet "$built^{commit}" >/dev/null; then
-            echo "archives built from $built, the tree is $state"
-            # Without renames, both the old and the new path of a moved file show.
-            changed=$(git diff --no-renames --name-only "$built" "$state")
-            each select_changed <<EOF
+# Drops the archives of a key that the changes since its record make stale, and records the state
+# of the tree as theirs. What the key's archives were built from decides, so the selection is the
+# key's alone.
+invalidate_key() {
+    local key=$1 files built= changed commit_file
+    commit_file=$archive_dir/$key/.commit
+    mkdir -p "$archive_dir/$key"
+    selectors=
+    files=$(find "$archive_dir/$key" -type f \( -name '*.tar.xz' -o -name '*.tar.xz.sha256' \) | sort)
+    if [ -z "$files" ]; then
+        echo "$archive_dir/$key holds no archive"
+    else
+        [ ! -f "$commit_file" ] || built=$(cat "$commit_file")
+        case $built in
+        '')
+            select_archives "$commit_file is missing: every archive of $key" all
+            ;;
+        *[!0-9a-f]*)
+            select_archives "$commit_file does not hold a commit: every archive of $key" all
+            ;;
+        *)
+            if git rev-parse --verify --quiet "$built^{commit}" >/dev/null; then
+                echo "archives of $key built from $built, the tree is $state"
+                # Without renames, both the old and the new path of a moved file show.
+                changed=$(git diff --no-renames --name-only "$built" "$state")
+                each select_changed <<EOF
 $changed
 EOF
-        else
-            select_archives "$commit_file names $built, not in this clone: every archive" all
-        fi
-        ;;
-    esac
-    if [ -n "$selectors" ]; then
-        each remove_if_stale <<EOF
+            else
+                select_archives "$commit_file names $built, not in this clone: every archive of $key" all
+            fi
+            ;;
+        esac
+        if [ -n "$selectors" ]; then
+            each remove_if_stale <<EOF
 $files
 EOF
+        fi
     fi
-fi
+    echo "$state" > "$commit_file"
+}
+
+mkdir -p "$archive_dir"
+
+# Left by an archive step that was interrupted before it moved the archive into place.
+leftovers=$(find "$archive_dir" -type f -name '*.tmp' | sort)
+each remove <<EOF
+$leftovers
+EOF
+
+# The keys that archives can be filed under: the tools', each profile's, and the directories that
+# exist, which a profile that is gone may have left. A key whose directory is not there yet gets its
+# record all the same, as the build that fills it comes next.
+keys=$(
+    {
+        echo tools
+        git ls-tree --name-only "$state" profile/ | sed -n 's|^profile/\(.*\)\.sh$|\1|p'
+        for key_dir in "$archive_dir"/*/; do
+            [ ! -d "$key_dir" ] || basename "$key_dir"
+        done
+    } | sort -u
+)
+each invalidate_key <<EOF
+$keys
+EOF
 
 echo "deleted $removed files"
 
-mkdir -p "$archive_dir"
 git update-ref refs/lfs/archive "$state"
-echo "$state" > "$commit_file"
