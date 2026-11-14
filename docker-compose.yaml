@@ -135,9 +135,15 @@ services:
       - type: volume
         source: install
         target: /mnt/lfs/install
+      # The home of the user, so that its shell history and configuration outlast the container.
+      # Only docker-pristine removes it: it is not a build product.
+      - type: volume
+        source: home
+        target: /home/lfs
 
 volumes:
   source:
   work:
   tools:
   install:
+  home:
