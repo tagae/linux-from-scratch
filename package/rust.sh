@@ -5,9 +5,18 @@
 # Compiling Rust takes a Rust compiler, so this one comes prebuilt by the Rust project, as a seed
 # that stays on the build machine: rustc and cargo, the standard library for the build machine,
 # where build scripts and procedural macros run, and the platform's, when the platform's target is
-# another. Only an aarch64 build machine is pinned.
+# another. The build machines pinned are aarch64 and x86_64.
 case $(uname -m) in
-    aarch64|arm64) rust_host=aarch64-unknown-linux-gnu ;;
+    aarch64|arm64)
+        rust_host=aarch64-unknown-linux-gnu
+        rustc_hash=sha256:b344b81f0cd4c2246c7da8b197fe7a339d7dd02bb15cb69b2524115d9c75224c
+        cargo_hash=sha256:8f70bcaccea5ba4db187c3fd4d64e24592b4e16af513497201f5909d61691dbe
+        ;;
+    x86_64)
+        rust_host=x86_64-unknown-linux-gnu
+        rustc_hash=sha256:9819d0a32d56bd339585319c80260e332779f5541fd66838ab7e016d6c814819
+        cargo_hash=sha256:e1be5f5ff7f7f80ca506fb65770b759edbdc6d303781ed71c5de8ec8a8394779
+        ;;
     *) bail "No Rust toolchain pinned for a $(uname -m) build machine" ;;
 esac
 
@@ -17,15 +26,15 @@ rust_targets=$rust_host
 [ $rust_target = $rust_host ] || rust_targets="$rust_targets $rust_target"
 
 fetch() {
-    get https://static.rust-lang.org/dist/rustc-$package_version-$rust_host.tar.xz \
-        sha256:b344b81f0cd4c2246c7da8b197fe7a339d7dd02bb15cb69b2524115d9c75224c
-    get https://static.rust-lang.org/dist/cargo-$package_version-$rust_host.tar.xz \
-        sha256:8f70bcaccea5ba4db187c3fd4d64e24592b4e16af513497201f5909d61691dbe
+    get https://static.rust-lang.org/dist/rustc-$package_version-$rust_host.tar.xz $rustc_hash
+    get https://static.rust-lang.org/dist/cargo-$package_version-$rust_host.tar.xz $cargo_hash
     local target hash
     for target in $rust_targets; do
         case $target in
             aarch64-unknown-linux-gnu)
                 hash=sha256:46aed8e63186350004d8ec6afca798811e6530b514352e5a8a26f3dc4939b3be ;;
+            x86_64-unknown-linux-gnu)
+                hash=sha256:1c1e704ae80126b7de34f72ea2825f7fd01736dec20732faed47374b95282fba ;;
             arm-unknown-linux-gnueabihf)
                 hash=sha256:5b1a03e3f6b021b2bc288a98011e1174a527922dbf4ece64d299472cf87b9cac ;;
             *)
