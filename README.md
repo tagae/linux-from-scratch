@@ -263,7 +263,7 @@ one `make`, would both build the tools: build them first (`make docker-tools`).
 archives and images.
 
 `make test` boots the image in QEMU, logs in as root, runs `poweroff`, and verifies that QEMU exits
-cleanly. It drives the `./test` expect script (`./test [PROFILE]`).
+cleanly. It drives the `check/boot` expect script (`check/boot [PROFILE]`).
 
 
 Software Bill of Materials

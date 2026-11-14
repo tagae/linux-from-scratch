@@ -82,15 +82,15 @@ image/%.img: %-system FORCE
 	$(SUDO) ./lfs image build
 
 %-test: image/%.img
-	./test $*
+	check/boot $*
 
 %-qemu: image/%.img
 	./lfs qemu
 
 # Deletes the archives that what has changed since the last run makes stale, uncommitted changes
-# included: a recipe runs again only when its archive is gone (see ./invalidate).
+# included: a recipe runs again only when its archive is gone (see bin/invalidate).
 invalidate:
-	./invalidate
+	bin/invalidate
 
 # The checks have a Makefile of their own.
 include check/Makefile
@@ -146,11 +146,11 @@ docker-image/%.img: docker-%-system FORCE
 
 # The image built through Docker runs on the host.
 docker-%-test: docker-image/%.img
-	./test $*
+	check/boot $*
 
 # The same, for the archives of the build through Docker Compose, whose containers are inputs too.
 docker-invalidate:
-	./invalidate --docker
+	bin/invalidate --docker
 
 # Besides the directories, these remove the volumes that Docker Compose keeps in their place.
 docker-clean: clean

@@ -20,7 +20,7 @@
 #
 # Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, profile/
 # and platform/. Every other path (documentation, check/, .github/, .claude/, the Dockerfiles,
-# docker-compose.yaml, test, ...) has no effect. With --docker, for the archives of the build
+# docker-compose.yaml, bin/, ...) has no effect. With --docker, for the archives of the build
 # through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml are
 # inputs too, which drop every archive, as they make the machines that every package is built on.
 # Every input path that changed between archive/.commit and the tree now is mapped by the first rule
@@ -56,7 +56,7 @@
 
 set -o errexit -o nounset
 
-# Usage: invalidate [--docker]
+# Usage: bin/invalidate [--docker]
 docker=
 case ${1:-} in
     --docker) docker=yes ;;
@@ -65,7 +65,7 @@ case ${1:-} in
 esac
 
 # The paths of git and of the rules are those of the repository, wherever the script is run from.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 readonly archive_dir=archive
 readonly commit_file=$archive_dir/.commit
