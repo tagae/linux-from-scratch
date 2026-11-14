@@ -13,9 +13,6 @@
 
 set -o errexit -o nounset
 
-# git behaves the same whatever the user's configuration.
-export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
-
 readonly types='feat!|drop!|feat|drop|fix|perf|refactor|docs|test|build|ci|chore|style|revert'
 
 # Whether the headline passes.
@@ -47,6 +44,17 @@ fi
     echo "Run $0 from the repository root" >&2
     exit 2
 }
+command -v git > /dev/null 2>&1 || {
+    echo "git is needed to read the headlines" >&2
+    exit 2
+}
+
+# git reads the project's configuration, not the user's, so that it behaves the same for everyone,
+# and trusts the checkout, whose directory a container can show as another user's.
+export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
+
+# A repository that git cannot read is an error, not a repository with no tags.
+git rev-parse --git-dir > /dev/null
 
 range=${1:-}
 if [ -z "$range" ]; then

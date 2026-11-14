@@ -30,7 +30,7 @@ FORCE:
 # VERSION, the SBOM): the version of the tree, from its tags and commits (bin/version). Computed here,
 # as the containers have no .git. Empty outside a git checkout.
 ifeq ($(origin LFS_RELEASE),undefined)
-LFS_RELEASE := $(shell bin/version 2>/dev/null)
+LFS_RELEASE := $(shell bin/version)
 endif
 export LFS_RELEASE
 
