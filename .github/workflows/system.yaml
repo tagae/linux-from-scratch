@@ -4,8 +4,9 @@ name: System
 # phase because a job has six hours and a cold build takes longer. Each phase relies on the archives
 # that the one before it saved in the cache, so only the first can start from scratch. The
 # Makefile's targets set PROFILE, and the release and the revision that the image records in
-# os-release (LFS_RELEASE, from the tags and commits); the phases that a target runs before its own only unpack their archives. The tools
-# are those of every profile, and their phases name none.
+# os-release (LFS_RELEASE, from the tags and commits). The build tools come first, from jobs that
+# the caller runs before this workflow (ci.yaml), as they are the same for every profile: a phase
+# of the system only unpacks their archives.
 on:
   workflow_call:
     inputs:
@@ -17,80 +18,33 @@ on:
         description: Build from scratch, without the cache
         type: boolean
         default: false
+      docker:
+        description: Build through Docker Compose, as on a Mac, rather than on the runner
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  bootstrap:
-    uses: ./.github/workflows/phase.yaml
-    with:
-      name: bootstrap
-      profile: ${{ inputs.profile }}
-      command: make tools-bootstrap
-      cold: ${{ inputs.cold }}
-
-  tools:
-    needs: bootstrap
-    uses: ./.github/workflows/phase.yaml
-    with:
-      name: tools
-      profile: ${{ inputs.profile }}
-      command: make tools
-
+  # Through Docker Compose, the scratch container, which holds nothing but the tools, builds the
+  # system, and the image boots on the runner. The archives of the two ways of building are cached
+  # apart.
   system:
-    needs: tools
     uses: ./.github/workflows/phase.yaml
     with:
-      name: system
+      name: ${{ inputs.docker && 'docker-system' || 'system' }}
       profile: ${{ inputs.profile }}
-      command: make ${{ inputs.profile }}-system
+      command: make ${{ inputs.docker && 'docker-' || '' }}${{ inputs.profile }}-system
+      cold: ${{ inputs.cold }}
+      docker: ${{ inputs.docker }}
 
   test:
     needs: system
     uses: ./.github/workflows/phase.yaml
     with:
-      name: test
+      name: ${{ inputs.docker && 'docker-test' || 'test' }}
       profile: ${{ inputs.profile }}
-      command: make ${{ inputs.profile }}-test
-      qemu: true
-
-  # The same phases through Docker Compose, as on a Mac: the bootstrap container builds the first
-  # tools, the scratch container, which holds nothing but the tools, the rest, and the image boots on
-  # the runner. Their archives are cached apart from those above.
-  docker-bootstrap:
-    uses: ./.github/workflows/phase.yaml
-    with:
-      name: docker-bootstrap
-      profile: ${{ inputs.profile }}
-      command: make docker-tools-bootstrap
-      cold: ${{ inputs.cold }}
-      docker: true
-
-  docker-tools:
-    needs: docker-bootstrap
-    uses: ./.github/workflows/phase.yaml
-    with:
-      name: docker-tools
-      profile: ${{ inputs.profile }}
-      command: make docker-tools
-      docker: true
-
-  docker-system:
-    needs: docker-tools
-    uses: ./.github/workflows/phase.yaml
-    with:
-      name: docker-system
-      profile: ${{ inputs.profile }}
-      command: make docker-${{ inputs.profile }}-system
-      docker: true
-
-  docker-test:
-    needs: docker-system
-    uses: ./.github/workflows/phase.yaml
-    with:
-      name: docker-test
-      profile: ${{ inputs.profile }}
-      command: make docker-${{ inputs.profile }}-test
-      docker: true
+      command: make ${{ inputs.docker && 'docker-' || '' }}${{ inputs.profile }}-test
+      docker: ${{ inputs.docker }}
       qemu: true

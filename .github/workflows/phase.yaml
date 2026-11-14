@@ -1,10 +1,12 @@
 name: Phase
 
-# One phase of the build of a profile's system, as the Makefile does it on a Linux host, directly
-# or through Docker Compose. The package archives and the downloads come from the cache, and go
-# back into it whatever happens to the build, so that a build too long for one run completes over
-# several. A phase relies on the archives that the phases before it saved: they only unpack, and the
-# build goes on from there.
+# One phase of the build, as the Makefile does it on a Linux host, directly or through Docker
+# Compose: of the build tools, which every system shares, or of the system of a profile. Three
+# caches hold what it relies on, and what it makes goes back into them whatever happens to the
+# build, so that a build too long for one run completes over several: the archives of its key (the
+# profile's, or the tools'), the tools' archives, which the phases of a profile only restore, and
+# the downloads. The phases before it saved the archives: they only unpack, and the build goes on
+# from there.
 on:
   workflow_call:
     inputs:
@@ -13,15 +15,15 @@ on:
         type: string
         required: true
       profile:
-        description: The profile of the system, which the cache and the SBOM are named after
+        description: The profile of the system, which the cache and the SBOM are named after; none for the tools
         type: string
-        required: true
+        default: ''
       command:
         description: The command that builds the phase
         type: string
         required: true
       cold:
-        description: Build from scratch, without the cache
+        description: Build from scratch, without the cache of the archives of the key and the downloads
         type: boolean
         default: false
       docker:
@@ -40,11 +42,9 @@ defaults:
   run:
     shell: bash
 
-# The archives of a build through Docker Compose record the containers' paths, those of a build on
-# the runner its own: neither can use the other's, nor those of another profile. No prefix begins
-# another, as a cache is restored by the prefix of its key.
+# The key of the archives that the phase makes: archive/<key>.
 env:
-  CACHE: ${{ inputs.docker && 'docker-lfs-' || 'lfs-' }}${{ inputs.profile }}-
+  KEY: ${{ inputs.profile || 'tools' }}
 
 jobs:
   phase:
@@ -97,29 +97,63 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm || echo "::warning::The runner has no /dev/kvm: virt cannot boot"
 
-      # Each phase saves its own cache, and restores the most recent one.
-      - name: Restore the cache
+      # The archives of a build through Docker Compose record the containers' paths, those of a
+      # build on the runner its own: neither can use the other's. The runner's architecture is part
+      # of their names, as the tools and the cross toolchains in them run on the build machine. The
+      # downloads are the same files for all, checked by hash. No prefix begins another, as a cache
+      # is restored by the prefix of its key.
+      - name: Name the caches
+        id: cache
+        env:
+          DOCKER: ${{ inputs.docker && 'docker-' || '' }}
+        run: |
+          echo "archive=${DOCKER}lfs-${KEY}-${RUNNER_ARCH}-" >> "$GITHUB_OUTPUT"
+          echo "tools=${DOCKER}lfs-tools-${RUNNER_ARCH}-" >> "$GITHUB_OUTPUT"
+          echo "download=lfs-download-" >> "$GITHUB_OUTPUT"
+
+      # Each phase saves its own caches, and restores the most recent ones.
+      - name: Restore the archives
         if: ${{ !inputs.cold }}
         uses: actions/cache/restore@v6
         with:
-          path: |
-            archive
-            download
-          key: ${{ env.CACHE }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
-          restore-keys: ${{ env.CACHE }}
+          path: archive/${{ env.KEY }}
+          key: ${{ steps.cache.outputs.archive }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+          restore-keys: ${{ steps.cache.outputs.archive }}
+
+      # A system's phases build on the tools whatever `cold` says: the jobs that made them ran
+      # before, in this run. A phase never saves them.
+      - name: Restore the tools' archives
+        if: ${{ inputs.profile != '' }}
+        uses: actions/cache/restore@v6
+        with:
+          path: archive/tools
+          key: ${{ steps.cache.outputs.tools }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+          restore-keys: ${{ steps.cache.outputs.tools }}
+
+      - name: Restore the downloads
+        if: ${{ !inputs.cold }}
+        uses: actions/cache/restore@v6
+        with:
+          path: download
+          key: ${{ steps.cache.outputs.download }}${{ github.run_id }}-${{ github.run_attempt }}-${{ env.KEY }}-${{ inputs.name }}
+          restore-keys: ${{ steps.cache.outputs.download }}
 
       - name: Drop the stale archives
         run: make ${{ inputs.docker && 'docker-' || '' }}invalidate
 
-      # The files that the cache holds, by name, size and modification time, to tell afterwards
-      # whether the build changed them: an archive rebuilt under the same name and size has a new
-      # time. Not archive/.commit, which `make invalidate` has just written, nor an archive that
-      # is still being made.
-      - name: Fingerprint the cache
+      # The files that the caches of the phase hold, by name, size and modification time, to tell
+      # afterwards whether the build changed them: an archive rebuilt under the same name and size
+      # has a new time. Not a .commit, which `make invalidate` has just written, nor an archive
+      # that is still being made.
+      - name: Fingerprint the caches
         id: before
         run: |
-          mkdir -p archive download
-          echo "sum=$(find archive download -type f ! -path archive/.commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)" >> "$GITHUB_OUTPUT"
+          mkdir -p "archive/$KEY" download
+          fingerprint() {
+            find "$1" -type f ! -name .commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum
+          }
+          echo "archive=$(fingerprint "archive/$KEY")" >> "$GITHUB_OUTPUT"
+          echo "download=$(fingerprint download)" >> "$GITHUB_OUTPUT"
 
       # The build has its own timeout, so that the steps that save the cache get to run before the
       # job's. pi0-pgp boots in QEMU's emulation of the raspi0 machine, slower than on a Pi.
@@ -158,28 +192,38 @@ jobs:
           df -h /
           du -sh archive download tools work source install image || true
 
-      - name: Check whether the build changed the cache
+      - name: Check whether the build changed the caches
         id: after
         if: always()
         env:
-          BEFORE: ${{ steps.before.outputs.sum }}
+          ARCHIVE: ${{ steps.before.outputs.archive }}
+          DOWNLOAD: ${{ steps.before.outputs.download }}
         run: |
-          changed=false
-          # Without the fingerprint of before the build, the build never started.
-          if [ -n "$BEFORE" ]; then
+          changed() {
+            [ "$(find "$1" -type f ! -name .commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)" != "$2" ]
+          }
+          archive=false download=false
+          # Without the fingerprints of before the build, the build never started.
+          if [ -n "$ARCHIVE" ]; then
             # An archive that the build was making when it stopped is not worth the cache's space.
             find archive -name '*.tmp' -delete
-            after=$(find archive download -type f ! -path archive/.commit ! -name '*.tmp' -printf '%p %s %T@\n' | LC_ALL=C sort | sha256sum)
-            [ "$after" = "$BEFORE" ] || changed=true
+            if changed "archive/$KEY" "$ARCHIVE"; then archive=true; fi
+            if changed download "$DOWNLOAD"; then download=true; fi
           fi
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "download=$download" >> "$GITHUB_OUTPUT"
 
       # Only main saves, so that a cache always has a commit of main behind it.
-      - name: Save the cache
-        if: ${{ always() && github.ref == 'refs/heads/main' && steps.after.outputs.changed == 'true' }}
+      - name: Save the archives
+        if: ${{ always() && github.ref == 'refs/heads/main' && steps.after.outputs.archive == 'true' }}
         uses: actions/cache/save@v6
         with:
-          path: |
-            archive
-            download
-          key: ${{ env.CACHE }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+          path: archive/${{ env.KEY }}
+          key: ${{ steps.cache.outputs.archive }}${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}
+
+      - name: Save the downloads
+        if: ${{ always() && github.ref == 'refs/heads/main' && steps.after.outputs.download == 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: download
+          key: ${{ steps.cache.outputs.download }}${{ github.run_id }}-${{ github.run_attempt }}-${{ env.KEY }}-${{ inputs.name }}

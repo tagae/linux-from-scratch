@@ -43,18 +43,70 @@ jobs:
       - name: Check the commit headlines
         run: make commit-lint
 
+  # The build tools are the same for every system: they are built once, in two ways, on the runner
+  # and through Docker Compose (the bootstrap container builds the first tools, the scratch
+  # container the rest), and their archives are cached apart from the systems'. The two ways do not
+  # wait for each other.
+  bootstrap:
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: bootstrap
+      command: make tools-bootstrap
+      cold: ${{ inputs.cold == true }}
+
+  tools:
+    needs: bootstrap
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: tools
+      command: make tools
+
+  docker-bootstrap:
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: docker-bootstrap
+      command: make docker-tools-bootstrap
+      cold: ${{ inputs.cold == true }}
+      docker: true
+
+  docker-tools:
+    needs: docker-bootstrap
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: docker-tools
+      command: make docker-tools
+      docker: true
+
   # The systems that CI builds and boots, one per profile: virt, the profile that the Makefile
   # builds by default, and pi0-pgp, the one that runs on hardware. Each system is built apart from
-  # the other, so that a failure in one leaves the other to finish. The profiles are also in
-  # check/lint and .github/workflows/vulnerabilities.yaml.
+  # the other, so that a failure in one leaves the other to finish, once the tools are there. The
+  # profiles are also in check/lint and .github/workflows/vulnerabilities.yaml.
   virt:
+    needs: tools
     uses: ./.github/workflows/system.yaml
     with:
       profile: virt
       cold: ${{ inputs.cold == true }}
 
+  docker-virt:
+    needs: docker-tools
+    uses: ./.github/workflows/system.yaml
+    with:
+      profile: virt
+      cold: ${{ inputs.cold == true }}
+      docker: true
+
   pi0-pgp:
+    needs: tools
     uses: ./.github/workflows/system.yaml
     with:
       profile: pi0-pgp
       cold: ${{ inputs.cold == true }}
+
+  docker-pi0-pgp:
+    needs: docker-tools
+    uses: ./.github/workflows/system.yaml
+    with:
+      profile: pi0-pgp
+      cold: ${{ inputs.cold == true }}
+      docker: true
