@@ -104,6 +104,8 @@ container is not privileged, and has no access to devices. A device that anythin
 opened is refused (unmount a card from a desktop's automounter first). The programs that make
 the image (`mkfs.btrfs`, `mkfs.fat`, mtools, `sfdisk`) are the tools', as for every build.
 
+Images should observe the [Linux Filesystem Hierarchy Standard].
+
 
 Package Model
 -------------
@@ -463,4 +465,5 @@ Pointers
 - https://blog.jgosmann.de/posts/2021/02/07/a-guide-to-crosscompiling-applications/
 
 
+[Linux Filesystem Hierarchy Standard]: https://refspecs.linuxfoundation.org/FHS_3.0/fhs-3.0.html
 [SPDX License List]: https://spdx.org/licenses/
