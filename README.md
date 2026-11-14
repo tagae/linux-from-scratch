@@ -295,8 +295,9 @@ the vulnerability data of the day, as `make vulnerability-check` does: the badge
 Grype finds, in either image, a vulnerability of high or critical severity that a newer version
 fixes, and the findings are in the repository's code scanning alerts. The scan reports, and leaves
 CI's own result alone. It leaves out the findings of the kernel that the kernel's own CVE records
-say are fixed in its line, and lists them in an OpenVEX document, `<image>.openvex.json`, which CI
-keeps with the findings.
+show it does not have (fixed in its line, or in code that its build did not read, which
+`<image>.kernel-files` lists), and lists them in an OpenVEX document, `<image>.openvex.json`, which
+CI keeps with the findings.
 
 A block device gets no document, as it is no file to take the digest of: make the image first, and
 write it to the device. The document does not yet list the patches applied to the sources

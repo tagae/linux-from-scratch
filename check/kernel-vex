@@ -1,27 +1,39 @@
 #!/bin/sh
 
-# The findings of the kernel that the kernel's own CVE records say are fixed, as an OpenVEX document
-# on the standard output.
+# The findings of the kernel that the kernel's own CVE records show it does not have, as an OpenVEX
+# document on the standard output. Two things show it.
 #
 # Grype matches the kernel by the version ranges of the NVD, which compare mainline version
 # numbers, so that a CVE fixed in a later mainline version is a finding of every earlier one, the
 # stable lines included. The record of a CVE that the kernel's CVE numbering authority publishes
 # tells the version that fixes it in each stable line (`6.18.21` for the line `6.18.*`). A CVE with a
 # fix in the line of the image's kernel, at or before the image's version, gets a `fixed` statement
-# for the kernel's package. Grype takes the document (--vex) and leaves those findings out.
+# for the kernel's package.
 #
-# The records come from CVE.org's API, and are kept for a day under CACHE_DIR. A CVE without a record,
-# or whose record names no such fix, gets no statement, and stays a finding.
+# The record also names the files that the CVE concerns. The kernel's build keeps a list of the
+# files it read, a source for each object and the headers it includes (BUILT, `<image>.kernel-files`,
+# which the kernel's recipe makes and the image step keeps beside the image). A CVE none of whose
+# source files (.c and .S) is in the list is in code that this kernel is not made of, and gets a
+# `not_affected` statement with the justification `vulnerable_code_not_present`: the headers it names
+# do not count, as every build reads headers whose code it never uses (`struct netns_mpls` is in
+# every kernel, with or without MPLS). A CVE that names no source file is judged by its files. A fix
+# of a header's inline function that leaves its built users alone would be missed. Without the list,
+# only the first applies.
 #
-# Usage: check/kernel-vex NAME FINDINGS CACHE_DIR    NAME: that of the image; FINDINGS: Grype's JSON
+# Grype takes the document (--vex) and leaves those findings out. The records come from CVE.org's
+# API, and are kept for a day under CACHE_DIR. A CVE without a record, or whose record shows
+# neither, gets no statement, and stays a finding.
+#
+# Usage: check/kernel-vex NAME FINDINGS CACHE_DIR [BUILT]    NAME: that of the image; FINDINGS:
+#                                                            Grype's JSON
 
 set -o errexit -o nounset
 
-[ $# -eq 3 ] || {
-    echo "Usage: $0 NAME FINDINGS CACHE_DIR" >&2
+[ $# -ge 3 ] && [ $# -le 4 ] || {
+    echo "Usage: $0 NAME FINDINGS CACHE_DIR [BUILT]" >&2
     exit 2
 }
-name=$1 findings=$2 cache=$3
+name=$1 findings=$2 cache=$3 built=${4:-}
 
 for tool in curl jq; do
     command -v $tool > /dev/null 2>&1 || {
@@ -37,8 +49,9 @@ version=${kernel%% *}
 purl=${kernel#* }
 
 mkdir -p "$cache"
-fixes=$(mktemp "${TMPDIR:-/tmp}/lfs-kernel-vex.XXXXXX")
-trap 'rm -f "$fixes"' EXIT
+shown=$(mktemp "${TMPDIR:-/tmp}/lfs-kernel-vex.XXXXXX")
+files=$(mktemp "${TMPDIR:-/tmp}/lfs-kernel-vex.XXXXXX")
+trap 'rm -f "$shown" "$files"' EXIT
 
 if [ -n "$kernel" ]; then
     for id in $(jq -r '.matches[] | select(.artifact.name == "linux") | .vulnerability.id
@@ -53,6 +66,7 @@ if [ -n "$kernel" ]; then
                     continue
                 }
         fi
+
         # The version that fixes the CVE in the line of the kernel, when the kernel has it.
         fixed=$(jq -r --arg version "$version" '
             def parts: split(".") | map(tonumber? // 0);
@@ -64,14 +78,32 @@ if [ -n "$kernel" ]; then
                 | select((.version | parts) <= $running)
                 | .version]
             | sort_by(parts) | last // empty' "$record" 2> /dev/null || true)
-        [ -z "$fixed" ] || echo "$id $fixed" >> "$fixes"
+        if [ -n "$fixed" ]; then
+            printf 'fixed\t%s\t%s\n' "$id" "$fixed" >> "$shown"
+            continue
+        fi
+
+        # The files that the CVE concerns, the sources of them if it names any, none of which the
+        # build read.
+        [ -n "$built" ] || continue
+        jq -r '[.containers.cna.affected[]? | select(.product == "Linux") | .programFiles[]?]
+            | unique | .[]' "$record" > "$files" 2> /dev/null || true
+        [ -s "$files" ] || continue
+        if grep -Eq '\.(c|S)$' "$files"; then
+            grep -E '\.(c|S)$' "$files" > "$files.sources"
+            mv "$files.sources" "$files"
+        fi
+        if ! grep -Fxq -f "$files" "$built"; then
+            printf 'unbuilt\t%s\t%s\t%s\n' "$id" "$(wc -l < "$files" | tr -d ' ')" "$(sed -n 1p "$files")" \
+                >> "$shown"
+        fi
     done
 fi
 
 jq -Rn --arg name "$name" --arg version "${version:-}" --arg purl "${purl:-}" \
     --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
-    [inputs | split(" ") | {id: .[0], fixed: .[1]}] | sort_by(.id) as $fixes
-    | ($version | split(".") | .[0:2] | join(".")) as $line
+    ($version | split(".") | .[0:2] | join(".")) as $line
+    | [inputs | split("\t")] | sort_by(.[1]) as $rows
     | {
         "@context": "https://openvex.dev/ns/v0.2.0",
         "@id": ("urn:lfs:openvex:" + $name),
@@ -79,12 +111,20 @@ jq -Rn --arg name "$name" --arg version "${version:-}" --arg purl "${purl:-}" \
         "timestamp": $time,
         "version": 1,
         "tooling": "check/kernel-vex",
-        "statements": ($fixes | map({
-            "vulnerability": {"name": .id},
-            "products": [{"@id": $purl}],
-            "status": "fixed",
-            "status_notes": ("Fixed in " + .fixed + ", in the line " + $line
-                + " of the kernel (the record of the kernel CVE numbering authority); the image has "
-                + $version + ".")
-        }))
-    }' "$fixes"
+        "statements": ($rows | map(
+            if .[0] == "fixed" then {
+                "vulnerability": {"name": .[1]},
+                "products": [{"@id": $purl}],
+                "status": "fixed",
+                "status_notes": ("Fixed in " + .[2] + ", in the line " + $line
+                    + " of the kernel (the record of the kernel CVE numbering authority); the image has "
+                    + $version + ".")
+            } else {
+                "vulnerability": {"name": .[1]},
+                "products": [{"@id": $purl}],
+                "status": "not_affected",
+                "justification": "vulnerable_code_not_present",
+                "impact_statement": ("The kernel was not built from any of the " + .[2]
+                    + " files that the CVE concerns (the first is " + .[3] + ").")
+            } end))
+    }' "$shown"

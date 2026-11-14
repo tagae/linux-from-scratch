@@ -53,10 +53,13 @@ failed=
 for sbom; do
     name=$(basename "$sbom" .spdx.json)
 
-    # The findings of the kernel that its own CVE records say are fixed in its line are left out, as
-    # an OpenVEX document tells (check/kernel-vex), which stays with the findings.
+    # The findings of the kernel that its own CVE records show it does not have, as fixed in its line
+    # or as in code that it is not built from, are left out, as an OpenVEX document tells
+    # (check/kernel-vex), which stays with the findings.
     run_grype --config check/grype.yaml -o json=$out/$name.raw.json "sbom:$sbom"
-    check/kernel-vex "$name" $out/$name.raw.json $out/cve > $out/$name.openvex.json
+    built=${sbom%.spdx.json}.kernel-files
+    [ -f "$built" ] || built=
+    check/kernel-vex "$name" $out/$name.raw.json $out/cve ${built:+"$built"} > $out/$name.openvex.json
     rm $out/$name.raw.json
     vex=$(jq '.statements | length' $out/$name.openvex.json)
     vex_file=
@@ -80,7 +83,8 @@ for sbom; do
             "$(jq '[.matches[].artifact.name] | unique | length' $out/$name.json) packages," \
             "$count of high or critical severity with a fixed version."
         echo
-        echo "$vex findings of the kernel are left out, as fixed in its line ($name.openvex.json)."
+        echo "$vex findings of the kernel are left out, as fixed in its line or in code that it is not" \
+            "built from ($name.openvex.json)."
         echo
         echo "| Package | Findings | With a fixed version |"
         echo "|---|---|---|"
