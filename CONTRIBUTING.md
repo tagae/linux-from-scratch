@@ -16,12 +16,11 @@ Overview
 * `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
 * `image/`:  built disk images
-* `invalidate`: deletes the archives that a change makes stale
-* `check/`: the checks (`make lint`, `make sbom-check`, `make vulnerability-check`), with a Makefile
-  that the main one includes
+* `bin/`: the maintenance commands: `invalidate` deletes the archives that a change makes stale
+* `check/`: the checks (`make lint`, `make sbom-check`, `make vulnerability-check`, and `check/boot`,
+  the boot tester that `make test` runs), with a Makefile that the main one includes
 * `Makefile`: build rules
 * `Dockerfile.{bootstrap,scratch,dev}`: build and dev containers (for reproducibility)
-* `test`: boot tester
 
 
 Building the Toolchain
@@ -113,7 +112,7 @@ archive's SHA-256 digest next to it, and the default `unarchive` installs an arc
 still matches. Archives are named by package and version, not by content, so a package builds again
 only when its archive is gone: `make invalidate` (`make docker-invalidate` for the build through
 Docker) deletes the ones that what has changed since its last run makes stale, uncommitted changes
-included. The header of `invalidate` holds the rules. A package built against one that changed is
+included. The header of `bin/invalidate` holds the rules. A package built against one that changed is
 not dropped with it.
 
 A package's name is the path of its recipe under `package/`, without the `.sh`. The Python libraries

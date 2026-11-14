@@ -6,7 +6,7 @@ model: sonnet
 
 # Testing images under QEMU
 
-`qemu-check` spawns `./lfs qemu` (as `./test` does), so each platform runs the command its
+`qemu-check` spawns `./lfs qemu` (as `check/boot` does), so each platform runs the command its
 `platform/<platform>.sh` defines. Needs the built image (`make docker-image/<key>.img`), `expect` and the
 platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu-image-testing/scripts`.
 
@@ -51,7 +51,7 @@ Memory resource size exceeds max for 32 bits`. An attached stick adds `sd 0:0:0:
 | Tested | end to end | end to end |
 
 Without a pty (an agent sandbox that refuses them: `The system has no more ptys` from `expect`, so from
-`qemu-check`, `check-baseline` and `./test` too), boot the `--print` command with stdin from a pipe or FIFO
+`qemu-check`, `check-baseline` and `check/boot` too), boot the `--print` command with stdin from a pipe or FIFO
 and wait for markers (`login:`, `Password:`) in the output file instead; the same `check-boot.cmd` then
 works, joined on one line with `; ` before the last `echo`.
 

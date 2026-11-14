@@ -4,7 +4,7 @@
 #
 # Exits 0 on success, 1 on any failure.
 #
-# Usage: [TEST_TIMEOUT=seconds] ./test [PROFILE]
+# Usage, from the repository root: [TEST_TIMEOUT=seconds] check/boot [PROFILE] (`make test`)
 
 if {[llength $argv] > 0} {
     set env(PROFILE) [lindex $argv 0]
