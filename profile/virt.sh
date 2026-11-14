@@ -28,9 +28,9 @@ lfs_system_install shadow
 )
 
 # bash, root's shell, for the line editing, file completion and history that readline gives it; dash
-# stays the system's sh, which scripts run in. No bashbug, which mails bug reports.
+# stays the system's sh, which scripts run in.
 (
-    sh_link=no bashbug=no termcap_lib=ncursesw
+    termcap_lib=ncursesw
     lfs_system_install bash
 )
 

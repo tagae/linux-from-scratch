@@ -88,7 +88,7 @@ lfs_tools_bootstrap() {
     (
         lfs_tools_set_env
 
-        lfs_install_package bash
+        ( sh_link=yes; lfs_install_package bash )
         lfs_install_package coreutils
         lfs_install_package findutils
         lfs_install_package sed
