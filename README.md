@@ -216,7 +216,8 @@ system built by the latest run. Running `make` without a goal runs `test`.
 A package builds again only when its archive is gone, so after changing a recipe, a patch, a kernel
 option or a framework file, run `make invalidate` (`make docker-invalidate` for the build through
 Docker): it deletes the archives that the changes since its last run make stale, uncommitted ones
-included. Its first run, with nothing recorded, deletes them all.
+included. Each key of `archive/` (the profiles' and `tools`) records its own state, so its first
+run, with nothing recorded, deletes all of that key's archives.
 
 Each target defaults to the `virt` profile. The default can be changed through a variable:
 
