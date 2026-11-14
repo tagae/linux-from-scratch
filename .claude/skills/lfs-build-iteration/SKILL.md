@@ -79,7 +79,7 @@ user's YubiKey touch).
   one build at a time.
 - Colima shares only `$HOME`: `docker run -v /tmp/x:/x` mounts an EMPTY directory. Keep files in the repo or pipe
   a script: `docker run --rm -i IMG sh -s -- args < script`.
-- Volumes `linux-from-scratch_{source,work,tools,install}`; images `linux-from-scratch-dev` (Debian: readelf,
+- Volumes `linux-from-scratch_{source,work,tools,install}` (and `home`, the dev user's, which only `make docker-pristine` removes); images `linux-from-scratch-dev` (Debian: readelf,
   python3, dash; for inspecting; the `dev` service of docker-compose.yaml, which `docker compose build dev` builds
   once, from Dockerfile.dev) and `linux-from-scratch-scratch` (only the tools). Inspect read-only:
   `docker run --rm -v linux-from-scratch_work:/w:ro linux-from-scratch-dev ls /w/<key>`.

@@ -23,7 +23,8 @@ ARG HOST_UID
 ARG HOST_GID
 RUN groupdel dialout # Conflicts with macOS.
 RUN groupadd --gid $HOST_GID lfs
-RUN useradd --uid $HOST_UID --no-user-group --groups lfs --home-dir /mnt/lfs --no-create-home lfs
+# The home is not /mnt/lfs, the checkout: what a shell or a tool keeps there (.bash_history) would land in it.
+RUN useradd --uid $HOST_UID --no-user-group --groups lfs --create-home lfs
 RUN printf '%s\n' 'lfs ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/lfs && chmod 0440 /etc/sudoers.d/lfs
 
 # Create mount points.
