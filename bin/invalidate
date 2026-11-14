@@ -1,15 +1,12 @@
 #!/bin/sh
 #
-# Deletes the package archives that a change makes stale, before a build that reuses the archives of
-# an earlier one. `make invalidate` runs it; no build may be running.
+# Deletes stale package archives.
 #
-# Archives are named by package, variant and version (lib/package.sh), not by the content of the
-# recipe, kernel capability or framework file that built them: an edit that keeps the version would
-# have the build reuse them. So the archives record the state of the tree they were built from, in
-# archive/.commit, and what changed since decides which of them to drop. That state is HEAD, or a
-# commit of the working tree (uncommitted and new files included, ignored ones not) when it differs
-# from HEAD, which refs/lfs/archive keeps from being collected. The packages built against one that
-# changed are not dropped with it: the rules below name the package alone.
+# Archives record the state of the tree they were built from, in archive/.commit, and what changed
+# since decides which of them to drop. That state is HEAD, or a commit of the working tree
+# (uncommitted and new files included, ignored ones not) when it differs from HEAD, which
+# refs/lfs/archive keeps from being collected. The packages built against one that changed are not
+# dropped with it: the rules below name the package alone.
 #
 # Layout: archive/<key>/<package>[-<variant>]-<version>[-<revision>][-<component>].tar.xz, next to
 # a .tar.xz.sha256. <package> is the path of the recipe under package/ without .sh, so that
@@ -56,7 +53,7 @@
 
 set -o errexit -o nounset
 
-# git behaves the same whatever the user's configuration.
+# Git behaves the same whatever the user's configuration.
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 
 # Usage: bin/invalidate [--docker]
