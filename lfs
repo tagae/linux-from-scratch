@@ -5,7 +5,6 @@ umask 022
 
 #===[ Framework ]===
 
-
 readonly project_dir=$(dirname $(realpath "$0"))
 readonly lib_dir=$project_dir/lib
 readonly package_dir=$project_dir/package
@@ -57,6 +56,10 @@ case "${1:-help}" in
     qemu|help) ;;
     *) lfs_clean_environment "$@" ;;
 esac
+
+# git behaves the same whatever the user's configuration. Set after the environment is cleaned, which
+# would start lfs anew for these variables, as they are not its own.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 
 #===[ State Storage ]===
 

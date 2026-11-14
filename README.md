@@ -35,6 +35,10 @@ Else, you need a Linux host with the following utilities.
 
   * The `expect` command.
 
+5. To invalidate stale archives and to version the project (`make invalidate`, `bin/version`),
+
+  * Git 2.32 or later: the scripts ignore the user's Git configuration (`GIT_CONFIG_GLOBAL`).
+
 
 Quick Start
 -----------

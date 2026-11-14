@@ -13,6 +13,9 @@
 
 set -o errexit -o nounset
 
+# git behaves the same whatever the user's configuration.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+
 readonly types='feat!|drop!|feat|drop|fix|perf|refactor|docs|test|build|ci|chore|style|revert'
 
 # Whether the headline passes.
