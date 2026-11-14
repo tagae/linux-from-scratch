@@ -80,7 +80,8 @@ user's YubiKey touch).
 - Colima shares only `$HOME`: `docker run -v /tmp/x:/x` mounts an EMPTY directory. Keep files in the repo or pipe
   a script: `docker run --rm -i IMG sh -s -- args < script`.
 - Volumes `linux-from-scratch_{source,work,tools,install}`; images `linux-from-scratch-dev` (Debian: readelf,
-  python3, dash; for inspecting) and `linux-from-scratch-scratch` (only the tools). Inspect read-only:
+  python3, dash; for inspecting; the `dev` service of docker-compose.yaml, which `docker compose build dev` builds
+  once, from Dockerfile.dev) and `linux-from-scratch-scratch` (only the tools). Inspect read-only:
   `docker run --rm -v linux-from-scratch_work:/w:ro linux-from-scratch-dev ls /w/<key>`.
 - The Bash tool's shell is zsh with `cp mv rm` aliased `-i` (`command rm`; `/bin/cp -c` for APFS clones, GNU cp
   has none), GNU coreutils first (`stat -c`, `sed -i` without `''`), bsdtar (`--include`, no `--wildcards`). The
