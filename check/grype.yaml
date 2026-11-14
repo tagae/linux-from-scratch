@@ -1,5 +1,5 @@
-# Grype's configuration for the vulnerability scan (check/vulnerabilities): the findings that do
-# not concern the images, which the report leaves out, each with its reason.
+# Grype's configuration for the vulnerability scan.
+
 ignore:
   # Disputed by glibc's maintainers, and given by the NVD to every version of glibc.
   - vulnerability: CVE-2010-4756
@@ -7,13 +7,11 @@ ignore:
   - vulnerability: CVE-2019-1010023
   - vulnerability: CVE-2019-1010024
   - vulnerability: CVE-2019-1010025
-  # A JFS flaw of 2020, fixed in 5.10.4, which every later kernel has: the NVD's ranges for it include
-  # `> 4.4.249`, which every kernel after it matches.
+  # A JFS flaw of 2020, fixed in kernel 5.10.4,
   - vulnerability: CVE-2020-27815
     package:
       name: linux
-  # The stack protector of AArch64, fixed in GCC in September 2023, long before the GCC that the
-  # images are built with: the NVD gives a date as its fixed version, which no version precedes.
+  # The stack protector of AArch64, fixed in GCC in September 2023
   - vulnerability: CVE-2023-4039
     package:
       name: gcc
