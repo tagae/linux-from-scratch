@@ -1,0 +1,90 @@
+#!/bin/sh
+
+# The findings of the kernel that the kernel's own CVE records say are fixed, as an OpenVEX document
+# on the standard output.
+#
+# Grype matches the kernel by the version ranges of the NVD, which compare mainline version
+# numbers, so that a CVE fixed in a later mainline version is a finding of every earlier one, the
+# stable lines included. The record of a CVE that the kernel's CVE numbering authority publishes
+# tells the version that fixes it in each stable line (`6.18.21` for the line `6.18.*`). A CVE with a
+# fix in the line of the image's kernel, at or before the image's version, gets a `fixed` statement
+# for the kernel's package. Grype takes the document (--vex) and leaves those findings out.
+#
+# The records come from CVE.org's API, and are kept for a day under CACHE_DIR. A CVE without a record,
+# or whose record names no such fix, gets no statement, and stays a finding.
+#
+# Usage: check/kernel-vex NAME FINDINGS CACHE_DIR    NAME: that of the image; FINDINGS: Grype's JSON
+
+set -o errexit -o nounset
+
+[ $# -eq 3 ] || {
+    echo "Usage: $0 NAME FINDINGS CACHE_DIR" >&2
+    exit 2
+}
+name=$1 findings=$2 cache=$3
+
+for tool in curl jq; do
+    command -v $tool > /dev/null 2>&1 || {
+        echo "$tool is needed" >&2
+        exit 2
+    }
+done
+
+# The version and package URL of the kernel, from its first finding.
+kernel=$(jq -r '[.matches[] | select(.artifact.name == "linux")][0] // empty
+    | "\(.artifact.version) \(.artifact.purl)"' "$findings")
+version=${kernel%% *}
+purl=${kernel#* }
+
+mkdir -p "$cache"
+fixes=$(mktemp "${TMPDIR:-/tmp}/lfs-kernel-vex.XXXXXX")
+trap 'rm -f "$fixes"' EXIT
+
+if [ -n "$kernel" ]; then
+    for id in $(jq -r '.matches[] | select(.artifact.name == "linux") | .vulnerability.id
+            | select(startswith("CVE-"))' "$findings" | sort -u); do
+        record=$cache/$id.json
+        if ! find "$record" -mtime -1 2> /dev/null | grep -q .; then
+            curl -sSf --retry 3 --max-time 30 -o "$record.tmp" "https://cveawg.mitre.org/api/cve/$id" \
+                && mv "$record.tmp" "$record" \
+                || {
+                    rm -f "$record.tmp"
+                    echo "No record of $id: it stays a finding" >&2
+                    continue
+                }
+        fi
+        # The version that fixes the CVE in the line of the kernel, when the kernel has it.
+        fixed=$(jq -r --arg version "$version" '
+            def parts: split(".") | map(tonumber? // 0);
+            ($version | parts) as $running
+            | [.containers.cna.affected[]? | select(.product == "Linux") | .versions[]?
+                | select(.status == "unaffected"
+                    and ((.lessThanOrEqual // "") | test("^[0-9]+\\.[0-9]+\\.\\*$")))
+                | select((.lessThanOrEqual | split(".") | .[0:2] | map(tonumber)) == $running[0:2])
+                | select((.version | parts) <= $running)
+                | .version]
+            | sort_by(parts) | last // empty' "$record" 2> /dev/null || true)
+        [ -z "$fixed" ] || echo "$id $fixed" >> "$fixes"
+    done
+fi
+
+jq -Rn --arg name "$name" --arg version "${version:-}" --arg purl "${purl:-}" \
+    --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+    [inputs | split(" ") | {id: .[0], fixed: .[1]}] | sort_by(.id) as $fixes
+    | ($version | split(".") | .[0:2] | join(".")) as $line
+    | {
+        "@context": "https://openvex.dev/ns/v0.2.0",
+        "@id": ("urn:lfs:openvex:" + $name),
+        "author": "lfs, check/kernel-vex",
+        "timestamp": $time,
+        "version": 1,
+        "tooling": "check/kernel-vex",
+        "statements": ($fixes | map({
+            "vulnerability": {"name": .id},
+            "products": [{"@id": $purl}],
+            "status": "fixed",
+            "status_notes": ("Fixed in " + .fixed + ", in the line " + $line
+                + " of the kernel (the record of the kernel CVE numbering authority); the image has "
+                + $version + ".")
+        }))
+    }' "$fixes"
