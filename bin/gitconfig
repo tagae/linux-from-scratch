@@ -1,0 +1,6 @@
+# The configuration of git for the project's scripts, which read it in place of the user's
+# (GIT_CONFIG_GLOBAL), so that they behave the same for everyone.
+[safe]
+	# A container can show the directory of the checkout as another user's, which git refuses to
+	# work in. The scripts change into the project's own directory before they run git.
+	directory = *

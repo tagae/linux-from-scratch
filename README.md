@@ -37,7 +37,7 @@ Else, you need a Linux host with the following utilities.
 
 5. To invalidate stale archives and to version the project (`make invalidate`, `bin/version`),
 
-  * Git 2.32 or later: the scripts ignore the user's Git configuration (`GIT_CONFIG_GLOBAL`).
+  * Git 2.36 or later: the scripts read `bin/gitconfig` in place of the user's Git configuration.
 
 
 Quick Start
