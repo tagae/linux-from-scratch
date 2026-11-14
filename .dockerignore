@@ -1,5 +1,5 @@
-/download/
-/image/
-/work/**
+# The build context holds what the Dockerfiles copy, and nothing else: the project and its state are
+# mounted into the containers (docker-compose.yaml), not copied.
+*
 !/work/bootstrap/bash
 !/work/bootstrap/env
