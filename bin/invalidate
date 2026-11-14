@@ -18,22 +18,23 @@
 # build tools, which every profile shares (-bootstrap- and -tools- in the name), except those that a
 # profile installs, which are filed under its key.
 #
-# Only the inputs of the build can make an archive stale: lfs, Makefile, lib/, package/, profile/
-# and platform/. Every other path (documentation, check/, .github/, .claude/, the Dockerfiles,
-# docker-compose.yaml, bin/, ...) has no effect. With --docker, for the archives of the build
+# Only the inputs of the build can make an archive stale: lfs, lib/, package/, profile/ and
+# platform/. Every other path (the Makefile, documentation, check/, .github/, .claude/, the
+# Dockerfiles, docker-compose.yaml, bin/, ...) has no effect. With --docker, for the archives of the build
 # through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml are
 # inputs too, which drop every archive, as they make the machines that every package is built on.
 # Every input path that changed between archive/.commit and the tree now is mapped by the first rule
 # that fits:
 #
 #    1  lib/check.sh, lib/image.sh, lib/qemu.sh and lib/sbom.sh: no effect (nothing in them goes into
-#       an archive).
+#       an archive). The Makefile has none either, as it holds no input of an archive: the release
+#       that ends up in os-release is lfs's.
 #    2  package/<path>: the archive/*/<recipe>-* of the recipe that the path belongs to. That is
 #       the path itself when it is a recipe, existing or deleted (package/python/cffi.sh is
 #       python/cffi, not python), else the longest directory of the path that has a recipe now
 #       (package/python/yubikey-manager/usr/bin/ykman is python/yubikey-manager, and
 #       package/linux/usb.config is linux, the kernel). A path that belongs to no recipe falls to
-#       rule 9.
+#       rule 8.
 #    3  profile/<p>.sh: the archives under the key <p> of the packages that the profile installs,
 #       which a change of its options or its order can affect. The toolchain, which it does not
 #       name, stays.
@@ -41,9 +42,8 @@
 #       recipes now): everything under archive/*/<c>/.
 #    5  lib/meson.sh: rule 2 for each recipe that calls meson_cross_file.
 #    6  lib/system.sh: every archive but the build tools (-bootstrap- and -tools- in the name).
-#    7  Makefile: archive/*/system-files-*, as its LFS_RELEASE ends up in os-release.
-#    8  platform/<p>.sh: everything under the key of each profile that runs on the platform.
-#    9  Any other input (lfs, lib/base.sh, lib/package.sh, lib/components.sh, lib/tools.sh, other
+#    7  platform/<p>.sh: everything under the key of each profile that runs on the platform.
+#    8  Any other input (lfs, lib/base.sh, lib/package.sh, lib/components.sh, lib/tools.sh, other
 #       paths of profile/, platform/ and lib/): every archive, which makes a build from scratch.
 #
 # A pattern like archive/*/make-* also drops make-ca-*, as a rebuild of a few archives too many is
@@ -203,7 +203,7 @@ select_profile_of_platform() {
     local profile=${1#profile/}
     profile=${profile%.sh}
     [ "${profile%%-*}" != "$platform" ] \
-        || select_archives "platform/$platform.sh: rule 8, archives of the profile $profile" \
+        || select_archives "platform/$platform.sh: rule 7, archives of the profile $profile" \
             profile "$profile"
 }
 
@@ -227,7 +227,7 @@ select_changed() {
         if [ -n "$name" ]; then
             select_archives "$path: rule 2, archives of $name" package "$name"
         else
-            select_archives "$path: rule 9, in no recipe: every archive" all
+            select_archives "$path: rule 8, in no recipe: every archive" all
         fi
         ;;
     profile/[!/]*.sh)
@@ -253,9 +253,6 @@ EOF
     lib/system.sh)
         select_archives "$path: rule 6, every archive but the build tools" system
         ;;
-    Makefile)
-        select_archives "$path: rule 7, the system files" package system-files
-        ;;
     platform/[!/]*.sh)
         platform=${path#platform/}
         platform=${platform%.sh}
@@ -270,11 +267,11 @@ EOF
         if is_category "$name"; then
             select_archives "$path: rule 4, archives of the category $name" category "$name"
         else
-            select_archives "$path: rule 9, every archive" all
+            select_archives "$path: rule 8, every archive" all
         fi
         ;;
     lfs|lib/*|profile/*|platform/*)
-        select_archives "$path: rule 9, every archive" all
+        select_archives "$path: rule 8, every archive" all
         ;;
     Dockerfile.bootstrap|Dockerfile.scratch|docker-compose.yaml)
         if [ -n "$docker" ]; then

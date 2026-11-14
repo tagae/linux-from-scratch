@@ -16,9 +16,11 @@ Overview
 * `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
 * `image/`:  built disk images
-* `bin/`: the maintenance commands: `invalidate` deletes the archives that a change makes stale
-* `check/`: the checks (`make lint`, `make sbom-check`, `make vulnerability-check`, and `check/boot`,
-  the boot tester that `make test` runs), with a Makefile that the main one includes
+* `bin/`: the maintenance commands: `invalidate` deletes the archives that a change makes stale,
+  `version` prints the project's version and `release` tags the next one
+* `check/`: the checks (`make lint`, `make commit-lint`, `make sbom-check`, `make vulnerability-check`,
+  and `check/boot`, the boot tester that `make test` runs), with a Makefile that the main one
+  includes
 * `Makefile`: build rules
 * `Dockerfile.{bootstrap,scratch,dev}`: build and dev containers (for reproducibility)
 
@@ -56,13 +58,14 @@ empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does
 gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
 profile, `profile/$PROFILE.sh`, compiled with that toolchain: the packages of the system in the
 order they are installed, the init (`systemd`, with the strict minimum of chapter 8 that it needs,
-and `dash`, the `sh` that it requires, and root's shell unless the profile says `root_shell`) and the kernel (`linux`, configured from the layers
-that every system gets, `package/linux/`: base, platform and architecture, and from the
-capabilities that the profile names, `package/linux/<capability>.config`) among them. Each package is
-installed both into the system tree and into the toolchain's sysroot, `work/$PROFILE/sysroot`, which
-also receives what compiling against the packages needs: the Linux API headers and the packages'
-`dev` components. The kernel is also copied, with the platform's device tree, to
-`work/boot/$PROFILE`, where QEMU on the host finds it.
+and `dash`, the `sh` that it requires, and root's shell unless the profile says `root_shell`) and
+the kernel (`linux`, configured from the layers that every system gets, `package/linux/`: base,
+platform and architecture, and from the capabilities that the profile names,
+`package/linux/<capability>.config`) among them. Each package is installed both into the system tree
+and into the toolchain's sysroot, `work/$PROFILE/sysroot`, which also receives what compiling
+against the packages needs: the Linux API headers and the packages' `dev` components. The kernel is
+also copied, with the platform's device tree, to `work/boot/$PROFILE`, where QEMU on the host finds
+it.
 
 ```shell
 ./lfs system build
@@ -161,8 +164,8 @@ installed only where wanted: into build trees, not into systems. Systems ship wi
 so a package's install also sets aside its man and info pages and whatever it installs under
 `/usr/share/doc` with `move_to_docs_component`, for a `docs` component that nothing makes a package
 of. The exception is `man=yes` and `info=yes`, which a platform (`platform/pi0.sh`) or a profile
-sets for the systems it builds: `move_to_docs_component` then leaves the man or the info pages in the
-package. A recipe that has to be told to build them says `: ${man:=no}` and reads it (`openssl`,
+sets for the systems it builds: `move_to_docs_component` then leaves the man or the info pages in
+the package. A recipe that has to be told to build them says `: ${man:=no}` and reads it (`openssl`,
 `libfido2`), or asks `docs_wanted` for either (`gnupg` and its libraries: `--$doc-doc`). The tools
 never have them: `lib/tools.sh` and `lfs_install_tool` set `man=no info=no`. Programs and libraries
 are stripped as they are linked.
@@ -228,6 +231,46 @@ and every patch description.
 A change to the framework (`lib/*.sh`, `Makefile`, `Dockerfile.*`, `docker-compose.yaml`, `lfs`)
 starts from its design, shown before the change is made, unless the change is what was asked for.
 The archive step only archives. Profiles are written on request, not speculatively.
+
+### Versions and Commits
+
+The project's versions follow SemVer, and a release is an annotated git tag `MAJOR.MINOR.PATCH`,
+with no prefix, from the baseline `0.0.0`. `bin/version` prints the version of a tree: the tag's when
+the tree is clean and on the commit of the most recent tag, and otherwise a pre-release of the next
+version, named by the abbreviated hash of the top commit, as short as git finds it unambiguous
+(`0.2.0-2c03742`), and ended by `-dirty` when the tree differs from its commit. A hash of digits alone
+that starts with 0, which SemVer does not allow in a number, takes an `r`, for revision
+(`0.2.0-r0123456`). The next version is
+the tag's, raised by the headlines of the commits since it: a `feat` after `0.1.0` makes `0.2.0`,
+and a `fix` on top of it changes the hash, not the version. (Build metadata, `+hash`, would not do:
+SemVer ignores it when it compares versions.) `bin/release` tags the next version (`--dry-run` says
+which first), and `git push github X.Y.Z` publishes the tag. The Makefile gives an image its release
+(`LFS_RELEASE`, the output of `bin/version`: os-release's `VERSION`, the SBOM). It goes into no
+archive, as every revision shares them.
+
+The headline of a commit is `type: subject`, with no scope. The type tells what bump it makes:
+
+| Type             | Bumps         |
+|------------------|---------------|
+| `feat!`, `drop!` | the major one |
+| `feat`, `drop`   | the minor one |
+| `fix`, `perf`    | the patch     |
+
+The other types, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `style` and `revert`, bump
+nothing: with only those since the last tag, the pre-release is of the next patch. The highest bump
+of the commits since the last tag applies, and sets the parts after it to 0. The `!` is a character
+of the name of `feat!` and `drop!`, which are types of their own: a naming convention for the
+changes that break the interface, which add or change a feature in a way that breaks its users
+(`feat!`) or remove one (`drop!`). There is no `fix!`, and a footer such as `BREAKING CHANGE:` means
+nothing.
+
+The interface is what users and profiles rely on: the make targets and their defaults, the `lfs`
+commands and environment, the formats of `profile/`, `platform/` and the options of recipes, and the
+layout of an image and of its SBOM. What an image holds is not the interface: updating a package
+that has vulnerabilities is a `fix`, and any other update a `build`.
+
+`check/commit-headlines` (`make commit-lint`, which CI runs) checks the headlines since the last
+tag. `git config core.hooksPath check/hooks` makes git refuse a commit whose headline fails it.
 
 ### Markdown Conventions
 

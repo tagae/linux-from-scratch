@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Refuses a commit whose headline is not `type: subject` (check/commit-headlines). To use it:
+# git config core.hooksPath check/hooks
+
+exec "$(dirname "$0")/../commit-headlines" --message "$1"

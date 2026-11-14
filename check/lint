@@ -37,6 +37,7 @@ done
 # Whether the file is a script for sh, by its first line. The scripts that run as commands, the project's
 # and those that systems ship, have no .sh in their names.
 is_sh_script() {
+    [ -f "$1" ] || return 1
     case $(head -n 1 "$1") in
         '#!/bin/sh' | '#!/bin/sh '*) return 0 ;;
         *) return 1 ;;
@@ -55,6 +56,9 @@ shell_files=$(
     {
         echo lfs
         echo bin/invalidate
+        echo bin/version
+        echo bin/release
+        echo check/hooks/commit-msg
         find lib platform profile package -type f -name '*.sh'
         for file in check/* $(find package -type f -path '*/usr/bin/*'); do
             if is_sh_script $file; then echo $file; fi

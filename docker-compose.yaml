@@ -24,7 +24,7 @@ services:
         source: profile
         target: /mnt/lfs/profile
       - type: bind
-        source: $PWD/download
+        source: download
         target: /mnt/lfs/download
       - type: volume
         source: source
@@ -41,10 +41,10 @@ services:
         source: install
         target: /mnt/lfs/install
       - type: bind # So that built archives can be consumed where needed outside the container.
-        source: $PWD/archive
+        source: archive
         target: /mnt/lfs/archive
       - type: bind # Holds artefacts Dockerfile.scratch needs to COPY at image build time.
-        source: $PWD/work/bootstrap
+        source: work/bootstrap
         target: /mnt/lfs/work/bootstrap
 
   scratch:
@@ -60,7 +60,6 @@ services:
       INSTALL_DIR:
       IMAGE_SIZE:
       LFS_RELEASE:
-      LFS_REVISION:
       VERSION_CODENAME:
       RELEASE_TYPE:
       DISTRIB_CODENAME:
@@ -82,7 +81,7 @@ services:
         source: profile
         target: /mnt/lfs/profile
       - type: bind
-        source: $PWD/download
+        source: download
         target: /mnt/lfs/download
       - type: volume
         source: source
@@ -91,7 +90,7 @@ services:
         source: work
         target: /mnt/lfs/work
       - type: bind # So that the kernel lands on the host for consumption by QEMU.
-        source: $PWD/work/boot
+        source: work/boot
         target: /mnt/lfs/work/boot
       - type: volume
         source: tools
@@ -100,10 +99,10 @@ services:
         source: install
         target: /mnt/lfs/install
       - type: bind # So that built images are available on the host (e.g., for QEMU to run).
-        source: $PWD/image
+        source: image
         target: /mnt/lfs/image
       - type: bind # So that built archives can be consumed where needed outside the container.
-        source: $PWD/archive
+        source: archive
         target: /mnt/lfs/archive
 
   dev:
@@ -128,7 +127,7 @@ services:
       # The work volume holds a root-owned mount point for this when the scratch service ran first,
       # which the lfs user could not write the kernel to.
       - type: bind
-        source: $PWD/work/boot
+        source: work/boot
         target: /mnt/lfs/work/boot
       - type: volume
         source: tools

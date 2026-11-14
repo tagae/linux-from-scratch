@@ -1,10 +1,14 @@
 # Quality checks.
 
-.PHONY: lint sbom-check vulnerability-check
+.PHONY: lint commit-lint sbom-check vulnerability-check
 
 # Static checks that need no build: shell code, recipes and profiles (needs dash and shellcheck).
 lint:
 	check/lint
+
+# The headlines of the commits since the last version tag are `type: subject`.
+commit-lint:
+	check/commit-headlines
 
 # Validates the SBOMs under image/ against the SPDX 2.3 model.
 SPDX_TOOLS_VERSION := 0.8.5
