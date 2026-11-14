@@ -47,11 +47,13 @@ install() {
             make install DESTDIR=$package_install_dir SHOBJ_STATUS=unsupported \
                 ${termcap_lib:+TERMCAP_LIB=-l$termcap_lib}
             # The tools' sh is this bash; a system's sh is dash's.
-            case ${sh_link:-yes} in
+            : ${sh_link:=no}
+            case $sh_link in
                 yes) ln -sfv bash $package_install_dir$prefix/bin/sh ;;
             esac
             # bashbug mails bug reports.
-            case ${bashbug:-yes} in
+            : ${bashbug:=no}
+            case $bashbug in
                 no) rm -v $package_install_dir$prefix/bin/bashbug ;;
             esac
             move_to_docs_component
