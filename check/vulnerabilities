@@ -2,9 +2,10 @@
 
 # The vulnerabilities of the images, as Grype finds them from each image's SBOM, with the latest
 # vulnerability data. For each SBOM it writes, under work/check/vulnerabilities, the findings
-# (<name>.json), their SARIF for GitHub's code scanning (<name>.sarif) and a summary (<name>.md),
-# which it prints as well. The findings that do not concern the images are left out by
-# check/grype.yaml.
+# (<name>.json), their SARIF for GitHub's code scanning (<name>.sarif), a summary (<name>.md), which
+# it prints as well, and the OpenVEX document of the findings that it leaves out of the kernel's
+# (<name>.openvex.json, from check/kernel-vex). The findings that do not concern the images are left
+# out by check/grype.yaml.
 #
 # Exits non-zero if a finding of high or critical severity has a fixed version, in any SBOM.
 #
@@ -51,7 +52,16 @@ run_grype db update
 failed=
 for sbom; do
     name=$(basename "$sbom" .spdx.json)
-    run_grype --config check/grype.yaml \
+
+    # The findings of the kernel that its own CVE records say are fixed in its line are left out, as
+    # an OpenVEX document tells (check/kernel-vex), which stays with the findings.
+    run_grype --config check/grype.yaml -o json=$out/$name.raw.json "sbom:$sbom"
+    check/kernel-vex "$name" $out/$name.raw.json $out/cve > $out/$name.openvex.json
+    rm $out/$name.raw.json
+    vex=$(jq '.statements | length' $out/$name.openvex.json)
+    vex_file=
+    [ "$vex" -eq 0 ] || vex_file=$out/$name.openvex.json
+    run_grype --config check/grype.yaml ${vex_file:+--vex "$vex_file"} \
         -o json=$out/$name.json -o sarif=$out/$name.sarif.tmp "sbom:$sbom"
 
     # Grype gives the findings of an SBOM no file, which code scanning requires: they are given
@@ -69,6 +79,8 @@ for sbom; do
         echo "$(jq '.matches | length' $out/$name.json) findings in" \
             "$(jq '[.matches[].artifact.name] | unique | length' $out/$name.json) packages," \
             "$count of high or critical severity with a fixed version."
+        echo
+        echo "$vex findings of the kernel are left out, as fixed in its line ($name.openvex.json)."
         echo
         echo "| Package | Findings | With a fixed version |"
         echo "|---|---|---|"
