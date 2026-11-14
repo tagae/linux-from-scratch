@@ -99,6 +99,7 @@ readonly STATE_DIR DOWNLOAD_DIR WORK_DIR TOOL_DIR \
 #-- Profile: the whole system to build, as the list of packages in profile/<profile>.sh. Its name is
 #   the key of everything the build makes: the packages' archives, the install tree, the sysroot, the
 #   kernel in WORK_DIR/boot and the image.
+
 # `qemu IMAGE` boots the image of the profile that its name, <profile>.img, gives, unless PROFILE
 # says otherwise.
 if [ -z "${PROFILE:-}" ] && [ "${1:-}" = qemu ] && [ $# -ge 2 ]; then
@@ -106,7 +107,6 @@ if [ -z "${PROFILE:-}" ] && [ "${1:-}" = qemu ] && [ $# -ge 2 ]; then
     [ ! -f $profile_dir/${_image%.img}.sh ] || PROFILE=${_image%.img}
     unset _image
 fi
-
 
 : ${PROFILE:=virt}
 
