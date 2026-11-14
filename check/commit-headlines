@@ -1,0 +1,69 @@
+#!/bin/sh
+
+# Checks that the headline of each commit since the last version tag is `type: subject`
+# (CONTRIBUTING.md, Versions and Commits): bin/release derives the next version from them. The types are
+# feat!, drop!, feat, drop, fix, perf, refactor, docs, test, build, ci, chore, style and revert; the
+# `!` of the first two is part of their names. Merges, fixups and squashes are left alone.
+#
+# With no tag, there is nothing to check: the headlines before the first tag are not parsed.
+#
+# Usage, from the repository root: check/commit-headlines [RANGE] (`make commit-lint`)
+#        check/commit-headlines --message FILE    for a commit-msg hook: the message in FILE
+#                                                 (git config core.hooksPath check/hooks)
+
+set -o errexit -o nounset
+
+readonly types='feat!|drop!|feat|drop|fix|perf|refactor|docs|test|build|ci|chore|style|revert'
+
+# Whether the headline passes.
+valid() {
+    case $1 in
+        Merge\ * | fixup!\ * | squash!\ *) return 0 ;;
+    esac
+    printf '%s\n' "$1" | grep -Eq "^($types): [^ ]"
+}
+
+usage_error() {
+    echo "Usage: $0 [RANGE | --message FILE]" >&2
+    exit 2
+}
+
+if [ "${1:-}" = --message ]; then
+    [ $# -eq 2 ] || usage_error
+    headline=$(sed -n '1p' "$2")
+    valid "$headline" || {
+        echo "The headline is not 'type: subject' (types: $(echo "$types" | tr '|' ' ')):" >&2
+        echo "    $headline" >&2
+        exit 1
+    }
+    exit 0
+fi
+
+[ $# -le 1 ] || usage_error
+[ -d .git ] || [ -f .git ] || {
+    echo "Run $0 from the repository root" >&2
+    exit 2
+}
+
+range=${1:-}
+if [ -z "$range" ]; then
+    tag=$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' 2> /dev/null || true)
+    [ -n "$tag" ] || {
+        echo "No version tag: no headline to check"
+        exit 0
+    }
+    range=$tag..HEAD
+fi
+
+failed=
+for commit in $(git rev-list --reverse "$range"); do
+    headline=$(git log -1 --format=%s "$commit")
+    valid "$headline" || {
+        echo "$(git log -1 --format=%h "$commit") $headline"
+        failed=yes
+    }
+done
+[ -z "$failed" ] || {
+    echo "These headlines are not 'type: subject' (types: $(echo "$types" | tr '|' ' '))" >&2
+    exit 1
+}

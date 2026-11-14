@@ -26,19 +26,13 @@
 # Whatever depends on FORCE will be considered out of date, since it depends on nothing.
 FORCE:
 
-# The release for built systems.
-export LFS_RELEASE ?= r13.0-143
-
-# The revision of this project that systems are made from, which the image records (os-release's
-# BUILD_ID, the SBOM): the abbreviated hash of HEAD, with -dirty when a file differs from it.
-# Computed here, as the containers have no .git. Empty outside a git checkout.
-ifeq ($(origin LFS_REVISION),undefined)
-LFS_REVISION := $(shell git rev-parse --short=12 HEAD 2>/dev/null)
-ifneq ($(and $(LFS_REVISION),$(shell git --no-optional-locks status --porcelain 2>/dev/null)),)
-LFS_REVISION := $(LFS_REVISION)-dirty
+# The release of this project that systems are made as, which the image records (os-release's
+# VERSION, the SBOM): the version of the tree, from its tags and commits (bin/version). Computed here,
+# as the containers have no .git. Empty outside a git checkout.
+ifeq ($(origin LFS_RELEASE),undefined)
+LFS_RELEASE := $(shell bin/version 2>/dev/null)
 endif
-endif
-export LFS_REVISION
+export LFS_RELEASE
 
 # Making an image gives the system's files to root, which needs root access.
 SUDO ?= sudo --preserve-env
@@ -115,7 +109,6 @@ docker-test: docker-$(PROFILE)-test
 .env:
 	@echo HOST_UID=$$(id -u) >> $@
 	@echo HOST_GID=$$(id -g) >> $@
-	@echo LFS_RELEASE=$(LFS_RELEASE) >> $@
 
 docker-%-system docker-image/%.img: export PROFILE = $*
 docker-tools-bootstrap docker-tools: export PROFILE =

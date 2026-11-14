@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# Tags the next release: the version that bin/version --next gives, from the headlines of the commits
+# since the last tag, as an annotated tag `MAJOR.MINOR.PATCH` on HEAD, whose message lists those
+# headlines. It pushes nothing: the tag goes with `git push github X.Y.Z`.
+#
+# Usage: bin/release [--dry-run]    --dry-run: says what it would tag, and tags nothing
+
+set -o errexit -o nounset
+
+cd "$(dirname "$0")/.."
+
+dry=
+case "${1:-}" in
+    '') ;;
+    --dry-run) dry=yes ;;
+    *)
+        echo "Usage: $0 [--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+next=$(bin/version --next)
+tag=$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' 2> /dev/null || true)
+range=${tag:+$tag..}HEAD
+
+notes=$(mktemp "${TMPDIR:-/tmp}/lfs-release.XXXXXX")
+trap 'rm -f "$notes"' EXIT
+{
+    echo "$next"
+    echo
+    git log --reverse --format='* %s' "$range"
+} > "$notes"
+
+echo "${tag:-0.0.0} -> $next"
+tail -n +3 "$notes"
+
+[ -z "$dry" ] || exit 0
+
+git diff --quiet && git diff --cached --quiet || {
+    echo "Commit or stash what is not committed: a release is of HEAD" >&2
+    exit 1
+}
+git tag -a "$next" -F "$notes"
+echo "Tagged $next. Push it with: git push github $next"

@@ -33,11 +33,15 @@ jobs:
       run:
         shell: bash
     steps:
+      # The headlines of the commits since the last tag, with the tags themselves.
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Lint
         run: make lint
+      - name: Check the commit headlines
+        run: make commit-lint
 
   # The systems that CI builds and boots, one per profile: virt, the profile that the Makefile
   # builds by default, and pi0-pgp, the one that runs on hardware. Each system is built apart from
