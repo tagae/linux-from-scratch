@@ -133,15 +133,17 @@ jobs:
           PATH: ${{ inputs.qemu && '/home/linuxbrew/.linuxbrew/opt/qemu/bin:' || '' }}/usr/sbin:/usr/bin:/sbin:/bin
         run: eval "$COMMAND"
 
-      # The SBOM of an image, of a phase that makes one, must be valid SPDX: the scan reads it.
+      # The SBOM of an image, of a phase that makes one, must be valid SPDX: the scan reads it. The
+      # image and its SBOM are made before the test boots the image, so a failed boot leaves them,
+      # and both steps below run whatever the build's result.
       - name: Validate the SBOM
-        if: ${{ hashFiles('image/*.spdx.json') != '' }}
+        if: ${{ !cancelled() && hashFiles('image/*.spdx.json') != '' }}
         run: make sbom-check
 
       # The SBOM of the image, of a phase that makes one, for the vulnerability scan
       # (vulnerabilities.yaml).
       - name: Keep the SBOM
-        if: ${{ hashFiles('image/*.spdx.json') != '' }}
+        if: ${{ !cancelled() && hashFiles('image/*.spdx.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: sbom-${{ inputs.profile }}-${{ inputs.name }}
