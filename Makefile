@@ -153,5 +153,5 @@ docker-distclean: docker-clean distclean
 	docker volume rm -f linux-from-scratch_tools
 
 docker-pristine: docker-distclean pristine
-	docker compose down -v
+	docker compose down -v --remove-orphans
 	rm -f .env
