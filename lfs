@@ -142,18 +142,10 @@ esac
 
 #===[ Compilation ]===
 
-: ${build_vendor:=scratch}
-: ${build_kernel:=linux}
-: ${build_abi:=gnu}
-if [ -n "${build_arch:-}" ]; then
-    readonly build_arch build_vendor build_kernel build_abi
-    readonly build_triplet=$build_arch-$build_vendor-$build_kernel-$build_abi
-fi
-
-: ${target_vendor:=$build_vendor}
-: ${target_kernel:=$build_kernel}
+: ${target_vendor:=scratch}
+: ${target_kernel:=linux}
 if [ -n "${target_arch:-}" ]; then
-    : ${target_abi:=$build_abi}
+    : ${target_abi:=gnu}
     readonly target_arch target_vendor target_kernel target_abi
     readonly target_triplet=$target_arch-$target_vendor-$target_kernel-$target_abi
 fi
