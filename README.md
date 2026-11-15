@@ -242,8 +242,7 @@ make pi0-pgp-test
 
 Images are file targets under that same key, so `make image/pi0-pgp.img` produces the image of the
 `pi0-pgp` profile. An image is as small as its system allows: its root file system has only the room
-that btrfs leaves in it, which grows with the system. `LFS_IMAGE_SIZE` makes it larger (e.g.
-`LFS_IMAGE_SIZE=1G`), the root file system filling it. An image appears only once it is complete.
+that btrfs leaves in it, which grows with the system. An image appears only once it is complete.
 `make qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps what the
 system writes until the image is made anew, so that the image stays as it was made, to be written to
 a card.

@@ -40,9 +40,6 @@ readonly kernel_cmdline="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/
 # known QEMU pm-driver hang on this machine model.
 readonly QEMU_APPEND="$kernel_cmdline rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
 
-# Serial console device: BCM2835's PL011 is ttyAMA0.
-readonly CONSOLE=ttyAMA0
-
 # Disk drive interface name.
 readonly QEMU_DISK_IF=sd
 

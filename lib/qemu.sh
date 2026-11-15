@@ -27,7 +27,7 @@ qemu() {
         -no-reboot \
         "$@" \
         -append "${QEMU_APPEND:-} \
-        ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$LFS_ROOT_VOLUME rw rootwait}" \
+        rootfstype=btrfs rootflags=subvol=root/$LFS_ROOT_VOLUME rw rootwait" \
         -drive "file=$overlay,format=qcow2,if=${QEMU_DISK_IF:-sd}" \
         ${QEMU_EXTRA:-}
 }

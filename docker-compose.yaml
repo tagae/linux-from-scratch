@@ -58,7 +58,6 @@ services:
       LFS_ERASE:
       LFS_TIMEZONE:
       LFS_INSTALL_DIR:
-      LFS_IMAGE_SIZE:
       LFS_RELEASE:
       LFS_VERSION_CODENAME:
       LFS_RELEASE_TYPE:

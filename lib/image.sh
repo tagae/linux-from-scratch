@@ -46,15 +46,9 @@ build_image() {
         IMAGE=$target.tmp
         BOOT_DEVICE=$PARTS_DIR/boot.fat
         BASE_DEVICE=$PARTS_DIR/base.btrfs
-        if [ -n "${LFS_IMAGE_SIZE:-}" ]; then
-            # The root file system fills what the partitions ahead of it leave.
-            truncate -s $LFS_IMAGE_SIZE $BASE_DEVICE
-            truncate -s -$(base_start)M $BASE_DEVICE
-        else
-            # The root file system is as small as its files allow.
-            : > $BASE_DEVICE
-            shrink=--shrink
-        fi
+        # The root file system is as small as its files allow.
+        : > $BASE_DEVICE
+        shrink=--shrink
     fi
     create_filesystems $shrink
     if [ -n "${IMAGE:-}" ]; then

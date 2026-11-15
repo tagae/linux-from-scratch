@@ -150,7 +150,7 @@ Shell variables are part of the **external API** if they are used to parameteris
 the only variables that `lfs` passes on to builds, along with `PATH` and `TMPDIR`.
 
 External API variables have uppercase names, prefixed with `LFS_` so that none clashes with a
-variable of the caller's (e.g., `LFS_PROFILE`, `LFS_TIMEZONE`, `LFS_IMAGE_SIZE`). `PATH` and
+variable of the caller's (e.g., `LFS_PROFILE`, `LFS_TIMEZONE`). `PATH` and
 `TMPDIR` are the platform's own, and keep their names. `lfs` ignores every variable that it does not
 name.
 

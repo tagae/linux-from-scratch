@@ -26,7 +26,7 @@ readonly profile_dir=$project_dir/profile
 # The variables that builds see of the environment lfs is started in: its external API, PATH and
 # TMPDIR. As in a container, nothing else of the caller's comes in, such as what steers compilers,
 # pkg-config or interpreters (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH...). QEMU runs in the caller's.
-readonly lfs_environment="LFS_PROFILE LFS_TIMEZONE LFS_IMAGE_SIZE LFS_ERASE \
+readonly lfs_environment="LFS_PROFILE LFS_TIMEZONE LFS_ERASE \
     LFS_MACHINE LFS_RELEASE LFS_VERSION_CODENAME LFS_RELEASE_TYPE LFS_DISTRIB_CODENAME \
     LFS_DISTRIB_DESCRIPTION LFS_ROOT_VOLUME \
     LFS_STATE_DIR LFS_DOWNLOAD_DIR LFS_SOURCE_DIR LFS_WORK_DIR LFS_TOOL_DIR LFS_INSTALL_DIR \
@@ -256,8 +256,6 @@ case "${1:-help}" in
         echo "Environment:"
         echo "  LFS_PROFILE      The system to build, as profile/<profile>.sh lists it; virt by default"
         echo "  LFS_TIMEZONE     The image's time zone, as named in the tz database; UTC by default"
-        echo "  LFS_IMAGE_SIZE   The image file's size, as truncate takes it (512M), with the root"
-        echo "                   file system filling it; by default as small as the system allows"
         echo "  LFS_ERASE        The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi

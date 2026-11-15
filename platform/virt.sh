@@ -36,9 +36,6 @@ readonly QEMU_FLAGS="\
 # Kernel command line fragment specific to this platform.
 readonly QEMU_APPEND="console=hvc0 root=/dev/vda1"
 
-# Serial console device. The QEMU virtio-console enumerates as hvc0.
-readonly CONSOLE=hvc0
-
 # Disk drive interface name.
 readonly QEMU_DISK_IF=virtio
 
