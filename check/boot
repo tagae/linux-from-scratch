@@ -4,14 +4,14 @@
 #
 # Exits 0 on success, 1 on any failure.
 #
-# Usage, from the repository root: [TEST_TIMEOUT=seconds] check/boot [PROFILE] (`make test`)
+# Usage, from the repository root: [LFS_TEST_TIMEOUT=seconds] check/boot [PROFILE] (`make test`)
 
 if {[llength $argv] > 0} {
     set env(LFS_PROFILE) [lindex $argv 0]
 }
 
-# TEST_TIMEOUT overrides the default per-phase timeout.
-set timeout [expr {[info exists env(TEST_TIMEOUT)] ? $env(TEST_TIMEOUT) : 120}]
+# LFS_TEST_TIMEOUT overrides the default per-phase timeout.
+set timeout [expr {[info exists env(LFS_TEST_TIMEOUT)] ? $env(LFS_TEST_TIMEOUT) : 120}]
 
 # Don't mirror the spawned process's raw output to our controlling terminal. The guest sends escape
 # queries like cursor-position/window-size requests over the serial console; with logging on, those

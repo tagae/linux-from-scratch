@@ -166,7 +166,7 @@ jobs:
         timeout-minutes: 330
         env:
           COMMAND: ${{ inputs.command }}
-          TEST_TIMEOUT: 600
+          LFS_TEST_TIMEOUT: 600
           # The host's tools, as a container has them, rather than the runner's own, which sit in
           # /usr/local, /opt and the home directory; but for QEMU, if the phase boots an image.
           PATH: ${{ inputs.qemu && '/home/linuxbrew/.linuxbrew/opt/qemu/bin:' || '' }}/usr/sbin:/usr/bin:/sbin:/bin
