@@ -54,6 +54,19 @@ lfs_fetch_package() (
     echo $package_source_dir
 )
 
+# Downloads the source of every package, each as its recipe fetches it for the profile's platform
+# (the platform's Rust standard library, for one), without unpacking any: a build finds in
+# DOWNLOAD_DIR what its packages pin, and a source that cannot be had stops here rather than in the
+# middle of a build. The recipes unpack into a directory that is removed afterwards.
+lfs_fetch() {
+    local recipe
+    unpack() { :; }
+    for recipe in $(cd $package_dir && find . -name '*.sh' | sed 's|^\./||; s|\.sh$||' | sort); do
+        lfs_fetch_package $recipe > /dev/null
+    done
+    rm -rf "$SOURCE_DIR"
+}
+
 # Fetches the sources from a package's `package_fetch_dependencies`,
 # exposing each one's location as `<dependency>_source_dir`, with a `_` for every character of its
 # name that is no letter or digit (`libgpg_error_source_dir`).

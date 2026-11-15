@@ -42,6 +42,11 @@ verify_hash() {
         || bail "Integrity check failed for $file (expected $hash)"
 }
 
+# Unpacks an archive into a directory.
+unpack() {
+    tar xf "$1" -C "$2"
+}
+
 # Downloads an archive and unpacks it, both in the directory of the category of the package that
 # fetches it (python/ for python/click), as the package's work directories and archives are.
 # Packages of different categories then never share a download or a source tree, whatever the
@@ -57,7 +62,7 @@ get() {
     mkdir -p $SOURCE_DIR/$dir
     [ -f $DOWNLOAD_DIR/$dir/$archive ] || fetch_url "$url" "$DOWNLOAD_DIR/$dir"
     [ -z "$hash" ] || verify_hash "$DOWNLOAD_DIR/$dir/$archive" "$hash"
-    [ -d $SOURCE_DIR/$dir/$extracted ] || tar xf $DOWNLOAD_DIR/$dir/$archive -C $SOURCE_DIR/$dir
+    [ -d $SOURCE_DIR/$dir/$extracted ] || unpack $DOWNLOAD_DIR/$dir/$archive $SOURCE_DIR/$dir
 }
 
 git_default_branch() {

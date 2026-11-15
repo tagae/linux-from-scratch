@@ -24,7 +24,7 @@ fetch_tarball() {
     local file=$DOWNLOAD_DIR/${1##*/}
     [ -f $file ] || fetch_url $1 $DOWNLOAD_DIR
     verify_hash $file $2
-    tar xf $file -C $package_source_dir.tmp
+    unpack $file $package_source_dir.tmp
 }
 
 build() {

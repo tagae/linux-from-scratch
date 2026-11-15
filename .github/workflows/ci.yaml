@@ -43,11 +43,23 @@ jobs:
       - name: Check the commit headlines
         run: make commit-lint
 
+  # Every source that a build pins is downloaded here, once, into the cache that all the builds
+  # restore: an upstream server that fails stops the run before any build, and the builds, which
+  # find the downloads in the cache, leave it as it is.
+  download:
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: download
+      command: make fetch
+      cold: ${{ inputs.cold == true }}
+      archives: false
+
   # The build tools are the same for every system: they are built once, in two ways, on the runner
   # and through Docker Compose (the bootstrap container builds the first tools, the scratch
   # container the rest), and their archives are cached apart from the systems'. The two ways do not
   # wait for each other.
   bootstrap:
+    needs: download
     uses: ./.github/workflows/phase.yaml
     with:
       name: bootstrap
@@ -62,6 +74,7 @@ jobs:
       command: make tools
 
   docker-bootstrap:
+    needs: download
     uses: ./.github/workflows/phase.yaml
     with:
       name: docker-bootstrap

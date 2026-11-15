@@ -135,6 +135,7 @@ package_key=$PROFILE
 
 case "${1:-help}" in
     tools) readonly SOURCE_DIR=$SOURCE_DIR/$tools_key ;;
+    fetch) readonly SOURCE_DIR=$(mktemp -d) ;;
     *)     readonly SOURCE_DIR=$SOURCE_DIR/$package_key ;;
 esac
 
@@ -164,11 +165,12 @@ if command -v nproc >/dev/null 2>&1; then
     readonly MAKEFLAGS
 fi
 
-# The bootstrap builds the first tools with the host's, and QEMU runs on the host. Every other
-# command builds with the tools alone, as the scratch container does, so that nothing of the
-# host's (a program, a config script, an interpreter, a trust store) finds its way into a build.
+# The bootstrap builds the first tools with the host's, fetching downloads and unpacks with them, and
+# QEMU runs on the host. Every other command builds with the tools alone, as the scratch container
+# does, so that nothing of the host's (a program, a config script, an interpreter, a trust store)
+# finds its way into a build.
 case "${1:-help} ${2:-}" in
-    'tools bootstrap'|qemu\ *|help\ *)
+    'tools bootstrap'|fetch\ *|qemu\ *|help\ *)
         export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
         # Bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists, prefer
         # it.
@@ -199,6 +201,11 @@ readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
 #===[ Command Execution ]===
 
 case "${1:-help}" in
+    fetch)
+        [ $# -eq 1 ] || usage "$1"
+        lfs_fetch
+        ;;
+
     pack)
         [ $# -eq 2 ] || usage "$1 <PACKAGE>"
         lfs_archive_package "$2"
@@ -231,9 +238,10 @@ case "${1:-help}" in
         ;;
 
     help)
-        echo "Usage: $(basename "$0") (tools|system|pack|check|image|qemu)"
+        echo "Usage: $(basename "$0") (fetch|tools|system|pack|check|image|qemu)"
         echo ""
         echo "Commands:"
+        echo "  fetch            Download the sources of every package, for the profile's platform"
         echo "  tools            Build the build tools"
         echo "  system build     Build the system for the platform"
         echo "  pack <PKG>       Build a package's archive"

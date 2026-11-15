@@ -26,6 +26,10 @@ on:
         description: Build from scratch, without the cache of the archives of the key and the downloads
         type: boolean
         default: false
+      archives:
+        description: The phase builds on archives and makes some; false for the one that only downloads
+        type: boolean
+        default: true
       docker:
         description: The command builds through Docker Compose, whose archives have a cache of their own
         type: boolean
@@ -113,7 +117,7 @@ jobs:
 
       # Each phase saves its own caches, and restores the most recent ones.
       - name: Restore the archives
-        if: ${{ !inputs.cold }}
+        if: ${{ !inputs.cold && inputs.archives }}
         uses: actions/cache/restore@v6
         with:
           path: archive/${{ env.KEY }}
@@ -139,6 +143,7 @@ jobs:
           restore-keys: ${{ steps.cache.outputs.download }}
 
       - name: Drop the stale archives
+        if: ${{ inputs.archives }}
         run: make ${{ inputs.docker && 'docker-' || '' }}invalidate
 
       # The files that the caches of the phase hold, by name, size and modification time, to tell

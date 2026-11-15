@@ -119,6 +119,11 @@ categories therefore never share a path, so `python/foo` and `foo` can coexist.
 A category can have helpers for its recipes in `lib/<category>.sh` (`lib/python.sh` for `python`),
 which the framework loads for the recipes of that category.
 
+A recipe downloads in `fetch`, and unpacks with `unpack`: `./lfs fetch` (`make fetch`) runs the
+`fetch` of every recipe for the profile's platform with `unpack` doing nothing, so that CI downloads
+every source once, before any build. What a recipe downloads anywhere else (the crates of
+`cryptography`, in `prepare`) is downloaded by each build.
+
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir` (`libgpg_error_source_dir` for `libgpg-error`).

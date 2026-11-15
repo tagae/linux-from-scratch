@@ -7,12 +7,11 @@
 # Rust names the platform with its own vendor.
 rust_target=$target_arch-unknown-$target_kernel-$target_abi
 
-# The crates are downloaded with the source, each checked against its hash in Cargo.lock, which the
-# source pins, and the build runs offline.
+# The crates are downloaded by the tools' cargo before the build, each checked against its hash in
+# Cargo.lock, which the source pins, and the build runs offline.
 export CARGO_HOME=$DOWNLOAD_DIR/cargo
 
-fetch() {
-    default_fetch
+prepare() {
     cargo fetch --locked --manifest-path $package_source_dir/Cargo.toml
 }
 

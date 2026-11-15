@@ -202,6 +202,7 @@ Make Targets
 ------------
 
 ```shell
+make fetch            # download the sources of every package, for every profile, into download/
 make tools-bootstrap  # native toolchain + temporary tools, from the host's
 make tools            # toolchain + temporary build tools
 make system           # build the system for the platform into the install tree
@@ -212,6 +213,10 @@ make test             # check that the image boots and root can login/poweroff
 
 `make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
+
+The builds download what they need as they go. `make fetch` downloads it all first, with the host's
+`wget`, so that a source that an upstream server does not give stops it there, and the builds find
+the files in `download/`: they fetch nothing but the Rust crates of `cryptography`.
 
 A package builds again only when its archive is gone, so after changing a recipe, a patch, a kernel
 option or a framework file, run `make invalidate` (`make docker-invalidate` for the build through

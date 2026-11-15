@@ -1,4 +1,5 @@
 .PHONY: \
+	fetch %-fetch \
 	tools-bootstrap \
 	tools \
 	system %-system \
@@ -47,7 +48,14 @@ image: image/$(PROFILE).img
 qemu: $(PROFILE)-qemu
 test: $(PROFILE)-test
 
-%-system image/%.img %-qemu: export PROFILE = $*
+%-system image/%.img %-qemu %-fetch: export PROFILE = $*
+
+# Downloads the sources of every package for each profile's platform, which the builds then find in
+# download/: a source that cannot be had stops here, before any build.
+fetch: $(patsubst profile/%.sh,%-fetch,$(wildcard profile/*.sh))
+
+%-fetch:
+	./lfs fetch
 
 # The tools run on the build machine, whatever the system is: they are built once, and every system
 # uses them, so that systems can be built at once (`make -j test pi0-pgp-test`). No profile reaches
