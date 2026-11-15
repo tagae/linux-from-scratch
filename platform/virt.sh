@@ -5,13 +5,13 @@ case "$(uname -m)" in
     arm64|aarch64)
         readonly target_arch=aarch64
         readonly kernel_arch=arm64
-        readonly QEMU=qemu-system-aarch64
+        readonly qemu_system=qemu-system-aarch64
         readonly qemu_machine=virt
         ;;
     x86_64)
         readonly target_arch=x86_64
         readonly kernel_arch=x86_64
-        readonly QEMU=qemu-system-x86_64
+        readonly qemu_system=qemu-system-x86_64
         readonly qemu_machine=q35
         ;;
     *) bail "Unsupported virt architecture '$(uname -m)'" ;;
@@ -22,8 +22,8 @@ case "$(uname -s)" in
     Linux)  readonly qemu_accel="-accel kvm" ;;
 esac
 
-# Like a real machine, it has a USB host controller, for the USB devices given in QEMU_EXTRA.
-readonly QEMU_FLAGS="\
+# Like a real machine, it has a USB host controller, for the USB devices given in LFS_QEMU_EXTRA.
+readonly qemu_flags="\
     -M $qemu_machine -cpu host $qemu_accel -smp 1 -m 512 \
     -nographic \
     -device virtio-rng \
@@ -34,10 +34,10 @@ readonly QEMU_FLAGS="\
     -object monitor-hmp,id=mon0,chardev=char0"
 
 # Kernel command line fragment specific to this platform.
-readonly QEMU_APPEND="console=hvc0 root=/dev/vda1"
+readonly qemu_append="console=hvc0 root=/dev/vda1"
 
 # Disk drive interface name.
-readonly QEMU_DISK_IF=virtio
+readonly qemu_disk_if=virtio
 
 # Single BTRFS partition. QEMU loads kernel directly, so no boot partition.
-readonly IMAGE_LAYOUT=single
+readonly image_layout=single

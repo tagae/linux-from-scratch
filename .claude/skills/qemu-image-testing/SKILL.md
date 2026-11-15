@@ -116,7 +116,7 @@ it with `EXPECT_SCRIPT=`, print `QEMU_CHECK_BEGIN` and `QEMU_CHECK_END` around t
 - Deriving a script from a working one by text replacement: ASSERT it matched (`python3 -I`, `assert old in s`).
   `sed -i ''` on the GNU sed here and non-matching regexes are silent no-ops (they gave a vacuous pass).
 - After changing a recipe, delete its archive and rebuild, or you boot the old package.
-- Platform files make `QEMU` readonly, so `QEMU=echo ./lfs qemu` is not a dry run: use `--print`.
+- Platform files make `qemu_system` readonly, so `qemu_system=echo ./lfs qemu` is not a dry run: use `--print`.
 
 ## What QEMU cannot tell
 

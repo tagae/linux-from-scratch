@@ -111,9 +111,9 @@ lfs_tools_bootstrap() {
         lfs_install_package ca-certificates
     )
 
-    mkdir -pv $LFS_BOOTSTRAP_DIR
-    cp -v $LFS_TOOL_DIR/usr/bin/bash $LFS_BOOTSTRAP_DIR/bash
-    cp -v $LFS_TOOL_DIR/usr/bin/env $LFS_BOOTSTRAP_DIR/env
+    mkdir -pv $bootstrap_dir
+    cp -v $LFS_TOOL_DIR/usr/bin/bash $bootstrap_dir/bash
+    cp -v $LFS_TOOL_DIR/usr/bin/env $bootstrap_dir/env
 }
 
 # Builds the remainder of the toolchain starting from the bootstrapped state.

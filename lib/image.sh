@@ -27,7 +27,7 @@ build_image() {
     stage image
     if [ -b "$target" ]; then
         # A device is made afresh, like a new image file.
-        DEVICE=$(realpath "$target")
+        device=$(realpath "$target")
         confirm_erase
     elif [ -e "$target" ] && [ -e "$sbom" ] && lfs_sbom_has_release "$sbom" \
         && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
@@ -35,26 +35,26 @@ build_image() {
         return
     fi
     trap clean_image EXIT
-    PARTS_DIR=$(mktemp -dt lfs-XXXXXX)
+    parts_dir=$(mktemp -dt lfs-XXXXXX)
     stage_root
-    if [ -n "${DEVICE:-}" ]; then
-        create_partitions $DEVICE
+    if [ -n "${device:-}" ]; then
+        create_partitions $device
         find_partitions
     else
         # Made under a name of its own, and moved into place only once complete, so that a failed
         # run never leaves an image behind that looks finished.
-        IMAGE=$target.tmp
-        BOOT_DEVICE=$PARTS_DIR/boot.fat
-        BASE_DEVICE=$PARTS_DIR/base.btrfs
+        image_file=$target.tmp
+        boot_device=$parts_dir/boot.fat
+        base_device=$parts_dir/base.btrfs
         # The root file system is as small as its files allow.
-        : > $BASE_DEVICE
+        : > $base_device
         shrink=--shrink
     fi
     create_filesystems $shrink
-    if [ -n "${IMAGE:-}" ]; then
+    if [ -n "${image_file:-}" ]; then
         assemble_image
-        lfs_sbom_document "${target##*/}" "$(sha256sum < "$IMAGE" | cut -d' ' -f1)" \
-            > "$IMAGE.spdx.json"
+        lfs_sbom_document "${target##*/}" "$(sha256sum < "$image_file" | cut -d' ' -f1)" \
+            > "$image_file.spdx.json"
         # The files that the kernel was built from, which the vulnerability scan reads with the SBOM.
         local kernel_files="${target%.img}.kernel-files"
         if [ -f $install_dir/usr/share/lfs/kernel-files ]; then
@@ -64,18 +64,18 @@ build_image() {
         fi
         # The SBOM first, as the image tells that both are complete: an image without its SBOM
         # is made anew.
-        mv "$IMAGE.spdx.json" "$sbom"
-        mv "$IMAGE" "$target"
+        mv "$image_file.spdx.json" "$sbom"
+        mv "$image_file" "$target"
     fi
     clean_image
 }
 
 confirm_erase() {
-    [ "$(realpath "${LFS_ERASE:-/dev/null}")" = "$DEVICE" ] && return 0
+    [ "$(realpath "${LFS_ERASE:-/dev/null}")" = "$device" ] && return 0
 
-    echo "This erases $DEVICE:" >&2
-    lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL $DEVICE >&2 2>/dev/null || true
-    bail "To go ahead, set LFS_ERASE=$DEVICE"
+    echo "This erases $device:" >&2
+    lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL $device >&2 2>/dev/null || true
+    bail "To go ahead, set LFS_ERASE=$device"
 }
 
 # The size of the Pi layout's FAT boot partition, in MiB.
@@ -84,7 +84,7 @@ readonly boot_size=128
 # Where the root file system's partition begins, in MiB: after the MiB that holds the partition
 # table, and after the boot partition of the Pi layout. sfdisk aligns partitions to the MiB.
 base_start() {
-    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
+    if [ "${image_layout:-pi}" = single ]; then
         echo 1
     else
         echo $((1 + boot_size))
@@ -93,7 +93,7 @@ base_start() {
 
 # Partitions DEVICE, a device or an image file. The root file system's partition takes the rest.
 create_partitions() {
-    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
+    if [ "${image_layout:-pi}" = single ]; then
         sfdisk -w always -W always $1 <<- EOF
 label: dos
 unit: sectors
@@ -125,17 +125,17 @@ partition_name() {
 # table. A container's /dev holds only the devices that were there when it started: a node missing
 # from it is made after what sysfs says.
 partition_device() {
-    local name=$(partition_name ${DEVICE##*/} $1)
+    local name=$(partition_name ${device##*/} $1)
     [ -b /dev/$name ] || mknod /dev/$name b $(tr : ' ' < /sys/class/block/$name/dev)
     echo /dev/$name
 }
 
 find_partitions() {
-    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        BASE_DEVICE=$(partition_device 1)
+    if [ "${image_layout:-pi}" = single ]; then
+        base_device=$(partition_device 1)
     else
-        BOOT_DEVICE=$(partition_device 1)
-        BASE_DEVICE=$(partition_device 2)
+        boot_device=$(partition_device 1)
+        base_device=$(partition_device 2)
     fi
 }
 
@@ -144,12 +144,12 @@ find_partitions() {
 # has no room to make chunks in, and what one kind's chunks have free would be lost to the other.
 create_filesystems() {
     mkfs.btrfs -f -L base --checksum xxhash -M \
-        --rootdir $BASE_DIR --subvol rw:root/$LFS_ROOT_VOLUME ${1:-} $BASE_DEVICE
-    if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
-        [ -b $BOOT_DEVICE ] || truncate -s ${boot_size}M $BOOT_DEVICE
-        mkfs.fat -c -f 1 -F 32 -n BOOT $BOOT_DEVICE
+        --rootdir $base_dir --subvol rw:root/$root_volume ${1:-} $base_device
+    if [ "${image_layout:-pi}" != single ]; then
+        [ -b $boot_device ] || truncate -s ${boot_size}M $boot_device
+        mkfs.fat -c -f 1 -F 32 -n BOOT $boot_device
         # FAT has no owners, so the boot files are copied as they are.
-        mcopy -s -i $BOOT_DEVICE $LFS_INSTALL_DIR/$LFS_PROFILE/boot/* ::
+        mcopy -s -i $boot_device $LFS_INSTALL_DIR/$LFS_PROFILE/boot/* ::
     fi
 }
 
@@ -159,38 +159,38 @@ stage_root() {
     local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
     stage "Staging the root file system from $install_dir"
     # The file system's top level, which holds the root subvolume.
-    BASE_DIR=$PARTS_DIR/base
-    ROOT_DIR=$BASE_DIR/root/$LFS_ROOT_VOLUME
-    mkdir -p $ROOT_DIR
+    base_dir=$parts_dir/base
+    root_dir=$base_dir/root/$root_volume
+    mkdir -p $root_dir
     # The install tree belongs to the build user, but the system's files belong to root.
-    if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
-        tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - . | tar -C $ROOT_DIR -xpf -
+    if [ "${image_layout:-pi}" = single ]; then
+        tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - . | tar -C $root_dir -xpf -
     else
         tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
-            | tar -C $ROOT_DIR -xpf -
+            | tar -C $root_dir -xpf -
         # Where the boot partition is mounted.
-        mkdir $ROOT_DIR/boot
+        mkdir $root_dir/boot
     fi
     # What the kernel was built from is kept next to the image (build_image), not in it.
-    rm -rf $ROOT_DIR/usr/share/lfs
+    rm -rf $root_dir/usr/share/lfs
     # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd
     # never start the clock earlier than the modification time of this file, so an image boots no
     # earlier than the time it was made.
-    mkdir -p $ROOT_DIR/var/lib/systemd/timesync
-    touch $ROOT_DIR/var/lib/systemd/timesync/clock
+    mkdir -p $root_dir/var/lib/systemd/timesync
+    touch $root_dir/var/lib/systemd/timesync/clock
     # The time zone belongs to the image, so that the system is the same for every zone. A system
     # without tzdata keeps UTC, which needs no zone file.
     local timezone=${LFS_TIMEZONE:-UTC}
-    if [ -f $ROOT_DIR/usr/share/zoneinfo/$timezone ]; then
-        ln -sfn /usr/share/zoneinfo/$timezone $ROOT_DIR/etc/localtime
+    if [ -f $root_dir/usr/share/zoneinfo/$timezone ]; then
+        ln -sfn /usr/share/zoneinfo/$timezone $root_dir/etc/localtime
     elif [ -n "${LFS_TIMEZONE:-}" ]; then
         bail "Unknown time zone '$timezone': time zones come with the tzdata package"
     fi
     # With a machine ID, the first boot is an ordinary one. Without it, systemd presets every unit
     # at the first boot, and warns about each unit that a generator made. The ID belongs to the
     # image: cards written from the same image share it.
-    tr -d - < /proc/sys/kernel/random/uuid > $ROOT_DIR/etc/machine-id
-    chmod 444 $ROOT_DIR/etc/machine-id
+    tr -d - < /proc/sys/kernel/random/uuid > $root_dir/etc/machine-id
+    chmod 444 $root_dir/etc/machine-id
     # The release of this project the image is made as: the version of the tree (bin/version), which
     # the Makefile computes, and which tells the images of one release apart. It is in no archive, as
     # archives are shared by every revision.
@@ -198,31 +198,31 @@ stage_root() {
     {
         echo "VERSION=\"$release\""
         echo "PRETTY_NAME=\"Linux From Scratch${LFS_RELEASE:+ $LFS_RELEASE}\""
-    } >> $ROOT_DIR/etc/os-release
-    echo "DISTRIB_RELEASE=\"$release\"" >> $ROOT_DIR/etc/lsb-release
+    } >> $root_dir/etc/os-release
+    echo "DISTRIB_RELEASE=\"$release\"" >> $root_dir/etc/lsb-release
     if [ -n "${LFS_RELEASE:-}" ]; then
-        echo "$LFS_RELEASE" > $ROOT_DIR/etc/lfs-release
+        echo "$LFS_RELEASE" > $root_dir/etc/lfs-release
     fi
 }
 
 # Puts the image file together: the partition table, and each file system where its partition is.
 assemble_image() {
     local start=$(base_start)
-    rm -f "$IMAGE"
-    mkdir -pv "$(dirname "$IMAGE")"
-    truncate -s $((start + ($(wc -c < $BASE_DEVICE) + 1048575) / 1048576))M "$IMAGE"
-    create_partitions "$IMAGE"
+    rm -f "$image_file"
+    mkdir -pv "$(dirname "$image_file")"
+    truncate -s $((start + ($(wc -c < $base_device) + 1048575) / 1048576))M "$image_file"
+    create_partitions "$image_file"
     # The image starts out as zeros, which the file systems' own zeros need not be written over.
-    if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
-        dd if=$BOOT_DEVICE of="$IMAGE" bs=1M seek=1 conv=notrunc,sparse status=none
+    if [ "${image_layout:-pi}" != single ]; then
+        dd if=$boot_device of="$image_file" bs=1M seek=1 conv=notrunc,sparse status=none
     fi
-    dd if=$BASE_DEVICE of="$IMAGE" bs=1M seek=$start conv=notrunc,sparse status=none
+    dd if=$base_device of="$image_file" bs=1M seek=$start conv=notrunc,sparse status=none
 }
 
 # Removes what making an image leaves behind, the image itself, and its SBOM, if incomplete: at the
 # end of build_image, and as the EXIT trap it sets, when it fails.
 clean_image() {
-    [ -z "${PARTS_DIR:-}" ] || rm -rf "$PARTS_DIR"
-    [ -z "${IMAGE:-}" ] || rm -f "$IMAGE" "$IMAGE.spdx.json"
-    unset PARTS_DIR IMAGE
+    [ -z "${parts_dir:-}" ] || rm -rf "$parts_dir"
+    [ -z "${image_file:-}" ] || rm -f "$image_file" "$image_file.spdx.json"
+    unset parts_dir image_file
 }

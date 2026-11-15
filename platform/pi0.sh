@@ -23,11 +23,11 @@ readonly firmware_files="bootcode.bin start.elf fixup.dat"
 man=yes
 info=yes
 
-readonly QEMU=qemu-system-arm
+readonly qemu_system=qemu-system-arm
 
 # raspi0 emulates a BCM2835 SOC.
 # mon:stdio connects the single UART (PL011) to the terminal; Ctrl-A C escapes to the QEMU monitor.
-readonly QEMU_FLAGS="\
+readonly qemu_flags="\
     -M raspi0 -m 512 \
     -display none \
     -serial mon:stdio"
@@ -38,10 +38,10 @@ readonly kernel_cmdline="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/
 
 # Under QEMU, `rootdelay` lets the emulated SD card settle, and `initcall_blacklist` works around a
 # known QEMU pm-driver hang on this machine model.
-readonly QEMU_APPEND="$kernel_cmdline rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
+readonly qemu_append="$kernel_cmdline rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
 
 # Disk drive interface name.
-readonly QEMU_DISK_IF=sd
+readonly qemu_disk_if=sd
 
 # FAT boot partition (kernel.img/config.txt/DTB, for real hardware).
-readonly IMAGE_LAYOUT=pi
+readonly image_layout=pi

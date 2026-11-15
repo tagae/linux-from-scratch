@@ -5,7 +5,7 @@
 #
 # Usage: qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
 #   KEY            profile of the image, e.g. pi0-pgp or virt
-#   EXTRA ARGS     appended to the QEMU command line (`lfs qemu` reads them from QEMU_EXTRA),
+#   EXTRA ARGS     appended to the QEMU command line (`lfs qemu` reads them from LFS_QEMU_EXTRA),
 #                  e.g. "-device usb-ccid"
 #   GUEST COMMAND  one line for the guest's shell (dash: no bashisms), default `systemctl is-system-running`
 #   --print        print the command line, quoted for the shell, for the COPY of the image; the copy is
@@ -56,13 +56,13 @@ fi
 if [ ! -s "$copy" ]; then
     /bin/cp -c "$image" "$copy" 2>/dev/null || cp "$image" "$copy"
 fi
-export LFS_PROFILE=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
+export LFS_PROFILE=$key LFS_QEMU_EXTRA=$extra IMAGE_COPY=$copy
 
 if [ $mode = print ]; then
     # `lfs qemu` execs the platform's QEMU, whose name the platform file fixes (readonly), so a stand-in
     # of that name first in PATH prints the arguments it was given instead.
     platform=${key%%-*}
-    bin=$( . "platform/$platform.sh"; echo "${QEMU:-qemu-system-$target_arch}" )
+    bin=$( . "platform/$platform.sh"; echo "${qemu_system:-qemu-system-$target_arch}" )
     shim=$(mktemp -d "${TMPDIR:-/tmp}/qemu-shim.XXXXXX")
     trap 'rm -rf "$shim"' EXIT
     cat > "$shim/$bin" <<'SHIM'

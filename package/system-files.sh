@@ -31,7 +31,7 @@ install() {
     # holds what the firmware loads.
     {
         echo "LABEL=base / btrfs defaults 0 0"
-        [ "${IMAGE_LAYOUT:-pi}" = single ] || echo "LABEL=BOOT /boot vfat defaults 0 0"
+        [ "${image_layout:-pi}" = single ] || echo "LABEL=BOOT /boot vfat defaults 0 0"
     } > etc/fstab
 
     cat > etc/lsb-release <<EOF

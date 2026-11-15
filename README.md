@@ -169,7 +169,7 @@ through its own USB driver (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so t
 `ykman` can use the key in turn.
 
 `make pi0-pgp-test` boots the system in QEMU's emulation of the Zero, which takes emulated USB
-devices (`QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey: the
+devices (`LFS_QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey: the
 key can only be tried on the Pi.
 
 
