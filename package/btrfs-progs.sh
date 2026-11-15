@@ -4,7 +4,7 @@
 : ${package_description:=Btrfs filesystem utilities and libraries.}
 : ${package_license:=GPL-2.0-only AND LGPL-2.1-or-later}
 
-package_source_dir=$SOURCE_DIR/btrfs-progs-v$package_version
+package_source_dir=$LFS_SOURCE_DIR/btrfs-progs-v$package_version
 
 prepare() {
     # The Makefile only builds in the tree configure ran in, so build from a copy of the source.

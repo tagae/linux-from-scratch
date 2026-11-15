@@ -2,13 +2,13 @@
 
 qemu() {
     [ $# -le 1 ] || usage "qemu [IMAGE]"
-    IMAGE="${1:-$IMAGE_DIR/$PROFILE.img}"
-    local kernel="$WORK_DIR/boot/$PROFILE/kernel.img"
+    IMAGE="${1:-$LFS_IMAGE_DIR/$LFS_PROFILE.img}"
+    local kernel="$LFS_WORK_DIR/boot/$LFS_PROFILE/kernel.img"
     [ -f "$kernel" ] || bail "Kernel not found: $kernel"
     [ -f "$IMAGE" ] || bail "Image not found: $IMAGE"
     set -- -kernel "$kernel"
     if [ -n "${dev_tree_blob:-}" ]; then
-        local dtb="$WORK_DIR/boot/$PROFILE/${dev_tree_blob##*/}"
+        local dtb="$LFS_WORK_DIR/boot/$LFS_PROFILE/${dev_tree_blob##*/}"
         [ -f "$dtb" ] || bail "DTB not found: $dtb"
         set -- "$@" -dtb "$dtb"
     fi
@@ -27,7 +27,7 @@ qemu() {
         -no-reboot \
         "$@" \
         -append "${QEMU_APPEND:-} \
-        ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait}" \
+        ${ROOTFLAGS:-rootfstype=btrfs rootflags=subvol=root/$LFS_ROOT_VOLUME rw rootwait}" \
         -drive "file=$overlay,format=qcow2,if=${QEMU_DISK_IF:-sd}" \
         ${QEMU_EXTRA:-}
 }

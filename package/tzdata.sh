@@ -21,8 +21,8 @@ fetch() {
 }
 
 fetch_tarball() {
-    local file=$DOWNLOAD_DIR/${1##*/}
-    [ -f $file ] || fetch_url $1 $DOWNLOAD_DIR
+    local file=$LFS_DOWNLOAD_DIR/${1##*/}
+    [ -f $file ] || fetch_url $1 $LFS_DOWNLOAD_DIR
     verify_hash $file $2
     unpack $file $package_source_dir.tmp
 }

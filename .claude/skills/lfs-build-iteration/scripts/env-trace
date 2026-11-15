@@ -9,7 +9,8 @@
 #   NEW_FILE   the file after it
 #   DRIVER     what to run, e.g. lfs_tools_build, or lfs_tools_bootstrap, or several lines
 #   STUBS_FILE shell code run before the file is read, to stub what the driver needs; the defaults
-#              stub bail, lfs_package_version, mkdir and cp and set TOOL_DIR=/T, BOOTSTRAP_DIR=/B
+#              stub bail, lfs_package_version, mkdir and cp and set LFS_TOOL_DIR=/T and
+#              LFS_BOOTSTRAP_DIR=/B
 # Environment: TRACE_VARS, the variables printed at every lfs_install_package.
 #
 # Prints IDENTICAL or DIFFERENT (with the first differing lines) for each shell. Files under $HOME
@@ -25,8 +26,8 @@ trap 'rm -rf "$tmp"' EXIT
 
 script() { # script FILE
     cat <<STUBS
-TOOL_DIR=/T
-BOOTSTRAP_DIR=/B
+LFS_TOOL_DIR=/T
+LFS_BOOTSTRAP_DIR=/B
 bail() { echo "BAIL \$*"; exit 1; }
 lfs_package_version() { echo 1.0; }
 mkdir() { :; }

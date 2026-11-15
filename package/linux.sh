@@ -63,7 +63,7 @@ prepare() {
             else
                 _make_target $defconfig
             fi
-            ${MACHINE:+_set_kernel_config DEFAULT_HOSTNAME "$MACHINE"}
+            ${LFS_MACHINE:+_set_kernel_config DEFAULT_HOSTNAME "$LFS_MACHINE"}
             _set_kernel_config LOCALVERSION "-$platform"
             _make_target olddefconfig
             ;;

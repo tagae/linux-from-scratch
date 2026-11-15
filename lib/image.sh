@@ -18,10 +18,10 @@ image() {
 # gets none: it is no file to take the digest of.
 build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
-    local target="${1:-$IMAGE_DIR/$PROFILE.img}" shrink=
+    local target="${1:-$LFS_IMAGE_DIR/$LFS_PROFILE.img}" shrink=
     local sbom="${target%.img}.spdx.json"
-    # One install tree per system key, not a shared $INSTALL_DIR.
-    local install_dir=$INSTALL_DIR/$PROFILE
+    # One install tree per system key, not a shared $LFS_INSTALL_DIR.
+    local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
     [ -d "$install_dir" ] || bail "Install directory not found: $install_dir"
 
     stage image
@@ -46,9 +46,9 @@ build_image() {
         IMAGE=$target.tmp
         BOOT_DEVICE=$PARTS_DIR/boot.fat
         BASE_DEVICE=$PARTS_DIR/base.btrfs
-        if [ -n "${IMAGE_SIZE:-}" ]; then
+        if [ -n "${LFS_IMAGE_SIZE:-}" ]; then
             # The root file system fills what the partitions ahead of it leave.
-            truncate -s $IMAGE_SIZE $BASE_DEVICE
+            truncate -s $LFS_IMAGE_SIZE $BASE_DEVICE
             truncate -s -$(base_start)M $BASE_DEVICE
         else
             # The root file system is as small as its files allow.
@@ -77,11 +77,11 @@ build_image() {
 }
 
 confirm_erase() {
-    [ "$(realpath "${ERASE:-/dev/null}")" = "$DEVICE" ] && return 0
+    [ "$(realpath "${LFS_ERASE:-/dev/null}")" = "$DEVICE" ] && return 0
 
     echo "This erases $DEVICE:" >&2
     lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL $DEVICE >&2 2>/dev/null || true
-    bail "To go ahead, set ERASE=$DEVICE"
+    bail "To go ahead, set LFS_ERASE=$DEVICE"
 }
 
 # The size of the Pi layout's FAT boot partition, in MiB.
@@ -150,23 +150,23 @@ find_partitions() {
 # has no room to make chunks in, and what one kind's chunks have free would be lost to the other.
 create_filesystems() {
     mkfs.btrfs -f -L base --checksum xxhash -M \
-        --rootdir $BASE_DIR --subvol rw:root/$ROOT_VOLUME ${1:-} $BASE_DEVICE
+        --rootdir $BASE_DIR --subvol rw:root/$LFS_ROOT_VOLUME ${1:-} $BASE_DEVICE
     if [ "${IMAGE_LAYOUT:-pi}" != single ]; then
         [ -b $BOOT_DEVICE ] || truncate -s ${boot_size}M $BOOT_DEVICE
         mkfs.fat -c -f 1 -F 32 -n BOOT $BOOT_DEVICE
         # FAT has no owners, so the boot files are copied as they are.
-        mcopy -s -i $BOOT_DEVICE $INSTALL_DIR/$PROFILE/boot/* ::
+        mcopy -s -i $BOOT_DEVICE $LFS_INSTALL_DIR/$LFS_PROFILE/boot/* ::
     fi
 }
 
 # Copies the files of the root file system: the system's, owned by root, the Pi layout's boot files
 # aside, as they have a partition of their own; and those that belong to the image.
 stage_root() {
-    local install_dir=$INSTALL_DIR/$PROFILE
+    local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
     stage "Staging the root file system from $install_dir"
     # The file system's top level, which holds the root subvolume.
     BASE_DIR=$PARTS_DIR/base
-    ROOT_DIR=$BASE_DIR/root/$ROOT_VOLUME
+    ROOT_DIR=$BASE_DIR/root/$LFS_ROOT_VOLUME
     mkdir -p $ROOT_DIR
     # The install tree belongs to the build user, but the system's files belong to root.
     if [ "${IMAGE_LAYOUT:-pi}" = single ]; then
@@ -186,10 +186,10 @@ stage_root() {
     touch $ROOT_DIR/var/lib/systemd/timesync/clock
     # The time zone belongs to the image, so that the system is the same for every zone. A system
     # without tzdata keeps UTC, which needs no zone file.
-    local timezone=${TIMEZONE:-UTC}
+    local timezone=${LFS_TIMEZONE:-UTC}
     if [ -f $ROOT_DIR/usr/share/zoneinfo/$timezone ]; then
         ln -sfn /usr/share/zoneinfo/$timezone $ROOT_DIR/etc/localtime
-    elif [ -n "${TIMEZONE:-}" ]; then
+    elif [ -n "${LFS_TIMEZONE:-}" ]; then
         bail "Unknown time zone '$timezone': time zones come with the tzdata package"
     fi
     # With a machine ID, the first boot is an ordinary one. Without it, systemd presets every unit

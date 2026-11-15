@@ -53,7 +53,7 @@ With this, the tools are fully functional and can be used to build packages.
 Building the System
 -------------------
 
-The following command builds the system for a given profile, into `install/$PROFILE`:
+The following command builds the system for a given profile, into `install/$LFS_PROFILE`:
 
 ```shell
 ./lfs system build
@@ -61,15 +61,15 @@ The following command builds the system for a given profile, into `install/$PROF
 
 It first builds a cross toolchain for the profile's platform: `binutils`, a first `gcc`, the Linux
 API headers and `glibc`, then the full cross `gcc`. Everything else comes from the profile
-definition at `profile/$PROFILE.sh`, compiled with that toolchain. This includes the kernel
+definition at `profile/$LFS_PROFILE.sh`, compiled with that toolchain. This includes the kernel
 (`linux` with a given set of capabilities), init (e.g, `systemd`), and further packages.
 
 
 Images
 ------
 
-The following command makes a disk image from the install tree at `install/$PROFILE`, as populated
-by `./lfs system build`:
+The following command makes a disk image from the install tree at `install/$LFS_PROFILE`, as
+populated by `./lfs system build`:
 
 ```shell
 ./lfs image build
@@ -83,11 +83,11 @@ Scanners can use this document to signal vulnerabilities.
 It is possible to write the system directly to a device:
 
 ```shell
-sudo ERASE=/dev/sdb ./lfs image build /dev/sdb
+sudo LFS_ERASE=/dev/sdb ./lfs image build /dev/sdb
 ```
 
-`ERASE` is required to ensure the user does intend to obliterate any data that might be present on
-the device.
+`LFS_ERASE` is required to ensure the user does intend to obliterate any data that might be present
+on the device.
 
 
 Emulating
@@ -149,7 +149,10 @@ All shell code should be POSIX compliant.
 Shell variables are part of the **external API** if they are used to parameterise `lfs`. They are
 the only variables that `lfs` passes on to builds, along with `PATH` and `TMPDIR`.
 
-External API variables have uppercase names (e.g., `PROFILE`, `TIMEZONE`, `IMAGE_SIZE`)
+External API variables have uppercase names, prefixed with `LFS_` so that none clashes with a
+variable of the caller's (e.g., `LFS_PROFILE`, `LFS_TIMEZONE`, `LFS_IMAGE_SIZE`). `PATH` and
+`TMPDIR` are the platform's own, and keep their names. `lfs` ignores every variable that it does not
+name.
 
 After `tools bootstrap`, which builds the first toolsset, `PATH` holds the tools' directories only:
 nothing of the host's (a program, a config script, an interpreter) finds its way into a build.
@@ -270,11 +273,11 @@ build on each other. Every profile installs the kernel, which `lfs` then copies,
 to `work/boot/<profile>`. Profiles share nothing but the build tools: a package that two profiles
 install is built under each one's key, and the profiles of one platform build their toolchains
 apart. Build-machine tools that a system build needs (swig, the Rust seed, native Python modules)
-are installed into `TOOL_DIR` from the profile with `lfs_tools_install <package>`, archived
+are installed into `LFS_TOOL_DIR` from the profile with `lfs_tools_install <package>`, archived
 `*-tools-*` under the profile's key, never shipped. The tools that `lfs tools` builds are archived
 under the key `tools` instead, and every system shares them, so their recipes use nothing of the
 platform (`target_arch`, `kernel_arch` and the like are the platform's). A tool of a profile may:
-`rust` does. Its files in `TOOL_DIR` are then the platform's, and two systems with such a tool
+`rust` does. Its files in `LFS_TOOL_DIR` are then the platform's, and two systems with such a tool
 cannot be built at once.
 
 
@@ -358,7 +361,7 @@ Cross-Compiling
   sysroot misdirect later builds (delete them); guard same-arch cross builds, where `build` equals
   `host`.
 * Python (CPython 3.14, `python` and `dev` components): extensions and wheels are built by the
-  `TOOL_DIR` Python against the target's sysconfigdata (`lib/python.sh`: `python_wheel` and
+  `LFS_TOOL_DIR` Python against the target's sysconfigdata (`lib/python.sh`: `python_wheel` and
   `python_install_wheel` for a build backend, `python_install_modules` for pure Python,
   `python_site_packages`; templates `package/python/cffi.sh` and `package/python/pycparser.sh`).
   Recipes never mention `python_version`, which the framework sets. Bytecode is precompiled
@@ -366,7 +369,7 @@ Cross-Compiling
   metadata is read at run time. The default `package_source_dir` is right unless the sdist's
   directory is spelled differently from the name (`more_itertools-...`): then the recipe sets it,
   with `python/` in it.
-* Rust: the seed is in `TOOL_DIR` (`package/rust.sh`, `lfs_tools_install rust`); the triple is
+* Rust: the seed is in `LFS_TOOL_DIR` (`package/rust.sh`, `lfs_tools_install rust`); the triple is
   `$target_arch-unknown-$target_kernel-$target_abi`; crates are fetched at fetch time and built
   `--locked --offline`; `--remap-path-prefix` keeps build paths out of panics; binaries are
   stripped.
@@ -389,8 +392,8 @@ triples see a native build. For `cryptography`:
 * The `cc` crate reads `CC_<triple_with_underscores>`, then `HOST_CC` if the triples are equal, else
   `TARGET_CC`, then `CC`: set `CC_<triple>` and `AR_<triple>`.
 * pyo3 detects cross builds by comparing triples: set `PYO3_CROSS=1` with `PYO3_CROSS_LIB_DIR`.
-* The `TOOL_DIR` Python and the platform's share a multiarch name: select the sysconfigdata by name
-  and by path (`python_wheel` sets `_PYTHON_SYSCONFIGDATA_NAME` and `_PATH`).
+* The `LFS_TOOL_DIR` Python and the platform's share a multiarch name: select the sysconfigdata by
+  name and by path (`python_wheel` sets `_PYTHON_SYSCONFIGDATA_NAME` and `_PATH`).
 * Only ARM32 needs `KUSER_HELPERS`, libatomic's need for it, and 32-bit time.
 
 A recipe is proven on a platform with a different triple (pi0) and on one with the same (virt):

@@ -1,8 +1,8 @@
 # Target System
 # -------------
 #
-# Builds the system that a profile lists into its own tree, $INSTALL_DIR/$PROFILE, from which
-# images are made, and which holds only what the running system needs.
+# Builds the system that a profile lists into its own tree, $LFS_INSTALL_DIR/$LFS_PROFILE, from
+# which images are made, and which holds only what the running system needs.
 #
 # The cross toolchain that compiles the system has a sysroot of its own, which holds the same
 # packages, plus what compiling against them needs: the kernel headers and the packages' dev
@@ -32,9 +32,9 @@ lfs_system_build() {
     readonly nls=no
     readonly multilib=no
     readonly prefix=/usr
-    readonly system_dir=$INSTALL_DIR/$PROFILE
+    readonly system_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
     # Under the key the cross toolchain is archived under, as the toolchain records the path.
-    readonly sysroot=$WORK_DIR/$package_key/sysroot
+    readonly sysroot=$LFS_WORK_DIR/$package_key/sysroot
 
     # With an explicit build triplet, autoconf never mistakes a platform of the build machine's
     # architecture for the build machine itself, and never runs what it compiles.
@@ -69,22 +69,22 @@ lfs_system_build() {
     # The Python packages of the profile are for this version, which lib/python.sh reads.
     python_version=$(lfs_package_version python)
 
-    ( . $profile_dir/$PROFILE.sh )
+    ( . $profile_dir/$LFS_PROFILE.sh )
 
     # QEMU runs on the host, which cannot see the install tree (a Docker volume), but sees
-    # WORK_DIR/boot: the kernel that the profile installed, and the platform's device tree.
-    rm -rf $WORK_DIR/boot/$PROFILE
-    mkdir -pv $WORK_DIR/boot/$PROFILE
+    # LFS_WORK_DIR/boot: the kernel that the profile installed, and the platform's device tree.
+    rm -rf $LFS_WORK_DIR/boot/$LFS_PROFILE
+    mkdir -pv $LFS_WORK_DIR/boot/$LFS_PROFILE
     (
         cd $system_dir/boot
-        cp -v kernel.img ${dev_tree_blob:+${dev_tree_blob##*/}} $WORK_DIR/boot/$PROFILE/
+        cp -v kernel.img ${dev_tree_blob:+${dev_tree_blob##*/}} $LFS_WORK_DIR/boot/$LFS_PROFILE/
     )
 }
 
 # Chapter 5: Compiling a Cross-Toolchain
 #
-# Builds the cross toolchain into TOOL_DIR. Its C library, which the final compiler links against,
-# is the system's, installed into the system as well as the sysroot.
+# Builds the cross toolchain into LFS_TOOL_DIR. Its C library, which the final compiler links
+# against, is the system's, installed into the system as well as the sysroot.
 lfs_system_build_toolchain() {
     lfs_toolchain_install binutils
     (
@@ -144,7 +144,7 @@ lfs_toolchain_install() (
     fpu=${target_gcc_fpu:-} float=${target_gcc_float:-}
 
     : ${package_variant:=cross}
-    package_install_dir=$TOOL_DIR
+    package_install_dir=$LFS_TOOL_DIR
 
     # The platform's code in the toolchain (libgcc, libstdc++) is built like the system's.
     export CFLAGS_FOR_TARGET=$CFLAGS CXXFLAGS_FOR_TARGET=$CXXFLAGS LDFLAGS_FOR_TARGET=${LDFLAGS:-}

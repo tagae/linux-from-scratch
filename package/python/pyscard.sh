@@ -9,7 +9,7 @@
 build() {
     # SWIG, which generates the module's C code, looks for its library where it was installed to,
     # which is not where the build machine has it.
-    export SWIG_LIB=$TOOL_DIR$(swig -swiglib)
+    export SWIG_LIB=$LFS_TOOL_DIR$(swig -swiglib)
     python_wheel
 }
 

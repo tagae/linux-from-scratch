@@ -21,7 +21,7 @@ only that line's output (on failure: the end of the console and its path). `./lf
 a qcow2 overlay next to it (`x.img` through `x.qcow2`), which keeps what the system writes until the image is
 made anew: the image itself is never written, and the copy gives each check a fresh overlay. Env:
 `IMAGE_COPY=path` keeps a copy (and its overlay) across calls, `EXPECT_SCRIPT=` runs your own script (see
-Prompts), `VERBOSE=1`, `TIMEOUT=s` (400), `STATE_DIR=`. `--print` prints the quoted QEMU command for
+Prompts), `VERBOSE=1`, `TIMEOUT=s` (400), `LFS_STATE_DIR=`. `--print` prints the quoted QEMU command for
 `image/KEY.qemu.img` (made, with `image/KEY.qemu.qcow2`; delete both after): to see what a platform runs, or
 to hand the user a command that needs root.
 

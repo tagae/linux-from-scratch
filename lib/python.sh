@@ -22,9 +22,9 @@ python_install_modules() {
     python_compile
 }
 
-# Builds the wheel of a Python package from a copy of its source, with the Python of TOOL_DIR. For
-# the platform, that Python takes the compiler, the flags and the file names of extension modules
-# from the platform's sysconfigdata, and the headers come from the sysroot.
+# Builds the wheel of a Python package from a copy of its source, with the Python of LFS_TOOL_DIR.
+# For the platform, that Python takes the compiler, the flags and the file names of extension
+# modules from the platform's sysconfigdata, and the headers come from the sysroot.
 python_wheel() (
     find . -mindepth 1 -delete
     cp -r $package_source_dir/. .
@@ -37,7 +37,7 @@ python_wheel() (
         export _PYTHON_SYSCONFIGDATA_NAME=$(basename $lib/_sysconfigdata_*.py .py)
         export CPPFLAGS=-I$sysroot$prefix/include/python${python_version%.*}
     fi
-    $TOOL_DIR/usr/bin/python3 -m pip wheel --no-build-isolation --no-deps --no-index \
+    $LFS_TOOL_DIR/usr/bin/python3 -m pip wheel --no-build-isolation --no-deps --no-index \
         --no-cache-dir --disable-pip-version-check --wheel-dir dist .
 )
 
@@ -46,17 +46,17 @@ python_wheel() (
 python_install_wheel() {
     local site_packages=$package_install_dir$(python_site_packages)
     mkdir -pv $site_packages
-    $TOOL_DIR/usr/bin/python3 -m zipfile -e dist/*.whl $site_packages
+    $LFS_TOOL_DIR/usr/bin/python3 -m zipfile -e dist/*.whl $site_packages
     [ -z "${host:-}" ] || rm -rf $site_packages/*.dist-info
     python_compile
 }
 
 # Compiles the byte code of what the package installs in the platform's site-packages, which
-# nothing at run time has to write, like that of the standard library. The Python of TOOL_DIR
+# nothing at run time has to write, like that of the standard library. The Python of LFS_TOOL_DIR
 # writes its own.
 python_compile() {
     [ -n "${host:-}" ] || return 0
     local site_packages=$(python_site_packages)
-    $TOOL_DIR/usr/bin/python3 -m compileall -q -j0 -d $site_packages \
+    $LFS_TOOL_DIR/usr/bin/python3 -m compileall -q -j0 -d $site_packages \
         --invalidation-mode unchecked-hash $package_install_dir$site_packages
 }

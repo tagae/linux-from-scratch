@@ -18,7 +18,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   `source/<profile>`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
   `FEATURES`: to add a package, add its lines to the profile.
 - Build: `make docker-image/<profile>.img` (Linux hosts: `make image/<profile>.img`); also `make image
-  PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb}`.
+  LFS_PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb}`.
 - Packages are archived once: `archive/<profile>/<name>-<version>[-component].tar.xz` + `.sha256`: the
   toolchain, the kernel and every package of the profile under one key, so profiles share no archive. The build
   tools (`<name>-bootstrap-<version>`, `<name>-tools-<version>`) are under the key `tools`, built once for every

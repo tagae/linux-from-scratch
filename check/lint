@@ -102,8 +102,8 @@ done
 # Every profile is named after a platform that lfs knows. stdout goes to /dev/null and stderr to the output,
 # which is why the redirections are in this order.
 for profile in $(find profile -type f -name '*.sh' | sed 's|^profile/||; s|\.sh$||' | sort); do
-    if ! output=$(PROFILE=$profile ./lfs help 2>&1 > /dev/null); then
-        finding "PROFILE=$profile does not resolve: $output"
+    if ! output=$(LFS_PROFILE=$profile ./lfs help 2>&1 > /dev/null); then
+        finding "LFS_PROFILE=$profile does not resolve: $output"
     fi
 done
 

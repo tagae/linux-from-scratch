@@ -1,6 +1,6 @@
 # Archives a package, unless it has an archive, and unpacks it into `package_install_dir`, which the
-# caller sets: the `lfs_<destination>_install` functions and the phases of lib/tools.sh do. A profile
-# calls those, never this.
+# caller sets: the `lfs_<destination>_install` functions and the phases of lib/tools.sh do. A
+# profile calls those, never this.
 lfs_install_package() {
     lfs_archive_package "$1"
     lfs_unarchive_package "$1"
@@ -31,7 +31,7 @@ lfs_archive_package() (
 
     archive
 
-    echo ${archive#"$ARCHIVE_DIR"/}
+    echo ${archive#"$LFS_ARCHIVE_DIR"/}
 )
 
 lfs_unarchive_package() (
@@ -59,15 +59,15 @@ lfs_fetch_package() (
 
 # Downloads the source of every package, each as its recipe fetches it for the profile's platform
 # (the platform's Rust standard library, for one), without unpacking any: a build finds in
-# DOWNLOAD_DIR what its packages pin, and a source that cannot be had stops here rather than in the
-# middle of a build. The recipes unpack into a directory that is removed afterwards.
+# LFS_DOWNLOAD_DIR what its packages pin, and a source that cannot be had stops here rather than in
+# the middle of a build. The recipes unpack into a directory that is removed afterwards.
 lfs_fetch() {
     local recipe
     unpack() { :; }
     for recipe in $(cd $package_dir && find . -name '*.sh' | sed 's|^\./||; s|\.sh$||' | sort); do
         lfs_fetch_package $recipe > /dev/null
     done
-    rm -rf "$SOURCE_DIR"
+    rm -rf "$LFS_SOURCE_DIR"
 }
 
 # Fetches the sources from a package's `package_fetch_dependencies`,
@@ -148,7 +148,7 @@ lfs_source_package() {
     }
 
     archive_filename() {
-        echo $ARCHIVE_DIR/$package_key/$package_archive
+        echo $LFS_ARCHIVE_DIR/$package_key/$package_archive
     }
 
     default_archive() {
@@ -166,14 +166,14 @@ lfs_source_package() {
         # Only an archive as it was built is installed.
         ( cd ${archive%/*} && sha256sum --check --quiet ${archive##*/}.sha256 ) \
             || bail "$archive does not match its recorded digest"
-        # The builds that run at once share TOOL_DIR, and extracting a tool again rewrites the files
-        # that another build is running. So TOOL_DIR records the digest of the archive that it holds
-        # under the archive's name, and an archive is extracted only when it is not the one there:
-        # the name is shared by the archives of the systems that build the same tool apart, and the
-        # last to be extracted is the one installed.
+        # The builds that run at once share LFS_TOOL_DIR, and extracting a tool again rewrites the
+        # files that another build is running. So LFS_TOOL_DIR records the digest of the archive
+        # that it holds under the archive's name, and an archive is extracted only when it is not
+        # the one there: the name is shared by the archives of the systems that build the same tool
+        # apart, and the last to be extracted is the one installed.
         local installed=
-        if [ "$package_install_dir" = "$TOOL_DIR" ]; then
-            installed=$TOOL_DIR/.installed/${archive##*/}
+        if [ "$package_install_dir" = "$LFS_TOOL_DIR" ]; then
+            installed=$LFS_TOOL_DIR/.installed/${archive##*/}
             ! cmp -s $archive.sha256 $installed || return 0
         fi
         mkdir -pv $package_install_dir
@@ -199,9 +199,10 @@ lfs_source_package() {
     }
 
     fetch_patch() {
-        mkdir -p $DOWNLOAD_DIR/$package_category
-        [ -f $DOWNLOAD_DIR/$package_category/$file ] || fetch_url "$url" "$DOWNLOAD_DIR/$package_category"
-        verify_hash "$DOWNLOAD_DIR/$package_category/$file" "$hash"
+        mkdir -p $LFS_DOWNLOAD_DIR/$package_category
+        [ -f $LFS_DOWNLOAD_DIR/$package_category/$file ] \
+            || fetch_url "$url" "$LFS_DOWNLOAD_DIR/$package_category"
+        verify_hash "$LFS_DOWNLOAD_DIR/$package_category/$file" "$hash"
     }
 
     # The helpers of the package's category, lib/<category>.sh, if it has any, are for its recipes
@@ -215,7 +216,7 @@ lfs_source_package() {
         ;;
         https://github.com*|https://git.*)
             if [ -z "${package_branch:-}" ]; then
-                package_branch_file=$WORK_DIR/.$package_name-branch
+                package_branch_file=$LFS_WORK_DIR/.$package_name-branch
                 if ! [ -s $package_branch_file ]; then
                     mkdir -p $(dirname $package_branch_file)
                     git_default_branch $package_source > $package_branch_file
@@ -230,12 +231,12 @@ lfs_source_package() {
 
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
     : ${package_files_dir:=$package_dir/$package_name}
-    : ${package_source_dir:=$SOURCE_DIR/$package_name-$package_version}
+    : ${package_source_dir:=$LFS_SOURCE_DIR/$package_name-$package_version}
     # Sources are unpacked in the package's category, whatever the recipe sets: elsewhere, a package
     # of another category could unpack into the same directory.
-    [ "$(dirname $package_source_dir)" = "$(dirname $SOURCE_DIR/$package_name)" ] \
+    [ "$(dirname $package_source_dir)" = "$(dirname $LFS_SOURCE_DIR/$package_name)" ] \
         || bail "$package_name: $package_source_dir is not in the directory of the package's category"
-    : ${package_work_dir:=$WORK_DIR/$package_key/$package_release}
+    : ${package_work_dir:=$LFS_WORK_DIR/$package_key/$package_release}
     : ${package_build_dir:=$package_work_dir/build/$package_component}
     : ${package_stage_dir:=$package_work_dir/stage/$package_component}
     : ${package_install_dir:=$package_stage_dir}

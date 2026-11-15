@@ -4,9 +4,9 @@
 : ${package_description:=Python programming language.}
 : ${package_license:=Python-2.0.1}
 
-package_source_dir=$SOURCE_DIR/Python-$package_version
+package_source_dir=$LFS_SOURCE_DIR/Python-$package_version
 
-: ${build_python:=$TOOL_DIR/usr/bin/python3}
+: ${build_python:=$LFS_TOOL_DIR/usr/bin/python3}
 
 prepare() {
     case $package_component in

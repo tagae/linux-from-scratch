@@ -9,7 +9,7 @@
 # reports the program as not found, rather than what is missing.
 
 lfs_check() {
-    local install_dir=$INSTALL_DIR/$PROFILE what= archive missing
+    local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE what= archive missing
     [ -d "$install_dir" ] || bail "Install directory not found: $install_dir: build the system"
     if [ $# -eq 0 ]; then
         missing=$(cd $install_dir && find . -type f | _programs_without_interpreter $install_dir)

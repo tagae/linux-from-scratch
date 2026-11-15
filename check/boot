@@ -7,7 +7,7 @@
 # Usage, from the repository root: [TEST_TIMEOUT=seconds] check/boot [PROFILE] (`make test`)
 
 if {[llength $argv] > 0} {
-    set env(PROFILE) [lindex $argv 0]
+    set env(LFS_PROFILE) [lindex $argv 0]
 }
 
 # TEST_TIMEOUT overrides the default per-phase timeout.

@@ -163,8 +163,8 @@ lfs_system_install procps-ng
 
 #===[ Time zones ]===
 
-# The time zone database, for the image's TIMEZONE and for programs that show local times. Without
-# it, a system keeps UTC.
+# The time zone database, for the image's LFS_TIMEZONE and for programs that show local times.
+# Without it, a system keeps UTC.
 lfs_system_install tzdata
 
 #===[ YubiKey Manager ]===

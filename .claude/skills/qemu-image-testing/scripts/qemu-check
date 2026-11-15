@@ -21,7 +21,7 @@
 #                      gives it a logged-in shell (see examples/)
 #   VERBOSE=1          print the whole console instead of what the command printed
 #   TIMEOUT=SECONDS    for the login prompt and for the command (default 400)
-#   STATE_DIR=PATH     where work/ and image/ are, as for lfs (default: the repo)
+#   LFS_STATE_DIR=PATH     where work/ and image/ are, as for lfs (default: the repo)
 #
 # The image is always a COPY, so that each check starts afresh: `lfs qemu` keeps what the system writes
 # in an overlay next to the image it boots (x.img's is x.qcow2), until that image is made anew. Failure
@@ -38,7 +38,7 @@ key=${1:?Usage: qemu-check [--print] KEY [EXTRA QEMU ARGS] [GUEST COMMAND]}
 extra=${2:-}
 cmd=${3:-systemctl is-system-running}
 
-state=${STATE_DIR:-$root}
+state=${LFS_STATE_DIR:-$root}
 image=$state/image/$key.img
 [ -f "$image" ] || { echo "qemu-check: no $image: make docker-image/$key.img first" >&2; exit 1; }
 [ -f "$state/work/boot/$key/kernel.img" ] \
@@ -56,7 +56,7 @@ fi
 if [ ! -s "$copy" ]; then
     /bin/cp -c "$image" "$copy" 2>/dev/null || cp "$image" "$copy"
 fi
-export PROFILE=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
+export LFS_PROFILE=$key QEMU_EXTRA=$extra IMAGE_COPY=$copy
 
 if [ $mode = print ]; then
     # `lfs qemu` execs the platform's QEMU, whose name the platform file fixes (readonly), so a stand-in

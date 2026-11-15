@@ -36,15 +36,15 @@ install() {
 
     cat > etc/lsb-release <<EOF
 DISTRIB_ID="Linux From Scratch"
-DISTRIB_CODENAME="${DISTRIB_CODENAME:-local}"
-DISTRIB_DESCRIPTION="${DISTRIB_DESCRIPTION:-Linux From Scratch}"
+DISTRIB_CODENAME="${LFS_DISTRIB_CODENAME:-local}"
+DISTRIB_DESCRIPTION="${LFS_DISTRIB_DESCRIPTION:-Linux From Scratch}"
 EOF
 
     cat > etc/os-release <<EOF
 NAME="Linux From Scratch"
 ID=lfs
-VERSION_CODENAME="${VERSION_CODENAME:-local}"
+VERSION_CODENAME="${LFS_VERSION_CODENAME:-local}"
 HOME_URL="https://www.linuxfromscratch.org/lfs/"
-RELEASE_TYPE="${RELEASE_TYPE:-development}"
+RELEASE_TYPE="${LFS_RELEASE_TYPE:-development}"
 EOF
 }

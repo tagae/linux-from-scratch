@@ -34,9 +34,9 @@ prepare() {
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
             # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
-            # which the Python of TOOL_DIR has, unlike whichever python3 the build machine has
+            # which the Python of LFS_TOOL_DIR has, unlike whichever python3 the build machine has
             # first in PATH. Meson, ninja and what they run all see the former first.
-            env PATH=$TOOL_DIR/usr/bin:$PATH meson setup $package_source_dir \
+            env PATH=$LFS_TOOL_DIR/usr/bin:$PATH meson setup $package_source_dir \
                 --cross-file cross.ini \
                 ${prefix:+--prefix=$prefix} \
                 --libdir=lib \
@@ -128,7 +128,7 @@ prepare() {
 build() {
     case $package_component in
         systemd)
-            env PATH=$TOOL_DIR/usr/bin:$PATH ninja
+            env PATH=$LFS_TOOL_DIR/usr/bin:$PATH ninja
             ;;
         *)
             default_build
@@ -139,7 +139,7 @@ build() {
 install() {
     case $package_component in
         systemd)
-            DESTDIR=$package_install_dir env PATH=$TOOL_DIR/usr/bin:$PATH ninja install
+            DESTDIR=$package_install_dir env PATH=$LFS_TOOL_DIR/usr/bin:$PATH ninja install
 
             # The static accounts (root and systemd's own users), the shell profile, and the
             # hardening of the BPF compiler, which the kernel has for systemd.

@@ -188,9 +188,9 @@ systemd-timesyncd, which saves the clock every minute and at shutdown, and resto
 boot. Every image starts at the time it was made. No NTP servers are configured, as there is no
 network.
 
-Images are in UTC. `TIMEZONE`, set to a name from the time zone database, gives an image of a
-profile that installs `tzdata` another zone, e.g. `make image PROFILE=pi0-pgp
-TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how time is shown. The
+Images are in UTC. `LFS_TIMEZONE`, set to a name from the time zone database, gives an image of a
+profile that installs `tzdata` another zone, e.g. `make image LFS_PROFILE=pi0-pgp
+LFS_TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how time is shown. The
 package carries the whole database, so `TZ` and `/etc/localtime` can name any other zone on the
 device.
 
@@ -227,8 +227,11 @@ run, with nothing recorded, deletes all of that key's archives.
 Each target defaults to the `virt` profile. The default can be changed through a variable:
 
 ```shell
-make image PROFILE=pi0-pgp
+make image LFS_PROFILE=pi0-pgp
 ```
+
+The variables that `lfs` reads all start with `LFS_`, so that none of them clashes with a variable
+of the caller's environment, and `lfs` ignores every other.
 
 The profile's name is the key of every deliverable: the install tree, the boot files, and the image. A
 target can be named by its profile directly:
@@ -239,11 +242,11 @@ make pi0-pgp-test
 
 Images are file targets under that same key, so `make image/pi0-pgp.img` produces the image of the
 `pi0-pgp` profile. An image is as small as its system allows: its root file system has only the room
-that btrfs leaves in it, which grows with the system. `IMAGE_SIZE` makes it larger (e.g.
-`IMAGE_SIZE=1G`), the root file system filling it. An image appears only once it is complete. `make
-qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps what the system
-writes until the image is made anew, so that the image stays as it was made, to be written to a
-card.
+that btrfs leaves in it, which grows with the system. `LFS_IMAGE_SIZE` makes it larger (e.g.
+`LFS_IMAGE_SIZE=1G`), the root file system filling it. An image appears only once it is complete.
+`make qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps what the
+system writes until the image is made anew, so that the image stays as it was made, to be written to
+a card.
 
 Package archives are filed under the key of the profile, `archive/<profile>/`: the cross toolchain's,
 the kernel's and those of every package the profile installs. Profiles share no archive but those of

@@ -26,11 +26,11 @@ readonly profile_dir=$project_dir/profile
 # The variables that builds see of the environment lfs is started in: its external API, PATH and
 # TMPDIR. As in a container, nothing else of the caller's comes in, such as what steers compilers,
 # pkg-config or interpreters (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH...). QEMU runs in the caller's.
-readonly lfs_environment="PROFILE TIMEZONE IMAGE_SIZE ERASE \
-    MACHINE LFS_RELEASE VERSION_CODENAME RELEASE_TYPE DISTRIB_CODENAME \
-    DISTRIB_DESCRIPTION \
-    ROOT_VOLUME STATE_DIR DOWNLOAD_DIR SOURCE_DIR WORK_DIR TOOL_DIR INSTALL_DIR ARCHIVE_DIR \
-    IMAGE_DIR BOOTSTRAP_DIR PATH TMPDIR"
+readonly lfs_environment="LFS_PROFILE LFS_TIMEZONE LFS_IMAGE_SIZE LFS_ERASE \
+    LFS_MACHINE LFS_RELEASE LFS_VERSION_CODENAME LFS_RELEASE_TYPE LFS_DISTRIB_CODENAME \
+    LFS_DISTRIB_DESCRIPTION LFS_ROOT_VOLUME \
+    LFS_STATE_DIR LFS_DOWNLOAD_DIR LFS_SOURCE_DIR LFS_WORK_DIR LFS_TOOL_DIR LFS_INSTALL_DIR \
+    LFS_ARCHIVE_DIR LFS_IMAGE_DIR LFS_BOOTSTRAP_DIR PATH TMPDIR"
 
 # Starts lfs anew with the same arguments in an environment that holds those variables alone,
 # unless it holds no other already. PWD, OLDPWD, SHLVL and _ are the shell's own. The names come
@@ -64,79 +64,80 @@ export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 #===[ State Storage ]===
 
 # Override if you wish to store artefacts in a custom dir.
-: ${STATE_DIR:=$project_dir}
+: ${LFS_STATE_DIR:=$project_dir}
 
 # Contains fetched archives. Allows offline work once all needed artefacts have been fetched.
-: ${DOWNLOAD_DIR:=$STATE_DIR/download}
+: ${LFS_DOWNLOAD_DIR:=$LFS_STATE_DIR/download}
 
 # Contains unarchived package sources.
-: ${SOURCE_DIR:=$STATE_DIR/source}
+: ${LFS_SOURCE_DIR:=$LFS_STATE_DIR/source}
 
 # Build state.
-: ${WORK_DIR:=$STATE_DIR/work}
+: ${LFS_WORK_DIR:=$LFS_STATE_DIR/work}
 
 # Build toolchains.
-: ${TOOL_DIR:=$STATE_DIR/tools}
+: ${LFS_TOOL_DIR:=$LFS_STATE_DIR/tools}
 
 # Root filesystem being built.
-: ${INSTALL_DIR:=$STATE_DIR/install}
+: ${LFS_INSTALL_DIR:=$LFS_STATE_DIR/install}
 
 # Built package archives.
-: ${ARCHIVE_DIR:=$STATE_DIR/archive}
+: ${LFS_ARCHIVE_DIR:=$LFS_STATE_DIR/archive}
 
 # Built images to be used on actual hardware, or emulators.
-: ${IMAGE_DIR:=$STATE_DIR/image}
+: ${LFS_IMAGE_DIR:=$LFS_STATE_DIR/image}
 
 # Artefacts produced by bootstrap, needed to build a system from scratch.
-: ${BOOTSTRAP_DIR:=$WORK_DIR/bootstrap}
+: ${LFS_BOOTSTRAP_DIR:=$LFS_WORK_DIR/bootstrap}
 
-# SOURCE_DIR is made read-only below, once the key of what unpacks there is known.
-readonly STATE_DIR DOWNLOAD_DIR WORK_DIR TOOL_DIR \
-         INSTALL_DIR ARCHIVE_DIR IMAGE_DIR BOOTSTRAP_DIR
+# LFS_SOURCE_DIR is made read-only below, once the key of what unpacks there is known.
+readonly LFS_STATE_DIR LFS_DOWNLOAD_DIR LFS_WORK_DIR LFS_TOOL_DIR \
+         LFS_INSTALL_DIR LFS_ARCHIVE_DIR LFS_IMAGE_DIR LFS_BOOTSTRAP_DIR
 
 #===[ System Characteristics ]===
 
 #-- Profile: the whole system to build, as the list of packages in profile/<profile>.sh. Its name is
 #   the key of everything the build makes: the packages' archives, the install tree, the sysroot, the
-#   kernel in WORK_DIR/boot and the image.
+#   kernel in LFS_WORK_DIR/boot and the image.
 
-# `qemu IMAGE` boots the image of the profile that its name, <profile>.img, gives, unless PROFILE
-# says otherwise.
-if [ -z "${PROFILE:-}" ] && [ "${1:-}" = qemu ] && [ $# -ge 2 ]; then
+# `qemu IMAGE` boots the image of the profile that its name, <profile>.img, gives, unless
+# LFS_PROFILE says otherwise.
+if [ -z "${LFS_PROFILE:-}" ] && [ "${1:-}" = qemu ] && [ $# -ge 2 ]; then
     _image=${2##*/}
-    [ ! -f $profile_dir/${_image%.img}.sh ] || PROFILE=${_image%.img}
+    [ ! -f $profile_dir/${_image%.img}.sh ] || LFS_PROFILE=${_image%.img}
     unset _image
 fi
 
-: ${PROFILE:=virt}
+: ${LFS_PROFILE:=virt}
 
-[ -f $profile_dir/$PROFILE.sh ] || bail "Unknown profile '$PROFILE'"
+[ -f $profile_dir/$LFS_PROFILE.sh ] || bail "Unknown profile '$LFS_PROFILE'"
 
-readonly PROFILE
+readonly LFS_PROFILE
 
 #-- Platform: hardware on which the built system will run, the start of the profile's name, up to its
 #   first `-`: `pi0` for `pi0-pgp`, `virt` for `virt`.
 
-readonly platform=${PROFILE%%-*}
+readonly platform=${LFS_PROFILE%%-*}
 
 [ -f $project_dir/platform/$platform.sh ] \
-    || bail "Unsupported platform '$platform': a profile is named <platform>[-<name>] ('$PROFILE')"
+    || bail "Unsupported platform '$platform': a profile is named <platform>[-<name>]" \
+            "('$LFS_PROFILE')"
 
 . $project_dir/platform/$platform.sh
 
 #-- Package key: the key under which the system's packages are archived.
 
-package_key=$PROFILE
+package_key=$LFS_PROFILE
 
 #-- Source directory: sources are unpacked and patched in place, so the tools and each profile have a
-#   directory of their own in SOURCE_DIR. Builds of different profiles run at once, and one would
-#   patch, or discard after a failed patch, the source that another compiles. Downloads are shared,
-#   as they are written whole and checked by hash.
+#   directory of their own in LFS_SOURCE_DIR. Builds of different profiles run at once, and one
+#   would patch, or discard after a failed patch, the source that another compiles. Downloads are
+#   shared, as they are written whole and checked by hash.
 
 case "${1:-help}" in
-    tools) readonly SOURCE_DIR=$SOURCE_DIR/$tools_key ;;
-    fetch) readonly SOURCE_DIR=$(mktemp -d) ;;
-    *)     readonly SOURCE_DIR=$SOURCE_DIR/$package_key ;;
+    tools) readonly LFS_SOURCE_DIR=$LFS_SOURCE_DIR/$tools_key ;;
+    fetch) readonly LFS_SOURCE_DIR=$(mktemp -d) ;;
+    *)     readonly LFS_SOURCE_DIR=$LFS_SOURCE_DIR/$package_key ;;
 esac
 
 #===[ Compilation ]===
@@ -171,7 +172,7 @@ fi
 # finds its way into a build.
 case "${1:-help} ${2:-}" in
     'tools bootstrap'|fetch\ *|qemu\ *|help\ *)
-        export PATH=$TOOL_DIR/bin:$PATH:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
+        export PATH=$LFS_TOOL_DIR/bin:$PATH:$LFS_TOOL_DIR/usr/bin:$LFS_TOOL_DIR/usr/sbin
         # Bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists, prefer
         # it.
         if [ -x /usr/bin/m4 ]; then
@@ -180,9 +181,9 @@ case "${1:-help} ${2:-}" in
         fi
         ;;
     *)
-        export PATH=$TOOL_DIR/bin:$TOOL_DIR/usr/bin:$TOOL_DIR/usr/sbin
+        export PATH=$LFS_TOOL_DIR/bin:$LFS_TOOL_DIR/usr/bin:$LFS_TOOL_DIR/usr/sbin
         # The tools' openssl looks in the host's /etc/ssl, unless told otherwise.
-        export SSL_CERT_FILE=$TOOL_DIR/etc/ssl/cert.pem SSL_CERT_DIR=$TOOL_DIR/etc/ssl/certs
+        export SSL_CERT_FILE=$LFS_TOOL_DIR/etc/ssl/cert.pem SSL_CERT_DIR=$LFS_TOOL_DIR/etc/ssl/certs
         ;;
 esac
 readonly PATH
@@ -190,13 +191,13 @@ readonly PATH
 # A home of the build's own, rather than the user's, with its configuration files.
 case "${1:-help}" in
     qemu|help) ;;
-    *) export HOME=$WORK_DIR ;;
+    *) export HOME=$LFS_WORK_DIR ;;
 esac
 
 #===[ Installation ]===
 
 # BTRFS subvolume name to use as root filesystem.
-readonly ROOT_VOLUME=${ROOT_VOLUME:-1}
+readonly LFS_ROOT_VOLUME=${LFS_ROOT_VOLUME:-1}
 
 #===[ Command Execution ]===
 
@@ -249,14 +250,15 @@ case "${1:-help}" in
         echo "  image build [IMAGE|DEVICE]"
         echo "                   Create a bootable disk image, with its SBOM, or format a block"
         echo "                   device, from the built system"
-        echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU (PROFILE: that of <profile>.img)"
+        echo "  qemu [IMAGE]     Boot the built kernel + image in QEMU (LFS_PROFILE: that of"
+        echo "                   <profile>.img)"
         echo ""
         echo "Environment:"
-        echo "  PROFILE          The system to build, as profile/<profile>.sh lists it; virt by default"
-        echo "  TIMEZONE         The image's time zone, as named in the tz database; UTC by default"
-        echo "  IMAGE_SIZE       The image file's size, as truncate takes it (512M), with the root"
+        echo "  LFS_PROFILE      The system to build, as profile/<profile>.sh lists it; virt by default"
+        echo "  LFS_TIMEZONE     The image's time zone, as named in the tz database; UTC by default"
+        echo "  LFS_IMAGE_SIZE   The image file's size, as truncate takes it (512M), with the root"
         echo "                   file system filling it; by default as small as the system allows"
-        echo "  ERASE            The block device that image build may erase; the same path as the"
+        echo "  LFS_ERASE        The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         if [ $# -eq 1 ]; then exit 0; else exit 1; fi
         ;;

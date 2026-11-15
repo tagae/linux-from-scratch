@@ -3,7 +3,7 @@ name: System
 # The system of a profile, built and booted in QEMU as `make <profile>-test` does, one job per
 # phase because a job has six hours and a cold build takes longer. Each phase relies on the archives
 # that the one before it saved in the cache, so only the first can start from scratch. The
-# Makefile's targets set PROFILE, and the release and the revision that the image records in
+# Makefile's targets set LFS_PROFILE, and the release and the revision that the image records in
 # os-release (LFS_RELEASE, from the tags and commits). The build tools come first, from jobs that
 # the caller runs before this workflow (ci.yaml), as they are the same for every profile: a phase
 # of the system only unpacks their archives.

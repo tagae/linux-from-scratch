@@ -38,12 +38,12 @@ readonly sbom_copyright='Copyright (c) 2024 Sebastián González Montesinos'
 
 # The list of the packages of the system being built.
 _sbom_packages_file() {
-    echo $WORK_DIR/sbom/$PROFILE
+    echo $LFS_WORK_DIR/sbom/$LFS_PROFILE
 }
 
 # Empties the list, for a system build that starts anew.
 lfs_sbom_start() {
-    mkdir -p $WORK_DIR/sbom
+    mkdir -p $LFS_WORK_DIR/sbom
     : > $(_sbom_packages_file)
 }
 
@@ -101,8 +101,8 @@ lfs_sbom_document() {
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": $(_sbom_string "$PROFILE"),
-  "documentNamespace": $(_sbom_string "https://spdx.org/spdxdocs/lfs-$PROFILE-$digest"),
+  "name": $(_sbom_string "$LFS_PROFILE"),
+  "documentNamespace": $(_sbom_string "https://spdx.org/spdxdocs/lfs-$LFS_PROFILE-$digest"),
   "creationInfo": {
     "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
     "creators": [$(_sbom_string "Tool: lfs${LFS_RELEASE:+-$LFS_RELEASE}")]
@@ -166,7 +166,7 @@ _sbom_image_package() {
     cat <<EOF
     {
       "SPDXID": "SPDXRef-Image",
-      "name": $(_sbom_string "$PROFILE"),
+      "name": $(_sbom_string "$LFS_PROFILE"),
       $(_sbom_release_line)
       "packageFileName": $(_sbom_string "$1"),
       $(_sbom_checksums sha256:$2)

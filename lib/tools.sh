@@ -16,8 +16,8 @@
 # The tools run on the build machine whatever the platform, so they are built once, under a key of
 # their own, rather than the platform's, and every system uses them. The cross toolchain of a
 # platform, which runs on the build machine too, is built with the system (lib/system.sh) and
-# installed in the same directory, TOOL_DIR, in files that the platform's triplet names, but for a few
-# that platforms share (libcc1, bfd-plugins/libdep.so, documentation).
+# installed in the same directory, LFS_TOOL_DIR, in files that the platform's triplet names, but for
+# a few that platforms share (libcc1, bfd-plugins/libdep.so, documentation).
 readonly tools_key=tools
 
 # See https://www.airs.com/ian/configure/configure_5.html
@@ -43,16 +43,16 @@ lfs_tools_bootstrap() {
     man=no info=no
 
     readonly package_variant=bootstrap
-    package_install_dir=$TOOL_DIR
+    package_install_dir=$LFS_TOOL_DIR
     package_key=$tools_key
 
     # Where the programs built from here on find their dynamic linker and libraries, whether
-    # TOOL_DIR is mounted over /usr (the scratch container) or not (a Linux host).
-    local rtld_dir=$TOOL_DIR/usr/lib
+    # LFS_TOOL_DIR is mounted over /usr (the scratch container) or not (a Linux host).
+    local rtld_dir=$LFS_TOOL_DIR/usr/lib
 
     lfs_install_package linux#headers
     (
-        enable_kernel=5.10 headers=$TOOL_DIR/usr/include
+        enable_kernel=5.10 headers=$LFS_TOOL_DIR/usr/include
         lfs_install_package glibc
         lfs_install_package glibc#dev
     )
@@ -60,12 +60,12 @@ lfs_tools_bootstrap() {
     lfs_tools_set_rtld_ldflags
 
     (
-        readonly sysroot=$TOOL_DIR
-        readonly build_sysroot=$TOOL_DIR
+        readonly sysroot=$LFS_TOOL_DIR
+        readonly build_sysroot=$LFS_TOOL_DIR
 
-        # new_dtags: what the programs linked from here on find through their rpath (TOOL_DIR's
+        # new_dtags: what the programs linked from here on find through their rpath (LFS_TOOL_DIR's
         # libraries) comes after LD_LIBRARY_PATH, which builds set to run what they just built
-        # against the libraries they just built, rather than against those already in TOOL_DIR.
+        # against the libraries they just built, rather than against those already in LFS_TOOL_DIR.
         (
             shared=yes new_dtags=yes
             lfs_install_package binutils
@@ -79,8 +79,9 @@ lfs_tools_bootstrap() {
             # The compilers after the first stage ignore LDFLAGS.
             boot_ldflags="$LDFLAGS -static-libstdc++ -static-libgcc"
             # Rather than the build machine's, whatever comes first in PATH. Its linker would load
-            # the LTO plugin built by the first stage, which needs a glibc as recent as TOOL_DIR's.
-            ld=$TOOL_DIR/usr/bin/ld as=$TOOL_DIR/usr/bin/as
+            # the LTO plugin built by the first stage, which needs a glibc as recent as
+            # LFS_TOOL_DIR's.
+            ld=$LFS_TOOL_DIR/usr/bin/ld as=$LFS_TOOL_DIR/usr/bin/as
             lfs_install_package gcc
         )
     )
@@ -110,9 +111,9 @@ lfs_tools_bootstrap() {
         lfs_install_package ca-certificates
     )
 
-    mkdir -pv $BOOTSTRAP_DIR
-    cp -v $TOOL_DIR/usr/bin/bash $BOOTSTRAP_DIR/bash
-    cp -v $TOOL_DIR/usr/bin/env $BOOTSTRAP_DIR/env
+    mkdir -pv $LFS_BOOTSTRAP_DIR
+    cp -v $LFS_TOOL_DIR/usr/bin/bash $LFS_BOOTSTRAP_DIR/bash
+    cp -v $LFS_TOOL_DIR/usr/bin/env $LFS_BOOTSTRAP_DIR/env
 }
 
 # Builds the remainder of the toolchain starting from the bootstrapped state.
@@ -122,7 +123,7 @@ lfs_tools_build() {
     lfs_tools_set_env
 
     # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
-    export GCONV_PATH=$TOOL_DIR/usr/lib/gconv
+    export GCONV_PATH=$LFS_TOOL_DIR/usr/lib/gconv
 
     readonly prefix=/usr
     readonly nls=no
@@ -130,7 +131,7 @@ lfs_tools_build() {
     man=no info=no
 
     readonly package_variant=tools
-    package_install_dir=$TOOL_DIR
+    package_install_dir=$LFS_TOOL_DIR
     package_key=$tools_key
 
     lfs_tools_set_rtld_ldflags
@@ -152,9 +153,9 @@ lfs_tools_build() {
     lfs_install_package flex
     lfs_install_package bc
     # Its compiled-in @INC is /usr/lib/perl5, and its scripts' shebang /usr/bin/perl: neither is
-    # in TOOL_DIR.
+    # in LFS_TOOL_DIR.
     (
-        sysroot=$TOOL_DIR shrplib=no relocatable=yes perlpath=$TOOL_DIR/usr/bin/perl
+        sysroot=$LFS_TOOL_DIR shrplib=no relocatable=yes perlpath=$LFS_TOOL_DIR/usr/bin/perl
         lfs_install_package perl
     )
     lfs_install_package kmod
@@ -182,13 +183,13 @@ lfs_tools_build() {
     lfs_install_package mtools
 }
 
-# Installs a package that runs on the build machine into TOOL_DIR, built as the tools are, from
+# Installs a package that runs on the build machine into LFS_TOOL_DIR, built as the tools are, from
 # another phase, such as the system's.
 lfs_tools_install() (
     unset host
     man=no info=no
     package_variant=tools
-    package_install_dir=$TOOL_DIR
+    package_install_dir=$LFS_TOOL_DIR
     lfs_tools_set_env
     lfs_tools_set_rtld_ldflags
     lfs_install_package $1
@@ -197,25 +198,25 @@ lfs_tools_install() (
 # Sets the environment that the tools are built in.
 #
 # They are built with the compiler that bootstrap staged, not with whatever `gcc` comes first in
-# PATH. The scratch container mounts TOOL_DIR over /usr, but on a Linux host /usr holds the host's
-# own toolchain, whose linker resolves the absolute /usr/lib paths in TOOL_DIR's linker scripts
-# (libc.so) against the host's libc. The bootstrapped gcc has TOOL_DIR as its sysroot, and runs its
-# own as and ld.
+# PATH. The scratch container mounts LFS_TOOL_DIR over /usr, but on a Linux host /usr holds the
+# host's own toolchain, whose linker resolves the absolute /usr/lib paths in LFS_TOOL_DIR's linker
+# scripts (libc.so) against the host's libc. The bootstrapped gcc has LFS_TOOL_DIR as its sysroot,
+# and runs its own as and ld.
 lfs_tools_set_env() {
-    export CC=$TOOL_DIR/usr/bin/gcc CXX=$TOOL_DIR/usr/bin/g++
+    export CC=$LFS_TOOL_DIR/usr/bin/gcc CXX=$LFS_TOOL_DIR/usr/bin/g++
 
     # pkgconf's own compiled-in default search path is the literal /usr/lib/pkgconfig, and the
-    # .pc files there record /usr paths that live under TOOL_DIR. The system phase points the
+    # .pc files there record /usr paths that live under LFS_TOOL_DIR. The system phase points the
     # system search paths at its sysroot.
-    export PKG_CONFIG_LIBDIR=$TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$TOOL_DIR
+    export PKG_CONFIG_LIBDIR=$LFS_TOOL_DIR/usr/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$LFS_TOOL_DIR
     unset PKG_CONFIG_SYSTEM_INCLUDE_PATH PKG_CONFIG_SYSTEM_LIBRARY_PATH
 }
 
-# Exports LDFLAGS so that native binaries carry a TOOL_DIR-relative interpreter/rpath
-# pointing at the native glibc/libstdc++ under TOOL_DIR/usr.
+# Exports LDFLAGS so that native binaries carry a LFS_TOOL_DIR-relative interpreter/rpath
+# pointing at the native glibc/libstdc++ under LFS_TOOL_DIR/usr.
 lfs_tools_set_rtld_ldflags() {
-    local rtld=$(find $TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
+    local rtld=$(find $LFS_TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
-    # A single rpath at $TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough.
+    # A single rpath at $LFS_TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough.
     export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
 }

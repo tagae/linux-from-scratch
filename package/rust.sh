@@ -48,28 +48,28 @@ install() {
     local dist target
     for dist in rustc-$package_version-$rust_host cargo-$package_version-$rust_host \
                 $(for target in $rust_targets; do echo rust-std-$package_version-$target; done); do
-        sh $SOURCE_DIR/$dist/install.sh --destdir=$package_install_dir --prefix=$prefix \
+        sh $LFS_SOURCE_DIR/$dist/install.sh --destdir=$package_install_dir --prefix=$prefix \
             --disable-ldconfig
     done
     move_to_docs_component
 
     # The programs ask for the loader at /lib, where the build machine may have none: they run
-    # through the loader of TOOL_DIR, with its libraries. rustc finds its own libraries from the
-    # location of librustc_driver, in TOOL_DIR's lib.
-    local rtld=$(find $TOOL_DIR$prefix/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
+    # through the loader of LFS_TOOL_DIR, with its libraries. rustc finds its own libraries from the
+    # location of librustc_driver, in LFS_TOOL_DIR's lib.
+    local rtld=$(find $LFS_TOOL_DIR$prefix/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     local bin=$package_install_dir$prefix/bin libexec=$package_install_dir$prefix/libexec
     mkdir -pv $libexec
     mv -v $bin/rustc $bin/cargo $libexec/
     cat > $bin/rustc <<EOF
 #!/bin/sh
-exec $rtld --library-path $TOOL_DIR$prefix/lib $TOOL_DIR$prefix/libexec/rustc "\$@"
+exec $rtld --library-path $LFS_TOOL_DIR$prefix/lib $LFS_TOOL_DIR$prefix/libexec/rustc "\$@"
 EOF
     # Build scripts and procedural macros, which cargo builds for the build machine and runs, are
-    # linked like the other programs of TOOL_DIR.
+    # linked like the other programs of LFS_TOOL_DIR.
     cat > $bin/cargo <<EOF
 #!/bin/sh
-export CARGO_TARGET_$(echo $rust_host | tr a-z- A-Z_)_LINKER=$TOOL_DIR$prefix/libexec/cargo-linker
-exec $rtld --library-path $TOOL_DIR$prefix/lib $TOOL_DIR$prefix/libexec/cargo "\$@"
+export CARGO_TARGET_$(echo $rust_host | tr a-z- A-Z_)_LINKER=$LFS_TOOL_DIR$prefix/libexec/cargo-linker
+exec $rtld --library-path $LFS_TOOL_DIR$prefix/lib $LFS_TOOL_DIR$prefix/libexec/cargo "\$@"
 EOF
     cat > $libexec/cargo-linker <<EOF
 #!/bin/sh

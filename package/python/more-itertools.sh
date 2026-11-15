@@ -4,7 +4,7 @@
 : ${package_description:=More routines for operating on iterables.}
 : ${package_license:=MIT}
 
-package_source_dir=$SOURCE_DIR/python/more_itertools-$package_version
+package_source_dir=$LFS_SOURCE_DIR/python/more_itertools-$package_version
 
 install() {
     python_install_modules $package_source_dir/more_itertools

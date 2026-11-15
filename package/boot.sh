@@ -14,6 +14,6 @@ enable_uart=1
 EOF
 
     # The root file system is the subvolume that images boot (see lib/image.sh).
-    echo "$kernel_cmdline rootfstype=btrfs rootflags=subvol=root/$ROOT_VOLUME rw rootwait" \
+    echo "$kernel_cmdline rootfstype=btrfs rootflags=subvol=root/$LFS_ROOT_VOLUME rw rootwait" \
          > cmdline.txt
 }

@@ -7,12 +7,12 @@
 : ${package_description:=CA trust store built from Mozilla root certificates.}
 : ${package_license:=MPL-2.0}
 
-package_certdata_file=$DOWNLOAD_DIR/certdata-$package_version.txt
+package_certdata_file=$LFS_DOWNLOAD_DIR/certdata-$package_version.txt
 
 fetch() {
     if ! [ -f $package_certdata_file ]; then
-        fetch_url $package_source $DOWNLOAD_DIR
-        mv $DOWNLOAD_DIR/certdata.txt $package_certdata_file
+        fetch_url $package_source $LFS_DOWNLOAD_DIR
+        mv $LFS_DOWNLOAD_DIR/certdata.txt $package_certdata_file
     fi
     verify_hash $package_certdata_file $package_source_hash
 }
@@ -24,7 +24,7 @@ install() {
     local config_dir=$package_build_dir/config
     mkdir -pv $config_dir/pkcs11/modules
     cat > $config_dir/pkcs11/modules/p11-kit-trust.module <<EOF
-module: $TOOL_DIR/usr/lib/pkcs11/p11-kit-trust.so
+module: $LFS_TOOL_DIR/usr/lib/pkcs11/p11-kit-trust.so
 trust-policy: yes
 x-init-reserved: paths=$package_install_dir/etc/pki/anchors
 EOF
@@ -33,8 +33,8 @@ EOF
     XDG_CONFIG_HOME=$config_dir make-ca \
         -C $package_certdata_file \
         -D $package_install_dir \
-        -s $TOOL_DIR/usr/bin/openssl \
-        -u $TOOL_DIR/usr/bin/trust
+        -s $LFS_TOOL_DIR/usr/bin/openssl \
+        -u $LFS_TOOL_DIR/usr/bin/trust
 
     # make-ca leaves its openssl directory read-only.
     chmod -v 755 $package_install_dir/etc/ssl/certs

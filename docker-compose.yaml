@@ -6,7 +6,7 @@ services:
         HOST_UID:
         HOST_GID:
     environment:
-      PROFILE:
+      LFS_PROFILE:
     volumes:
       - type: bind
         source: lfs
@@ -54,16 +54,16 @@ services:
         HOST_UID:
         HOST_GID:
     environment:
-      PROFILE:
-      ERASE:
-      TIMEZONE:
-      INSTALL_DIR:
-      IMAGE_SIZE:
+      LFS_PROFILE:
+      LFS_ERASE:
+      LFS_TIMEZONE:
+      LFS_INSTALL_DIR:
+      LFS_IMAGE_SIZE:
       LFS_RELEASE:
-      VERSION_CODENAME:
-      RELEASE_TYPE:
-      DISTRIB_CODENAME:
-      DISTRIB_DESCRIPTION:
+      LFS_VERSION_CODENAME:
+      LFS_RELEASE_TYPE:
+      LFS_DISTRIB_CODENAME:
+      LFS_DISTRIB_DESCRIPTION:
     volumes:
       - type: bind
         source: lfs

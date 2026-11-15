@@ -40,15 +40,15 @@ SUDO ?= sudo --preserve-env
 
 # The system that the default targets build: a profile, profile/<profile>.sh, whose name is the key
 # of everything that is made for it.
-PROFILE ?= virt
+LFS_PROFILE ?= virt
 
 # Default targets.
-system: $(PROFILE)-system
-image: image/$(PROFILE).img
-qemu: $(PROFILE)-qemu
-test: $(PROFILE)-test
+system: $(LFS_PROFILE)-system
+image: image/$(LFS_PROFILE).img
+qemu: $(LFS_PROFILE)-qemu
+test: $(LFS_PROFILE)-test
 
-%-system image/%.img %-qemu %-fetch: export PROFILE = $*
+%-system image/%.img %-qemu %-fetch: export LFS_PROFILE = $*
 
 # Downloads the sources of every package for each profile's platform, which the builds then find in
 # download/: a source that cannot be had stops here, before any build.
@@ -60,7 +60,7 @@ fetch: $(patsubst profile/%.sh,%-fetch,$(wildcard profile/*.sh))
 # The tools run on the build machine, whatever the system is: they are built once, and every system
 # uses them, so that systems can be built at once (`make -j test pi0-pgp-test`). No profile reaches
 # them, whichever system's target asks for them first.
-tools-bootstrap tools: export PROFILE =
+tools-bootstrap tools: export LFS_PROFILE =
 
 # Build tools.
 tools-bootstrap:
@@ -109,17 +109,17 @@ pristine: distclean
 #---===[ Docker ]===---
 
 # Default Docker targets.
-docker-system: docker-$(PROFILE)-system
-docker-image: docker-image/$(PROFILE).img
-docker-test: docker-$(PROFILE)-test
+docker-system: docker-$(LFS_PROFILE)-system
+docker-image: docker-image/$(LFS_PROFILE).img
+docker-test: docker-$(LFS_PROFILE)-test
 
 # Environment variables picked up automatically by Docker Compose.
 .env:
 	@echo HOST_UID=$$(id -u) >> $@
 	@echo HOST_GID=$$(id -g) >> $@
 
-docker-%-system docker-image/%.img: export PROFILE = $*
-docker-tools-bootstrap docker-tools: export PROFILE =
+docker-%-system docker-image/%.img: export LFS_PROFILE = $*
+docker-tools-bootstrap docker-tools: export LFS_PROFILE =
 
 # The same rules through Docker Compose, up to the image.
 # The bootstrap container builds the first tools,

@@ -30,7 +30,7 @@ assessment).
 
 ## What an image's SBOM contains
 
-One document per image, `image/<PROFILE>.spdx.json`, next to the image:
+One document per image, `image/<profile>.spdx.json`, next to the image:
 
 | SPDX element | Here | Fields |
 |---|---|---|
@@ -76,7 +76,7 @@ identities alone. A package that the system installs twice is named once. A pack
 source, such as `system-files`, holds this project's own files, which the image stands for. The
 `dev` component, which a system doesn't get, stays out.
 
-Beside the document, `image/<PROFILE>.kernel-files` lists the files that the image's kernel was
+Beside the document, `image/<profile>.kernel-files` lists the files that the image's kernel was
 built from, one path of the kernel's source tree per line. It is not in the image. The kernel's
 recipe makes it, and the vulnerability scan reads it (see *What scanners find*).
 
@@ -111,10 +111,10 @@ tables, or on the rule alone (mandoc and ccid).
 ## How it is produced
 
 1. **Record what goes in.** `lfs_system_install` appends each package to a list for the system,
-   `$WORK_DIR/sbom/$PROFILE`, which the system build empties first. A line holds what the recipe
-   says: name, version, licence, source, source digest, CPEs and description. It is taken when the
-   package is installed, because only then does the recipe see the variables it was built with (the
-   package key, the Python version). This is the only change to the system build.
+   `$LFS_WORK_DIR/sbom/$LFS_PROFILE`, which the system build empties first. A line holds what the
+   recipe says: name, version, licence, source, source digest, CPEs and description. It is taken
+   when the package is installed, because only then does the recipe see the variables it was built
+   with (the package key, the Python version). This is the only change to the system build.
 2. **Write the document.** `lib/sbom.sh` does it from that list, at the end of `./lfs image build`,
    which knows the image's digest, and writes next to the image on the host. It's plain shell,
    `printf` plus a small JSON string-escaping helper, like the rest of the framework. The SBOM goes
@@ -199,7 +199,7 @@ version they say that 106 are fixed in 6.18 at or before 6.18.60, and the scan l
 records also name the files that a CVE concerns. The kernel's recipe saves the list of the files
 that its build read, the source of each object and the headers it includes, as Kbuild records them
 (3,340 files for the Pi's kernel); the image step keeps the list beside the image, as
-`image/<PROFILE>.kernel-files`, and out of it; and `check/kernel-vex` leaves out a CVE none of whose
+`image/<profile>.kernel-files`, and out of it; and `check/kernel-vex` leaves out a CVE none of whose
 source files (.c and .S) is in it, as code that the kernel is not made of. Of the 22 findings with a
 fixed version that the records do not settle, 20 are such: ACPI, MPLS, Greybus, DPLL (the zl3073x
 driver), netfs, ksmbd, JFS, USB gadgets and sound among them. Headers do not count, as every build
