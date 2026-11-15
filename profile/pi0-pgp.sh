@@ -17,12 +17,12 @@
 lfs_system_install dash
 
 lfs_system_install kmod
-lfs_install_package kmod#dev
+lfs_sysroot_install kmod#dev
 (
     # Strong hashes for new passwords, and glibc's for checking older ones.
     hashes=strong,glibc
     lfs_system_install libxcrypt
-    lfs_install_package libxcrypt#dev
+    lfs_sysroot_install libxcrypt#dev
 )
 lfs_system_install shadow
 
@@ -34,7 +34,7 @@ lfs_system_install shadow
     fallbacks=dumb,linux,vt100,vt220,xterm,xterm-256color
     pc_files=yes pkg_config_libdir=/usr/lib/pkgconfig
     lfs_system_install ncurses
-    lfs_install_package ncurses#dev
+    lfs_sysroot_install ncurses#dev
 )
 
 # bash, root's shell, for the line editing, file completion and history that readline gives it; dash
@@ -53,14 +53,14 @@ lfs_system_install shadow
     libblkid=yes libmount=yes
     mount=yes agetty=yes sulogin=yes dmesg=yes more=yes
     lfs_system_install util-linux
-    lfs_install_package util-linux#dev
+    lfs_sysroot_install util-linux#dev
 )
 
 (
     root_shell=/bin/bash
     lfs_system_install systemd
 )
-lfs_install_package systemd#dev
+lfs_sysroot_install systemd#dev
 
 #===[ Kernel and boot ]===
 
@@ -80,7 +80,7 @@ lfs_system_install boot
 
 # The compression library that GnuPG, libfido2 and Python link.
 lfs_system_install zlib
-lfs_install_package zlib#dev
+lfs_sysroot_install zlib#dev
 
 # The GNU tools: the core utilities, grep and sed for the console, and gawk, which gpg-genkey, a shell
 # script, runs.
@@ -104,7 +104,7 @@ lfs_system_install texinfo
     # the library's.
     disable="apps legacy" ssldirs=no
     lfs_system_install openssl
-    lfs_install_package openssl#dev
+    lfs_sysroot_install openssl#dev
 )
 
 #===[ FIDO2 security keys ]===
@@ -112,17 +112,17 @@ lfs_system_install texinfo
 # libfido2's tools (fido2-token, fido2-cred and fido2-assert) drive the key's FIDO2 interface
 # through /dev/hidraw*. libfido2 links systemd's libudev, and zlib.
 lfs_system_install libcbor
-lfs_install_package libcbor#dev
+lfs_sysroot_install libcbor#dev
 lfs_system_install libfido2
 
 #===[ GnuPG ]===
 
 lfs_system_install libgpg-error
-lfs_install_package libgpg-error#dev
+lfs_sysroot_install libgpg-error#dev
 
 # Without udev, libusb finds the devices through sysfs. pcsc-lite and ccid below use it too.
 lfs_system_install libusb
-lfs_install_package libusb#dev
+lfs_sysroot_install libusb#dev
 
 (
     # The packages below look for libgpg-error with gpgrt-config, a script that runs on the build
@@ -130,13 +130,13 @@ lfs_install_package libusb#dev
     export GPGRT_CONFIG=$sysroot/usr/bin/gpgrt-config
 
     lfs_system_install libassuan
-    lfs_install_package libassuan#dev
+    lfs_sysroot_install libassuan#dev
     lfs_system_install libgcrypt
-    lfs_install_package libgcrypt#dev
+    lfs_sysroot_install libgcrypt#dev
     lfs_system_install libksba
-    lfs_install_package libksba#dev
+    lfs_sysroot_install libksba#dev
     lfs_system_install npth
-    lfs_install_package npth#dev
+    lfs_sysroot_install npth#dev
 
     (
         # Only gpg, gpg-agent and scdaemon, with nothing that reaches the network or handles X.509
@@ -173,17 +173,17 @@ lfs_system_install tzdata
 # pcscd, besides pure Python libraries. pcscd links systemd's libraries and is started by its
 # socket, and Python links zlib.
 lfs_system_install pcsc-lite
-lfs_install_package pcsc-lite#dev
+lfs_sysroot_install pcsc-lite#dev
 lfs_system_install ccid
 lfs_system_install scdaemon-pcsc
 
 lfs_system_install libffi
-lfs_install_package libffi#dev
+lfs_sysroot_install libffi#dev
 (
     # The kernel lacks IPv6.
     ipv6=no
     lfs_system_install python
-    lfs_install_package python#dev
+    lfs_sysroot_install python#dev
 )
 
 # cryptography is Rust, which a prebuilt Rust toolchain compiles, and C code that cffi generates on

@@ -1,3 +1,6 @@
+# Archives a package, unless it has an archive, and unpacks it into `package_install_dir`, which the
+# caller sets: the `lfs_<destination>_install` functions and the phases of lib/tools.sh do. A profile
+# calls those, never this.
 lfs_install_package() {
     lfs_archive_package "$1"
     lfs_unarchive_package "$1"

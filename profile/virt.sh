@@ -7,12 +7,12 @@
 lfs_system_install dash
 
 lfs_system_install kmod
-lfs_install_package kmod#dev
+lfs_sysroot_install kmod#dev
 (
     # Strong hashes for new passwords, and glibc's for checking older ones.
     hashes=strong,glibc
     lfs_system_install libxcrypt
-    lfs_install_package libxcrypt#dev
+    lfs_sysroot_install libxcrypt#dev
 )
 lfs_system_install shadow
 
@@ -24,7 +24,7 @@ lfs_system_install shadow
     fallbacks=dumb,linux,vt100,vt220,xterm,xterm-256color
     pc_files=yes pkg_config_libdir=/usr/lib/pkgconfig
     lfs_system_install ncurses
-    lfs_install_package ncurses#dev
+    lfs_sysroot_install ncurses#dev
 )
 
 # bash, root's shell, for the line editing, file completion and history that readline gives it; dash
@@ -40,7 +40,7 @@ lfs_system_install shadow
     # for the console.
     libblkid=yes libmount=yes mount=yes agetty=yes sulogin=yes
     lfs_system_install util-linux
-    lfs_install_package util-linux#dev
+    lfs_sysroot_install util-linux#dev
 )
 (
     root_shell=/bin/bash

@@ -237,10 +237,10 @@ select_changed() {
         profile=${path#profile/}
         profile=${profile%.sh}
         # The recipes that the profile installs, as its lines call lfs_system_install,
-        # lfs_install_package (with a component after #) or lfs_tools_install. grep fails when
+        # lfs_sysroot_install (with a component after #) or lfs_tools_install. grep fails when
         # nothing matches.
         names=$(git show "$state:$path" 2>/dev/null \
-            | grep -Eo '(lfs_system_install|lfs_install_package|lfs_tools_install) [^ #;)]+' \
+            | grep -Eo '(lfs_system_install|lfs_sysroot_install|lfs_tools_install) [^ #;)]+' \
             | sed 's/^[^ ]* //' | sort -u || true)
         each select_profile_package <<EOF
 $names

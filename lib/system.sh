@@ -86,7 +86,7 @@ lfs_system_build() {
 # Builds the cross toolchain into TOOL_DIR. Its C library, which the final compiler links against,
 # is the system's, installed into the system as well as the sysroot.
 lfs_system_build_toolchain() {
-    lfs_install_tool binutils
+    lfs_toolchain_install binutils
     (
         package_variant=pass1
         glibc_version=$(lfs_package_version glibc)
@@ -97,15 +97,15 @@ lfs_system_build_toolchain() {
         newlib=yes headers=no
         shared=no threads=no
         libstdcxx=no
-        lfs_install_tool gcc
+        lfs_toolchain_install gcc
     )
-    lfs_install_package linux#headers
+    lfs_sysroot_install linux#headers
     (
         enable_kernel=5.10
         # The time zone data is tzdata's, compiled by its own zic.
         timezone_tools=no
         lfs_system_install glibc
-        lfs_install_package glibc#dev
+        lfs_sysroot_install glibc#dev
     )
     (
         glibc_version=$(lfs_package_version glibc)
@@ -114,21 +114,29 @@ lfs_system_build_toolchain() {
         default_pie=default-pie default_ssp=default-ssp
         # Shipped with the runtime, for the programs that need atomic operations the CPU lacks.
         libatomic=yes
-        lfs_install_tool gcc
+        lfs_toolchain_install gcc
     )
 }
+
+# Installs a package into the sysroot only: the packages that come after it are compiled against what
+# the sysroot holds, such as the headers and libraries of a `dev` component, which the system itself
+# does not need.
+lfs_sysroot_install() (
+    package_install_dir=$sysroot
+    lfs_install_package $1
+)
 
 # Installs a package into the system, and into the sysroot for the packages compiled after it. The
 # system's SBOM lists the packages that it holds.
 lfs_system_install() {
-    lfs_install_package $1
+    lfs_sysroot_install $1
     ( package_install_dir=$system_dir; lfs_unarchive_package $1 )
     lfs_sbom_record_package $1
 }
 
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the
 # platform, tuned for its CPU.
-lfs_install_tool() (
+lfs_toolchain_install() (
     unset host
     man=no info=no
     target=$target_triplet
