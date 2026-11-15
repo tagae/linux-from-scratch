@@ -1,5 +1,5 @@
-# The build context holds what the Dockerfiles copy, and nothing else: the project and its state are
-# mounted into the containers (docker-compose.yaml), not copied.
+# The build context hardly contains anything,
+# since many project directories are mounted, rather than copied.
 *
 !/work/bootstrap/bash
 !/work/bootstrap/env

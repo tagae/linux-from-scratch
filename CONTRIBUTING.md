@@ -6,23 +6,20 @@ Overview
 
 * `lfs`: CLI frontend
 * `lib/`: framework implementation; contains the `lfs` subcommands
-* `platform/`: the platforms that systems run on
+* `platform/`: platform definitions
 * `profile/`: system recipes
 * `package/`: package recipes
-* `download/`: fetched archives
-* `source/`: unpacked sources, per profile (e.g., `source/pi0-pgp`) and tools (`source/tools`)
+* `download/`: fetched artefacts
+* `source/`: unpacked sources, per profile (e.g., `source/virt`) and tools (`source/tools`)
 * `work/`: build dirs, and the sysroots of the cross toolchains
 * `tools/`: built tools and cross toolchain for each platform
 * `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
 * `image/`:  built disk images
-* `bin/`: the maintenance commands: `invalidate` deletes the archives that a change makes stale,
-  `version` prints the project's version and `release` tags the next one
-* `check/`: the checks (`make lint`, `make commit-lint`, `make sbom-check`, `make vulnerability-check`,
-  and `check/boot`, the boot tester that `make test` runs), with a Makefile that the main one
-  includes
+* `bin/`: project maintenance commands
+* `check/`: quality assurance utilities
 * `Makefile`: build rules
-* `Dockerfile.{bootstrap,scratch,dev}`: build and dev containers (for reproducibility)
+* `Dockerfile.{bootstrap,scratch,dev}`: build and dev containers for reproducibility
 
 
 Building the Toolchain
@@ -30,9 +27,10 @@ Building the Toolchain
 
 ### Bootstrap
 
-Relies on the host for the initial set of tools used to bootstrap our own. The following command
-builds a cross-compiler plus a native, relocatable set of temporary tools (bash, coreutils, make,
-wget, ...) into the `tools` directory.
+An initial (throwaway) toolchain is built through the host's tools.
+
+The following command builds a cross-compiler plus a native set of temporary tools (bash,
+coreutils, make, wget, ...)  into the `tools` directory.
 
 ```shell
 ./lfs tools bootstrap
@@ -40,109 +38,86 @@ wget, ...) into the `tools` directory.
 
 ### Scratch
 
-Self-hosted using only what `tools bootstrap` staged. The following command adds
-build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...) into the `tools` directory:
+A full self-hosted toolchain is built using the bootstrapped toolchain built in the previous stage.
+
+The following command adds build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...)
+into the `tools` directory:
 
 ```shell
 ./lfs tools build
 ```
 
-With this the tools are fully functional and can be used to build packages.
+With this, the tools are fully functional and can be used to build packages.
 
 
 Building the System
 -------------------
 
-The following command builds the system of the profile into `install/$PROFILE`, starting from an
-empty tree. It first builds a cross toolchain, as chapter 5 of the LFS book does: binutils, a first
-gcc, the Linux API headers and glibc, then the full cross gcc. Everything else comes from the
-profile, `profile/$PROFILE.sh`, compiled with that toolchain: the packages of the system in the
-order they are installed, the init (`systemd`, with the strict minimum of chapter 8 that it needs,
-and `dash`, the `sh` that it requires, and root's shell unless the profile says `root_shell`) and
-the kernel (`linux`, configured from the layers that every system gets, `package/linux/`: base,
-platform and architecture, and from the capabilities that the profile names,
-`package/linux/<capability>.config`) among them. Each package is installed both into the system tree
-and into the toolchain's sysroot, `work/$PROFILE/sysroot`, which also receives what compiling
-against the packages needs: the Linux API headers and the packages' `dev` components. The kernel is
-also copied, with the platform's device tree, to `work/boot/$PROFILE`, where QEMU on the host finds
-it.
+The following command builds the system for a given profile, into `install/$PROFILE`:
 
 ```shell
 ./lfs system build
 ```
 
+It first builds a cross toolchain for the profile's platform: `binutils`, a first `gcc`, the Linux
+API headers and `glibc`, then the full cross `gcc`. Everything else comes from the profile
+definition at `profile/$PROFILE.sh`, compiled with that toolchain. This includes the kernel
+(`linux` with a given set of capabilities), init (e.g, `systemd`), and further packages.
+
 
 Images
 ------
 
-* The `./lfs image build` command makes a disk image from the install tree at
-  `install/$PROFILE`, as populated by `./lfs system build`. Given a block device instead of an
-  image file, it partitions the device and fills it the same way, with the root file system taking
-  all of the space the boot partition leaves.
-* An image file gets its SBOM next to it, `<image>.spdx.json` (`lib/sbom.sh`): an SPDX 2.3 document
-  in JSON with the image's SHA-256 and the upstream packages it holds, each with its version, SPDX
-  licence, the URL and SHA-256 of its source, and its CPE or PyPI package URL, which vulnerability
-  scanners match (CI's scan is `.github/workflows/vulnerabilities.yaml`). The system
-  build lists the packages in `$WORK_DIR/sbom/$PROFILE` as `lfs_system_install` installs them,
-  and `image build` writes the document from that list. An image counts as built only along with
-  its SBOM. A block device gets none, as it is no file to take the digest of.
-* The `./lfs qemu` command boots the built image through a qcow2 overlay next to it,
-  `<image>.qcow2`, which takes what the system writes. The overlay is made anew with the image, and
-  its size is a power of two, as QEMU requires of an SD card. Unless PROFILE is set, the profile
-  that boots is the one that the image's name, `<profile>.img`, gives (`./lfs qemu
-  image/pi0-pgp.img`), when a profile has that name.
+The following command makes a disk image from the install tree at `install/$PROFILE`, as populated
+by `./lfs system build`:
 
-Nothing is mounted: `mkfs.btrfs --rootdir` makes the root file system from a copy of the install
-tree, and mtools fills the FAT boot partition. For an image file, each file system is made in a
-file of its own, the root file system as small as its files allow, then copied into the image,
-behind its partition table. The copy gives the system's files to root, so making an image needs
-root, e.g. `sudo --preserve-env ./lfs image build`, which is what `make image` runs (or the scratch
-container as root, e.g. `docker compose run --rm --user 0:0 scratch ./lfs image build`, as
-`make docker-image` does). Making a system on a device erases it, so that takes `ERASE`, set to the
-same device, e.g. `sudo ERASE=/dev/sdb ./lfs image build /dev/sdb`, on a Linux host: the scratch
-container is not privileged, and has no access to devices. A device that anything has mounted or
-opened is refused (unmount a card from a desktop's automounter first). The programs that make
-the image (`mkfs.btrfs`, `mkfs.fat`, mtools, `sfdisk`) are the tools', as for every build.
+```shell
+./lfs image build
+```
 
-Images should observe the [Linux Filesystem Hierarchy Standard].
+Images observe the [Linux Filesystem Hierarchy Standard].
+
+Images are accompanied by an SBOM document (`<image>.spdx.json`) in SPDX 2.3 format.
+Scanners can use this document to signal vulnerabilities.
+
+It is possible to write the system directly to a device:
+
+```shell
+sudo ERASE=/dev/sdb ./lfs image build /dev/sdb
+```
+
+`ERASE` is required to ensure the user does intend to obliterate any data that might be present on
+the device.
+
+
+Emulating
+---------
+
+The following command boots the built image:
+
+`./lfs qemu`
+
+A qcow2 overlay (`<image>.qcow2`) receives the writes, so that the image remains untouched.
 
 
 Package Model
 -------------
 
 Each `package/<name>.sh` runs in a fresh subshell that predefines the hooks
-`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults. `install` runs into
-an empty stage, so an archive holds exactly what it installed. The default `archive` records the
-archive's SHA-256 digest next to it, and the default `unarchive` installs an archive only if it
-still matches. Archives are named by package and version, not by content, so a package builds again
-only when its archive is gone: `make invalidate` (`make docker-invalidate` for the build through
-Docker) deletes the ones that what has changed since its last run makes stale, uncommitted changes
-included. The header of `bin/invalidate` holds the rules. A package built against one that changed is
-not dropped with it.
+`fetch`/`prepare`/`build`/`install`/`archive`/`unarchive` with sane defaults.
 
-A package's name is the path of its recipe under `package/`, without the `.sh`. The Python libraries
-live in `package/python/` and are named `python/<name>`, after their PyPI project without any
-`python-` prefix, e.g. `lfs_system_install python/click`.
+A package's name is the path of its recipe under `package/`, without the `.sh`. The Python
+libraries live in `package/python/` and are named `python/<name>`, after their PyPI project without
+any `python-` prefix, e.g. `lfs_system_install python/click`.
 
 The directory of a package's name is its category (`python` for `python/click`, `.` for `bash`).
 The framework puts everything of the package in the category's directory of `download/`,
-`source/<key>/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked sources (a
-recipe cannot set `package_source_dir` elsewhere), its build, stage and component directories, and
-its archives. Packages of different categories therefore never share a path, whatever their names,
-versions or files are called: `python/foo` and `foo` can coexist. A recipe that fetches or unpacks
-by hand uses the same directories.
+`source/<key>/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked
+sources, its build, stage and component directories, and its archives. Packages of different
+categories therefore never share a path, so `python/foo` and `foo` can coexist.
 
-A category can have helpers for its recipes in `lib/<category>.sh` (`lib/python.sh` for
-`python`), which the framework loads for the recipes of that category and for no others. A recipe
-that uses them belongs to the category, whatever it installs: `python/yubikey-manager` is a
-program. A category is named unlike the framework's own files (`lib/system.sh`, `lib/meson.sh`...),
-which its recipes would load again.
-
-A recipe changes an upstream source file with a patch, never by editing the file: `apply_patch`
-applies one kept in the package's files directory (`package/<name>/<change>.patch`, made with `diff
--u` against the pristine file, so that it applies with `-p1`, and starting with the reason for the
-change). A patch taken from elsewhere, such as the LFS book's, is kept as it is, with the header
-that names its origin. Each patch is applied once to an unpacked source.
+A category can have helpers for its recipes in `lib/<category>.sh` (`lib/python.sh` for `python`),
+which the framework loads for the recipes of that category.
 
 A package may list other packages in `package_fetch_dependencies`, whose sources it needs to build.
 The framework fetches them before building the package, and exposes their locations as
@@ -152,25 +127,11 @@ The `package_license` list the package's license in [SPDX format][SPDX License L
 the list does not have is a `LicenseRef-<name>`, whose text is the file
 `package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `check/lint` looks for.
 
-The SBOM gives each package the CPE under which the NVD lists its vulnerabilities,
-`part:vendor:product:version`: by default `a:<vendor>:<name>:<version>`, where the vendor is the
-owner of the source's project on GitHub or GitLab, or else the name of the site that serves the
-source (`gnu` for `ftp.gnu.org`). A recipe whose package the NVD names otherwise sets
-`package_cpe` to its CPEs, separated by spaces, or to `none` where the NVD has none:
-`: ${package_cpe:=a:systemd_project:systemd:$package_version}`. A package from PyPI has no CPE, but
-a PyPI package URL (`lib/sbom.sh`).
-
 A package's install can set its development files (headers, static libraries, pkg-config files...)
-aside for its `dev` component with `move_to_dev_component` (see `lib/components.sh`), which is
-installed only where wanted: into build trees, not into systems. Systems ship without documentation,
-so a package's install also sets aside its man and info pages and whatever it installs under
-`/usr/share/doc` with `move_to_docs_component`, for a `docs` component that nothing makes a package
-of. The exception is `man=yes` and `info=yes`, which a platform (`platform/pi0.sh`) or a profile
-sets for the systems it builds: `move_to_docs_component` then leaves the man or the info pages in
-the package. A recipe that has to be told to build them says `: ${man:=no}` and reads it (`openssl`,
-`libfido2`), or asks `docs_wanted` for either (`gnupg` and its libraries: `--$doc-doc`). The tools
-never have them: `lib/tools.sh` and `lfs_install_tool` set `man=no info=no`. Programs and libraries
-are stripped as they are linked.
+aside for its `dev` component with `move_to_dev_component`, which is installed only where
+wanted.
+
+Programs and libraries are stripped as they are linked.
 
 
 Conventions
@@ -180,20 +141,13 @@ All shell code should be POSIX compliant.
 
 ### External API
 
-Shell variables are part of the **external API** if they are used to parameterise `lfs`.
+Shell variables are part of the **external API** if they are used to parameterise `lfs`. They are
+the only variables that `lfs` passes on to builds, along with `PATH` and `TMPDIR`.
 
 External API variables have uppercase names (e.g., `PROFILE`, `TIMEZONE`, `IMAGE_SIZE`)
 
-They are the only variables of its environment that `lfs` passes on to builds, along with `PATH`
-and `TMPDIR` (the list is `lfs_environment`, in `lfs`): every command but `qemu` and `help`
-starts anew in an environment that holds them alone, as a container would, and has a home of its
-own, `WORK_DIR`. After `tools bootstrap`, which builds the first tools with the host's, `PATH`
-holds the tools' directories alone, and their trust store serves the downloads: nothing of the
-host's (a program, a config script, an interpreter) finds its way into a build, on a Linux host
-as in the scratch container.
-
-External API variables might be exported in invocations of `lfs`, but are never exported internally
-as part of internal logic.
+After `tools bootstrap`, which builds the first toolsset, `PATH` holds the tools' directories only:
+nothing of the host's (a program, a config script, an interpreter) finds its way into a build.
 
 ### Internal API
 
@@ -206,12 +160,9 @@ Internal API variables must not be exported.
 
 ### Encapsulation
 
-A recipe owns the functions it defines: no other recipe, and no profile, calls them, as that would
-make a package depend on the inside of another. What several recipes need is a helper in
-`lib/<topic>.sh`, sourced by `lfs` (`lib/meson.sh`), or in `lib/<category>.sh`, loaded for the
-recipes of that package category (`lib/python.sh`). A profile may define helpers of its own, for its
-own use, but never one that a package uses: packages rely on the framework (`lib/`) alone.
-
+A package recipe owns the functions it defines. Other package recipes or profiles should not call
+those functions, as that would make a package depend on the implementation of another.  Packages
+rely only on the framework (`lib/`).
 
 ### Simplicity
 
