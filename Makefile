@@ -14,6 +14,7 @@
 	docker-system docker-%-system \
 	docker-image \
 	docker-test docker-%-test \
+	docker-dev \
 	docker-invalidate \
 	docker-clean docker-distclean docker-pristine
 
@@ -148,6 +149,9 @@ docker-image/%.img: docker-%-system FORCE
 # The image built through Docker runs on the host.
 docker-%-test: docker-image/%.img
 	check/boot $*
+
+docker-dev: .env
+	docker compose run --rm --build dev
 
 # The same, for the archives of the build through Docker Compose, whose containers are inputs too.
 docker-invalidate:
