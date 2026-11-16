@@ -17,11 +17,12 @@
 # build tools, which every profile shares (-bootstrap- and -tools- in the name), except those that a
 # profile installs, which are filed under its key.
 #
-# Only the inputs of the build can make an archive stale: lfs, lib/, package/, profile/ and
-# platform/. Every other path (the Makefile, documentation, check/, .github/, .claude/, the
-# Dockerfiles, docker-compose.yaml, bin/, ...) has no effect. With --docker, for the archives of the build
-# through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and docker-compose.yaml are
-# inputs too, which drop every archive, as they make the machines that every package is built on.
+# Only the inputs of the build can make an archive stale: lfs, lib/, package/, profile/*.sh and
+# platform/. Every other path (the Makefile, documentation, profile/*.md, check/, .github/,
+# .claude/, the Dockerfiles, docker-compose.yaml, bin/, ...) has no effect. With --docker, for the
+# archives of the build through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and
+# docker-compose.yaml are inputs too, which drop every archive, as they make the machines that
+# every package is built on.
 # Every input path that changed between archive/<key>/.commit and the tree now is mapped by the
 # first rule that fits:
 #
@@ -259,7 +260,7 @@ EOF
     platform/[!/]*.sh)
         platform=${path#platform/}
         platform=${platform%.sh}
-        profiles=$(git ls-tree --name-only "$state" profile/)
+        profiles=$(git ls-tree --name-only "$state" profile/ | grep '\.sh$' || true)
         each select_profile_of_platform <<EOF
 $profiles
 EOF
@@ -272,6 +273,9 @@ EOF
         else
             select_archives "$path: rule 8, every archive" all
         fi
+        ;;
+    profile/*.md)
+        echo "$path: no effect"
         ;;
     lfs|lib/*|profile/*|platform/*)
         select_archives "$path: rule 8, every archive" all
