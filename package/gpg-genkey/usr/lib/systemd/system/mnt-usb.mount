@@ -1,0 +1,13 @@
+[Unit]
+Description=USB stick with the label KEYS
+# Without a stick, the access that triggered the mount fails after this long, rather than after the
+# 90 seconds that systemd waits for a device.
+JobTimeoutSec=10s
+
+[Mount]
+What=/dev/disk/by-label/KEYS
+Where=/mnt/usb
+Type=vfat
+# FAT has no owners: the files belong to the regular account (UID 1000), and to nobody else but
+# root. Writes reach the stick as they are made.
+Options=nosuid,nodev,noexec,sync,uid=1000,gid=999,umask=0077

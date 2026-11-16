@@ -3,17 +3,18 @@
 #
 # The key is made for a security key such as a YubiKey: a primary key that only certifies, and
 # subkeys to sign, to encrypt and to authenticate. The secret key material lives in memory only:
-# GnuPG's home is a new directory under /run, a tmpfs, and it is wiped on every exit path. The
-# secret key leaves only on the stick, protected by the passphrase.
+# GnuPG's home is a new directory under /dev/shm, a tmpfs that every user may write, and it is wiped
+# on every exit path. The secret key leaves only on the stick, protected by the passphrase.
 #
-# Usage: gpg-genkey -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE [-d USB_DEV]
+# The stick is the one whose file system has the label KEYS, a FAT file system that systemd mounts
+# on /mnt/usb when the script first reads it, and unmounts when it has not been used for a while.
+#
+# Usage: gpg-genkey -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE
 #   -n NAME        Real name of the key's user ID                 ($NAME)
 #   -e EMAIL       Email address of the key's user ID             ($EMAIL)
 #   -a ALGO        ed25519 (the default; the encryption subkey is cv25519), or an
 #                  RSA size such as rsa4096, for every key         ($ALGO)
 #   -p PASSPHRASE  Passphrase that protects the secret key         ($PASSPHRASE)
-#   -d USB_DEV     Device of the stick, a FAT file system on its first partition or, if it
-#                  has no partitions, on the whole device          ($USB_DEV, /dev/sda)
 #
 # Options can also be given as the environment variables shown, which keeps a passphrase out of
 # the process list. Options win over variables.
@@ -25,21 +26,19 @@
 set -eu
 
 ALGO=${ALGO:-ed25519}
-USB_DEV=${USB_DEV:-/dev/sda}
 USB_MOUNT=/mnt/usb
 
 usage() {
-    echo "Usage: $(basename "$0") -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE [-d USB_DEV]" >&2
+    echo "Usage: $(basename "$0") -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE" >&2
     exit 1
 }
 
-while getopts ":n:e:a:p:d:h" opt; do
+while getopts ":n:e:a:p:h" opt; do
     case "$opt" in
         n) NAME=$OPTARG ;;
         e) EMAIL=$OPTARG ;;
         a) ALGO=$OPTARG ;;
         p) PASSPHRASE=$OPTARG ;;
-        d) USB_DEV=$OPTARG ;;
         h) usage ;;
         :) echo "gpg-genkey: option -$OPTARG requires an argument" >&2; usage ;;
         \?) echo "gpg-genkey: unknown option -$OPTARG" >&2; usage ;;
@@ -56,34 +55,25 @@ case $ALGO in
     *)       ENCR_ALGO=$ALGO ;;
 esac
 
+# Reading the directory has systemd mount the stick, or fail when there is none.
+ls "$USB_MOUNT" > /dev/null 2>&1 || {
+    echo "gpg-genkey: no USB stick with a FAT file system labelled KEYS" >&2
+    exit 1
+}
+echo "gpg-genkey: stick mounted on $USB_MOUNT"
+
 # Everything GnuPG writes is under GNUPGHOME: the keyring, the random pool, the revocation
 # certificate.
-GNUPGHOME=$(mktemp -d /run/gnupg.XXXXXX)
+GNUPGHOME=$(mktemp -d /dev/shm/gnupg.XXXXXX)
 export GNUPGHOME
 echo "gpg-genkey: GNUPGHOME=$GNUPGHOME (tmpfs, memory only)"
 
-MOUNTED=no
 cleanup() {
     gpgconf --kill gpg-agent 2>/dev/null || true
-    if [ "$MOUNTED" = yes ]; then
-        umount "$USB_MOUNT" 2>/dev/null || true
-    fi
     rm -rf "$GNUPGHOME"
 }
 trap cleanup EXIT
 trap 'exit 1' INT TERM HUP
-
-# Sticks come with a partition table, or with the file system on the whole device.
-USB_PART=$USB_DEV
-[ ! -b "${USB_DEV}1" ] || USB_PART=${USB_DEV}1
-
-mkdir -p "$USB_MOUNT"
-mount -t vfat "$USB_PART" "$USB_MOUNT" || {
-    echo "gpg-genkey: failed to mount $USB_PART as vfat on $USB_MOUNT" >&2
-    exit 1
-}
-MOUNTED=yes
-echo "gpg-genkey: mounted $USB_PART on $USB_MOUNT"
 
 # The passphrase reaches gpg on its standard input, out of the process list, and the agent through
 # the loopback pinentry. Keys never expire: this GnuPG rejects the expiration "default".
@@ -107,8 +97,4 @@ cp "$GNUPGHOME/openpgp-revocs.d/$FPR.rev" "$USB_MOUNT/$EMAIL-revoke.asc"
 
 sync
 echo "gpg-genkey: exported the secret and public keys and the revocation certificate to $USB_MOUNT"
-
-umount "$USB_MOUNT"
-MOUNTED=no
-echo "gpg-genkey: unmounted $USB_MOUNT"
-echo "gpg-genkey: done"
+echo "gpg-genkey: done: the stick is safe to pull out ten seconds after this"

@@ -16,7 +16,8 @@ prepare() {
             # The driver goes where libpcsclite.pc says pcscd looks for drivers; see pcsc-lite for
             # why pkgconf follows freedesktop's rules. Only the readers that the driver lists by
             # their USB ids are supported: not any device of the CCID class, nor serial readers.
-            # There are no udev rules, as root is the only user.
+            # There are no udev rules, as pcscd, which runs as root, is the only
+            # program that opens the readers.
             env PKG_CONFIG_FDO_SYSROOT_RULES=1 meson setup $package_source_dir \
                 --cross-file cross.ini \
                 ${prefix:+--prefix=$prefix} \

@@ -1,0 +1,10 @@
+[Unit]
+Description=Mount of the USB stick with the label KEYS on first access
+
+[Automount]
+Where=/mnt/usb
+# The stick can be pulled out when it has not been used for this long.
+TimeoutIdleSec=10s
+
+[Install]
+WantedBy=local-fs.target

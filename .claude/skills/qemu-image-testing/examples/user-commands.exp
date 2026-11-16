@@ -1,0 +1,42 @@
+#!/usr/bin/expect -f
+# Runs commands as a regular user: boots the image, logs in as TEST_USER with TEST_PASSWORD, and
+# runs the lines of USER_CMDS in bash, printing each one's output between the markers.
+#
+#   TEST_USER=alice TEST_PASSWORD=alice USER_CMDS='id
+#   ls /mnt/usb' EXPECT_SCRIPT=.claude/skills/qemu-image-testing/examples/user-commands.exp \
+#       qemu-check pi0-pgp "-drive if=none,id=stick,file=<copy of a stick>,format=raw -device usb-storage,drive=stick"
+#
+# A stick that pi0-pgp mounts has the label KEYS: LABEL=KEYS make-fat-stick PATH.
+set timeout [expr {[info exists env(TIMEOUT)] ? $env(TIMEOUT) : 400}]
+log_user 1
+spawn -noecho ./lfs qemu $env(IMAGE_COPY)
+expect {
+    "login:" { }
+    timeout { puts "FAIL: no login prompt"; exit 1 }
+    eof { puts "FAIL: QEMU exited before the login prompt"; exit 1 }
+}
+send "$env(TEST_USER)\r"
+expect {
+    "Password:" { send "$env(TEST_PASSWORD)\r" }
+    timeout { puts "FAIL: no password prompt"; exit 1 }
+}
+sleep 4
+puts "\nQEMU_CHECK_BEGIN"
+set n 0
+foreach line [split $env(USER_CMDS) "\n"] {
+    if {$line eq ""} continue
+    incr n
+    send "echo CMD''_$n; $line\r"
+    expect {
+        -re "CMD_${n}\[\r\n\]" { }
+        timeout { puts "FAIL: command $n did not start"; exit 1 }
+    }
+    send "echo DONE''_$n=\$?\r"
+    expect {
+        -re "DONE_$n=(\[0-9\]+)" { }
+        timeout { puts "FAIL: command $n did not finish: $line"; exit 1 }
+    }
+}
+puts "\nQEMU_CHECK_END"
+send "exit\r"
+expect "login:"

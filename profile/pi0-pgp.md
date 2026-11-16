@@ -5,6 +5,30 @@ A Raspberry Pi Zero (platform `pi0`) to make OpenPGP keys and keep them on a Yub
 storage. It is defined in [`pi0-pgp.sh`](pi0-pgp.sh).
 
 
+Accounts
+--------
+
+The system has two accounts, both with a shell on the serial console:
+
+* `root`, with the password `root`.
+* A regular account, for working with keys without administrative rights. Its name is `LFS_USER`,
+  which defaults to the name of the user who runs `make`, and its password is `LFS_PASSWORD`, which
+  defaults to its name:
+
+  ```shell
+  make docker-image/pi0-pgp.img LFS_USER=alice LFS_PASSWORD='a password'
+  ```
+
+  The account has user ID 1000, belongs to the group `users` and has a home directory, `/home/alice`.
+  It is made when the system is built, so it is in no package archive: changing either variable
+  rebuilds no package. Only root changes passwords (`passwd alice`), as nothing is setuid.
+
+The regular account makes keys (`gpg`, `gpg-genkey`), reads and writes the USB stick, and uses a
+YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface through, and the
+security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2 and OTP
+interfaces through, belong to the group `users`.
+
+
 Making OpenPGP Keys
 -------------------
 
@@ -22,10 +46,15 @@ sudo dd if=image/pi0-pgp.img of=/dev/disk4 bs=4M status=progress
 ```
 
 The Zero has one USB data port, the micro-USB one marked *USB*, so connect a hub to it (through an
-OTG adapter) and plug both the YubiKey and a USB stick in the hub.  The stick holds a FAT file
-system, on its first partition or on the whole device. Log in as root on the serial console, whose
-shell is bash: arrow keys, Tab completion and a history of the session, which is not saved, as
-commands carry passphrases.
+OTG adapter) and plug both the YubiKey and a USB stick in the hub. The stick holds a FAT file
+system labelled `KEYS`, on its first partition or on the whole device (`fatlabel /dev/sdb1 KEYS`
+gives it the label). Log in as the regular account on the serial console, whose shell is bash: arrow
+keys, Tab completion and a history of the session, which is not saved, as commands carry
+passphrases.
+
+systemd mounts the stick on `/mnt/usb` the first time anything reads the directory, whoever it is,
+and unmounts it when it has not been used for ten seconds: wait that long before pulling the stick
+out. Without a stick, the access fails after ten seconds.
 
 1. The Pi has no battery-backed clock. It restores the time it last saved, and a new image starts at
    the time it was made. Keys record the time they are made at, so set it:
@@ -35,7 +64,7 @@ commands carry passphrases.
    ```
 
 2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
-   authenticate, none of which expires. GnuPG's home is a new directory under `/run`, a tmpfs, which
+   authenticate, none of which expires. GnuPG's home is a new directory under `/dev/shm`, a tmpfs, which
    is deleted when the command ends. Give the passphrase through the environment, so that it stays
    out of the process list:
 
@@ -51,8 +80,7 @@ commands carry passphrases.
    subkey to its slot (the card asks for its Admin PIN):
 
    ```shell
-   mkdir -p /mnt/usb && mount -t vfat /dev/sda1 /mnt/usb
-   export GNUPGHOME=$(mktemp -d /run/gnupg.XXXXXX)
+   export GNUPGHOME=$(mktemp -d /dev/shm/gnupg.XXXXXX)
    gpg --import /mnt/usb/you@example.org-secret.asc
    gpg --edit-key you@example.org
    ```
@@ -62,10 +90,7 @@ commands carry passphrases.
    (authentication); then `save`. `gpg --card-status` lists the three keys on the card. The stick
    keeps the whole secret key.
 
-   ```shell
-   umount /mnt/usb
-   ```
-
+GnuPG's home, for the regular account, is `~/.gnupg` on the SD card unless `GNUPGHOME` says otherwise.
 `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal (`echo hi | gpg --clearsign`),
 for the PIN prompt to find it.
 

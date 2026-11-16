@@ -171,6 +171,13 @@ stage_root() {
         # Where the boot partition is mounted.
         mkdir $root_dir/boot
     fi
+    # The home directory of an account belongs to it.
+    local name uid gid home
+    while IFS=: read -r name _ uid gid _ home _; do
+        case $home in
+            /home/*) [ ! -d $root_dir$home ] || chown -R $uid:$gid $root_dir$home ;;
+        esac
+    done < $root_dir/etc/passwd
     # What the kernel was built from is kept next to the image (build_image), not in it.
     rm -rf $root_dir/usr/share/lfs
     # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd

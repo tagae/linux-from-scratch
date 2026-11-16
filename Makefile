@@ -36,6 +36,11 @@ LFS_RELEASE := $(shell bin/version)
 endif
 export LFS_RELEASE
 
+# The regular account of the systems that have one is the user that runs make, unless told
+# otherwise. Computed here, as the containers' user is another.
+LFS_USER ?= $(USER)
+export LFS_USER
+
 # Making an image gives the system's files to root, which needs root access.
 SUDO ?= sudo --preserve-env
 

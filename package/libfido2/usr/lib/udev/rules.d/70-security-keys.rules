@@ -1,0 +1,5 @@
+# The hidraw devices of security keys belong to the group `users`, which the regular account is in:
+# those of any FIDO key, and every interface of a YubiKey (its OTP interface too, which ykman
+# uses).
+SUBSYSTEM=="hidraw", ENV{ID_SECURITY_TOKEN}=="1", GROUP="users", MODE="0660"
+SUBSYSTEM=="hidraw", SUBSYSTEMS=="usb", ATTRS{idVendor}=="1050", GROUP="users", MODE="0660"

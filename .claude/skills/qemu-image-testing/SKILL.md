@@ -94,6 +94,16 @@ transfer: `fido2-token -L` and `gpg --card-status` both trigger it. The key can 
 `qemu-xhci` would carry it, but the `virt` profile has none of the tools. In the Terminal panel a fresh fish tab swallows its first command (a 10 s terminal-query
 wait); `set -Ua fish_features no-query-term` fixes it, and is the user's configuration.
 
+## Regular user
+
+pi0-pgp has an account, `LFS_USER` (the user that ran make) with password `LFS_PASSWORD` (its name):
+`examples/user-commands.exp` logs in as it and runs lines. Its stick is the one labelled `KEYS`
+(`LABEL=KEYS $Q/make-fat-stick PATH`), which systemd mounts on `/mnt/usb` at the first access of any user
+and unmounts after 10 s idle. The emulated `usb-kbd` is no security key, so its hidraw device stays root's:
+to see the rule at work as root, copy `70-security-keys.rules` to `/etc/udev/rules.d` with `1050` replaced
+by `0627`, `udevadm control --reload; udevadm trigger --subsystem-match=hidraw --settle`. Type nothing
+until `Password:` has been answered (a login that times out is a flake: run again).
+
 ## Prompts
 
 `pinentry-tty` asks on the console and an expect script can answer: source `boot.tcl` (boots and logs in), run

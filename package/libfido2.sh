@@ -11,8 +11,7 @@ prepare() {
             case $man in yes) manpages=ON ;; *) manpages=OFF ;; esac
 
             # See libcbor for the cross-compilation settings. The library finds libcbor, libcrypto,
-            # zlib and libudev through pkg-config. Keys are reached through hidraw only: no NFC,
-            # and no udev rules, as root is the only user. The man pages are installed compressed,
+            # zlib and libudev through pkg-config. Keys are reached through hidraw only: no NFC. The man pages are installed compressed,
             # as that is how the package makes them. It lints them and makes HTML from them with
             # mandoc, if it finds one: the platform's, in the sysroot, cannot run here.
             cmake $package_source_dir \
@@ -57,6 +56,9 @@ install() {
     case $package_component in
         libfido2)
             DESTDIR=$package_install_dir cmake --install .
+            # Access to the keys' devices for the regular account, which upstream's rules give
+            # through logind's seats.
+            cp -rv $package_files_dir/usr $package_install_dir/
             move_to_dev_component
             move_to_docs_component
             ;;

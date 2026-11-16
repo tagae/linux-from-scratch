@@ -57,6 +57,8 @@ services:
       LFS_PROFILE:
       LFS_ERASE:
       LFS_TIMEZONE:
+      LFS_USER:
+      LFS_PASSWORD:
       LFS_INSTALL_DIR:
       LFS_RELEASE:
       LFS_VERSION_CODENAME:

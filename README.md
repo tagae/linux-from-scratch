@@ -85,6 +85,15 @@ files and image.
 A profile can have documentation of its own, `profile/<profile>.md`: for `pi0-pgp`, [how to make
 OpenPGP keys on a Raspberry Pi](profile/pi0-pgp.md).
 
+A profile can have a regular account besides root (`pi0-pgp` does). `LFS_USER` names it, by default
+after the user that runs `make`, and `LFS_PASSWORD` is its password, by default its name:
+
+```shell
+make image LFS_PROFILE=pi0-pgp LFS_USER=alice LFS_PASSWORD='a password'
+```
+
+The account is made when the system is built, and belongs to no package archive.
+
 
 Kernel Capabilities
 -------------------

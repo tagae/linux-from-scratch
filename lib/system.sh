@@ -134,6 +134,27 @@ lfs_system_install() {
     lfs_sbom_record_package $1
 }
 
+# Adds a regular account to the system: LFS_USER, with LFS_PASSWORD (its name, unless set) for
+# password, UID 1000, the group `users`, `user_shell` for shell (/bin/sh unless set), and a home
+# directory that lib/image.sh gives to it. The account belongs to the build, not to a package: it is
+# in no archive. The password is hashed with SHA-512, which libxcrypt checks whatever it hashes with
+# for new passwords.
+lfs_system_add_user() (
+    local name=${LFS_USER:-} password hash
+    [ -n "$name" ] || bail "LFS_USER, the name of the regular account, is not set"
+    case $name in
+        [!a-z_]*|*[!a-z0-9_-]*) bail "LFS_USER '$name' is not a valid account name" ;;
+    esac
+    [ ${#name} -le 32 ] || bail "LFS_USER '$name' is longer than 32 characters"
+    ! grep -q "^$name:" $system_dir/etc/passwd || bail "LFS_USER '$name' is an account of the system"
+    password=${LFS_PASSWORD:-$name}
+    hash=$(printf '%s\n' "$password" | openssl passwd -6 -stdin)
+    echo "$name:x:1000:999:$name:/home/$name:${user_shell:-/bin/sh}" >> $system_dir/etc/passwd
+    echo "$name:$hash:19000:0:99999:7:::" >> $system_dir/etc/shadow
+    mkdir -pv $system_dir/home
+    mkdir -v -m 0700 $system_dir/home/$name
+)
+
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the
 # platform, tuned for its CPU.
 lfs_toolchain_install() (

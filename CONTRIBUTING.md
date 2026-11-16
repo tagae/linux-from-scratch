@@ -260,6 +260,7 @@ Where Code Goes
 | Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a platform, `package/linux/<capability>.<platform>.config` |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/systemd/etc/{passwd,group,shadow}`, shipped by the init |
+| The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name and password are `LFS_USER` and `LFS_PASSWORD`, which belong to the build, so no package ships it |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
 A profile is a whole system: the packages it holds, the init system and the kernel among them, as a

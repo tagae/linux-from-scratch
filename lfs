@@ -26,11 +26,14 @@ readonly profile_dir=$project_dir/profile
 # The variables that builds see of the environment lfs is started in: its external API, PATH and
 # TMPDIR. As in a container, nothing else of the caller's comes in, such as what steers compilers,
 # pkg-config or interpreters (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH...). QEMU runs in the caller's.
-readonly lfs_environment="LFS_PROFILE LFS_TIMEZONE LFS_ERASE \
-    LFS_MACHINE LFS_RELEASE LFS_VERSION_CODENAME LFS_RELEASE_TYPE LFS_DISTRIB_CODENAME \
-    LFS_DISTRIB_DESCRIPTION \
-    LFS_STATE_DIR LFS_DOWNLOAD_DIR LFS_SOURCE_DIR LFS_WORK_DIR LFS_TOOL_DIR LFS_INSTALL_DIR \
-    LFS_ARCHIVE_DIR LFS_IMAGE_DIR PATH TMPDIR"
+readonly lfs_environment="
+    PATH TMPDIR
+    LFS_STATE_DIR LFS_DOWNLOAD_DIR LFS_SOURCE_DIR LFS_WORK_DIR \
+    LFS_TOOL_DIR LFS_INSTALL_DIR LFS_ARCHIVE_DIR LFS_IMAGE_DIR \
+    LFS_PROFILE LFS_MACHINE \
+    LFS_TIMEZONE LFS_USER LFS_PASSWORD \
+    LFS_RELEASE LFS_VERSION_CODENAME LFS_RELEASE_TYPE LFS_DISTRIB_CODENAME LFS_DISTRIB_DESCRIPTION \
+    LFS_ERASE"
 
 # Starts lfs anew with the same arguments in an environment that holds those variables alone,
 # unless it holds no other already. PWD, OLDPWD, SHLVL and _ are the shell's own. The names come
@@ -248,6 +251,9 @@ case "${1:-help}" in
         echo "Environment:"
         echo "  LFS_PROFILE      The system to build, as profile/<profile>.sh lists it; virt by default"
         echo "  LFS_TIMEZONE     The image's time zone, as named in the tz database; UTC by default"
+        echo "  LFS_USER         The name of the regular account of the profiles that have one; the"
+        echo "                   Makefile gives the name of the user that runs it (\$USER)"
+        echo "  LFS_PASSWORD     That account's password; its name by default"
         echo "  LFS_ERASE        The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         echo "  LFS_MACHINE      The kernel's default host name; none by default"

@@ -219,6 +219,17 @@ lfs_system_install python/keyring
 lfs_system_install python/fido2
 lfs_system_install python/yubikey-manager
 
+#===[ Accounts ]===
+
+# A regular account besides root, for working with keys without administrative rights: LFS_USER, of
+# the group `users`, with bash for shell. Its group reaches pcscd's socket, the security keys'
+# hidraw devices (libfido2's udev rules), and the files of the stick that mnt-usb.mount mounts
+# (gpg-genkey).
+(
+    user_shell=/bin/bash
+    lfs_system_add_user
+)
+
 #===[ Documentation ]===
 
 # The index of the man pages, which man and apropos search, and the directory of the Info pages, which

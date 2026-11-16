@@ -19,7 +19,8 @@ prepare() {
             # sysroot's path under the staging directory.
             # Hotplug comes from udev's netlink events, instead of from polling the bus once a
             # second, and the socket from systemd, which starts the daemon on demand. Readers are
-            # USB only, and nothing enforces access control: root is the only user.
+            # USB only, and nothing enforces access control: whoever may connect to the socket may
+            # use every reader.
             env PKG_CONFIG_FDO_SYSROOT_RULES=1 meson setup $package_source_dir \
                 --cross-file cross.ini \
                 ${prefix:+--prefix=$prefix} \
@@ -57,10 +58,11 @@ install() {
             cd $package_install_dir
 
             # Upstream's units run the daemon as a pcscd user and in sandboxes that these kernels
-            # lack (user namespaces, seccomp), and these systems have no such user. The socket is
-            # root's, as the daemon is: it creates /run/pcscd, and the service starts when a program
-            # connects to it. Distributions enable units with a preset; nothing here applies
-            # presets, so make the link that `systemctl enable` makes from the [Install] section.
+            # lack (user namespaces, seccomp), and these systems have no such user. The daemon is
+            # root's and creates /run/pcscd, and its socket belongs to the group `users`, which the
+            # regular account is in: the service starts when a program connects to it.
+            # Distributions enable units with a preset; nothing here applies presets, so make the
+            # link that `systemctl enable` makes from the [Install] section.
             cp -rv $package_files_dir/usr .
             mkdir -pv etc/systemd/system/sockets.target.wants
             ln -sv $prefix/lib/systemd/system/pcscd.socket etc/systemd/system/sockets.target.wants/
