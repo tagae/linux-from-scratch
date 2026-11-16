@@ -82,6 +82,9 @@ files and image.
 | `virt`    | `virt`   | Bare-bones virtual machine with only a root account                                |
 | `pi0-pgp` | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
 
+A profile can have documentation of its own, `profile/<profile>.md`: for `pi0-pgp`, [how to make
+OpenPGP keys on a Raspberry Pi](profile/pi0-pgp.md).
+
 
 Kernel Capabilities
 -------------------
@@ -103,80 +106,6 @@ platform: `package/linux/<capability>.<platform>.config`.
 | `usb`            | USB devices, also from user space through `/dev/bus/usb`     |
 | `usb-storage`    | USB sticks and card readers                                  |
 | `hidraw`         | HID devices on USB, such as security keys, as `/dev/hidraw*` |
-
-
-Making OpenPGP Keys on a Raspberry Pi
--------------------------------------
-
-A Raspberry Pi Zero running the `pi0-pgp` profile can make an OpenPGP key whose secret part never
-touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey:
-
-```shell
-make docker-image/pi0-pgp.img
-```
-
-Write the image to an SD card, for example with
-
-```shell
-sudo dd if=image/pi0-pgp.img of=/dev/disk4 bs=4M status=progress
-```
-
-The Zero has one USB data port, the micro-USB one marked *USB*, so connect a hub to it (through an
-OTG adapter) and plug both the YubiKey and a USB stick in the hub.  The stick holds a FAT file
-system, on its first partition or on the whole device. Log in as root on the serial console, whose
-shell is bash: arrow keys, Tab completion and a history of the session, which is not saved, as
-commands carry passphrases.
-
-1. The Pi has no battery-backed clock. It restores the time it last saved, and a new image starts at
-   the time it was made. Keys record the time they are made at, so set it:
-
-   ```shell
-   date -u -s '2026-10-19 08:30:00'
-   ```
-
-2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
-   authenticate, none of which expires. GnuPG's home is a new directory under `/run`, a tmpfs, which
-   is deleted when the command ends. Give the passphrase through the environment, so that it stays
-   out of the process list:
-
-   ```shell
-   PASSPHRASE='a long passphrase' gpg-genkey -n 'Your Name' -e you@example.org
-   ```
-
-   The root of the stick now holds `you@example.org-secret.asc` (protected by the passphrase),
-   `-public.asc` and `-revoke.asc`. The keys are ed25519, with a cv25519 encryption subkey; `-a
-   rsa4096` makes RSA keys instead.
-
-3. Move the subkeys to the YubiKey. Import the secret key into a keyring in memory, and copy each
-   subkey to its slot (the card asks for its Admin PIN):
-
-   ```shell
-   mkdir -p /mnt/usb && mount -t vfat /dev/sda1 /mnt/usb
-   export GNUPGHOME=$(mktemp -d /run/gnupg.XXXXXX)
-   gpg --import /mnt/usb/you@example.org-secret.asc
-   gpg --edit-key you@example.org
-   ```
-
-   At the `gpg>` prompt: `key 1`, `keytocard` and slot `1` (signature); `key 1` again to deselect
-   it; `key 2`, `keytocard` and slot `2` (encryption); `key 2`; `key 3`, `keytocard` and slot `3`
-   (authentication); then `save`. `gpg --card-status` lists the three keys on the card. The stick
-   keeps the whole secret key.
-
-   ```shell
-   umount /mnt/usb
-   ```
-
-`GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal (`echo hi | gpg --clearsign`),
-for the PIN prompt to find it.
-
-The system also has `ykman`, to configure the YubiKey (Python, `cryptography` and the smart card
-daemon `pcscd` come with it, about 60 MB). GnuPG reaches the YubiKey through `pcscd` rather than
-through its own USB driver (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and
-`ykman` can use the key in turn.
-
-`make pi0-pgp-test` boots the system in QEMU's emulation of the Zero, which takes emulated USB
-devices (`LFS_QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey: the
-key can only be tried on the Pi.
 
 
 Restrictions

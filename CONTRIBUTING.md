@@ -7,7 +7,7 @@ Overview
 * `lfs`: CLI frontend
 * `lib/`: framework implementation; contains the `lfs` subcommands
 * `platform/`: platform definitions
-* `profile/`: system recipes
+* `profile/`: system recipes, and the documentation of a profile (`profile/<profile>.md`)
 * `package/`: package recipes
 * `download/`: fetched artefacts
 * `source/`: unpacked sources, per profile (e.g., `source/virt`) and tools (`source/tools`)
