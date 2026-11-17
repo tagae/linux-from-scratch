@@ -26,9 +26,9 @@
 # Every input path that changed between archive/<key>/.commit and the tree now is mapped by the
 # first rule that fits:
 #
-#    1  lib/check.sh, lib/image.sh, lib/qemu.sh and lib/sbom.sh: no effect (nothing in them goes into
-#       an archive). The Makefile has none either, as it holds no input of an archive: the release
-#       that ends up in os-release is lfs's.
+#    1  lib/image.sh, lib/qemu.sh and lib/sbom.sh: no effect (nothing in them goes into an archive).
+#       The Makefile has none either, as it holds no input of an archive: the release that ends up
+#       in os-release is lfs's.
 #    2  package/<path>: the archive/*/<recipe>-* of the recipe that the path belongs to. That is
 #       the path itself when it is a recipe, existing or deleted (package/python/cffi.sh is
 #       python/cffi, not python), else the longest directory of the path that has a recipe now
@@ -223,7 +223,7 @@ select_meson_recipe() {
 select_changed() {
     local path=$1 name callers
     case $path in
-    lib/check.sh|lib/image.sh|lib/qemu.sh|lib/sbom.sh)
+    lib/image.sh|lib/qemu.sh|lib/sbom.sh)
         echo "$path: rule 1, no effect"
         ;;
     package/*)

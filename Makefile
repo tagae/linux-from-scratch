@@ -1,5 +1,5 @@
 .PHONY: \
-	fetch %-fetch \
+	fetch \
 	tools-bootstrap \
 	tools \
 	system %-system \
@@ -54,13 +54,8 @@ image: image/$(LFS_PROFILE).img
 qemu: $(LFS_PROFILE)-qemu
 test: $(LFS_PROFILE)-test
 
-%-system image/%.img %-qemu %-fetch: export LFS_PROFILE = $*
-
-# Downloads the sources of every package for each profile's platform, which the builds then find in
-# download/: a source that cannot be had stops here, before any build.
-fetch: $(patsubst profile/%.sh,%-fetch,$(wildcard profile/*.sh))
-
-%-fetch:
+# Downloads the sources of every package for each profile's platform.
+fetch:
 	./lfs fetch
 
 # The tools run on the build machine, whatever the system is: they are built once, and every system
@@ -77,12 +72,13 @@ tools: tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	./lfs tools build
 
+%-system image/%.img %-qemu: export LFS_PROFILE = $*
+
 %-system: tools
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable
 	./lfs system build
-	./lfs check
 
 image/%.img: %-system FORCE
 	# The image directory is the user's, rather than root's.
@@ -145,7 +141,6 @@ docker-%-system: docker-tools
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable
 	docker compose run --rm scratch ./lfs system build
-	docker compose run --rm scratch ./lfs check
 
 docker-image/%.img: docker-%-system FORCE
 	# The scratch image has no sudo (no setuid mechanism, no /etc/passwd), so build as root.

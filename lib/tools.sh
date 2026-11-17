@@ -13,28 +13,22 @@
 # When build != host == target, we have a cross-native toolchain.
 # When build != host != target, we have a Canadian toolchain.
 #
-# The tools run on the build machine whatever the platform, so they are built once, under a key of
-# their own, rather than the platform's, and every system uses them. The cross toolchain of a
-# platform, which runs on the build machine too, is built with the system (lib/system.sh) and
-# installed in the same directory, LFS_TOOL_DIR, in files that the platform's triplet names, but for
-# a few that platforms share (libcc1, bfd-plugins/libdep.so, documentation).
-readonly tools_key=tools
-
 # See https://www.airs.com/ian/configure/configure_5.html
 
-lfs_tools() {
-    case "${1:-help}" in
-        bootstrap) shift && lfs_tools_bootstrap ;;
-        build) shift && lfs_tools_build ;;
-        help)
-            echo "Usage: $(basename "$0") tools <bootstrap|build>"
-            if [ $# -eq 1 ]; then exit 0; else exit 1; fi ;;
-        *) bail "Unknown command '$1'" ;;
-    esac
-}
+# The tools run on the build machine whatever the platform, so they are built once under a key of
+# their own. The cross toolchain of a platform, which runs on the build machine too, is built
+# together with the system, and is also installed in LFS_TOOL_DIR.
+readonly tools_key=tools
 
-# Builds the tools needed to run from scratch.
+# Builds the tools needed to build a toolchain from scratch.
 lfs_tools_bootstrap() {
+    # Bison bakes the m4 path its configure found. Wherever a real /usr/bin/m4 exists, prefer it.
+    if [ -x /usr/bin/m4 ]; then
+        : ${M4:=/usr/bin/m4}
+        export M4
+        readonly M4
+    fi
+
     readonly nls=no
     readonly multilib=no
     readonly prefix=/usr
@@ -111,6 +105,8 @@ lfs_tools_bootstrap() {
         lfs_install_package ca-certificates
     )
 
+    # Artefacts produced by bootstrap, needed to build a system from scratch.
+    local bootstrap_dir=$LFS_WORK_DIR/bootstrap
     mkdir -pv $bootstrap_dir
     cp -v $LFS_TOOL_DIR/usr/bin/bash $bootstrap_dir/bash
     cp -v $LFS_TOOL_DIR/usr/bin/env $bootstrap_dir/env

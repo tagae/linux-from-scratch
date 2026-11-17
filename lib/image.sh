@@ -1,22 +1,8 @@
-image() {
-    case "${1:-help}" in
-        build)
-            shift
-            build_image "$@"
-            ;;
-        help)
-            echo "Usage: $(basename "$0") image <subcommand>"
-            if [ $# -eq 1 ]; then exit 0; else exit 1; fi
-            ;;
-        *) bail "Unknown command '$1'" ;;
-    esac
-}
-
 # The file systems are made from trees of files, with nothing mounted: the root file system by
 # mkfs.btrfs, the Pi layout's boot partition by mtools. On a device they are made on its partitions;
 # an image file is put together from them, and gets an SBOM next to it (see lib/sbom.sh). A device
 # gets none: it is no file to take the digest of.
-build_image() {
+lfs_build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
     local target="${1:-$LFS_IMAGE_DIR/$LFS_PROFILE.img}" shrink=
     local sbom="${target%.img}.spdx.json"

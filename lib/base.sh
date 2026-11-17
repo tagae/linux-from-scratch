@@ -47,10 +47,7 @@ unpack() {
     tar xf "$1" -C "$2"
 }
 
-# Downloads an archive and unpacks it, both in the directory of the category of the package that
-# fetches it (python/ for python/click), as the package's work directories and archives are.
-# Packages of different categories then never share a download or a source tree, whatever the
-# files are called.
+# Downloads an archive and unpacks it.
 get() {
     local url=$1
     # Optional expected source hash, "algo:hexdigest" (package_source_hash).

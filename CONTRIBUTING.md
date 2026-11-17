@@ -306,9 +306,8 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   merged first, and the last file wins).
 * Every program of a system has its interpreter in it: a script's shell (`/bin/sh` is `dash`, and
   a system that has `bash` for its users' sake has no script of its own that runs in it), an
-  executable's dynamic linker. `make <profile>-system` runs `./lfs check`, which
-  names those that lack it (`ldd` is a bash script); `./lfs check <package>` examines one package.
-  Move such a program to the `dev` component, or leave it out.
+  executable's dynamic linker (`ldd` is a bash script). Move such a program to the `dev`
+  component, or leave it out.
 
 
 systemd

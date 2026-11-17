@@ -1,13 +1,12 @@
 # Target System
 # -------------
 #
-# Builds the system that a profile lists into its own tree, $LFS_INSTALL_DIR/$LFS_PROFILE, from
-# which images are made, and which holds only what the running system needs.
+# Builds the system's root tree into $LFS_INSTALL_DIR/$LFS_PROFILE.
 #
 # The cross toolchain that compiles the system has a sysroot of its own, which holds the same
-# packages, plus what compiling against them needs: the kernel headers and the packages' dev
-# components. The toolchain finds the platform's headers and libraries there, with no extra flags.
-# Every platform goes through a cross toolchain, even one with the build machine's architecture.
+# packages, plus their dev components. The toolchain finds the platform's headers and libraries
+# there, with no extra flags.  Every platform goes through a cross toolchain, even one with the
+# build machine's architecture.
 #
 # Besides the tree's layout (system-files) and the toolchain's C library and runtime, everything in
 # the system comes from its profile, profile/<profile>.sh: the whole list of packages, in the order
