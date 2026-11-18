@@ -10,9 +10,9 @@
 
 set -o errexit -o nounset
 
-# The systems that CI builds, one per profile of .github/workflows/ci.yaml: the Makefile's
-# <profile>-test goals.
-readonly ci_profiles='virt pi0-pgp'
+# The systems that CI builds, one per profile, in the workflow .github/workflows/<profile>.yaml: the
+# Makefile's <profile>-test goals.
+readonly ci_profiles='virt pi0-pgp virt-busybox'
 
 failed=
 
@@ -110,6 +110,7 @@ done
 # The profiles that CI builds are among them.
 for profile in $ci_profiles; do
     [ -f profile/$profile.sh ] || finding "profile/$profile.sh is missing, which CI builds"
+    [ -f .github/workflows/$profile.yaml ] || finding ".github/workflows/$profile.yaml is missing, the CI of $profile"
 done
 
 # Every kernel capability that a profile names is a file of the linux package, which would otherwise

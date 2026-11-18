@@ -1,15 +1,16 @@
 name: Vulnerability scan
 
 # The vulnerabilities of the images that CI builds, one per profile, as Grype finds them from each
-# image's SBOM, with the latest vulnerability data, after each run of CI on main. Every finding
+# image's SBOM, with the latest vulnerability data, after each run of a profile's workflow on main. Every finding
 # goes to the run's summary and to GitHub's code scanning, and the run fails, as its badge shows,
 # when a finding of high or critical severity has a fixed version, in any image. The findings that
 # do not concern the images are left out by check/grype.yaml. `make vulnerability-check` does
 # the scan, here and locally. Nothing is built, and CI's own result is left alone. The profiles are
-# those of .github/workflows/ci.yaml.
+# those of the workflows that are named after them in .github/workflows/. A run of a profile's
+# workflow scans that profile's image; a manual run scans them all.
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [virt, pi0-pgp, virt-busybox]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -28,7 +29,7 @@ jobs:
       # An image with a finding does not stop the scan of the others.
       fail-fast: false
       matrix:
-        profile: [virt, pi0-pgp]
+        profile: ${{ github.event_name == 'workflow_run' && fromJSON(format('["{0}"]', github.event.workflow_run.name)) || fromJSON('["virt", "pi0-pgp", "virt-busybox"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

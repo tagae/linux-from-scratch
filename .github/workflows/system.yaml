@@ -5,8 +5,8 @@ name: System
 # that the one before it saved in the cache, so only the first can start from scratch. The
 # Makefile's targets set LFS_PROFILE, and the release and the revision that the image records in
 # os-release (LFS_RELEASE, from the tags and commits). The build tools come first, from jobs that
-# the caller runs before this workflow (ci.yaml), as they are the same for every profile: a phase
-# of the system only unpacks their archives.
+# the Tools workflow (tools.yaml) builds before the caller starts, as they are the same for every
+# profile: a phase of the system only unpacks their archives.
 on:
   workflow_call:
     inputs:

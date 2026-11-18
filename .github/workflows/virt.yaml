@@ -1,0 +1,42 @@
+name: virt
+
+# The system of the virt profile, which the Makefile builds by default, built and booted in QEMU,
+# on the runner and through Docker Compose. It starts when the Tools workflow ends successfully, for
+# the commit that workflow ran on, so that it only unpacks the archives of the build tools. The
+# systems of the other profiles are built apart, so that a failure in one leaves the others to
+# finish. The profiles are also in check/lint and .github/workflows/vulnerabilities.yaml.
+on:
+  workflow_run:
+    workflows: [Tools]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      cold:
+        description: Build from scratch, without the cache
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Runs queue rather than cancel one another: a cancelled build loses its archives.
+concurrency:
+  group: virt
+  cancel-in-progress: false
+
+jobs:
+  system:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/system.yaml
+    with:
+      profile: virt
+      cold: ${{ inputs.cold == true }}
+
+  docker-system:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/system.yaml
+    with:
+      profile: virt
+      cold: ${{ inputs.cold == true }}
+      docker: true

@@ -57,8 +57,11 @@ jobs:
     timeout-minutes: 360
     steps:
       # `make invalidate` compares HEAD with the commit that the cache was built from.
+      # A workflow that starts when another ends builds the commit that the other ran on, not the
+      # latest of main.
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 

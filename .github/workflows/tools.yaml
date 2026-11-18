@@ -1,0 +1,74 @@
+name: Tools
+
+# The sources and the build tools, which every system shares: the workflows of the profiles (virt,
+# pi0-pgp, virt-busybox) start when this one ends, and only unpack the archives that it saved.
+# A push that changes nothing but documentation builds nothing.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - LICENSE
+  workflow_dispatch:
+    inputs:
+      cold:
+        description: Build from scratch, without the cache
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Runs queue rather than cancel one another: a cancelled build loses its archives.
+concurrency:
+  group: tools
+  cancel-in-progress: false
+
+jobs:
+  # Every source that a build pins is downloaded here, once, into the cache that all the builds
+  # restore: an upstream server that fails stops the run before any build, and the builds, which
+  # find the downloads in the cache, leave it as it is.
+  download:
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: download
+      command: make fetch
+      cold: ${{ inputs.cold == true }}
+      archives: false
+
+  # The build tools are built in two ways, on the runner and through Docker Compose (the bootstrap
+  # container builds the first tools, the scratch container the rest), and their archives are
+  # cached apart. The two ways do not wait for each other.
+  bootstrap:
+    needs: download
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: bootstrap
+      command: make tools-bootstrap
+      cold: ${{ inputs.cold == true }}
+
+  tools:
+    needs: bootstrap
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: tools
+      command: make tools
+
+  docker-bootstrap:
+    needs: download
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: docker-bootstrap
+      command: make docker-tools-bootstrap
+      cold: ${{ inputs.cold == true }}
+      docker: true
+
+  docker-tools:
+    needs: docker-bootstrap
+    uses: ./.github/workflows/phase.yaml
+    with:
+      name: docker-tools
+      command: make docker-tools
+      docker: true

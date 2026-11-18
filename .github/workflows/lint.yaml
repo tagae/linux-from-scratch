@@ -1,0 +1,33 @@
+name: Lint
+
+# A push that changes nothing but documentation checks nothing.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - LICENSE
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The headlines of the commits since the last tag, with the tags themselves.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Lint
+        run: make lint
+      - name: Check the commit headlines
+        run: make commit-lint

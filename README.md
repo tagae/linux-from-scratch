@@ -244,10 +244,11 @@ make sbom-check            # validates every document under image/ (fetches the 
 make vulnerability-check   # scans them with Grype, as CI does (fetches Grype, its data, CVE records)
 ```
 
-CI builds and boots the `virt` and `pi0-pgp` systems, validates the document of each image with the
+CI builds the build tools in a workflow of their own, and then boots the `virt`, `virt-busybox` and
+`pi0-pgp` systems, each in a workflow of its own. It validates the document of each image with the
 same `make sbom-check`, and scans the document of each image after each of its runs on main, with
 the vulnerability data of the day, as `make vulnerability-check` does: the badge above fails when
-Grype finds, in either image, a vulnerability of high or critical severity that a newer version
+Grype finds, in any image, a vulnerability of high or critical severity that a newer version
 fixes, and the findings are in the repository's code scanning alerts. The scan reports, and leaves
 CI's own result alone. It leaves out the findings of the kernel that the kernel's own CVE records
 show it does not have (fixed in its line, or in code that its build did not read, which
