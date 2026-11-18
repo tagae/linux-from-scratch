@@ -51,10 +51,11 @@ install() {
             case $sh_link in
                 yes) ln -sfv bash $package_install_dir$prefix/bin/sh ;;
             esac
-            # bashbug mails bug reports.
+            # bashbug mails bug reports. It is installed read-only, which rm asks about when it runs
+            # on a terminal.
             : ${bashbug:=no}
             case $bashbug in
-                no) rm -v $package_install_dir$prefix/bin/bashbug ;;
+                no) rm -fv $package_install_dir$prefix/bin/bashbug ;;
             esac
             move_to_docs_component
             ;;
