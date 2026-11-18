@@ -77,13 +77,15 @@ A profile is named `<platform>[-<name>]`, after the platform it runs on (e.g., `
 `pi0`), and its name is used as key of all built artefacts: package archives, install tree, boot
 files and image.
 
-| Profile   | Platform | System                                                                             |
-|-----------|----------|------------------------------------------------------------------------------------|
-| `virt`    | `virt`   | Bare-bones virtual machine with only a root account                                |
-| `pi0-pgp` | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
+| Profile        | Platform | System                                                                             |
+|----------------|----------|------------------------------------------------------------------------------------|
+| `virt`         | `virt`   | Bare-bones virtual machine with only a root account                                |
+| `virt-busybox` | `virt`   | Bare-bones virtual machine with BusyBox as init and core utilities, and only root  |
+| `pi0-pgp`      | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
 
 A profile can have documentation of its own, `profile/<profile>.md`: for `pi0-pgp`, [how to make
-OpenPGP keys on a Raspberry Pi](profile/pi0-pgp.md).
+OpenPGP keys on a Raspberry Pi](profile/pi0-pgp.md), and for `virt-busybox`, [how its BusyBox
+system is put together](profile/virt-busybox.md).
 
 A profile can have a regular account besides root (`pi0-pgp` does). `LFS_USER` names it, by default
 after the user that runs `make`, and `LFS_PASSWORD` is its password, by default its name:
@@ -108,6 +110,7 @@ platform: `package/linux/<capability>.<platform>.config`.
 |------------------|--------------------------------------------------------------|
 | `btrfs`          | BTRFS root file systems                                      |
 | `console`        | The terminal layer that consoles build on                    |
+| `devtmpfs`       | Device nodes in /dev, mounted before init starts             |
 | `fat`            | FAT file systems, such as the Pi's boot partition and sticks |
 | `hardening`      | Kernel self-protection and CPU vulnerability mitigations     |
 | `serial-console` | A UART as the kernel's console and early console             |

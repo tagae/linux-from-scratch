@@ -1,0 +1,21 @@
+# BusyBox init's table, in the format <id>:<runlevels>:<action>:<process>. The system has no
+# runlevels, so the runlevels field is empty.
+#
+# The kernel mounts devtmpfs on /dev before init starts, so /dev is not mounted here. `mount -a` is
+# not used: the root entry of /etc/fstab would mount the root file system a second time.
+#
+# init runs a process through /bin/sh only when its command has shell characters, and none of these
+# has any.
+
+# The file systems that the kernel does not mount: its two interfaces, and the run-time directory.
+::sysinit:/bin/mount -t proc proc /proc
+::sysinit:/bin/mount -t sysfs sysfs /sys
+::sysinit:/bin/mount -t tmpfs tmpfs /run
+
+# The console: the virtio console, hvc0, which the platform names as its CONSOLE. -L sets CLOCAL,
+# as a virtual console has no carrier to detect. The baud rate 0 keeps the terminal's own.
+hvc0::respawn:/sbin/getty -L 0 hvc0
+
+# Run at poweroff, before init kills the remaining processes. The file systems are unmounted, or
+# remounted read-only where they are busy, such as the root file system under the shell.
+::shutdown:/bin/umount -a -r

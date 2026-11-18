@@ -62,7 +62,7 @@ The following command builds the system for a given profile, into `install/$LFS_
 It first builds a cross toolchain for the profile's platform: `binutils`, a first `gcc`, the Linux
 API headers and `glibc`, then the full cross `gcc`. Everything else comes from the profile
 definition at `profile/$LFS_PROFILE.sh`, compiled with that toolchain. This includes the kernel
-(`linux` with a given set of capabilities), init (e.g, `systemd`), and further packages.
+(`linux` with a given set of capabilities), init (`systemd` or `busybox`), and further packages.
 
 
 Images
@@ -258,8 +258,9 @@ Where Code Goes
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*`, and those that install a package are `lfs_<destination>_install` (`lfs_system_install`, `lfs_sysroot_install`, `lfs_tools_install`, `lfs_toolchain_install`) |
 | Kernel options every system needs | `package/linux/{base,<platform>,<arch>}.config`, each with its reason |
 | Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a platform, `package/linux/<capability>.<platform>.config` |
+| Applets of BusyBox | `package/busybox/<category>.config`, named in the `applets` of the profiles that rely on it: the category's applets that the kernels serve and their options, each category with its reasons; `base.config` has the options that every system gets |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
-| Static users and groups | `package/systemd/etc/{passwd,group,shadow}`, shipped by the init |
+| Static users and groups | `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`), shipped by the init |
 | The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name and password are `LFS_USER` and `LFS_PASSWORD`, which belong to the build, so no package ships it |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
@@ -304,10 +305,10 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   included (Rust crates too).
 * A file that another package installs is changed in that package's install (`system-files` is
   merged first, and the last file wins).
-* Every program of a system has its interpreter in it: a script's shell (`/bin/sh` is `dash`, and
-  a system that has `bash` for its users' sake has no script of its own that runs in it), an
-  executable's dynamic linker (`ldd` is a bash script). Move such a program to the `dev`
-  component, or leave it out.
+* Every program of a system has its interpreter in it: a script's shell (`/bin/sh` is `dash`, or
+  `ash` where BusyBox is the userland, and a system that has `bash` for its users' sake has no
+  script of its own that runs in it), an executable's dynamic linker (`ldd` is a bash script). Move
+  such a program to the `dev` component, or leave it out.
 
 
 systemd
