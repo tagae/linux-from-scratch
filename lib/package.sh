@@ -120,9 +120,6 @@ lfs_source_package() {
             https://*.tar.*|https://*.tgz)
                 get $package_source ${package_source_hash:-}
                 ;;
-            https://github.com*|https://git.*)
-                git_checkout $package_source $package_branch $package_source_dir
-                ;;
             none)
                 echo "$package_product: nothing to fetch"
                 ;;
@@ -209,24 +206,6 @@ lfs_source_package() {
 
     . $package_dir/$package_name.sh
 
-    case ${package_source:-none} in
-        https://*.tar.*|https://*.tgz)
-        ;;
-        https://github.com*|https://git.*)
-            if [ -z "${package_branch:-}" ]; then
-                package_branch_file=$LFS_WORK_DIR/.$package_name-branch
-                if ! [ -s $package_branch_file ]; then
-                    mkdir -p $(dirname $package_branch_file)
-                    git_default_branch $package_source > $package_branch_file
-                fi
-                package_branch=$(cat $package_branch_file)
-            fi
-            : ${package_version:=$package_branch}
-            ;;
-        none)
-            ;;
-    esac
-
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
     : ${package_files_dir:=$package_dir/$package_name}
     : ${package_source_dir:=$LFS_SOURCE_DIR/$package_name-$package_version}
@@ -249,7 +228,7 @@ lfs_source_package() {
 
     # `package_install_dir` is the only writable var from the package API.
     readonly package_name package_component package_category \
-             package_version package_branch package_release \
+             package_version package_release \
              package_source package_source_hash package_fetch_dependencies \
              package_files_dir package_source_dir \
              package_work_dir package_build_dir \

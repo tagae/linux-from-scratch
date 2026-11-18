@@ -62,16 +62,3 @@ get() {
     [ -d $LFS_SOURCE_DIR/$dir/$extracted ] \
         || unpack $LFS_DOWNLOAD_DIR/$dir/$archive $LFS_SOURCE_DIR/$dir
 }
-
-git_default_branch() {
-    local url="$1" branch_file=$(mktemp -t git-default-branch-XXXXXX)
-    git ls-remote --symref $url HEAD > $branch_file
-    awk '/^ref:/ {sub("refs/heads/", "", $2); print $2}' < $branch_file
-}
-
-git_checkout() {
-    local url="$1" branch="$2" dest="$3"
-    ! [ -d $dest/.git ] || return 0
-    mkdir -p $(dirname $dest)
-    git clone --branch $branch --depth 1 $url $dest
-}
