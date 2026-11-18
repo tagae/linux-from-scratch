@@ -217,7 +217,7 @@ The headline of a commit is `type: subject`, with no scope. The type tells what 
 | `feat`, `drop`   | the minor one |
 | `fix`, `perf`    | the patch     |
 
-The other types, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `style` and `revert`, bump
+The other types, `refactor`, `docs`, `test`, `build`, `ci`, `devx`, `chore`, `style` and `revert`, bump
 nothing: with only those since the last tag, the pre-release is of the next patch. The highest bump
 of the commits since the last tag applies, and sets the parts after it to 0. The `!` is a character
 of the name of `feat!` and `drop!`, which are types of their own: a naming convention for the

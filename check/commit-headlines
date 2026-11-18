@@ -2,8 +2,8 @@
 
 # Checks that the headline of each commit since the last version tag is `type: subject`
 # (CONTRIBUTING.md, Versions and Commits): bin/release derives the next version from them. The types are
-# feat!, drop!, feat, drop, fix, perf, refactor, docs, test, build, ci, chore, style and revert; the
-# `!` of the first two is part of their names. Merges, fixups and squashes are left alone.
+# feat!, drop!, feat, drop, fix, perf, refactor, docs, test, build, ci, devx, chore, style and revert;
+# the `!` of the first two is part of their names. Merges, fixups and squashes are left alone.
 #
 # With no tag, there is nothing to check: the headlines before the first tag are not parsed.
 #
@@ -13,7 +13,7 @@
 
 set -o errexit -o nounset
 
-readonly types='feat!|drop!|feat|drop|fix|perf|refactor|docs|test|build|ci|chore|style|revert'
+readonly types='feat!|drop!|feat|drop|fix|perf|refactor|docs|test|build|ci|devx|chore|style|revert'
 
 # Whether the headline passes.
 valid() {
