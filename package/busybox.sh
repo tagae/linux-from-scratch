@@ -8,8 +8,7 @@
 
 # The applets are those of the categories that `applets` names (a category is a directory of
 # BusyBox's source): package/busybox/<category>.config, with the applets of the category that the
-# system's kernels can serve. Three categories have no file: printutils (printers and sockets),
-# selinux (libselinux) and sysklogd (syslogd takes its messages through a UNIX socket).
+# system's kernels can serve.
 
 prepare() {
     case $package_component in

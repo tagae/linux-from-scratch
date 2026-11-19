@@ -20,8 +20,6 @@ prepare() {
             # later releases of 3.14.
             apply_patch $package_files_dir/Python-3.14.7-openssl_4-1.patch
 
-            # The remote debugger, which attaches to a running process, is left out.
-
             # When cross-compiling, configure cannot look at the platform's device files: it has
             # /dev/ptmx, and /dev/ptc belongs to AIX. Nor can it tell whether getaddrinfo works,
             # unless told whether the platform has IPv6 (`ipv6`).

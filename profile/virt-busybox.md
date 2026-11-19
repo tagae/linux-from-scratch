@@ -61,8 +61,7 @@ Applets
 BusyBox is configured from `allnoconfig`: an applet is in the system because its category is in the
 `applets` option of the `busybox` package in the profile. A category is a directory of BusyBox's
 source, and its file, `package/busybox/<category>.config`, lists the applets of the category that
-the system's kernel can serve and a bare system has a use for, with their options, and the applets
-that it leaves out, with the kernel option that each would need, or the reason.
+the system's kernel can serve and a bare system has a use for, with their options.
 `package/busybox/base.config` has the options that every system gets. The profile names the
 categories below, which makes some 200 applets:
 

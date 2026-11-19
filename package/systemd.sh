@@ -21,16 +21,6 @@ prepare() {
             # libmount, blkid and kmod are required rather than detected, so that a missing
             # library fails the build. logind would need a D-Bus system bus, and PAM to register
             # sessions.
-            # Left out: the D-Bus services (hostnamed, localed, timedated), container and VM
-            # management, the NSS modules, the hardware database (device names), journal transfer
-            # over the network, desktop autostart, kernel-install, shell completions (no completion
-            # framework is installed), and what needs kernel features (core dumps, pressure stall
-            # information for oomd, pstore, hibernation, quotas) or hardware (backlights, rfkill,
-            # virtual consoles, EFI) that these systems lack. Also out: binary formats, the installer,
-            # the services for an initrd, which they do not have, environment.d for the user
-            # manager, and the IMA, IPE and SMACK security modules.
-            # zlib is left out: only the image import uses it. So is libfdisk, which util-linux
-            # installs: only repart uses it.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
             # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
