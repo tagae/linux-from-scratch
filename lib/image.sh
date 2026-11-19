@@ -168,9 +168,11 @@ stage_root() {
     rm -rf $root_dir/usr/share/lfs
     # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd
     # never start the clock earlier than the modification time of this file, so an image boots no
-    # earlier than the time it was made.
-    mkdir -p $root_dir/var/lib/systemd/timesync
-    touch $root_dir/var/lib/systemd/timesync/clock
+    # earlier than the time it was made. Systems without timesyncd have no use for it.
+    if [ -e $root_dir/usr/lib/systemd/systemd-timesyncd ]; then
+        mkdir -p $root_dir/var/lib/systemd/timesync
+        touch $root_dir/var/lib/systemd/timesync/clock
+    fi
     # The time zone belongs to the image, so that the system is the same for every zone. A system
     # without tzdata keeps UTC, which needs no zone file.
     local timezone=${LFS_TIMEZONE:-UTC}
@@ -181,9 +183,11 @@ stage_root() {
     fi
     # With a machine ID, the first boot is an ordinary one. Without it, systemd presets every unit
     # at the first boot, and warns about each unit that a generator made. The ID belongs to the
-    # image: cards written from the same image share it.
-    tr -d - < /proc/sys/kernel/random/uuid > $root_dir/etc/machine-id
-    chmod 444 $root_dir/etc/machine-id
+    # image: cards written from the same image share it. Systems without systemd have no use for it.
+    if [ -e $root_dir/usr/lib/systemd/systemd ]; then
+        tr -d - < /proc/sys/kernel/random/uuid > $root_dir/etc/machine-id
+        chmod 444 $root_dir/etc/machine-id
+    fi
     # The release of this project the image is made as: the version of the tree (bin/version), which
     # the Makefile computes, and which tells the images of one release apart. It is in no archive, as
     # archives are shared by every revision.
