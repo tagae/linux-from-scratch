@@ -67,10 +67,13 @@ build() {
 install() {
     case $package_component in
         busybox)
-            # The applets go to usr/bin and usr/sbin: the merged-usr layout's directories, which /bin
-            # and /sbin name.
+            # The merged-usr layout has /bin and /sbin link to usr/bin and usr/sbin, so the applets
+            # install under usr. Those that BusyBox puts in /usr/bin and /usr/sbin then come out
+            # under usr/usr, which are the same directories.
             make ${target_triplet:+CROSS_COMPILE=$target_triplet-} \
                 CONFIG_PREFIX=$package_install_dir$prefix install
+            cp -a $package_install_dir$prefix$prefix/. $package_install_dir$prefix/
+            rm -rf $package_install_dir$prefix$prefix
             # The static accounts and the init's table, and the home directory of root.
             cp -rv $package_files_dir/etc $package_files_dir/root $package_install_dir/
             chmod -v 0600 $package_install_dir/etc/shadow
