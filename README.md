@@ -83,9 +83,7 @@ files and image.
 | `virt-busybox` | `virt`   | Bare-bones virtual machine with BusyBox as init and core utilities, and only root  |
 | `pi0-pgp`      | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
 
-A profile can have documentation of its own, `profile/<profile>.md`: for `pi0-pgp`, [how to make
-OpenPGP keys on a Raspberry Pi](profile/pi0-pgp.md), and for `virt-busybox`, [how its BusyBox
-system is put together](profile/virt-busybox.md).
+See `profile/<profile>.md` for profile-specific documentation.
 
 A profile can have a regular account besides root (`pi0-pgp` does). `LFS_USER` names it, by default
 after the user that runs `make`, and `LFS_PASSWORD` is its password, by default its name:
