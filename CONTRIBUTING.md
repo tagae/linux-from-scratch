@@ -201,37 +201,40 @@ the tree is clean and on the commit of the most recent tag, and otherwise a pre-
 version, named by the abbreviated hash of the top commit, as short as git finds it unambiguous
 (`0.2.0-abc1234`), and ended by `-dirty` when the tree differs from its commit. A hash of digits alone
 that starts with 0, which SemVer does not allow in a number, takes an `r`, for revision
-(`0.2.0-r0123456`). The next version is
-the tag's, raised by the headlines of the commits since it: a `feat` after `0.1.0` makes `0.2.0`,
-and a `fix` on top of it changes the hash, not the version. (Build metadata, `+hash`, would not do:
-SemVer ignores it when it compares versions.) `bin/release` tags the next version (`--dry-run` says
-which first), and `git push github X.Y.Z` publishes the tag. The Makefile gives an image its release
-(`LFS_RELEASE`, the output of `bin/version`: os-release's `VERSION`, the SBOM). It goes into no
-archive, as every revision shares them.
+(`0.2.0-r0123456`). The next version is the tag's, raised by the summary lines of the commits since
+it: an `Add` after `0.1.0` makes `0.2.0`, and a `Fix` on top of it changes the hash, not the version.
+(Build metadata, `+hash`, would not do: SemVer ignores it when it compares versions.) `bin/release`
+tags the next version (`--dry-run` says which first), and `git push github X.Y.Z` publishes the tag.
+The Makefile gives an image its release (`LFS_RELEASE`, the output of `bin/version`: os-release's
+`VERSION`, the SBOM). It goes into no archive, as every revision shares them.
 
-The headline of a commit is `type: subject`, with no scope. The type tells what bump it makes:
+Commit messages follow [docs/commit-messages.md](docs/commit-messages.md). The first word of the
+summary line tells what bump the commit makes:
 
-| Type             | Bumps         |
-|------------------|---------------|
-| `feat!`, `drop!` | the major one |
-| `feat`, `drop`   | the minor one |
-| `fix`, `perf`    | the patch     |
+| First word                                                                  | Bumps         |
+|-----------------------------------------------------------------------------|---------------|
+| `Drop`, `Stop`, `Major`                                                     | the major one |
+| `Add`, `Start`, `Minor`                                                     | the minor one |
+| `Fix`, `Optimize`, `Refactor`, `Patch`                                      | the patch     |
+| any other, such as `Bump`, `Make`, `Document`, `Reword`, `Remove` or `Move` | nothing       |
 
-The other types, `refactor`, `docs`, `test`, `build`, `ci`, `devx`, `chore`, `style` and `revert`, bump
-nothing: with only those since the last tag, the pre-release is of the next patch. The highest bump
-of the commits since the last tag applies, and sets the parts after it to 0. The `!` is a character
-of the name of `feat!` and `drop!`, which are types of their own: a naming convention for the
-changes that break the interface, which add or change a feature in a way that breaks its users
-(`feat!`) or remove one (`drop!`). There is no `fix!`, and a footer such as `BREAKING CHANGE:` means
-nothing.
+The highest bump of the commits since the last tag applies, and sets the parts after it to 0. With
+only commits that bump nothing since the last tag, `bin/version` shows a pre-release of the next
+patch (a pre-release of the tag would sort before it), and `bin/release` has nothing to tag. Merges,
+fixups and squashes bump nothing. A trailer such as `BREAKING CHANGE:` means nothing: a change that
+breaks the interface says so with its first word. `Drop` and `Stop` are for what users may rely on,
+which they remove or end; `Major` is for any other change that breaks the interface (a feature that
+changes in a way that breaks its users). `Remove` is for what nothing relies on.
 
 The interface is what users and profiles rely on: the make targets and their defaults, the `lfs`
 commands and environment, the formats of `profile/`, `platform/` and the options of recipes, and the
 layout of an image and of its SBOM. What an image holds is not the interface: updating a package
-that has vulnerabilities is a `fix`, and any other update a `build`.
+that has vulnerabilities is a `Fix`, and any other update a `Bump`, which bumps nothing.
 
-`check/commit-headlines` (`make commit-lint`, which CI runs) checks the headlines since the last
-tag. `git config core.hooksPath check/hooks` makes git refuse a commit whose headline fails it.
+`check/commit-messages` (`make commit-lint`, which CI runs) checks the messages since the last tag,
+or all of them when there is none: the summary line, a blank line after it and the width of the
+body. `git config core.hooksPath check/hooks` makes git refuse a commit whose message fails it, and
+`git config commit.template docs/commit-template.txt` gives the editor the template of a message.
 
 ### Documentation
 
