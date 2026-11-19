@@ -77,13 +77,13 @@ lfs_system_build() {
 # The first statement of a profile, which gives the C library of the system, `glibc` or `musl`: the
 # library names the ABI of the target triplet. Builds the cross toolchain into LFS_TOOL_DIR. Its C
 # library, which the final compiler links against, is the system's, installed into the system as
-# well as the sysroot. The compiler's runtime is not: a profile installs it where programs need it.
+# well as the sysroot.
 lfs_system_toolchain() {
     local libc=$1 glibc_version=
     case $libc in
         glibc) target_abi=gnu glibc_version=$(lfs_package_version glibc) ;;
         musl) target_abi=musl ;;
-        *) bail "Unknown C library '$libc': glibc or musl" ;;
+        *) bail "Unknown C library '$libc': must be glibc or musl" ;;
     esac
 
     # The platform may have an EABI (eabihf), which follows the library's name in the ABI.
