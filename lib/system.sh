@@ -48,9 +48,11 @@ lfs_system_build() {
     export TAR_OPTIONS=--same-permissions
 
     # Programs and libraries carry no debugging information, and are stripped at link time, through
-    # -Wl so that libtool passes it on to shared libraries too. Autoconf and meson both take these
-    # flags for the platform's code; the kernel does not read them.
-    export CFLAGS=-O2 CXXFLAGS=-O2 LDFLAGS=-Wl,-s
+    # -Wl so that libtool passes it on to shared libraries too. Their segments align to the 4 KiB
+    # pages of the kernels: the linker of aarch64 aligns them to 64 KiB, and pads the files to it
+    # (up to 64 KiB in each). Autoconf and meson both take these flags for the platform's code; the
+    # kernel does not read them.
+    export CFLAGS=-O2 CXXFLAGS=-O2 LDFLAGS="-Wl,-s -Wl,-z,max-page-size=4096"
 
     # Merged-usr layout, which every later package installs through.
     lfs_system_install system-files
