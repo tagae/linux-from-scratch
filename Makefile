@@ -54,9 +54,12 @@ image: image/$(LFS_PROFILE).img
 qemu: $(LFS_PROFILE)-qemu
 test: $(LFS_PROFILE)-test
 
-# Downloads the sources of every package for each profile's platform.
+# Downloads the sources of every package, for each profile: its platform decides some of them (the
+# Pi's kernel), and lfs fetches for one profile at a time.
 fetch:
-	./lfs fetch
+	for profile in $(basename $(notdir $(wildcard profile/*.sh))); do \
+		LFS_PROFILE=$$profile ./lfs fetch || exit 1; \
+	done
 
 # The tools run on the build machine, whatever the system is: they are built once, and every system
 # uses them, so that systems can be built at once (`make -j test pi0-pgp-test`). No profile reaches
