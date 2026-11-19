@@ -8,6 +8,10 @@ defined in [`virt-busybox.sh`](virt-busybox.sh).
 The system holds musl, BusyBox, and the kernel, which has a console, the btrfs root file system,
 devtmpfs and hardening. There is no `dash`: `/bin/sh` is ash, BusyBox's shell.
 
+The kernel has everything it uses built in and loads no modules (the profile leaves out the
+`modules` capability): it has no `/usr/lib/modules`, and the system has no `modprobe`, `insmod`
+or the like.
+
 
 musl
 ----
@@ -60,7 +64,7 @@ source, and its file, `package/busybox/<category>.config`, lists the applets of 
 the system's kernel can serve and a bare system has a use for, with their options, and the applets
 that it leaves out, with the kernel option that each would need, or the reason.
 `package/busybox/base.config` has the options that every system gets. The profile names the
-categories below, which makes some 210 applets:
+categories below, which makes some 200 applets:
 
 | Category        | Applets                                                                  |
 |-----------------|--------------------------------------------------------------------------|
@@ -73,15 +77,14 @@ categories below, which makes some 210 applets:
 | `init`          | `init`, `halt`, `poweroff`, `reboot`                                     |
 | `loginutils`    | `getty`, `login`, `su`, `sulogin`, `passwd`, `adduser`, `deluser`...     |
 | `miscutils`     | `less`, `bc`, `dc`, `time`, `strings`, `seedrng`...                      |
-| `modutils`      | `insmod`, `rmmod`, `lsmod`, `modprobe`, `depmod`, `modinfo`              |
 | `networking`    | `hostname`, `ipcalc`                                                     |
 | `procps`        | `ps`, `top`, `free`, `kill`, `pidof`, `uptime`, `fuser`...               |
 | `shell`         | `ash` (which is `/bin/sh`), `cttyhack`                                   |
 | `util-linux`    | `mount`, `umount`, `blkid`, `fdisk`, `dmesg`, `taskset`...               |
 
-The categories with a file that the profile leaves out are `e2fsprogs` (the kernel has no ext file
-systems), `runit` (init is BusyBox's, and starts no supervised services), `mailutils` (there is no
-mail) and `klibc-utils` (there is no initial RAM disk).
+The categories with a file that the profile leaves out are `e2fsprogs` and `modutils` (the kernel
+has no ext file systems and no modules), `runit` (init is BusyBox's, and starts no supervised
+services), `mailutils` (there is no mail) and `klibc-utils` (there is no initial RAM disk).
 
 Three categories have no file, as their applets need what the kernel lacks: `printutils` (printers
 and sockets), `selinux` (libselinux) and `sysklogd` (`syslogd` takes its messages through a UNIX

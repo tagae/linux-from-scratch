@@ -111,6 +111,7 @@ platform: `package/linux/<capability>.<platform>.config`.
 | `devtmpfs`       | Device nodes in /dev, mounted before init starts             |
 | `fat`            | FAT file systems, such as the Pi's boot partition and sticks |
 | `hardening`      | Kernel self-protection and CPU vulnerability mitigations     |
+| `modules`        | Loadable kernel modules, and their protection                |
 | `serial-console` | A UART as the kernel's console and early console             |
 | `systemd`        | systemd requirements                                         |
 | `usb`            | USB devices, also from user space through `/dev/bus/usb`     |

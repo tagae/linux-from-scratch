@@ -79,7 +79,12 @@ build() {
             _make_headers headers
             ;;
         linux)
-            _make_target ${kernel_image##*/} modules ${dev_tree_blob:-}
+            # Without module support, the kernel has no modules target.
+            local targets="${kernel_image##*/} ${dev_tree_blob:-}"
+            if _has_modules; then
+                targets="$targets modules"
+            fi
+            _make_target $targets
             ;;
         *)
             default_build
@@ -93,13 +98,15 @@ install() {
             _make_headers INSTALL_HDR_PATH=$package_install_dir/usr headers_install
             ;;
         linux)
-            # modules_install writes to lib/modules/ -not configurable.
-            # Symlink it so that writes go to usr/lib instead.
-            mkdir -p $package_install_dir/usr/lib
-            ln -sfn usr/lib $package_install_dir/lib
+            if _has_modules; then
+                # modules_install writes to lib/modules/ -not configurable.
+                # Symlink it so that writes go to usr/lib instead.
+                mkdir -p $package_install_dir/usr/lib
+                ln -sfn usr/lib $package_install_dir/lib
 
-            # modules_install runs depmod *if* it can find a depmod on PATH.
-            _make_target INSTALL_MOD_PATH=$package_install_dir modules_install
+                # modules_install runs depmod *if* it can find a depmod on PATH.
+                _make_target INSTALL_MOD_PATH=$package_install_dir modules_install
+            fi
             mkdir -pv $package_install_dir/boot
             cp -v $package_build_dir/$kernel_image \
                $package_install_dir/boot/kernel.img
@@ -148,6 +155,11 @@ _make_headers() {
 # Builds for the platform's architecture.
 _make_target() {
     _make ARCH=$kernel_arch ${target_triplet:+CROSS_COMPILE=$target_triplet-} "$@"
+}
+
+# Whether the configured kernel loads modules (the capability `modules`).
+_has_modules() {
+    grep -q '^CONFIG_MODULES=y' $package_build_dir/.config
 }
 
 _set_kernel_config() {
