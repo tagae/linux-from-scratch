@@ -80,7 +80,7 @@ files and image.
 | Profile        | Platform | System                                                                             |
 |----------------|----------|------------------------------------------------------------------------------------|
 | `virt`         | `virt`   | Bare-bones virtual machine with only a root account                                |
-| `virt-busybox` | `virt`   | Bare-bones virtual machine with BusyBox as init and core utilities, and only root  |
+| `virt-busybox` | `virt`   | Bare-bones virtual machine with musl, and BusyBox as init and core utilities       |
 | `pi0-pgp`      | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
 
 See `profile/<profile>.md` for profile-specific documentation.

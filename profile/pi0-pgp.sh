@@ -9,6 +9,10 @@
 # GnuPG's scdaemon reaches the key through pcscd as well, instead of through its own CCID driver
 # over libusb, so that gpg and ykman can share it.
 
+lfs_system_toolchain glibc
+# glibc loads libgcc_s to unwind stacks.
+lfs_system_install gcc#runtime
+
 #===[ systemd ]===
 
 # systemd, with the strict minimum it needs to boot the system and log root in on the console: it

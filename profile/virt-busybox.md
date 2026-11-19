@@ -2,12 +2,20 @@ The `virt-busybox` Profile
 ==========================
 
 A QEMU virtual machine (platform `virt`) that runs BusyBox as its init system, its shell and its
-core utilities, in place of systemd, dash, bash and GNU coreutils. It is defined in
-[`virt-busybox.sh`](virt-busybox.sh).
+core utilities, in place of systemd, dash, bash and GNU coreutils, on musl in place of glibc. It is
+defined in [`virt-busybox.sh`](virt-busybox.sh).
 
-The system holds BusyBox, libxcrypt (the `crypt(3)` that `login` checks passwords with), and the
-kernel, which has a console, the btrfs root file system, devtmpfs and hardening. There is no
-`dash`: `/bin/sh` is ash, BusyBox's shell.
+The system holds musl, BusyBox, and the kernel, which has a console, the btrfs root file system,
+devtmpfs and hardening. There is no `dash`: `/bin/sh` is ash, BusyBox's shell.
+
+
+musl
+----
+
+The profile starts with its cross toolchain, `lfs_system_toolchain musl`, which builds binutils, gcc
+and musl for the triplet `<arch>-scratch-linux-musl`. musl's dynamic linker is the library itself,
+`/lib/ld-musl-<arch>.so.1`. Its `crypt(3)`, which `login` checks passwords with, has the SHA-512
+hash of root's password, so the system has no libxcrypt.
 
 
 Accounts

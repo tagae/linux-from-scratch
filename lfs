@@ -111,13 +111,11 @@ package_key=$LFS_PROFILE
 
 #===[ Compilation ]===
 
+# The target triplet is <arch>-<vendor>-<kernel>-<abi>, whose ABI is the C library the profile
+# chooses (lfs_system_toolchain), followed by the platform's EABI, if it has one (target_eabi).
 : ${target_vendor:=scratch}
 : ${target_kernel:=linux}
-if [ -n "${target_arch:-}" ]; then
-    : ${target_abi:=gnu}
-    readonly target_arch target_vendor target_kernel target_abi
-    readonly target_triplet=$target_arch-$target_vendor-$target_kernel-$target_abi
-fi
+readonly target_arch target_vendor target_kernel
 
 export LC_ALL=POSIX
 readonly LC_ALL

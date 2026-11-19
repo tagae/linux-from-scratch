@@ -20,8 +20,8 @@ case $(uname -m) in
     *) bail "No Rust toolchain pinned for a $(uname -m) build machine" ;;
 esac
 
-# The platform's target, as Rust names it.
-rust_target=$target_arch-unknown-$target_kernel-$target_abi
+# The platform's target, as Rust names it. The standard libraries pinned are those for glibc.
+rust_target=$target_arch-unknown-$target_kernel-gnu${target_eabi:-}
 rust_targets=$rust_host
 [ $rust_target = $rust_host ] || rust_targets="$rust_targets $rust_target"
 

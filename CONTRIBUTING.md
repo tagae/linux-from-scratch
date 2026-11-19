@@ -60,9 +60,11 @@ The following command builds the system for a given profile, into `install/$LFS_
 ```
 
 It first builds a cross toolchain for the profile's platform: `binutils`, a first `gcc`, the Linux
-API headers and `glibc`, then the full cross `gcc`. Everything else comes from the profile
-definition at `profile/$LFS_PROFILE.sh`, compiled with that toolchain. This includes the kernel
-(`linux` with a given set of capabilities), init (`systemd` or `busybox`), and further packages.
+API headers and the C library, `glibc` or `musl`, then the full cross `gcc`. The profile asks for
+it in its first statement, `lfs_system_toolchain glibc|musl`, which gives the system's C library.
+Everything else comes from the profile definition at `profile/$LFS_PROFILE.sh`, compiled with that
+toolchain. This includes the kernel (`linux` with a given set of capabilities), init (`systemd` or
+`busybox`), and further packages.
 
 
 Images
@@ -256,7 +258,7 @@ Where Code Goes
 |---|---|
 | One package's build | `package/<name>.sh`: `case $package_component`, `default_*` for the rest |
 | Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
-| What a system installs | `profile/<profile>.sh`: flat `lfs_system_install X` (+ `lfs_sysroot_install X#dev` for build-time files), in dependency order, the options of a package at its call site, and the kernel, `( capabilities="<capability>..."; lfs_system_install linux )`, among the packages |
+| What a system installs | `profile/<profile>.sh`: `lfs_system_toolchain <libc>`, then flat `lfs_system_install X` (+ `lfs_sysroot_install X#dev` for build-time files), in dependency order, the options of a package at its call site, and the kernel, `( capabilities="<capability>..."; lfs_system_install linux )`, among the packages |
 | Helpers of one profile | in its file, for its own use: no package uses them (see Encapsulation) |
 | Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*`, and those that install a package are `lfs_<destination>_install` (`lfs_system_install`, `lfs_sysroot_install`, `lfs_tools_install`, `lfs_toolchain_install`) |
 | Kernel options every system needs | `package/linux/{base,<platform>,<arch>}.config`, each with its reason |
@@ -271,7 +273,10 @@ A profile is a whole system: the packages it holds, the init system and the kern
 flat list in the order they are installed, with the options of each package at its call site. Its
 name, `<platform>[-<name>]`, starts with the platform it runs on, and is the key of everything built
 for it: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`, `source/<profile>` and
-the image. A profile installs in a subshell, after the toolchain. It sets no kernel option itself. A
+the image. A profile installs in a subshell, and starts with its toolchain,
+`lfs_system_toolchain glibc|musl`, whose C library is the system's: the library gives the ABI of the
+target triplet (`aarch64-scratch-linux-musl`), after which the platform's EABI follows (`eabihf`,
+for the pi0). It sets no kernel option itself. A
 kernel need is a capability, an option of the linux package: the profile names in the
 `capabilities` option every capability it relies on, in alphabetical order, as capabilities do not
 build on each other. Every profile installs the kernel, which `lfs` then copies, with the platform's device tree,
@@ -384,9 +389,9 @@ Cross-Compiling
 
 ### Platforms with the Build Machine's Own Triple
 
-On virt and arm64, built on an aarch64 Mac, the triple is `aarch64-unknown-linux-gnu`, the build
-machine's, though the compiler is the cross `aarch64-scratch-linux-gnu-gcc`: tools that compare
-triples see a native build. For `cryptography`:
+On virt and arm64, built on an aarch64 Mac, with glibc, the triple is `aarch64-unknown-linux-gnu`, the
+build machine's, though the compiler is the cross `aarch64-scratch-linux-gnu-gcc`: tools that
+compare triples see a native build. For `cryptography`:
 
 * cargo has one linker setting per triple, shared by build scripts and proc-macros (which run on the
   build machine; `rust.sh`'s `cargo` wrapper points them at the tools' compiler) and by the

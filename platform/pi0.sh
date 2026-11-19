@@ -2,7 +2,7 @@
 
 readonly kernel_arch=arm
 readonly target_arch=arm
-readonly target_abi=gnueabihf
+readonly target_eabi=eabihf
 
 # https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
 readonly target_gcc_arch=armv6kz

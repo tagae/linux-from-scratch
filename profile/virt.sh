@@ -4,6 +4,10 @@
 # util-linux's libmount and libblkid, and runs util-linux's mount, agetty and sulogin, and shadow's
 # login, which starts root's shell. It brings the static accounts, root's included.
 
+lfs_system_toolchain glibc
+# glibc loads libgcc_s to unwind stacks.
+lfs_system_install gcc#runtime
+
 lfs_system_install dash
 
 lfs_system_install kmod

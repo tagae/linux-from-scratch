@@ -4,8 +4,8 @@
 : ${package_description:=Cryptographic recipes and primitives for Python.}
 : ${package_license:=Apache-2.0 OR BSD-3-Clause}
 
-# Rust names the platform with its own vendor.
-rust_target=$target_arch-unknown-$target_kernel-$target_abi
+# Rust names the platform with its own vendor, and the system has glibc.
+rust_target=$target_arch-unknown-$target_kernel-gnu${target_eabi:-}
 
 # The crates are downloaded by the tools' cargo before the build, each checked against its hash in
 # Cargo.lock, which the source pins, and the build runs offline.
