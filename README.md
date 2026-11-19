@@ -258,4 +258,16 @@ A block device gets no document, as it is no file to take the digest of: make th
 write it to the device. The document does not yet list the patches applied to the sources
 (`docs/sbom-design.md`).
 
+
+File Manifests
+--------------
+
+Next to the image, a plain text file lists every file of each of its file systems:
+`image/<key>.root-files.txt` for the root file system, and `image/<key>.boot-files.txt` for the
+boot partition of the Pi layout (`pi0-pgp`; `virt` systems have the root file system alone). A
+line is an absolute path from the file system's own root, directories and links included, sorted by
+byte. Two manifests, compared with `diff`, show what differs between two images. Like the SBOM, they
+are made with an image file, and an image without its root manifest is made anew; a block device
+gets none.
+
 [SPDX]: https://spdx.github.io/spdx-spec/v2.3/

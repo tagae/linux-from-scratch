@@ -82,6 +82,10 @@ Images observe the [Linux Filesystem Hierarchy Standard].
 Images are accompanied by an SBOM document (`<image>.spdx.json`) in SPDX 2.3 format.
 Scanners can use this document to signal vulnerabilities.
 
+They also come with a manifest of the files of each file system, `<image>.root-files.txt` and, for
+the Pi layout, `<image>.boot-files.txt`: one path per line, absolute from the file system's root,
+sorted by byte.
+
 It is possible to write the system directly to a device:
 
 ```shell

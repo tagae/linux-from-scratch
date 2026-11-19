@@ -1,11 +1,11 @@
 # The file systems are made from trees of files, with nothing mounted: the root file system by
 # mkfs.btrfs, the Pi layout's boot partition by mtools. On a device they are made on its partitions;
-# an image file is put together from them, and gets an SBOM next to it (see lib/sbom.sh). A device
-# gets none: it is no file to take the digest of.
+# an image file is put together from them, and gets next to it an SBOM (see lib/sbom.sh) and a
+# manifest of the files of each file system. A device gets none: it is no file to take the digest of.
 lfs_build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
     local target="${1:-$LFS_IMAGE_DIR/$LFS_PROFILE.img}" shrink=
-    local sbom="${target%.img}.spdx.json"
+    local stem="${target%.img}" sbom="${target%.img}.spdx.json"
     # One install tree per system key, not a shared $LFS_INSTALL_DIR.
     local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
     [ -d "$install_dir" ] || bail "Install directory not found: $install_dir"
@@ -15,7 +15,8 @@ lfs_build_image() {
         # A device is made afresh, like a new image file.
         device=$(realpath "$target")
         confirm_erase
-    elif [ -e "$target" ] && [ -e "$sbom" ] && lfs_sbom_has_release "$sbom" \
+    elif [ -e "$target" ] && [ -e "$sbom" ] && [ -e "$stem.root-files.txt" ] \
+        && lfs_sbom_has_release "$sbom" \
         && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
         echo "image (done)"
         return
@@ -39,6 +40,10 @@ lfs_build_image() {
     create_filesystems $shrink
     if [ -n "${image_file:-}" ]; then
         assemble_image
+        list_files $root_dir > "$image_file.root-files.txt"
+        if [ "${image_layout:-pi}" != single ]; then
+            list_files $LFS_INSTALL_DIR/$LFS_PROFILE/boot > "$image_file.boot-files.txt"
+        fi
         lfs_sbom_document "${target##*/}" "$(sha256sum < "$image_file" | cut -d' ' -f1)" \
             > "$image_file.spdx.json"
         # The files that the kernel was built from, which the vulnerability scan reads with the SBOM.
@@ -48,8 +53,13 @@ lfs_build_image() {
         else
             rm -f "$kernel_files"
         fi
-        # The SBOM first, as the image tells that both are complete: an image without its SBOM
-        # is made anew.
+        # The SBOM and the manifests first, as the image tells that all are complete: an image
+        # without its SBOM or its root manifest is made anew, and the boot manifest, moved before
+        # the root one, is there with it.
+        if [ -e "$image_file.boot-files.txt" ]; then
+            mv "$image_file.boot-files.txt" "$stem.boot-files.txt"
+        fi
+        mv "$image_file.root-files.txt" "$stem.root-files.txt"
         mv "$image_file.spdx.json" "$sbom"
         mv "$image_file" "$target"
     fi
@@ -202,6 +212,13 @@ stage_root() {
     fi
 }
 
+# Lists the files of the file system made from the tree DIR, as the running system has them: one
+# path per line, absolute from the file system's root, in byte order. Directories and links are files
+# too.
+list_files() {
+    (cd $1 && find . ! -name . | sed 's/^\.//' | sort)
+}
+
 # Puts the image file together: the partition table, and each file system where its partition is.
 assemble_image() {
     local start=$(base_start)
@@ -216,10 +233,10 @@ assemble_image() {
     dd if=$base_device of="$image_file" bs=1M seek=$start conv=notrunc,sparse status=none
 }
 
-# Removes what making an image leaves behind, the image itself, and its SBOM, if incomplete: at the
-# end of build_image, and as the EXIT trap it sets, when it fails.
+# Removes what making an image leaves behind, the image itself, and its SBOM and manifests, if
+# incomplete: at the end of build_image, and as the EXIT trap it sets, when it fails.
 clean_image() {
     [ -z "${parts_dir:-}" ] || rm -rf "$parts_dir"
-    [ -z "${image_file:-}" ] || rm -f "$image_file" "$image_file.spdx.json"
+    [ -z "${image_file:-}" ] || rm -f "$image_file" "$image_file.spdx.json" "$image_file".*-files.txt
     unset parts_dir image_file
 }
