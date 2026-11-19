@@ -38,8 +38,9 @@ the check reads the kernel's warnings from the journal.
 
 Known noise. pi0 under QEMU: `initcall_blacklist requires CONFIG_KALLSYMS` (QEMU-only), two `dwc2_check_params:
 Invalid parameter max_packet_count/max_transfer_size` (QEMU's registers; unconfirmed on silicon), `sdhost ...
-Falling back to PIO` and `check access for rdinit=/init failed` (real). virt: `pci-host-generic ...
-Memory resource size exceeds max for 32 bits`. An attached stick adds `sd 0:0:0:0: Power-on or device reset occurred`.
+Falling back to PIO` and `check access for rdinit=/init failed` (real). virt: none (`highmem-mmio=off` in the
+platform's QEMU machine spares the `pci-host-generic ... Memory resource size exceeds max for 32 bits` of the
+512 GiB PCI window). An attached stick adds `sd 0:0:0:0: Power-on or device reset occurred`.
 
 ## Platforms
 

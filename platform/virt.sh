@@ -6,7 +6,10 @@ case "$(uname -m)" in
         readonly target_arch=aarch64
         readonly kernel_arch=arm64
         readonly qemu_system=qemu-system-aarch64
-        readonly qemu_machine=virt
+        # No PCI window above 4 GiB: its size, 512 GiB, is more than the 32 bits that the kernel
+        # expects of a window for non-prefetchable memory, and it warns about it at every boot. The
+        # window below 4 GiB, of 768 MiB, is all that the devices of this machine need.
+        readonly qemu_machine=virt,highmem-mmio=off
         ;;
     x86_64)
         readonly target_arch=x86_64
