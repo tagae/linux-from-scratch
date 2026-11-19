@@ -57,30 +57,31 @@ Applets
 BusyBox is configured from `allnoconfig`: an applet is in the system because its category is in the
 `applets` option of the `busybox` package in the profile. A category is a directory of BusyBox's
 source, and its file, `package/busybox/<category>.config`, lists the applets of the category that
-the system's kernel can serve, with their options, and the applets that it leaves out, with the
-kernel option that each would need. `package/busybox/base.config` has the options that every system
-gets. The profile names all the categories that have a file, which makes some 270 applets:
+the system's kernel can serve and a bare system has a use for, with their options, and the applets
+that it leaves out, with the kernel option that each would need, or the reason.
+`package/busybox/base.config` has the options that every system gets. The profile names the
+categories below, which makes some 210 applets:
 
 | Category        | Applets                                                                  |
 |-----------------|--------------------------------------------------------------------------|
 | `archival`      | `tar`, `gzip`, `bzip2`, `xz`, `unzip`, `cpio`, `ar`...                   |
 | `console-tools` | `clear`, `reset`, `resize`                                               |
 | `coreutils`     | `ls`, `cp`, `mv`, `rm`, `cat`, `sort`, `date`, `stat`, `sha256sum`...    |
-| `debianutils`   | `which`, `run-parts`, `start-stop-daemon`, `pipe_progress`               |
-| `e2fsprogs`     | `chattr`, `lsattr`                                                       |
-| `editors`       | `vi`, `sed`, `awk`, `diff`, `cmp`, `patch`, `ed`                         |
+| `debianutils`   | `which`, `start-stop-daemon`                                             |
+| `editors`       | `vi`, `sed`, `awk`, `diff`, `cmp`, `patch`                               |
 | `findutils`     | `find`, `grep`, `egrep`, `fgrep`, `xargs`                                |
 | `init`          | `init`, `halt`, `poweroff`, `reboot`                                     |
-| `klibc-utils`   | `nuke`                                                                   |
 | `loginutils`    | `getty`, `login`, `su`, `sulogin`, `passwd`, `adduser`, `deluser`...     |
-| `mailutils`     | `makemime`, `reformime`                                                  |
-| `miscutils`     | `less`, `bc`, `dc`, `crond`, `crontab`, `time`, `strings`, `inotifyd`... |
+| `miscutils`     | `less`, `bc`, `dc`, `time`, `strings`, `seedrng`...                      |
 | `modutils`      | `insmod`, `rmmod`, `lsmod`, `modprobe`, `depmod`, `modinfo`              |
 | `networking`    | `hostname`, `ipcalc`                                                     |
 | `procps`        | `ps`, `top`, `free`, `kill`, `pidof`, `uptime`, `fuser`...               |
-| `runit`         | `runsv`, `runsvdir`, `sv`, `svlogd`, `chpst`...                          |
 | `shell`         | `ash` (which is `/bin/sh`), `cttyhack`                                   |
-| `util-linux`    | `mount`, `umount`, `blkid`, `fdisk`, `dmesg`, `mkfs.*`, `taskset`...     |
+| `util-linux`    | `mount`, `umount`, `blkid`, `fdisk`, `dmesg`, `taskset`...               |
+
+The categories with a file that the profile leaves out are `e2fsprogs` (the kernel has no ext file
+systems), `runit` (init is BusyBox's, and starts no supervised services), `mailutils` (there is no
+mail) and `klibc-utils` (there is no initial RAM disk).
 
 Three categories have no file, as their applets need what the kernel lacks: `printutils` (printers
 and sockets), `selinux` (libselinux) and `sysklogd` (`syslogd` takes its messages through a UNIX
