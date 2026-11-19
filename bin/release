@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# Tags the next release: the version that bin/version --next gives, from the headlines of the commits
-# since the last tag, as an annotated tag `MAJOR.MINOR.PATCH` on HEAD, whose message lists those
-# headlines. It pushes nothing: the tag goes with `git push github X.Y.Z`.
+# Tags the next release: the version that bin/version --next gives, from the summary lines of the
+# commits since the last tag, as an annotated tag `MAJOR.MINOR.PATCH` on HEAD, whose message lists
+# those summary lines. It pushes nothing: the tag goes with `git push github X.Y.Z`.
 #
 # Usage: bin/release [--dry-run]    --dry-run: says what it would tag, and tags nothing
 

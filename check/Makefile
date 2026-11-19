@@ -6,9 +6,9 @@
 lint:
 	check/lint
 
-# The headlines of the commits since the last version tag are `type: subject`.
+# The commits since the last version tag follow docs/commit-messages.md.
 commit-lint:
-	check/commit-headlines
+	check/commit-messages
 
 # Validates the SBOMs under image/ against the SPDX 2.3 model.
 SPDX_TOOLS_VERSION := 0.8.5

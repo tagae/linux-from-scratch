@@ -22,12 +22,12 @@ jobs:
       run:
         shell: bash
     steps:
-      # The headlines of the commits since the last tag, with the tags themselves.
+      # The messages of the commits since the last tag, with the tags themselves.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Lint
         run: make lint
-      - name: Check the commit headlines
+      - name: Check the commit messages
         run: make commit-lint
