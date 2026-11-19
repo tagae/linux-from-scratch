@@ -7,7 +7,7 @@ Start with a summary line
 Begin the message with a short summary line a.k.a. subject:
 
   * Start with an imperative present active verb: Add, Drop, Fix, Refactor, Optimize, etc.
-  * Try to use up to 50 characters (convention used by the Git project itself).
+  * Use up to 50 characters (convention used by the Git project itself).
   * Finish without a sentence-ending period.
 
 
@@ -94,8 +94,13 @@ We use [semantic versioning](https://semver.org/spec/v2.0.0) for many of our pro
 
   * **Add**, **Start**: Increment SemVer MINOR version when there is a new capability.
   * **Drop**, **Stop**: Increment SemVer MAJOR version when there is an incompatibility.
-  * **Fix**, **Update**, **Make**, **Optimize**, **Document**: Increment SemVer PATCH version.
-  * **Refactor**, **Reformat**, **Rearrange**, **Redraw**, **Reword**: Increment SemVer PATCH version.
+  * **Fix**, **Optimize**, **Refactor**: Increment SemVer PATCH version.
+  * **Major**, **Minor**, **Patch**: Increment SemVer MAJOR, MINOR, PATCH version respectively.
+  * Any other word, such as **Bump**, **Make**, **Document**, **Reformat**, **Reword** or **Remove**,
+    increments no SemVer version.
+
+Use **Drop** and **Stop** only when what goes was relied upon, since they increment the MAJOR version.
+Use **Remove** instead when nothing relies on it.
 
 Specifics for right and wrong
 -----------------------------

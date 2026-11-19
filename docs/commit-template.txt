@@ -31,7 +31,8 @@
 ########################################################################
 # ## Subject ##
 #
-# Use imperative uppercase verbs:
+# Use imperative present active verbs, capitalized, e.g. Add foo.
+# Wrong: add foo, Adds foo, Added foo, Adding foo, Foo added.
 #
 #   Add = Create a capability e.g. feature, test, dependency.
 #   Drop = Delete a capability e.g. feature, test, dependency.
@@ -42,31 +43,78 @@
 #   Stop = End doing something; e.g. disable a toggle, feature flag, etc.
 #   Optimize = A change that MUST be just about performance, e.g. speed up code.
 #   Document = A change that MUST be only in the documentation, e.g. help files.
-#   Refactor = A change that MUST be just refactoring.
-#   Reformat = A change that MUST be just format, e.g. indent line, trim space, etc.
-#   Rephrase = A change that MUST be just textual, e.g. edit a comment, doc, etc.
+#   Refactor = A change that MUST be just a refactoring patch.
+#   Reformat = A change that MUST be just a formatting patch, e.g. change spaces.
+#   Rearrange = A change that MUST be just an arranging patch, e.g. change layout.
+#   Redraw = A change that MUST be just a drawing patch, e.g. change a graphic.
+#   Reword = A change that MUST be just a wording patch, e.g. change a comment.
+#   Revise = A change that MUST be just a revising patch, e.g. a correction.
+#   Refit/Refresh/Renew/Reload = A change that MUST be just a patch, e.g.
+#     update test data, API keys, etc.
 #
-# Aim at 50 characters maximum, though it is OK to go beyond for clarity.
+# For things that fit none of these:
 #
-# Do not use a sentence-ending period.
+#   Major = Anything that causes a major version increase.
+#   Minor = Anything that causes a minor version increase.
+#   Patch = Anything that causes a patch version increase.
+#
+# Keep the summary within 50 characters.
+#
+# Do not use a sentence-ending period, unless it ends an abbreviation,
+# e.g. Add feature for U.S.A.
+#
+# Do not put meta-information in the summary: no [bug], (release),
+# #12345, docs: or JIRA-666. Pass a ticket ID as a trailer instead,
+# e.g. Issue: 25.
+#
+# ## SemVer ##
+#
+# The first word of the summary sets the version bump:
+#
+#   Add, Start = MINOR, when there is a new capability.
+#   Drop, Stop = MAJOR, when there is an incompatibility.
+#   Fix, Optimize, Refactor = PATCH.
+#   Major, Minor, Patch = MAJOR, MINOR, PATCH respectively.
+#   Any other word, such as Bump, Make, Document, Reword or Remove =
+#   no bump.
+#
+# Use Drop and Stop only when what goes was relied upon. Use Remove
+# instead when nothing relies on it.
 #
 # ## Body ##
 #
-#  Use 72 characters maximum per line for typical word wrap text.
+# Add a blank line after the summary line.
+#
+# Use 72 characters maximum per line for typical word wrap text, and as
+# many as needed for atypical text, such as URLs, terminal output and
+# formatted messages.
+#
+# Use Markdown: links for external references, e.g.
+# [text](https://example.com), code blocks for terminal output, lists
+# for enumerating changes, and headings for long messages.
 #
 # ## Trailers ##
 #
-# Trailers suitable for tracking and also for `git interpret-trailers`.
+# Trailers suitable for tracking and also for `git interpret-trailers`,
+# one per line, in the style of email headers:
 #
-# Example of "See:" trailers that mean "see this additional information"
-# and links to relevant web pages, issue trackers, blog posts, etc.:
+#     Keywords: security, encryption, authentication
+#     Importance: high
+#     References: ...
+#     Supersedes: ...
+#     Obsoletes: ...
+#     See-Also: ...
 #
-#     See: https://example.com/
-#     See: Issue #123 <https://example.com/issue/123>
+# "Importance: high" gives the commit priority for code review and for
+# testing on the continuous integration server. "Supersedes",
+# "References" and "Obsoletes" help look up earlier commits or URLs.
 #
-# We like to use the "See:" trailers to link to issue trackers,
-# reference pages (e.g. internet RFCs, IEEE standards),
-# and web posts.
+# Example of "See-Also:" trailers that mean "see this additional
+# information" and links to relevant web pages, issue trackers, blog
+# posts, etc.:
+#
+#     See-Also: https://example.com/
+#     See-Also: Issue #123 <https://example.com/issue/123>
 #
 # Example of "Co-authored-by:" trailers that list each author's name
 # and their preferred commit message email address or contact URL:
