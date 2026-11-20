@@ -15,6 +15,10 @@
 # configured from layers that every system gets, in package/linux/ (base, platform, architecture),
 # and from the capabilities there that the profile names in the `capabilities` option of the linux
 # package.
+#
+# What gives a system its own look and accounts belongs to the profile, not to a package: the files
+# in profile/<profile>/ (issue, motd, the shell profile), which the build copies once the packages
+# are in, and the accounts that the profile adds (lfs_system_set_root, lfs_system_add_user).
 
 lfs_system_build() {
     mkdir -p ${TMPDIR:-/tmp}
@@ -50,6 +54,7 @@ lfs_system_build() {
     python_version=$(lfs_package_version python)
 
     ( . $profile_dir/$LFS_PROFILE.sh )
+    lfs_system_add_profile_files
 
     # QEMU runs on the host, which cannot see the system tree (in a Docker volume), but sees
     # LFS_WORK_DIR/boot: the kernel that the profile installed, and the platform's device tree.
@@ -141,11 +146,49 @@ lfs_system_install() {
     lfs_sbom_record_package $1
 }
 
+# Copies the files of the profile, profile/<profile>/, into the system once its packages are in: the
+# path of a file under the profile's directory is its path in the system (profile/virt/etc/issue is
+# /etc/issue). A file is 0755 if the checkout has it executable, else 0644. The profile's files
+# belong to it alone: a path that a package installed is an error. The files are in no archive and
+# no SBOM, as the build copies them each time.
+lfs_system_add_profile_files() (
+    local dir=$profile_dir/$LFS_PROFILE file
+    [ -d $dir ] || return 0
+    cd $dir
+    for file in $(find . -type f | sed 's|^\./||' | sort); do
+        ! [ -e $system_dir/$file ] && ! [ -L $system_dir/$file ] \
+            || bail "profile/$LFS_PROFILE/$file is a file of a package, not of the profile"
+        mkdir -p $system_dir/$(dirname $file)
+        cp $file $system_dir/$file
+        if [ -x $file ]; then chmod 0755 $system_dir/$file; else chmod 0644 $system_dir/$file; fi
+    done
+)
+
+# The password hashed with SHA-512, which libxcrypt checks whatever it hashes with for new
+# passwords.
+_system_password_hash() {
+    printf '%s\n' "$1" | openssl passwd -6 -stdin
+}
+
+# Sets root's account: LFS_ROOT_PASSWORD (root, unless set) for password and `root_shell` for shell
+# (/bin/sh unless set), and gives root its home directory, /root. The init ships root locked, so a
+# profile that does not call this has no way to log in. The account belongs to the build, not to a
+# package: it is in no archive.
+lfs_system_set_root() (
+    local password=${LFS_ROOT_PASSWORD:-root} shell=${root_shell:-/bin/sh} hash
+    grep -q '^root:' $system_dir/etc/passwd && grep -q '^root:' $system_dir/etc/shadow \
+        || bail "The system has no account root: the init ships it"
+    [ -x $system_dir$shell ] || bail "root_shell '$shell' is not in the system"
+    hash=$(_system_password_hash "$password")
+    sed -i "s|^\(root:.*:\)[^:]*\$|\1$shell|" $system_dir/etc/passwd
+    sed -i "s|^root:[^:]*:|root:$hash:|" $system_dir/etc/shadow
+    mkdir -pv -m 0700 $system_dir/root
+)
+
 # Adds a regular account to the system: LFS_USER, with LFS_PASSWORD (its name, unless set) for
 # password, UID 1000, the group `users`, `user_shell` for shell (/bin/sh unless set), and a home
 # directory that lib/image.sh gives to it. The account belongs to the build, not to a package: it is
-# in no archive. The password is hashed with SHA-512, which libxcrypt checks whatever it hashes with
-# for new passwords.
+# in no archive.
 lfs_system_add_user() (
     local name=${LFS_USER:-} password hash
     [ -n "$name" ] || bail "LFS_USER, the name of the regular account, is not set"
@@ -155,7 +198,7 @@ lfs_system_add_user() (
     [ ${#name} -le 32 ] || bail "LFS_USER '$name' is longer than 32 characters"
     ! grep -q "^$name:" $system_dir/etc/passwd || bail "LFS_USER '$name' is an account of the system"
     password=${LFS_PASSWORD:-$name}
-    hash=$(printf '%s\n' "$password" | openssl passwd -6 -stdin)
+    hash=$(_system_password_hash "$password")
     echo "$name:x:1000:999:$name:/home/$name:${user_shell:-/bin/sh}" >> $system_dir/etc/passwd
     echo "$name:$hash:19000:0:99999:7:::" >> $system_dir/etc/shadow
     mkdir -pv $system_dir/home

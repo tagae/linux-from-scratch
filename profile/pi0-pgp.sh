@@ -60,10 +60,7 @@ lfs_system_install shadow
     lfs_sysroot_install util-linux#dev
 )
 
-(
-    root_shell=/bin/bash
-    lfs_system_install systemd
-)
+lfs_system_install systemd
 lfs_sysroot_install systemd#dev
 
 #===[ Kernel and boot ]===
@@ -224,6 +221,9 @@ lfs_system_install python/fido2
 lfs_system_install python/yubikey-manager
 
 #===[ Accounts ]===
+
+# root logs in with bash. Its password is LFS_ROOT_PASSWORD.
+( root_shell=/bin/bash; lfs_system_set_root )
 
 # A regular account besides root, for working with keys without administrative rights: LFS_USER, of
 # the group `users`, with bash for shell. Its group reaches pcscd's socket, the security keys'

@@ -25,8 +25,11 @@ hash of root's password, so the system has no libxcrypt.
 Accounts
 --------
 
-The system has one account, `root`, with the password `root` and ash as its shell. The static
-accounts are those of [`package/busybox/etc`](../package/busybox/etc).
+The system has one account, `root`, with the password `LFS_ROOT_PASSWORD`, which defaults to `root`,
+and ash as its shell. The static accounts are those of
+[`package/busybox/etc`](../package/busybox/etc), where root is locked: the build sets root's password.
+root's prompt is in [`virt-busybox/root/.profile`](virt-busybox/root/.profile), which ash reads when
+root logs in. The system has neither an issue nor a message of the day.
 
 
 Building and Booting

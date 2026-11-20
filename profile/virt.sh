@@ -2,7 +2,8 @@
 # console, and that it powers off: systemd, with the strict minimum it needs to boot the system and
 # log root in, dash, /bin/sh, bash, root's shell, and the kernel. It links kmod, libxcrypt, and
 # util-linux's libmount and libblkid, and runs util-linux's mount, agetty and sulogin, and shadow's
-# login, which starts root's shell. It brings the static accounts, root's included.
+# login, which starts root's shell. It brings the static accounts, and sets root's. Its issue, motd
+# and shell profile are the files of profile/virt/.
 
 lfs_system_toolchain glibc
 # glibc loads libgcc_s to unwind stacks.
@@ -46,12 +47,12 @@ lfs_system_install shadow
     lfs_system_install util-linux
     lfs_sysroot_install util-linux#dev
 )
-(
-    root_shell=/bin/bash
-    lfs_system_install systemd
-)
+lfs_system_install systemd
 
 # The kernel, with a console (virtio's hvc0, from the platform's layer), the btrfs root file system,
 # its self-protection, loadable modules (systemd loads autofs4) and the options that systemd relies
 # on.
 ( capabilities="btrfs console hardening modules systemd"; lfs_system_install linux )
+
+# root logs in with bash, a shell with line editing. Its password is LFS_ROOT_PASSWORD.
+( root_shell=/bin/bash; lfs_system_set_root )

@@ -18,11 +18,12 @@
 # profile installs, which are filed under its key.
 #
 # Only the inputs of the build can make an archive stale: lfs, lib/, package/, profile/*.sh and
-# platform/. Every other path (the Makefile, documentation, profile/*.md, check/, .github/,
-# .claude/, the Dockerfiles, docker-compose.yaml, bin/, ...) has no effect. With --docker, for the
-# archives of the build through Docker Compose, Dockerfile.bootstrap, Dockerfile.scratch and
-# docker-compose.yaml are inputs too, which drop every archive, as they make the machines that
-# every package is built on.
+# platform/. Every other path (the Makefile, documentation, profile/*.md, the files of a profile in
+# profile/<profile>/, which each system build copies into the system and no archive holds, check/,
+# .github/, .claude/, the Dockerfiles, docker-compose.yaml, bin/, ...) has no effect. With
+# --docker, for the archives of the build through Docker Compose, Dockerfile.bootstrap,
+# Dockerfile.scratch and docker-compose.yaml are inputs too, which drop every archive, as they make
+# the machines that every package is built on.
 # Every input path that changed between archive/<key>/.commit and the tree now is mapped by the
 # first rule that fits:
 #
@@ -233,6 +234,9 @@ select_changed() {
         else
             select_archives "$path: rule 8, in no recipe: every archive" all
         fi
+        ;;
+    profile/*/*)
+        echo "$path: no effect, a file of the profile, copied into each build of its system"
         ;;
     profile/[!/]*.sh)
         profile=${path#profile/}

@@ -10,6 +10,9 @@ if {[llength $argv] > 0} {
     set env(LFS_PROFILE) [lindex $argv 0]
 }
 
+# root's password, as the image was built with it: LFS_ROOT_PASSWORD, root by default.
+set password [expr {[info exists env(LFS_ROOT_PASSWORD)] && $env(LFS_ROOT_PASSWORD) ne "" ? $env(LFS_ROOT_PASSWORD) : "root"}]
+
 # LFS_TEST_TIMEOUT overrides the default per-phase timeout.
 set timeout [expr {[info exists env(LFS_TEST_TIMEOUT)] ? $env(LFS_TEST_TIMEOUT) : 120}]
 
@@ -31,7 +34,7 @@ send "root\r"
 
 expect {
     "Password:" {
-        send "root\r"
+        send "$password\r"
         expect {
             -re {[#$] $} { }
             timeout { puts "\nFAIL: timed out after password"; exit 1 }

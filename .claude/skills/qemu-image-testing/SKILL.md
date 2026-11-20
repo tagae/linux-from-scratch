@@ -16,7 +16,7 @@ platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu
 $Q/qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
 $Q/qemu-check pi0-pgp "-device usb-ccid" 'ykman list --readers'
 ```
-Boots a COPY of `image/KEY.img`, logs in as root (password `root`), runs ONE guest line, powers off, prints
+Boots a COPY of `image/KEY.img`, logs in as root (password `root`, or `LFS_ROOT_PASSWORD`), runs ONE guest line, powers off, prints
 only that line's output (on failure: the end of the console and its path). `./lfs qemu` boots an image through
 a qcow2 overlay next to it (`x.img` through `x.qcow2`), which keeps what the system writes until the image is
 made anew: the image itself is never written, and the copy gives each check a fresh overlay. Env:
@@ -115,7 +115,7 @@ it with `EXPECT_SCRIPT=`, print `QEMU_CHECK_BEGIN` and `QEMU_CHECK_END` around t
 
 - "Failed to get write lock": an earlier QEMU still holds the overlay or stick. `ps aux | grep '[q]emu-system'`,
   then `pkill -f 'qemu-system.*<copy>'` (SIGTERM, throwaway copies only: `-9` corrupted a btrfs once).
-- Login: wait for the glob `login:`, send `root`, answer `Password:` with `root`; skipping it hangs silently.
+- Login: wait for the glob `login:`, send `root`, answer `Password:` with root's (`root`, or `LFS_ROOT_PASSWORD`); skipping it hangs silently.
   Never wait twice for one marker.
 - Keep expect in the FOREGROUND with `TIMEOUT` below the tool's 600 s, so failures print: backgrounded expect hung
   QEMU repeatedly. Builds are the long things; those go in the background. Redirect to files, not `| tail`.

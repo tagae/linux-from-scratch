@@ -10,7 +10,7 @@ Accounts
 
 The system has two accounts, both with a shell on the serial console:
 
-* `root`, with the password `root`.
+* `root`, with the password `LFS_ROOT_PASSWORD`, which defaults to `root`.
 * A regular account, for working with keys without administrative rights. Its name is `LFS_USER`,
   which defaults to the name of the user who runs `make`, and its password is `LFS_PASSWORD`, which
   defaults to its name:
@@ -27,6 +27,9 @@ The regular account makes keys (`gpg`, `gpg-genkey`), reads and writes the USB s
 YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface through, and the
 security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2 and OTP
 interfaces through, belong to the group `users`.
+
+The issue that `agetty` prints before the login prompt, the message of the day that `login` prints
+after it, and the shell profile (`/etc/profile`) are the files of [`pi0-pgp/`](pi0-pgp).
 
 
 Making OpenPGP Keys

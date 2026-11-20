@@ -73,8 +73,8 @@ install() {
                 CONFIG_PREFIX=$package_install_dir$prefix install
             cp -a $package_install_dir$prefix$prefix/. $package_install_dir$prefix/
             rm -rf $package_install_dir$prefix$prefix
-            # The static accounts and the init's table, and the home directory of root.
-            cp -rv $package_files_dir/etc $package_files_dir/root $package_install_dir/
+            # The static accounts (root, locked) and the init's table.
+            cp -rv $package_files_dir/etc $package_install_dir/
             chmod -v 0600 $package_install_dir/etc/shadow
             ;;
         *)

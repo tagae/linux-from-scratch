@@ -51,6 +51,7 @@ services:
       LFS_TIMEZONE:
       LFS_USER:
       LFS_PASSWORD:
+      LFS_ROOT_PASSWORD:
       LFS_RELEASE:
       LFS_VERSION_CODENAME:
       LFS_RELEASE_TYPE:

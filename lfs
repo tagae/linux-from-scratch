@@ -58,6 +58,7 @@ if ! ${LFS_CLEAN_ENV:-false}; then
          "LFS_ARCHIVE_DIR=${LFS_ARCHIVE_DIR:-}" "LFS_IMAGE_DIR=${LFS_IMAGE_DIR:-}" \
          "LFS_PROFILE=${LFS_PROFILE:-}" "LFS_MACHINE=${LFS_MACHINE:-}" \
          "LFS_TIMEZONE=${LFS_TIMEZONE:-}" "LFS_USER=${LFS_USER:-}" "LFS_PASSWORD=${LFS_PASSWORD:-}" \
+         "LFS_ROOT_PASSWORD=${LFS_ROOT_PASSWORD:-}" \
          "LFS_RELEASE=${LFS_RELEASE:-}" "LFS_VERSION_CODENAME=${LFS_VERSION_CODENAME:-}" \
          "LFS_RELEASE_TYPE=${LFS_RELEASE_TYPE:-}" "LFS_DISTRIB_CODENAME=${LFS_DISTRIB_CODENAME:-}" \
          "LFS_DISTRIB_DESCRIPTION=${LFS_DISTRIB_DESCRIPTION:-}" \
@@ -231,6 +232,8 @@ case "${1:-help}" in
         echo "  LFS_TIMEZONE     The image's time zone, as named in the tz database; UTC by default"
         echo "  LFS_USER         The name of the regular account of the profiles that have one"
         echo "  LFS_PASSWORD     That account's password; its name by default"
+        echo "  LFS_ROOT_PASSWORD"
+        echo "                   root's password; root by default"
         echo "  LFS_ERASE        The block device that image build may erase; the same path as the"
         echo "                   DEVICE argument. A device is never erased without it"
         echo "  LFS_MACHINE      The kernel's default host name; none by default"

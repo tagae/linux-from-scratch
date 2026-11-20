@@ -101,7 +101,9 @@ done
 
 # Every profile is named after a platform that lfs knows. stdout goes to /dev/null and stderr to the output,
 # which is why the redirections are in this order.
-for profile in $(find profile -type f -name '*.sh' | sed 's|^profile/||; s|\.sh$||' | sort); do
+for profile in profile/*.sh; do
+    profile=${profile#profile/}
+    profile=${profile%.sh}
     if ! output=$(LFS_PROFILE=$profile ./lfs help 2>&1 > /dev/null); then
         finding "LFS_PROFILE=$profile does not resolve: $output"
     fi
@@ -113,15 +115,20 @@ for profile in $ci_profiles; do
     [ -f .github/workflows/$profile.yaml ] || finding ".github/workflows/$profile.yaml is missing, the CI of $profile"
 done
 
+# The files of a profile, in a directory of profile/, belong to a profile.
+for dir in profile/*/; do
+    [ -f ${dir%/}.sh ] || finding "${dir%/}.sh is missing, the profile of the files in $dir"
+done
+
 # Every profile starts with its cross toolchain, which the packages after it are compiled with.
-for profile in $(find profile -type f -name '*.sh' | sort); do
+for profile in profile/*.sh; do
     grep -Eq '^lfs_system_toolchain (glibc|musl)$' $profile \
         || finding "$profile: lfs_system_toolchain glibc|musl is missing, the toolchain of the profile"
 done
 
 # Every kernel capability that a profile names is a file of the linux package, which would otherwise
 # fail when the kernel is configured, long into a build.
-for profile in $(find profile -type f -name '*.sh' | sort); do
+for profile in profile/*.sh; do
     for capability in $(sed -n 's/.*capabilities="\{0,1\}\([^";)]*\).*/\1/p' $profile); do
         [ -f package/linux/$capability.config ] \
             || finding "$profile: package/linux/$capability.config is missing, a kernel capability"

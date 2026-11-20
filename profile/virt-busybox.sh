@@ -9,3 +9,6 @@ lfs_system_toolchain musl
 )
 
 ( capabilities="btrfs console devtmpfs hardening"; lfs_system_install linux )
+
+# root's password is LFS_ROOT_PASSWORD, and its shell BusyBox's sh.
+lfs_system_set_root

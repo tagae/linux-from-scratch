@@ -34,12 +34,17 @@ static.
 Accounts
 --------
 
-The system has one account, `root`, with the password `root` and bash as its shell. The static
-accounts, root's and those of systemd's services, are those of
-[`package/systemd/etc`](../package/systemd/etc).
+The system has one account, `root`, with the password `LFS_ROOT_PASSWORD`, which defaults to `root`,
+and bash as its shell. The static accounts, root's, locked, and those of systemd's services, are those
+of [`package/systemd/etc`](../package/systemd/etc): the build sets root's password and shell.
 
-The prompt is `user@host:directory`, ended by `#` for root. The history of the session is kept in
-memory only.
+The system's own files are those of [`virt/`](virt):
+
+* `etc/issue`, which `agetty` prints before the login prompt.
+* `etc/motd`, which `login` prints after a login: without PAM, `login` prints the file that
+  `MOTD_FILE` names in `login.defs`, which is `/etc/motd`.
+* `etc/profile`, which the shell of a login reads. The prompt is `user@host:directory`, ended by `#`
+  for root. The history of the session is kept in memory only.
 
 
 Building and Booting

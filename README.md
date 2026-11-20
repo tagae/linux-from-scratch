@@ -85,14 +85,20 @@ files and image.
 
 See `profile/<profile>.md` for profile-specific documentation.
 
-A profile can have a regular account besides root (`pi0-pgp` does). `LFS_USER` names it, by default
-after the user that runs `make`, and `LFS_PASSWORD` is its password, by default its name:
+root's password is `LFS_ROOT_PASSWORD`, by default `root`. A profile can have a regular account
+besides root (`pi0-pgp` does). `LFS_USER` names it, by default after the user that runs `make`, and
+`LFS_PASSWORD` is its password, by default its name:
 
 ```shell
-make image LFS_PROFILE=pi0-pgp LFS_USER=alice LFS_PASSWORD='a password'
+make image LFS_PROFILE=pi0-pgp LFS_ROOT_PASSWORD='a root password' LFS_USER=alice LFS_PASSWORD='a password'
 ```
 
-The account is made when the system is built, and belongs to no package archive.
+The accounts are set when the system is built, and belong to no package archive.
+
+A profile has files of its own in `profile/<profile>/`, which give the system its look: the issue and
+the message of the day, and the shell profile. The path of a file there is its path in the system
+(`profile/virt/etc/issue` is `/etc/issue`), and the build copies the files once the profile's
+packages are in. A file that a package installs cannot be one of them.
 
 
 Kernel Capabilities
