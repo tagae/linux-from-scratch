@@ -9,7 +9,7 @@ prepare() {
         ${host:+--host=$host} \
         ${build:+--build=$build} \
         ${prefix:+--prefix=$prefix} \
-        ${host:+--with-sysroot=$LFS_INSTALL_DIR/$LFS_PROFILE} \
+        ${host:+--with-sysroot=$system_dir} \
         --disable-static
 }
 

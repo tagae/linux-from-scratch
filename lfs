@@ -36,17 +36,13 @@ readonly profile_dir=$project_dir/profile
 # Build toolchains.
 : ${LFS_TOOL_DIR:=$LFS_STATE_DIR/tools}
 
-# Root filesystem being built.
-: ${LFS_INSTALL_DIR:=$LFS_STATE_DIR/install}
-
 # Built package archives.
 : ${LFS_ARCHIVE_DIR:=$LFS_STATE_DIR/archive}
 
 # Built images to be used on actual hardware, or emulators.
 : ${LFS_IMAGE_DIR:=$LFS_STATE_DIR/image}
 
-readonly LFS_STATE_DIR LFS_WORK_DIR LFS_DOWNLOAD_DIR LFS_TOOL_DIR \
-         LFS_INSTALL_DIR LFS_ARCHIVE_DIR LFS_IMAGE_DIR
+readonly LFS_STATE_DIR LFS_WORK_DIR LFS_DOWNLOAD_DIR LFS_TOOL_DIR LFS_ARCHIVE_DIR LFS_IMAGE_DIR
 
 # Start anew with the same arguments in an environment that holds only allowed variables.
 if ! ${LFS_CLEAN_ENV:-false}; then
@@ -59,9 +55,8 @@ if ! ${LFS_CLEAN_ENV:-false}; then
          PWD=$PWD OLDPWD=${OLDPWD:-} \
          LFS_STATE_DIR=${LFS_STATE_DIR:-} LFS_WORK_DIR=${LFS_WORK_DIR:-} \
          LFS_DOWNLOAD_DIR=${LFS_DOWNLOAD_DIR:-} LFS_TOOL_DIR=${LFS_TOOL_DIR:-} \
-         LFS_INSTALL_DIR=${LFS_INSTALL_DIR:-} LFS_ARCHIVE_DIR=${LFS_ARCHIVE_DIR:-} \
-         LFS_IMAGE_DIR=${LFS_IMAGE_DIR:-} LFS_PROFILE=${LFS_PROFILE:-} \
-         LFS_MACHINE=${LFS_MACHINE:-} \
+         LFS_ARCHIVE_DIR=${LFS_ARCHIVE_DIR:-} LFS_IMAGE_DIR=${LFS_IMAGE_DIR:-} \
+         LFS_PROFILE=${LFS_PROFILE:-} LFS_MACHINE=${LFS_MACHINE:-} \
          LFS_TIMEZONE=${LFS_TIMEZONE:-} LFS_USER=${LFS_USER:-} LFS_PASSWORD=${LFS_PASSWORD:-} \
          LFS_RELEASE=${LFS_RELEASE:-} LFS_VERSION_CODENAME=${LFS_VERSION_CODENAME:-} \
          LFS_RELEASE_TYPE=${LFS_RELEASE_TYPE:-} LFS_DISTRIB_CODENAME=${LFS_DISTRIB_CODENAME:-} \
@@ -103,6 +98,10 @@ A profile is named <platform>[-<name>]"
 #-- Package key: the key under which the system's packages are archived.
 
 package_key=$LFS_PROFILE
+
+#-- System tree: the root tree of the system, which the system step builds and the image step reads.
+
+readonly system_dir=$LFS_WORK_DIR/$LFS_PROFILE/system
 
 
 #===[ Compilation ]===

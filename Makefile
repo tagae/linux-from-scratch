@@ -103,7 +103,7 @@ invalidate:
 include check/Makefile
 
 clean:
-	rm -rf work/ install/
+	rm -rf work/
 
 distclean: clean
 	rm -rf tools/
@@ -162,7 +162,7 @@ docker-invalidate:
 
 # Besides the directories, these remove the volumes that Docker Compose keeps in their place.
 docker-clean: clean
-	docker volume rm -f linux-from-scratch_work linux-from-scratch_install
+	docker volume rm -f linux-from-scratch_work
 
 docker-distclean: docker-clean distclean
 	docker volume rm -f linux-from-scratch_tools

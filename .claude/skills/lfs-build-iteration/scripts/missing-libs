@@ -1,10 +1,10 @@
 #!/bin/sh
-# Scans the install tree of a system for shared libraries that are needed but not shipped, and for
+# Scans the system tree of a profile for shared libraries that are needed but not shipped, and for
 # RPATHs that are not /usr/lib. Run it before booting a new package set.
 #
 # Usage: missing-libs KEY      e.g. missing-libs pi0-pgp
 #
-# KEY's tree is in the `install` volume of the last build of KEY. Prints one line per problem:
+# KEY's tree is in the `work` volume, at KEY/system, from the last build of KEY. Prints one line per problem:
 #   path  NEEDS  libfoo.so.1         no file of that name is in the tree
 #   path  RPATH  /some/build/dir     an RPATH or RUNPATH outside /usr/lib, /lib and $ORIGIN
 # and nothing when the tree is clean. Dlopened libraries are not seen (python, scdaemon plugins).
@@ -12,9 +12,9 @@
 # chgpasswd chpasswd newusers sulogin, util-linux's more and cfdisk): only new lines matter.
 set -eu
 key=${1:?Usage: missing-libs KEY}
-docker run --rm -i -v linux-from-scratch_install:/i:ro linux-from-scratch-dev sh -s -- "/i/$key" <<'SCRIPT'
+docker run --rm -i -v linux-from-scratch_work:/i:ro linux-from-scratch-dev sh -s -- "/i/$key/system" <<'SCRIPT'
 root=$1
-[ -d "$root" ] || { echo "no install tree $root" >&2; exit 1; }
+[ -d "$root" ] || { echo "no system tree $root" >&2; exit 1; }
 find "$root" -type f -o -type l | sed 's#.*/##' | sort -u > /tmp/provided
 find "$root" -type f \( -perm -u+x -o -name '*.so*' \) | while read -r f; do
     head -c4 "$f" 2>/dev/null | grep -q 'ELF' || continue

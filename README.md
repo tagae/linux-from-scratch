@@ -74,7 +74,7 @@ A *profile* is a whole system specification: kernel, init system and further pac
 Out of the box profiles are located in `profile/<profile>.sh`.
 
 A profile is named `<platform>[-<name>]`, after the platform it runs on (e.g., `pi0-pgp` runs on
-`pi0`), and its name is used as key of all built artefacts: package archives, install tree, boot
+`pi0`), and its name is used as key of all built artefacts: package archives, system tree, boot
 files and image.
 
 | Profile        | Platform | System                                                                             |
@@ -151,13 +151,13 @@ Make Targets
 make fetch            # download the sources of every package, for every profile, into download/
 make tools-bootstrap  # native toolchain + temporary tools, from the host's
 make tools            # toolchain + temporary build tools
-make system           # build the system for the platform into the install tree
-make image            # produce a disk image from the install tree
+make system           # build the system for the platform into the system tree
+make image            # produce a disk image from the system tree
 make qemu             # boot the image in QEMU (interactive serial console)
 make test             # check that the image boots and root can login/poweroff
 ```
 
-`make system` starts from an empty install tree each time, so `image`, `qemu` and `test` use the
+`make system` starts from an empty system tree each time, so `image`, `qemu` and `test` use the
 system built by the latest run. Running `make` without a goal runs `test`.
 
 The builds download what they need as they go. `make fetch` downloads it all first, with the host's
@@ -179,7 +179,7 @@ make image LFS_PROFILE=pi0-pgp
 The variables that `lfs` reads all start with `LFS_`, so that none of them clashes with a variable
 of the caller's environment, and `lfs` ignores every other.
 
-The profile's name is the key of every deliverable: the install tree, the boot files, and the image. A
+The profile's name is the key of every artefact: the system tree, the boot files, and the image. A
 target can be named by its profile directly:
 
 ```shell

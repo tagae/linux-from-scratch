@@ -1,7 +1,7 @@
 # Target System
 # -------------
 #
-# Builds the system's root tree into $LFS_INSTALL_DIR/$LFS_PROFILE.
+# Builds the system's root tree, the system tree, into $system_dir.
 #
 # The cross toolchain that compiles the system has a sysroot of its own, which holds the same
 # packages, plus their dev components. The toolchain finds the platform's headers and libraries
@@ -32,7 +32,6 @@ lfs_system_build() {
     readonly nls=no
     readonly multilib=no
     readonly prefix=/usr
-    readonly system_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
     # Under the key the cross toolchain is archived under, as the toolchain records the path.
     readonly sysroot=$LFS_WORK_DIR/$package_key/sysroot
 
@@ -62,7 +61,7 @@ lfs_system_build() {
 
     ( . $profile_dir/$LFS_PROFILE.sh )
 
-    # QEMU runs on the host, which cannot see the install tree (a Docker volume), but sees
+    # QEMU runs on the host, which cannot see the system tree (in a Docker volume), but sees
     # LFS_WORK_DIR/boot: the kernel that the profile installed, and the platform's device tree.
     rm -rf $LFS_WORK_DIR/boot/$LFS_PROFILE
     mkdir -pv $LFS_WORK_DIR/boot/$LFS_PROFILE

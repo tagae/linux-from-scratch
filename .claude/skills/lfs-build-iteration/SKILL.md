@@ -14,7 +14,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   install order, with the options of each at its call site, the init (`systemd`, `dash`) and the kernel among
   them (`( capabilities="btrfs console fat hardening hidraw serial-console systemd usb usb-storage"; lfs_system_install linux )`, capabilities being
   `package/linux/<capability>.config`, alphabetical). The profile's name starts with its platform
-  (`pi0-pgp` runs on `pi0`) and is the key of everything: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`,
+  (`pi0-pgp` runs on `pi0`) and is the key of everything: `archive/<profile>/`, `work/<profile>/system`, `work/<profile>/sysroot`,
   `work/<profile>/source`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
   `FEATURES`: to add a package, add its lines to the profile.
 - Build: `make docker-image/<profile>.img` (Linux hosts: `make image/<profile>.img`); also `make image
@@ -30,9 +30,9 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   run, with no recorded state, deletes every archive.
   To prove a kernel change moved nothing, save the resolved `.config` from the `work` volume
   (`$B/kernel-config` shows single options), rebuild, and `diff`.
-- `lfs system build` (run by every `make docker-*`) wipes `install/<key>` and rebuilds it from archives: even a
+- `lfs system build` (run by every `make docker-*`) wipes `work/<key>/system` and rebuilds it from archives: even a
   no-op takes 3-4 minutes and ends with the image step (`image (done)` when nothing changed). The image is remade
-  only when a file of the install tree is newer than it or its SBOM (`image/<key>.spdx.json`, which `lib/sbom.sh`
+  only when a file of the system tree is newer than it or its SBOM (`image/<key>.spdx.json`, which `lib/sbom.sh`
   writes from `work/sbom/<key>`, the list of packages `lfs_system_install` recorded) is missing, and archives keep
   their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image, its SBOM and its manifests
   (`image/<key>.img`, `image/<key>.spdx.json`, `image/<key>.{root,boot}-files.txt`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
@@ -79,7 +79,7 @@ user's YubiKey touch).
   one build at a time.
 - Colima shares only `$HOME`: `docker run -v /tmp/x:/x` mounts an EMPTY directory. Keep files in the repo or pipe
   a script: `docker run --rm -i IMG sh -s -- args < script`.
-- Volumes `linux-from-scratch_{work,tools,install}` (and `home`, the dev user's, which only `make docker-pristine` removes); images `linux-from-scratch-dev` (Debian: readelf,
+- Volumes `linux-from-scratch_{work,tools}` (and `home`, the dev user's, which only `make docker-pristine` removes); images `linux-from-scratch-dev` (Debian: readelf,
   python3, dash; for inspecting; the `dev` service of docker-compose.yaml, which `docker compose build dev` builds
   once, from Dockerfile.dev) and `linux-from-scratch-scratch` (only the tools). Inspect read-only:
   `docker run --rm -v linux-from-scratch_work:/w:ro linux-from-scratch-dev ls /w/<key>`.

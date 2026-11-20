@@ -32,11 +32,6 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
-      # Unused here, but a volume created by this service takes the ownership of the mount point in
-      # its image, which the scratch image cannot provide.
-      - type: volume
-        source: install
-        target: /mnt/lfs/install
       - type: bind # So that built archives can be consumed where needed outside the container.
         source: archive
         target: /mnt/lfs/archive
@@ -56,7 +51,6 @@ services:
       LFS_TIMEZONE:
       LFS_USER:
       LFS_PASSWORD:
-      LFS_INSTALL_DIR:
       LFS_RELEASE:
       LFS_VERSION_CODENAME:
       LFS_RELEASE_TYPE:
@@ -90,9 +84,6 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
-      - type: volume
-        source: install
-        target: /mnt/lfs/install
       - type: bind # So that built images are available on the host (e.g., for QEMU to run).
         source: image
         target: /mnt/lfs/image
@@ -124,9 +115,6 @@ services:
       - type: volume
         source: tools
         target: /mnt/lfs/tools
-      - type: volume
-        source: install
-        target: /mnt/lfs/install
       # The home of the user, so that its shell history and configuration outlast the container.
       # Only docker-pristine removes it: it is not a build product.
       - type: volume
@@ -136,5 +124,4 @@ services:
 volumes:
   work:
   tools:
-  install:
   home:

@@ -6,9 +6,7 @@ lfs_build_image() {
     [ $# -le 1 ] || bail "Usage: $(basename "$0") image build [IMAGE|DEVICE]"
     local target="${1:-$LFS_IMAGE_DIR/$LFS_PROFILE.img}" shrink=
     local stem="${target%.img}" sbom="${target%.img}.spdx.json"
-    # One install tree per system key, not a shared $LFS_INSTALL_DIR.
-    local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
-    [ -d "$install_dir" ] || bail "Install directory not found: $install_dir"
+    [ -d "$system_dir" ] || bail "System tree not found: $system_dir"
 
     stage image
     if [ -b "$target" ]; then
@@ -17,7 +15,7 @@ lfs_build_image() {
         confirm_erase
     elif [ -e "$target" ] && [ -e "$sbom" ] && [ -e "$stem.root-files.txt" ] \
         && lfs_sbom_has_release "$sbom" \
-        && [ -z "$(find $install_dir -newer "$target" -print -quit)" ]; then
+        && [ -z "$(find $system_dir -newer "$target" -print -quit)" ]; then
         echo "image (done)"
         return
     fi
@@ -42,14 +40,14 @@ lfs_build_image() {
         assemble_image
         list_files $root_dir > "$image_file.root-files.txt"
         if [ "${image_layout:-pi}" != single ]; then
-            list_files $LFS_INSTALL_DIR/$LFS_PROFILE/boot > "$image_file.boot-files.txt"
+            list_files $system_dir/boot > "$image_file.boot-files.txt"
         fi
         lfs_sbom_document "${target##*/}" "$(sha256sum < "$image_file" | cut -d' ' -f1)" \
             > "$image_file.spdx.json"
         # The files that the kernel was built from, which the vulnerability scan reads with the SBOM.
         local kernel_files="${target%.img}.kernel-files"
-        if [ -f $install_dir/usr/share/lfs/kernel-files ]; then
-            cp $install_dir/usr/share/lfs/kernel-files "$kernel_files"
+        if [ -f $system_dir/usr/share/lfs/kernel-files ]; then
+            cp $system_dir/usr/share/lfs/kernel-files "$kernel_files"
         else
             rm -f "$kernel_files"
         fi
@@ -145,24 +143,23 @@ create_filesystems() {
         [ -b $boot_device ] || truncate -s ${boot_size}M $boot_device
         mkfs.fat -c -f 1 -F 32 -n BOOT $boot_device
         # FAT has no owners, so the boot files are copied as they are.
-        mcopy -s -i $boot_device $LFS_INSTALL_DIR/$LFS_PROFILE/boot/* ::
+        mcopy -s -i $boot_device $system_dir/boot/* ::
     fi
 }
 
 # Copies the files of the root file system: the system's, owned by root, the Pi layout's boot files
 # aside, as they have a partition of their own; and those that belong to the image.
 stage_root() {
-    local install_dir=$LFS_INSTALL_DIR/$LFS_PROFILE
-    stage "Staging the root file system from $install_dir"
+    stage "Staging the root file system from $system_dir"
     # The file system's top level, which holds the root subvolume.
     base_dir=$parts_dir/base
     root_dir=$base_dir/root/$root_volume
     mkdir -p $root_dir
-    # The install tree belongs to the build user, but the system's files belong to root.
+    # The system tree belongs to the build user, but the system's files belong to root.
     if [ "${image_layout:-pi}" = single ]; then
-        tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - . | tar -C $root_dir -xpf -
+        tar -C $system_dir --owner=0 --group=0 --numeric-owner -cf - . | tar -C $root_dir -xpf -
     else
-        tar -C $install_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
+        tar -C $system_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
             | tar -C $root_dir -xpf -
         # Where the boot partition is mounted.
         mkdir $root_dir/boot

@@ -11,9 +11,8 @@ Overview
 * `package/`: package recipes
 * `download/`: fetched artefacts
 * `work/`: per profile (e.g., `work/virt`) and for the tools (`work/tools`): unpacked sources
-  (`source/`), build dirs, and the sysroots of the cross toolchains
+  (`source/`), build dirs, the system tree (`system/`) and the sysroot of the cross toolchain
 * `tools/`: built tools and cross toolchain for each platform
-* `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
 * `image/`:  built disk images
 * `bin/`: project maintenance commands
@@ -53,7 +52,7 @@ With this, the tools are fully functional and can be used to build packages.
 Building the System
 -------------------
 
-The following command builds the system for a given profile, into `install/$LFS_PROFILE`:
+The following command builds the system for a given profile, into `work/$LFS_PROFILE/system`, the system tree:
 
 ```shell
 ./lfs system build
@@ -70,7 +69,7 @@ toolchain. This includes the kernel (`linux` with a given set of capabilities), 
 Images
 ------
 
-The following command makes a disk image from the install tree at `install/$LFS_PROFILE`, as
+The following command makes a disk image from the system tree at `work/$LFS_PROFILE/system`, as
 populated by `./lfs system build`:
 
 ```shell
@@ -276,8 +275,8 @@ Where Code Goes
 A profile is a whole system: the packages it holds, the init system and the kernel among them, as a
 flat list in the order they are installed, with the options of each package at its call site. Its
 name, `<platform>[-<name>]`, starts with the platform it runs on, and is the key of everything built
-for it: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`, `work/<profile>/source`
-and the image. A profile installs in a subshell, and starts with its toolchain,
+for it: `archive/<profile>/`, `work/<profile>/system`, `work/<profile>/sysroot`,
+`work/<profile>/source` and the image. A profile installs in a subshell, and starts with its toolchain,
 `lfs_system_toolchain glibc|musl`, whose C library is the system's: the library gives the ABI of the
 target triplet (`aarch64-scratch-linux-musl`), after which the platform's EABI follows (`eabihf`,
 for the pi0). It sets no kernel option itself. A
