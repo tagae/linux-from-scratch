@@ -180,7 +180,17 @@ case "${1:-help}" in
         # Sources are unpacked and patched in place, and possibly, in parallel.
         # so each profile has a source directory of its own.
         readonly source_dir=$LFS_WORK_DIR/$package_key/source
-        lfs_system "$@"
+        case "${1:-help}" in
+            build)
+                shift
+                lfs_system_build
+                ;;
+            help)
+                echo "Usage: $(basename "$0") system <build>"
+                if [ $# -eq 1 ]; then exit 0; else exit 1; fi ;;
+            *)
+                bail "Unknown system command '$1'" ;;
+        esac
         ;;
 
     image)

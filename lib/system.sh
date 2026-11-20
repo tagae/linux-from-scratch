@@ -16,16 +16,6 @@
 # and from the capabilities there that the profile names in the `capabilities` option of the linux
 # package.
 
-lfs_system() {
-    case "${1:-help}" in
-        build) shift && lfs_system_build ;;
-        help)
-            echo "Usage: $(basename "$0") system <build>"
-            if [ $# -eq 1 ]; then exit 0; else exit 1; fi ;;
-        *) bail "Unknown command '$1'" ;;
-    esac
-}
-
 lfs_system_build() {
     mkdir -p ${TMPDIR:-/tmp}
 
