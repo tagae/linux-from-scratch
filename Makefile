@@ -161,12 +161,12 @@ docker-invalidate:
 	bin/invalidate --docker
 
 # Besides the directories, these remove the volumes that Docker Compose keeps in their place.
-docker-clean: clean
+docker-clean:
 	docker volume rm -f linux-from-scratch_work
 
-docker-distclean: docker-clean distclean
+docker-distclean: docker-clean
 	docker volume rm -f linux-from-scratch_tools
 
-docker-pristine: docker-distclean pristine
+docker-pristine: docker-distclean
 	docker compose down -v --remove-orphans
 	rm -f .env
