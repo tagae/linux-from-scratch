@@ -27,9 +27,6 @@ services:
         source: download
         target: /mnt/lfs/download
       - type: volume
-        source: source
-        target: /mnt/lfs/source
-      - type: volume
         source: work
         target: /mnt/lfs/work
       - type: volume
@@ -85,9 +82,6 @@ services:
         source: download
         target: /mnt/lfs/download
       - type: volume
-        source: source
-        target: /mnt/lfs/source
-      - type: volume
         source: work
         target: /mnt/lfs/work
       - type: bind # So that the kernel lands on the host for consumption by QEMU.
@@ -120,9 +114,6 @@ services:
         source: .
         target: /mnt/lfs
       - type: volume
-        source: source
-        target: /mnt/lfs/source
-      - type: volume
         source: work
         target: /mnt/lfs/work
       # The work volume holds a root-owned mount point for this when the scratch service ran first,
@@ -143,7 +134,6 @@ services:
         target: /home/lfs
 
 volumes:
-  source:
   work:
   tools:
   install:

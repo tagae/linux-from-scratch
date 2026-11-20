@@ -4,7 +4,7 @@
 : ${package_description:=Utility functions for Python functions.}
 : ${package_license:=MIT}
 
-package_source_dir=$LFS_SOURCE_DIR/python/jaraco_functools-$package_version
+package_source_dir=$source_dir/python/jaraco_functools-$package_version
 
 install() {
     python_install_modules $package_source_dir/jaraco

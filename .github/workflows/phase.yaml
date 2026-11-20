@@ -207,7 +207,7 @@ jobs:
         if: always()
         run: |
           df -h /
-          du -sh archive download tools work source install image || true
+          du -sh archive download tools work install image || true
 
       - name: Check whether the build changed the caches
         id: after

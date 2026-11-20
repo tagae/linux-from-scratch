@@ -15,7 +15,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   them (`( capabilities="btrfs console fat hardening hidraw serial-console systemd usb usb-storage"; lfs_system_install linux )`, capabilities being
   `package/linux/<capability>.config`, alphabetical). The profile's name starts with its platform
   (`pi0-pgp` runs on `pi0`) and is the key of everything: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`,
-  `source/<profile>`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
+  `work/<profile>/source`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
   `FEATURES`: to add a package, add its lines to the profile.
 - Build: `make docker-image/<profile>.img` (Linux hosts: `make image/<profile>.img`); also `make image
   LFS_PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb}`.
@@ -39,7 +39,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   with `make sbom-check`.
 - Builds of DIFFERENT profiles can run at once from ONE make (`make -j docker-test docker-pi0-pgp-test`, no job limit:
   tools first, then the systems side by side; each build uses `-j$(nproc)`). They share the `tools` volume, the
-  downloads and `archive/tools`; each profile has its own sources (`source/<profile>`), work, archives and
+  downloads and `archive/tools`; each profile has its own sources (`work/<profile>/source`), work, archives and
   image; the cross toolchains share a few files (`libcc1`, `bfd-plugins/libdep.so`, docs), rewritten when a build
   extracts its own. Two cross gcc compiles at once got `Killed signal terminated program cc1plus` in a 12 GiB VM,
   and need 24 GiB or more: the `default` VM has 16 GiB, so build one profile at a time there. NEVER run two builds
@@ -52,7 +52,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   follow-on errors); after deleting a tool's archive the rebuilt one is extracted again.
 - `system-files` is merged BEFORE the other packages and the last file wins: a file a package installs cannot be
   overridden from `package/system-files`; change it in that package.
-- Sources (`source/<profile>`, `source/tools`) and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
+- Sources (`work/<profile>/source`, `work/tools/source`) and `work/` build directories persist: meson reconfigures a configured directory with its OLD options
   and compilers (the meson recipes wipe theirs in `prepare`); patches are stamped `.patched-*`, so a patch you
   change is not applied again to a source that has it: delete that source directory.
 - The kernel `.config` is regenerated from `allnoconfig` + layers and capabilities at every `prepare`; allnoconfig drops options
@@ -79,7 +79,7 @@ user's YubiKey touch).
   one build at a time.
 - Colima shares only `$HOME`: `docker run -v /tmp/x:/x` mounts an EMPTY directory. Keep files in the repo or pipe
   a script: `docker run --rm -i IMG sh -s -- args < script`.
-- Volumes `linux-from-scratch_{source,work,tools,install}` (and `home`, the dev user's, which only `make docker-pristine` removes); images `linux-from-scratch-dev` (Debian: readelf,
+- Volumes `linux-from-scratch_{work,tools,install}` (and `home`, the dev user's, which only `make docker-pristine` removes); images `linux-from-scratch-dev` (Debian: readelf,
   python3, dash; for inspecting; the `dev` service of docker-compose.yaml, which `docker compose build dev` builds
   once, from Dockerfile.dev) and `linux-from-scratch-scratch` (only the tools). Inspect read-only:
   `docker run --rm -v linux-from-scratch_work:/w:ro linux-from-scratch-dev ls /w/<key>`.

@@ -65,17 +65,17 @@ lfs_fetch_all() {
     for recipe in $(cd $package_dir && find . -name '*.sh' | sed 's|^\./||; s|\.sh$||' | sort); do
         lfs_fetch_package $recipe > /dev/null
     done
-    rm -rf "${LFS_SOURCE_DIR:?}"
+    rm -rf "${source_dir:?}"
 }
 
 # Fetches the sources from a package's `package_fetch_dependencies`,
 # exposing each one's location as `<dependency>_source_dir`, with a `_` for every character of its
 # name that is no letter or digit (`libgpg_error_source_dir`).
 lfs_fetch_dependencies() {
-    local dependency source_dir
+    local dependency dependency_source_dir
     for dependency in $(lfs_source_package "$1"; echo ${package_fetch_dependencies:-}); do
-        source_dir=$(lfs_fetch_package $dependency)
-        eval "$(printf %s "$dependency" | tr -c '[:alnum:]' _)_source_dir=\$source_dir"
+        dependency_source_dir=$(lfs_fetch_package $dependency)
+        eval "$(printf %s "$dependency" | tr -c '[:alnum:]' _)_source_dir=\$dependency_source_dir"
     done
 }
 
@@ -208,10 +208,10 @@ lfs_source_package() {
 
     : ${package_release:=$package_name${package_variant:+-$package_variant}-$package_version${package_revision:+-$package_revision}}
     : ${package_files_dir:=$package_dir/$package_name}
-    : ${package_source_dir:=$LFS_SOURCE_DIR/$package_name-$package_version}
+    : ${package_source_dir:=$source_dir/$package_name-$package_version}
     # Sources are unpacked in the package's category, whatever the recipe sets: elsewhere, a package
     # of another category could unpack into the same directory.
-    [ "$(dirname $package_source_dir)" = "$(dirname $LFS_SOURCE_DIR/$package_name)" ] \
+    [ "$(dirname $package_source_dir)" = "$(dirname $source_dir/$package_name)" ] \
         || bail "$package_name: $package_source_dir is not in the directory of the package's category"
     : ${package_work_dir:=$LFS_WORK_DIR/$package_key/$package_release}
     : ${package_build_dir:=$package_work_dir/build/$package_component}

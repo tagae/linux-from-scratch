@@ -5,7 +5,7 @@
 : ${package_license:=LicenseRef-Broadcom-Firmware}
 : ${package_cpe:=none}
 
-package_source_dir=$LFS_SOURCE_DIR/raspi-firmware-$package_version
+package_source_dir=$source_dir/raspi-firmware-$package_version
 
 install() {
     mkdir -pv $package_install_dir/boot

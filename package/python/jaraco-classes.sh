@@ -4,7 +4,7 @@
 : ${package_description:=Utility classes and meta-classes for Python.}
 : ${package_license:=MIT}
 
-package_source_dir=$LFS_SOURCE_DIR/python/jaraco.classes-$package_version
+package_source_dir=$source_dir/python/jaraco.classes-$package_version
 
 install() {
     python_install_modules $package_source_dir/jaraco

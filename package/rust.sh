@@ -48,7 +48,7 @@ install() {
     local dist target
     for dist in rustc-$package_version-$rust_host cargo-$package_version-$rust_host \
                 $(for target in $rust_targets; do echo rust-std-$package_version-$target; done); do
-        sh $LFS_SOURCE_DIR/$dist/install.sh --destdir=$package_install_dir --prefix=$prefix \
+        sh $source_dir/$dist/install.sh --destdir=$package_install_dir --prefix=$prefix \
             --disable-ldconfig
     done
     move_to_docs_component

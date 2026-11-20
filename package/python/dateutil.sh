@@ -4,7 +4,7 @@
 : ${package_description:=Extensions to the date and time module of Python.}
 : ${package_license:=BSD-3-Clause AND Apache-2.0}
 
-package_source_dir=$LFS_SOURCE_DIR/python/python-dateutil-$package_version
+package_source_dir=$source_dir/python/python-dateutil-$package_version
 
 install() {
     python_install_modules $package_source_dir/src/dateutil

@@ -33,9 +33,6 @@ readonly profile_dir=$project_dir/profile
 # Fetched artefacts. Allows offline work once all needed artefacts have been fetched.
 : ${LFS_DOWNLOAD_DIR:=$LFS_STATE_DIR/download}
 
-# Unarchived package sources.
-: ${LFS_SOURCE_DIR:=$LFS_STATE_DIR/source}
-
 # Build toolchains.
 : ${LFS_TOOL_DIR:=$LFS_STATE_DIR/tools}
 
@@ -48,7 +45,6 @@ readonly profile_dir=$project_dir/profile
 # Built images to be used on actual hardware, or emulators.
 : ${LFS_IMAGE_DIR:=$LFS_STATE_DIR/image}
 
-# LFS_SOURCE_DIR is made read-only afterwards.
 readonly LFS_STATE_DIR LFS_WORK_DIR LFS_DOWNLOAD_DIR LFS_TOOL_DIR \
          LFS_INSTALL_DIR LFS_ARCHIVE_DIR LFS_IMAGE_DIR
 
@@ -62,10 +58,10 @@ if ! ${LFS_CLEAN_ENV:-false}; then
          PATH=$PATH TMPDIR=${TMPDIR:-$LFS_WORK_DIR/tmp} HOME=$LFS_WORK_DIR \
          PWD=$PWD OLDPWD=${OLDPWD:-} \
          LFS_STATE_DIR=${LFS_STATE_DIR:-} LFS_WORK_DIR=${LFS_WORK_DIR:-} \
-         LFS_DOWNLOAD_DIR=${LFS_DOWNLOAD_DIR:-} LFS_SOURCE_DIR=${LFS_SOURCE_DIR:-} \
-         LFS_TOOL_DIR=${LFS_TOOL_DIR:-} LFS_INSTALL_DIR=${LFS_INSTALL_DIR:-} \
-         LFS_ARCHIVE_DIR=${LFS_ARCHIVE_DIR:-} LFS_IMAGE_DIR=${LFS_IMAGE_DIR:-} \
-         LFS_PROFILE=${LFS_PROFILE:-} LFS_MACHINE=${LFS_MACHINE:-} \
+         LFS_DOWNLOAD_DIR=${LFS_DOWNLOAD_DIR:-} LFS_TOOL_DIR=${LFS_TOOL_DIR:-} \
+         LFS_INSTALL_DIR=${LFS_INSTALL_DIR:-} LFS_ARCHIVE_DIR=${LFS_ARCHIVE_DIR:-} \
+         LFS_IMAGE_DIR=${LFS_IMAGE_DIR:-} LFS_PROFILE=${LFS_PROFILE:-} \
+         LFS_MACHINE=${LFS_MACHINE:-} \
          LFS_TIMEZONE=${LFS_TIMEZONE:-} LFS_USER=${LFS_USER:-} LFS_PASSWORD=${LFS_PASSWORD:-} \
          LFS_RELEASE=${LFS_RELEASE:-} LFS_VERSION_CODENAME=${LFS_VERSION_CODENAME:-} \
          LFS_RELEASE_TYPE=${LFS_RELEASE_TYPE:-} LFS_DISTRIB_CODENAME=${LFS_DISTRIB_CODENAME:-} \
@@ -155,14 +151,14 @@ case "${1:-help}" in
         [ $# -eq 1 ] || usage "$1"
         # A recipe may leave files in its source directory while it fetches: it is a directory of
         # its own, which lfs_fetch_all removes.
-        LFS_SOURCE_DIR=$(mktemp -d)
-        readonly LFS_SOURCE_DIR
+        source_dir=$(mktemp -d)
+        readonly source_dir
         lfs_fetch_all
         ;;
 
     tools)
         shift
-        readonly LFS_SOURCE_DIR=$LFS_SOURCE_DIR/$tools_key
+        readonly source_dir=$LFS_WORK_DIR/$tools_key/source
         case "${1:-help}" in
             bootstrap)
                 shift
@@ -184,7 +180,7 @@ case "${1:-help}" in
         shift
         # Sources are unpacked and patched in place, and possibly, in parallel.
         # so each profile has a source directory of its own.
-        readonly LFS_SOURCE_DIR=$LFS_SOURCE_DIR/$package_key
+        readonly source_dir=$LFS_WORK_DIR/$package_key/source
         lfs_system "$@"
         ;;
 

@@ -4,7 +4,7 @@
 : ${package_description:=Python programming language.}
 : ${package_license:=Python-2.0.1}
 
-package_source_dir=$LFS_SOURCE_DIR/Python-$package_version
+package_source_dir=$source_dir/Python-$package_version
 
 : ${build_python:=$LFS_TOOL_DIR/usr/bin/python3}
 

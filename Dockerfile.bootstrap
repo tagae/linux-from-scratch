@@ -30,7 +30,6 @@ RUN mkdir -pv \
     /mnt/lfs/package \
     /mnt/lfs/platform \
     /mnt/lfs/profile \
-    /mnt/lfs/source \
     /mnt/lfs/tools \
     /mnt/lfs/work
 
@@ -44,7 +43,6 @@ RUN chown lfs:lfs \
     /mnt/lfs/package \
     /mnt/lfs/platform \
     /mnt/lfs/profile \
-    /mnt/lfs/source \
     /mnt/lfs/tools \
     /mnt/lfs/work
 

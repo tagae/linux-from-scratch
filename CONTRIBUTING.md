@@ -10,8 +10,8 @@ Overview
 * `profile/`: system recipes, and the documentation of a profile (`profile/<profile>.md`)
 * `package/`: package recipes
 * `download/`: fetched artefacts
-* `source/`: unpacked sources, per profile (e.g., `source/virt`) and tools (`source/tools`)
-* `work/`: build dirs, and the sysroots of the cross toolchains
+* `work/`: per profile (e.g., `work/virt`) and for the tools (`work/tools`): unpacked sources
+  (`source/`), build dirs, and the sysroots of the cross toolchains
 * `tools/`: built tools and cross toolchain for each platform
 * `install/`: target install trees, per profile
 * `archive/`: package tarballs and SHA-256 digests
@@ -118,7 +118,7 @@ any `python-` prefix, e.g. `lfs_system_install python/click`.
 
 The directory of a package's name is its category (`python` for `python/click`, `.` for `bash`).
 The framework puts everything of the package in the category's directory of `download/`,
-`source/<key>/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked
+`work/<key>/source/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked
 sources, its build, stage and component directories, and its archives. Packages of different
 categories therefore never share a path, so `python/foo` and `foo` can coexist.
 
@@ -276,8 +276,8 @@ Where Code Goes
 A profile is a whole system: the packages it holds, the init system and the kernel among them, as a
 flat list in the order they are installed, with the options of each package at its call site. Its
 name, `<platform>[-<name>]`, starts with the platform it runs on, and is the key of everything built
-for it: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`, `source/<profile>` and
-the image. A profile installs in a subshell, and starts with its toolchain,
+for it: `archive/<profile>/`, `install/<profile>`, `work/<profile>/sysroot`, `work/<profile>/source`
+and the image. A profile installs in a subshell, and starts with its toolchain,
 `lfs_system_toolchain glibc|musl`, whose C library is the system's: the library gives the ABI of the
 target triplet (`aarch64-scratch-linux-musl`), after which the platform's EABI follows (`eabihf`,
 for the pi0). It sets no kernel option itself. A

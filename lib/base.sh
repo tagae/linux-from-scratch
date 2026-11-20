@@ -56,9 +56,9 @@ get() {
     local archive=${url##*/}
     local extracted=${archive%%.tar.*}
     [ "$extracted" != "$archive" ] || extracted=${archive%.tgz}
-    mkdir -p $LFS_SOURCE_DIR/$dir
+    mkdir -p $source_dir/$dir
     [ -f $LFS_DOWNLOAD_DIR/$dir/$archive ] || fetch_url "$url" "$LFS_DOWNLOAD_DIR/$dir"
     [ -z "$hash" ] || verify_hash "$LFS_DOWNLOAD_DIR/$dir/$archive" "$hash"
-    [ -d $LFS_SOURCE_DIR/$dir/$extracted ] \
-        || unpack $LFS_DOWNLOAD_DIR/$dir/$archive $LFS_SOURCE_DIR/$dir
+    [ -d $source_dir/$dir/$extracted ] \
+        || unpack $LFS_DOWNLOAD_DIR/$dir/$archive $source_dir/$dir
 }

@@ -4,7 +4,7 @@
 : ${package_description:=Python library for portable symmetric key container (PSKC) files.}
 : ${package_license:=LGPL-2.1-or-later}
 
-package_source_dir=$LFS_SOURCE_DIR/python/python_pskc-$package_version
+package_source_dir=$source_dir/python/python_pskc-$package_version
 
 install() {
     python_install_modules $package_source_dir/pskc
