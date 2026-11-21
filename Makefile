@@ -36,16 +36,14 @@ LFS_RELEASE := $(shell bin/version)
 endif
 export LFS_RELEASE
 
-# The regular account of the systems that have one is the user that runs make, unless told
-# otherwise. Computed here, as the containers' user is another.
+# User for the regular account. Defaults to the current user.
 LFS_USER ?= $(USER)
 export LFS_USER
 
 # Making an image gives the system's files to root, which needs root access.
 SUDO ?= sudo --preserve-env
 
-# The system that the default targets build: a profile, profile/<profile>.sh, whose name is the key
-# of everything that is made for it.
+# The system that the default targets build.
 LFS_PROFILE ?= virt
 
 # Default targets.
@@ -54,8 +52,7 @@ image: image/$(LFS_PROFILE).img
 qemu: $(LFS_PROFILE)-qemu
 test: $(LFS_PROFILE)-test
 
-# Downloads the sources of every package, for each profile: its platform decides some of them (the
-# Pi's kernel), and lfs fetches for one profile at a time.
+# Downloads the sources of every package, for every profile.
 fetch:
 	for profile in $(basename $(notdir $(wildcard profile/*.sh))); do \
 		LFS_PROFILE=$$profile ./lfs fetch || exit 1; \
@@ -66,31 +63,36 @@ fetch:
 # them, whichever system's target asks for them first.
 tools-bootstrap tools: export LFS_PROFILE =
 
-# Build tools.
+# Build a minimal native toolchain using the host's toolchain.
 tools-bootstrap:
 	# A native toolchain plus the temporary tools needed to build the rest.
 	./lfs tools bootstrap
 
+# Build the self-contained toolchain that will be used to build everything else.
 tools: tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	./lfs tools build
 
 %-system image/%.img %-qemu: export LFS_PROFILE = $*
 
+# Build the system for the platform into the system tree.
 %-system: tools
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 8: Installing Basic System Software
 	# Chapter 10: Making the LFS System Bootable
 	./lfs system build
 
+# Produce a disk image from the system tree.
 image/%.img: %-system FORCE
 	# The image directory is the user's, rather than root's.
 	mkdir -p image
 	$(SUDO) ./lfs image build
 
+# Check that the image boots and root can login/poweroff.
 %-test: image/%.img
 	check/boot $*
 
+# Boot the image in QEMU, with an interactive serial console.
 %-qemu: image/%.img
 	./lfs qemu
 

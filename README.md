@@ -42,7 +42,7 @@ Else, you need a Linux host with the following utilities.
 Quick Start
 -----------
 
-Build the whole chain, from the build tools to a disk image, boot it, login and power off:
+Build a toolchain, use it to build a disk image, boot it, login and power off:
 
 ```shell
 make test
@@ -68,46 +68,31 @@ Supported Platforms
 Profiles
 --------
 
-A *profile* is a whole system specification: kernel, init system and further packages.
+A *profile* is a whole system specification: kernel, init system and installed packages.
 
-Out of the box profiles are located in `profile/<profile>.sh`.
-
-A profile is named `<platform>[-<name>]`, after the platform it runs on (e.g., `pi0-pgp` runs on
-`pi0`), and its name is used as key of all built artefacts: package archives, system tree, boot
+A profile is named `<platform>[-<name>]`, after the platform on which it is meant to run (`pi0-pgp`
+runs on `pi0`); the name is used as key of all built artefacts: package archives, system tree, boot
 files and image.
 
-| Profile        | Platform | System                                                                             |
-|----------------|----------|------------------------------------------------------------------------------------|
-| `virt`         | `virt`   | Bare-bones virtual machine with only a root account                                |
-| `virt-busybox` | `virt`   | Bare-bones virtual machine with musl, and BusyBox as init and core utilities       |
-| `pi0-pgp`      | `pi0`    | Raspberry Pi Zero to make OpenPGP keys and keep them on a YubiKey and USB storage  |
-
+Out of the box profiles are located in `profile/<profile>.sh`.
 See `profile/<profile>.md` for profile-specific documentation.
 
-root's password is `LFS_ROOT_PASSWORD`, by default `root`. A profile can have a regular account
-besides root (`pi0-pgp` does). `LFS_USER` names it, by default after the user that runs `make`, and
-`LFS_PASSWORD` is its password, by default its name:
+The root password is set to `$LFS_ROOT_PASSWORD`, by default `root`.
+
+Systems of different profiles can be built at once:
 
 ```shell
-make image LFS_PROFILE=pi0-pgp LFS_ROOT_PASSWORD='a root password' LFS_USER=alice LFS_PASSWORD='a password'
+make -j docker-test docker-pi0-pgp-test
 ```
-
-The accounts are set when the system is built, and belong to no package archive.
-
-A profile has files of its own in `profile/<profile>/`, which give the system its look: the issue and
-the message of the day, and the shell profile. The path of a file there is its path in the system
-(`profile/virt/etc/issue` is `/etc/issue`), and the build copies the files once the profile's
-packages are in. A file that a package installs cannot be one of them.
-
 
 Kernel Capabilities
 -------------------
 
 A *kernel capability*, `package/linux/<capability>.config`, is a kernel configuration bundle.
 
-A capability that differs by architecture has a part for each:
-`package/linux/<capability>.<architecture>.config`. One that differs by platform has a part for each
-platform: `package/linux/<capability>.<platform>.config`.
+Capabilities can differ by architecture: `package/linux/<capability>.<architecture>.config`.
+
+Capabilities can also differ platform: `package/linux/<capability>.<platform>.config`.
 
 | Capability       | Supports                                                     |
 |------------------|--------------------------------------------------------------|
@@ -124,121 +109,54 @@ platform: `package/linux/<capability>.<platform>.config`.
 | `hidraw`         | HID devices on USB, such as security keys, as `/dev/hidraw*` |
 
 
-Restrictions
-------------
+Time & Date
+-----------
 
-Systems ship without documentation, except the man and info pages of the platforms that have `man=yes`
-and `info=yes` in `platform/<platform>.sh` (`pi0`): the packages of their profiles install their
-pages, and the profile installs `mandoc` and `texinfo` to read them (`man gpg`, `info gnupg`). The
-other documentation a package installs (`/usr/share/doc`) is left out. Pages that need tools that no
-build has are not made: the man pages of systemd and shadow (they need `xsltproc`) and of kmod
-(`scdoc`). A profile can turn either off with `man=no` or `info=no`.
+Every image starts at the time it was made.
 
-Boards without a battery-backed clock (the Raspberry Pi) keep time across reboots through
+Images are in UTC. To use another zone, install the `tzdata` package and pass the dedisred zone
+with `LFS_TIMEZONE` (e.g., `make image LFS_PROFILE=pi0-pgp LFS_TIMEZONE=Europe/Berlin`). The clock
+stays in UTC; the zone only changes how time is shown.
+
+Boards without a battery-backed clock (the Raspberry Pi Zero) keep time across reboots through
 systemd-timesyncd, which saves the clock every minute and at shutdown, and restores it at the next
-boot. Every image starts at the time it was made. No NTP servers are configured, as there is no
-network.
+boot.
 
-Images are in UTC. `LFS_TIMEZONE`, set to a name from the time zone database, gives an image of a
-profile that installs `tzdata` another zone, e.g. `make image LFS_PROFILE=pi0-pgp
-LFS_TIMEZONE=Europe/Berlin`. The clock stays in UTC; the zone only changes how time is shown. The
-package carries the whole database, so `TZ` and `/etc/localtime` can name any other zone on the
-device.
+Localisation
+------------
 
 Localisation and native language support (NLS) are unsupported. This might become opt-in in the
 future.
 
+Users
+-----
 
-Make Targets
-------------
-
-```shell
-make fetch            # download the sources of every package, for every profile, into download/
-make tools-bootstrap  # native toolchain + temporary tools, from the host's
-make tools            # toolchain + temporary build tools
-make system           # build the system for the platform into the system tree
-make image            # produce a disk image from the system tree
-make qemu             # boot the image in QEMU (interactive serial console)
-make test             # check that the image boots and root can login/poweroff
-```
-
-`make system` starts from an empty system tree each time, so `image`, `qemu` and `test` use the
-system built by the latest run. Running `make` without a goal runs `test`.
-
-The builds download what they need as they go. `make fetch` downloads it all first, with the host's
-`wget`, so that a source that an upstream server does not give stops it there, and the builds find
-the files in `download/`: they fetch nothing but the Rust crates of `cryptography`.
-
-A package builds again only when its archive is gone, so after changing a recipe, a patch, a kernel
-option or a framework file, run `make invalidate` (`make docker-invalidate` for the build through
-Docker): it deletes the archives that the changes since its last run make stale, uncommitted ones
-included. Each key of `archive/` (the profiles' and `tools`) records its own state, so its first
-run, with nothing recorded, deletes all of that key's archives.
-
-Each target defaults to the `virt` profile. The default can be changed through a variable:
+A profile can have a regular account besides root. `LFS_USER` names provides the username (by
+default, equal to `$USER`), and `LFS_PASSWORD` provides the password (by default equal to the
+username):
 
 ```shell
-make image LFS_PROFILE=pi0-pgp
+make image LFS_PROFILE=pi0-pgp LFS_ROOT_PASSWORD='a root password' LFS_USER=alice LFS_PASSWORD='a password'
 ```
 
-The variables that `lfs` reads all start with `LFS_`, so that none of them clashes with a variable
-of the caller's environment, and `lfs` ignores every other.
 
-The profile's name is the key of every artefact: the system tree, the boot files, and the image. A
-target can be named by its profile directly:
+Disk Images
+-----------
 
-```shell
-make pi0-pgp-test
-```
+When an image is booted through QEMU, disk writes are sent to an `image/<key>.qcow2` overlay, so
+that the original image stays unmodified.
 
-Images are file targets under that same key, so `make image/pi0-pgp.img` produces the image of the
-`pi0-pgp` profile. An image is as small as its system allows: its root file system has only the room
-that btrfs leaves in it, which grows with the system. An image appears only once it is complete.
-`make qemu` and `make test` boot it through an overlay, `image/<key>.qcow2`, which keeps what the
-system writes until the image is made anew, so that the image stays as it was made, to be written to
-a card.
+### File Manifests
 
-Package archives are filed under the key of the profile, `archive/<profile>/`: the cross toolchain's,
-the kernel's and those of every package the profile installs. Profiles share no archive but those of
-the build tools.
-
-The build tools run on the build machine whatever the platform, so their archives are filed under
-the key `tools` and built once, for every system. Systems of different profiles can therefore be
-built at once, each build using all the cores:
-
-```shell
-make -j docker-test docker-pi0-pgp-test
-```
-
-Make builds the tools first, then the systems side by side. The builds share the tools directory
-(the cross toolchain of each platform lives there in files named after its triplet, but for a few,
-such as `libcc1` and the documentation, which each build rewrites when it extracts its own), the
-downloads and the tools' archives, and nothing else: each profile unpacks its sources, builds,
-installs and archives apart. Memory limits it more than cores do: each build runs `-j$(nproc)`, and
-two cross gcc compiles at once need more than 12 GiB (the compiler is killed while it compiles
-`gimple-match-*.cc`), so give the build machine, or the Colima VM, 24 GiB or more. One limit
-remains: a profile that installs a build tool that depends on the platform (`pi0-pgp`, whose Rust
-targets the platform's architecture) cannot be built while another profile that does is, as both
-write the same files in the tools directory. Builds that start from scratch apart, rather than from
-one `make`, would both build the tools: build them first (`make docker-tools`).
-
-`make distclean` removes the build state and the tools; `make pristine` also removes downloads,
-archives and images.
-
-`make test` boots the image in QEMU, logs in as root, runs `poweroff`, and verifies that QEMU exits
-cleanly. It drives the `check/boot` expect script (`check/boot [PROFILE]`).
+Next to the image, a plain text file lists every file of each of its file systems:
+`image/<key>.root.txt` for the root file system, and `image/<key>.boot.txt` for the
+boot partition when there is any.
 
 
-Software Bill of Materials
---------------------------
+### Software Bill of Materials
 
-An image file comes with an [SPDX][SPDX] 2.3 document in JSON next to it,
-`image/<key>.spdx.json`, which says what the image holds: its SHA-256, and each upstream package in
-the system, with its version, licence, the URL and SHA-256 of its source, and the identifiers that
-vulnerability scanners match, its CPE as the NVD names it, or its PyPI package URL. The licences of
-the recipes are SPDX expressions; the two that SPDX does not list (the Pi firmware's and the time
-zone database's) come with their text. An image counts as built only along with its document: an
-image without one is made anew.
+Image files come with an [SPDX][SPDX] document, `image/<key>.spdx.json`, which provides a hash of
+the image, and describes each upstream package.
 
 The document can be checked with the SPDX project's validator, and scanned for known
 vulnerabilities by [Grype](https://github.com/anchore/grype):
@@ -247,32 +165,5 @@ vulnerabilities by [Grype](https://github.com/anchore/grype):
 make sbom-check            # validates every document under image/ (fetches the validator from PyPI)
 make vulnerability-check   # scans them with Grype, as CI does (fetches Grype, its data, CVE records)
 ```
-
-CI builds the build tools in a workflow of their own, and then boots the `virt`, `virt-busybox` and
-`pi0-pgp` systems, each in a workflow of its own. It validates the document of each image with the
-same `make sbom-check`, and scans the document of each image after each of its runs on main, with
-the vulnerability data of the day, as `make vulnerability-check` does: the badge above fails when
-Grype finds, in any image, a vulnerability of high or critical severity that a newer version
-fixes, and the findings are in the repository's code scanning alerts. The scan reports, and leaves
-CI's own result alone. It leaves out the findings of the kernel that the kernel's own CVE records
-show it does not have (fixed in its line, or in code that its build did not read, which
-`<image>.kernel-files` lists), and lists them in an OpenVEX document, `<image>.openvex.json`, which
-CI keeps with the findings.
-
-A block device gets no document, as it is no file to take the digest of: make the image first, and
-write it to the device. The document does not yet list the patches applied to the sources
-(`docs/sbom-design.md`).
-
-
-File Manifests
---------------
-
-Next to the image, a plain text file lists every file of each of its file systems:
-`image/<key>.root-files.txt` for the root file system, and `image/<key>.boot-files.txt` for the
-boot partition of the Pi layout (`pi0-pgp`; `virt` systems have the root file system alone). A
-line is an absolute path from the file system's own root, directories and links included, sorted by
-byte. Two manifests, compared with `diff`, show what differs between two images. Like the SBOM, they
-are made with an image file, and an image without its root manifest is made anew; a block device
-gets none.
 
 [SPDX]: https://spdx.github.io/spdx-spec/v2.3/
