@@ -1,41 +1,32 @@
 #!/bin/sh
 
-# The version of this project, as SemVer: `MAJOR.MINOR.PATCH` on the commit of a git tag of that
-# name (annotated, with no prefix), as long as the tree is clean. Anywhere else, the version is a
-# pre-release of the next one, named by the abbreviated hash of the top commit, as short as git
-# finds unambiguous (`0.2.0-2c03742`), and ending in `-dirty` if the tree differs from its commit
-# (`0.2.0-2c03742-dirty`). A hash of digits alone that starts with 0, which SemVer does not allow in
-# a number, takes an "r" for revision (`0.2.0-r0123456`). The next version is that of the most
-# recent tag, 0.0.0 if there is none, raised by the first word of the summary lines of the commits
-# since it (docs/commit-messages.md, Use semantic versioning). The highest bump among them applies,
-# and sets the parts after it to 0:
+# Prints the current project version in SemVer formate.
 #
-#    Drop, Stop and Major    the major version
-#    Add, Start and Minor    the minor version
-#    Fix, Optimize, Refactor
-#    and Patch               the patch
-#    any other word          nothing: with only those, the pre-release is of the next patch, and
-#                            no release is made
+# When not in the `main` branch, the version is a pre-release of the next one, named by the
+# abbreviated hash of the top commit, and ending in `-dirty` if the tree differs from its commit
+# (`0.2.0-2c03742-dirty`). The next version is calculated by bumping the most recent tag, according
+# to the commits more recent than the tag.
 #
-# Without a checkout (no .git), there is no version, and it exits silently with status 1. A checkout
-# needs git to tell it: without git, or if git fails, it says so.
-#
-# Usage: bin/version [--next]    --next: the next version, which bin/release tags; it fails if no
-#                                commit makes one
+# Usage: bin/version [--next]    --next: the next version, which bin/release tags
 
 set -o errexit -o nounset
 
 cd "$(dirname "$0")/.."
 
-# git reads the project's configuration, not the user's, so that it behaves the same for everyone,
+[ -e .git ] || {
+    echo 'The project must be versioned by Git.' >&2
+    exit 1
+}
+
+command -v git > /dev/null 2>&1 || {
+    echo 'The `git` command is needed to tell the version of a checkout.' >&2
+    exit 2
+}
+
+# Git reads the project configuration, not the user's, so that it behaves the same for everyone,
 # and trusts the checkout, whose directory a container can show as another user's.
 export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
 
-[ -e .git ] || exit 1
-command -v git > /dev/null 2>&1 || {
-    echo "git is needed to tell the version of a checkout" >&2
-    exit 2
-}
 git rev-parse --git-dir > /dev/null
 
 tag=$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' 2> /dev/null || true)
@@ -73,27 +64,21 @@ case "${1:-}" in
             echo "$tag"
             exit 0
         fi
-        # Whatever else is on the way to the next release, which is at least a patch: a pre-release
-        # of the last version would sort before it. SemVer has no
-        # leading zero in a number, which a hash of digits alone is: it takes an "r", for revision.
-        hash=$(git rev-parse --short "$top")
-        case $hash in
-            *[!0-9]*) ;;
-            0*) hash=r$hash ;;
-        esac
+        # Whatever else is on the way to the next release, which is at least a patch.
+        hash=r$(git rev-parse --short "$top")
         version=$(next "$level")-$hash
         [ -z "$dirty" ] || version=$version-dirty
         echo "$version"
         ;;
     --next)
         [ "$level" -gt 0 ] || {
-            echo "No commit since ${tag:-the start} makes a release" >&2
+            echo "No commit since ${tag:-the start}" >&2
             exit 1
         }
         next "$level"
         ;;
     *)
         echo "Usage: $0 [--next]" >&2
-        exit 2
+        exit 3
         ;;
 esac

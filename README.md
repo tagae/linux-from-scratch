@@ -28,16 +28,15 @@ Else, you need a Linux host with the following utilities.
 
 3. To be able to boot images in a VM (e.g., `make qemu`),
 
-  * QEMU for your host's architecture, including `qemu-img`. The `virt` platform's command line
-    needs QEMU 11.1 or later (`-object monitor-hmp`).
+  * QEMU 11.1+ including `qemu-img`.
 
 4. To test booted images (e.g., `make test`),
 
   * The `expect` command.
 
-5. To invalidate stale archives and to version the project (`make invalidate`, `bin/version`),
+5. To version the project,
 
-  * Git 2.36 or later: the scripts read `bin/gitconfig` in place of the user's Git configuration.
+  * Git 2.36+: the scripts read `bin/gitconfig` in place of the user's Git configuration.
 
 
 Quick Start

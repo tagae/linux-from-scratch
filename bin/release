@@ -2,7 +2,7 @@
 
 # Tags the next release: the version that bin/version --next gives, from the summary lines of the
 # commits since the last tag, as an annotated tag `MAJOR.MINOR.PATCH` on HEAD, whose message lists
-# those summary lines. It pushes nothing: the tag goes with `git push github X.Y.Z`.
+# those summary lines.
 #
 # Usage: bin/release [--dry-run]    --dry-run: says what it would tag, and tags nothing
 
@@ -10,9 +10,14 @@ set -o errexit -o nounset
 
 cd "$(dirname "$0")/.."
 
-# git reads the project's configuration, not the user's, so that it behaves the same for everyone,
-# and trusts the checkout, whose directory a container can show as another user's.
-export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
+[ -e .git ] || {
+    echo 'The project must be versioned by Git.' >&2
+    exit 1
+}
+command -v git > /dev/null 2>&1 || {
+    echo 'The `git` command is needed to tag a release' >&2
+    exit 2
+}
 
 dry=
 case "${1:-}" in
@@ -20,20 +25,22 @@ case "${1:-}" in
     --dry-run) dry=yes ;;
     *)
         echo "Usage: $0 [--dry-run]" >&2
-        exit 2
+        exit 3
         ;;
 esac
 
-[ -e .git ] || {
-    echo "A release is tagged in a git checkout" >&2
-    exit 1
-}
-command -v git > /dev/null 2>&1 || {
-    echo "git is needed to tag a release" >&2
-    exit 2
+# Git reads the project configuration, not the user's, so that it behaves the same for everyone,
+# and trusts the checkout, whose directory a container can show as another user's.
+export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
+
+# Pending changes, untracked files included, are not in the commit that the tag would name.
+[ -z "$(git status --porcelain)" ] || {
+    echo "Please commit or stash pending changes" >&2
+    exit 4
 }
 
 next=$(bin/version --next)
+
 tag=$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' 2> /dev/null || true)
 range=${tag:+$tag..}HEAD
 
@@ -50,9 +57,5 @@ tail -n +3 "$notes"
 
 [ -z "$dry" ] || exit 0
 
-git diff --quiet && git diff --cached --quiet || {
-    echo "Please commit or stash pending changes" >&2
-    exit 1
-}
 git tag -a "$next" -F "$notes"
 echo "Tagged $next."
