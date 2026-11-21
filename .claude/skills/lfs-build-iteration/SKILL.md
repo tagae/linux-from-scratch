@@ -37,7 +37,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   only when a file of the system tree is newer than it or its SBOM (`image/<key>.spdx.json`, which `lib/sbom.sh`
   writes from `work/sbom/<key>`, the list of packages `lfs_system_install` recorded) is missing, and archives keep
   their files' times: after changing `lib/image.sh` or `lib/sbom.sh`, delete the image, its SBOM and its manifests
-  (`image/<key>.img`, `image/<key>.spdx.json`, `image/<key>.{root,boot}-files.txt`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
+  (`image/<key>.img`, `image/<key>.spdx.json`, `image/<key>.{root,boot}.txt`; the QEMU overlay `<key>.qcow2` follows the image). Validate the SBOM
   with `make sbom-check`.
 - Builds of DIFFERENT profiles can run at once from ONE make (`make -j docker-test docker-pi0-pgp-test`, no job limit:
   tools first, then the systems side by side; each build uses `-j$(nproc)`). They share the `tools` volume, the

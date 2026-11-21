@@ -196,11 +196,13 @@ jobs:
 
       # What the files of an image are, of a phase that makes one.
       - name: Keep the manifests
-        if: ${{ !cancelled() && hashFiles('image/*-files.txt') != '' }}
+        if: ${{ !cancelled() && hashFiles('image/*.root.txt', 'image/*.boot.txt') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: manifests-${{ inputs.profile }}-${{ inputs.name }}
-          path: image/*-files.txt
+          path: |
+            image/*.root.txt
+            image/*.boot.txt
           retention-days: 90
 
       - name: Report disk usage

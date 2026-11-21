@@ -13,7 +13,7 @@ lfs_build_image() {
         # A device is made afresh, like a new image file.
         device=$(realpath "$target")
         confirm_erase
-    elif [ -e "$target" ] && [ -e "$sbom" ] && [ -e "$stem.root-files.txt" ] \
+    elif [ -e "$target" ] && [ -e "$sbom" ] && [ -e "$stem.root.txt" ] \
         && lfs_sbom_has_release "$sbom" \
         && [ -z "$(find $system_dir -newer "$target" -print -quit)" ]; then
         echo "image (done)"
@@ -38,9 +38,9 @@ lfs_build_image() {
     create_filesystems $shrink
     if [ -n "${image_file:-}" ]; then
         assemble_image
-        list_files $root_dir > "$image_file.root-files.txt"
+        list_files $root_dir > "$image_file.root.txt"
         if [ "${image_layout:-pi}" != single ]; then
-            list_files $system_dir/boot > "$image_file.boot-files.txt"
+            list_files $system_dir/boot > "$image_file.boot.txt"
         fi
         lfs_sbom_document "${target##*/}" "$(sha256sum < "$image_file" | cut -d' ' -f1)" \
             > "$image_file.spdx.json"
@@ -54,10 +54,10 @@ lfs_build_image() {
         # The SBOM and the manifests first, as the image tells that all are complete: an image
         # without its SBOM or its root manifest is made anew, and the boot manifest, moved before
         # the root one, is there with it.
-        if [ -e "$image_file.boot-files.txt" ]; then
-            mv "$image_file.boot-files.txt" "$stem.boot-files.txt"
+        if [ -e "$image_file.boot.txt" ]; then
+            mv "$image_file.boot.txt" "$stem.boot.txt"
         fi
-        mv "$image_file.root-files.txt" "$stem.root-files.txt"
+        mv "$image_file.root.txt" "$stem.root.txt"
         mv "$image_file.spdx.json" "$sbom"
         mv "$image_file" "$target"
     fi
@@ -234,6 +234,7 @@ assemble_image() {
 # incomplete: at the end of build_image, and as the EXIT trap it sets, when it fails.
 clean_image() {
     [ -z "${parts_dir:-}" ] || rm -rf "$parts_dir"
-    [ -z "${image_file:-}" ] || rm -f "$image_file" "$image_file.spdx.json" "$image_file".*-files.txt
+    [ -z "${image_file:-}" ] \
+        || rm -f "$image_file" "$image_file.spdx.json" "$image_file.root.txt" "$image_file.boot.txt"
     unset parts_dir image_file
 }
