@@ -34,9 +34,10 @@ static.
 Accounts
 --------
 
-The system has one account, `root`, with the password `LFS_ROOT_PASSWORD`, which defaults to `root`,
-and bash as its shell. The static accounts, root's, locked, and those of systemd's services, are those
-of [`package/systemd/etc`](../package/systemd/etc): the build sets root's password and shell.
+The system has one account, `root`, with no password unless `LFS_ROOT_PASSWORD` sets one, and bash
+as its shell. The static accounts, root's, locked, and those of systemd's services, are those of
+[`package/systemd/etc`](../package/systemd/etc): the build sets root's password, or empties it, and
+its shell.
 
 The system's own files are those of [`virt/`](virt):
 

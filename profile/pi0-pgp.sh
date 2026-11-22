@@ -222,7 +222,7 @@ lfs_system_install python/yubikey-manager
 
 #===[ Accounts ]===
 
-# root logs in with bash. Its password is LFS_ROOT_PASSWORD.
+# root logs in with bash, and with no password unless LFS_ROOT_PASSWORD sets one.
 ( root_shell=/bin/bash; lfs_system_set_root )
 
 # A regular account besides root, for working with keys without administrative rights: LFS_USER, of

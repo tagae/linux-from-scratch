@@ -10,10 +10,10 @@ Accounts
 
 The system has two accounts, both with a shell on the serial console:
 
-* `root`, with the password `LFS_ROOT_PASSWORD`, which defaults to `root`.
+* `root`, with no password, unless `LFS_ROOT_PASSWORD` sets one.
 * A regular account, for working with keys without administrative rights. Its name is `LFS_USER`,
-  which defaults to the name of the user who runs `make`, and its password is `LFS_PASSWORD`, which
-  defaults to its name:
+  which defaults to the name of the user who runs `make`. It has no password, unless `LFS_PASSWORD`
+  sets one:
 
   ```shell
   make docker-image/pi0-pgp.img LFS_USER=alice LFS_PASSWORD='a password'

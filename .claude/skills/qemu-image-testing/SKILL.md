@@ -16,7 +16,7 @@ platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu
 $Q/qemu-check [--print] KEY ["EXTRA QEMU ARGS" ["GUEST COMMAND"]]
 $Q/qemu-check pi0-pgp "-device usb-ccid" 'ykman list --readers'
 ```
-Boots a COPY of `image/KEY.img`, logs in as root (password `root`, or `LFS_ROOT_PASSWORD`), runs ONE guest line, powers off, prints
+Boots a COPY of `image/KEY.img`, logs in as root (no password, or `LFS_ROOT_PASSWORD`), runs ONE guest line, powers off, prints
 only that line's output (on failure: the end of the console and its path). `./lfs qemu` boots an image through
 a qcow2 overlay next to it (`x.img` through `x.qcow2`), which keeps what the system writes until the image is
 made anew: the image itself is never written, and the copy gives each check a fresh overlay. Env:
@@ -97,13 +97,14 @@ wait); `set -Ua fish_features no-query-term` fixes it, and is the user's configu
 
 ## Regular user
 
-pi0-pgp has an account, `LFS_USER` (the user that ran make) with password `LFS_PASSWORD` (its name):
+pi0-pgp has an account, `LFS_USER` (the user that ran make), with no password unless `LFS_PASSWORD` sets one:
 `examples/user-commands.exp` logs in as it and runs lines. Its stick is the one labelled `KEYS`
 (`LABEL=KEYS $Q/make-fat-stick PATH`), which systemd mounts on `/mnt/usb` at the first access of any user
 and unmounts after 10 s idle. The emulated `usb-kbd` is no security key, so its hidraw device stays root's:
 to see the rule at work as root, copy `70-security-keys.rules` to `/etc/udev/rules.d` with `1050` replaced
 by `0627`, `udevadm control --reload; udevadm trigger --subsystem-match=hidraw --settle`. Type nothing
-until `Password:` has been answered (a login that times out is a flake: run again).
+until the login has completed, `Password:` answered if the account has one (a login that times out is a
+flake: run again).
 
 ## Prompts
 
@@ -115,7 +116,7 @@ it with `EXPECT_SCRIPT=`, print `QEMU_CHECK_BEGIN` and `QEMU_CHECK_END` around t
 
 - "Failed to get write lock": an earlier QEMU still holds the overlay or stick. `ps aux | grep '[q]emu-system'`,
   then `pkill -f 'qemu-system.*<copy>'` (SIGTERM, throwaway copies only: `-9` corrupted a btrfs once).
-- Login: wait for the glob `login:`, send `root`, answer `Password:` with root's (`root`, or `LFS_ROOT_PASSWORD`); skipping it hangs silently.
+- Login: wait for the glob `login:`, send `root`; root has no password, unless the image was built with `LFS_ROOT_PASSWORD`, which then answers `Password:`; skipping that hangs silently.
   Never wait twice for one marker.
 - Keep expect in the FOREGROUND with `TIMEOUT` below the tool's 600 s, so failures print: backgrounded expect hung
   QEMU repeatedly. Builds are the long things; those go in the background. Redirect to files, not `| tail`.

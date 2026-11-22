@@ -54,5 +54,6 @@ lfs_system_install systemd
 # on.
 ( capabilities="btrfs console hardening modules systemd"; lfs_system_install linux )
 
-# root logs in with bash, a shell with line editing. Its password is LFS_ROOT_PASSWORD.
+# root logs in with bash, a shell with line editing, and with no password unless LFS_ROOT_PASSWORD
+# sets one.
 ( root_shell=/bin/bash; lfs_system_set_root )

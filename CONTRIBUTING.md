@@ -272,8 +272,8 @@ Where Code Goes
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`), shipped by the init, with root locked (`!`) and `/bin/sh` |
 | The files that give a system its look (issue, motd, the shell profile, root's dotfiles) | `profile/<profile>/<path as installed>`, which the build copies after the profile's packages: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
-| root's password and shell | `( root_shell=/bin/bash; lfs_system_set_root )` in the profile, after the packages: its password is `LFS_ROOT_PASSWORD` (`root` by default), which belongs to the build, so no package ships it |
-| The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name and password are `LFS_USER` and `LFS_PASSWORD`, which belong to the build, so no package ships it |
+| root's password and shell | `( root_shell=/bin/bash; lfs_system_set_root )` in the profile, after the packages: it has no password unless `LFS_ROOT_PASSWORD` sets one, which belongs to the build, so no package ships it |
+| The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name is `LFS_USER`, and it has no password unless `LFS_PASSWORD` sets one; both belong to the build, so no package ships the account |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
 
 A profile is a whole system: the packages it holds, the init system and the kernel among them, as a

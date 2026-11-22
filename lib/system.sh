@@ -165,17 +165,19 @@ lfs_system_add_profile_files() (
 )
 
 # The password hashed with SHA-512, which libxcrypt checks whatever it hashes with for new
-# passwords.
+# passwords. No password is an empty hash, which the login on the console takes as an account that
+# asks for nothing. The systems have no remote login, so the console is the way in, and whoever
+# reaches it has the machine.
 _system_password_hash() {
-    printf '%s\n' "$1" | openssl passwd -6 -stdin
+    [ -z "$1" ] || printf '%s\n' "$1" | openssl passwd -6 -stdin
 }
 
-# Sets root's account: LFS_ROOT_PASSWORD (root, unless set) for password and `root_shell` for shell
-# (/bin/sh unless set), and gives root its home directory, /root. The init ships root locked, so a
-# profile that does not call this has no way to log in. The account belongs to the build, not to a
-# package: it is in no archive.
+# Sets root's account: no password, unless LFS_ROOT_PASSWORD asks for one, and `root_shell` for
+# shell (/bin/sh unless set), and gives root its home directory, /root. The init ships root locked,
+# so a profile that does not call this has no way to log in. The account belongs to the build, not
+# to a package: it is in no archive.
 lfs_system_set_root() (
-    local password=${LFS_ROOT_PASSWORD:-root} shell=${root_shell:-/bin/sh} hash
+    local password=${LFS_ROOT_PASSWORD:-} shell=${root_shell:-/bin/sh} hash
     grep -q '^root:' $system_dir/etc/passwd && grep -q '^root:' $system_dir/etc/shadow \
         || bail "The system has no account root: the init ships it"
     [ -x $system_dir$shell ] || bail "root_shell '$shell' is not in the system"
@@ -185,19 +187,18 @@ lfs_system_set_root() (
     mkdir -pv -m 0700 $system_dir/root
 )
 
-# Adds a regular account to the system: LFS_USER, with LFS_PASSWORD (its name, unless set) for
-# password, UID 1000, the group `users`, `user_shell` for shell (/bin/sh unless set), and a home
-# directory that lib/image.sh gives to it. The account belongs to the build, not to a package: it is
-# in no archive.
+# Adds a regular account to the system: LFS_USER, with no password unless LFS_PASSWORD sets one,
+# UID 1000, the group `users`, `user_shell` for shell (/bin/sh unless set), and a home directory
+# that lib/image.sh gives to it. The account belongs to the build, not to a package: it is in no
+# archive.
 lfs_system_add_user() (
-    local name=${LFS_USER:-} password hash
+    local name=${LFS_USER:-} password=${LFS_PASSWORD:-} hash
     [ -n "$name" ] || bail "LFS_USER, the name of the regular account, is not set"
     case $name in
         [!a-z_]*|*[!a-z0-9_-]*) bail "LFS_USER '$name' is not a valid account name" ;;
     esac
     [ ${#name} -le 32 ] || bail "LFS_USER '$name' is longer than 32 characters"
     ! grep -q "^$name:" $system_dir/etc/passwd || bail "LFS_USER '$name' is an account of the system"
-    password=${LFS_PASSWORD:-$name}
     hash=$(_system_password_hash "$password")
     echo "$name:x:1000:999:$name:/home/$name:${user_shell:-/bin/sh}" >> $system_dir/etc/passwd
     echo "$name:$hash:19000:0:99999:7:::" >> $system_dir/etc/shadow

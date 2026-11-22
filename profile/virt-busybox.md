@@ -18,16 +18,16 @@ musl
 
 The profile starts with its cross toolchain, `lfs_system_toolchain musl`, which builds binutils, gcc
 and musl for the triplet `<arch>-scratch-linux-musl`. musl's dynamic linker is the library itself,
-`/lib/ld-musl-<arch>.so.1`. Its `crypt(3)`, which `login` checks passwords with, has the SHA-512
-hash of root's password, so the system has no libxcrypt.
+`/lib/ld-musl-<arch>.so.1`. Its `crypt(3)`, which `login` checks passwords with, handles the SHA-512
+hash of root's password, if it has one, so the system has no libxcrypt.
 
 
 Accounts
 --------
 
-The system has one account, `root`, with the password `LFS_ROOT_PASSWORD`, which defaults to `root`,
-and ash as its shell. The static accounts are those of
-[`package/busybox/etc`](../package/busybox/etc), where root is locked: the build sets root's password.
+The system has one account, `root`, with no password unless `LFS_ROOT_PASSWORD` sets one, and ash as
+its shell. The static accounts are those of [`package/busybox/etc`](../package/busybox/etc), where
+root is locked: the build sets root's password, or empties it.
 root's prompt is in [`virt-busybox/root/.profile`](virt-busybox/root/.profile), which ash reads when
 root logs in. The system has neither an issue nor a message of the day.
 

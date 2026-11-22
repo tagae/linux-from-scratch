@@ -77,7 +77,7 @@ files and image.
 Out of the box profiles are located in `profile/<profile>.sh`.
 See `profile/<profile>.md` for profile-specific documentation.
 
-The root password is set to `$LFS_ROOT_PASSWORD`, by default `root`.
+root has no password, so it logs in on the console without one, unless `$LFS_ROOT_PASSWORD` sets it.
 
 Systems of different profiles can be built at once:
 
@@ -131,9 +131,9 @@ future.
 Users
 -----
 
-A profile can have a regular account besides root. `LFS_USER` names provides the username (by
-default, equal to `$USER`), and `LFS_PASSWORD` provides the password (by default equal to the
-username):
+A profile can have a regular account besides root. `LFS_USER` provides the username (by default,
+equal to `$USER`), and `LFS_PASSWORD` the password (by default none, so the account logs in on the
+console without one, like root):
 
 ```shell
 make image LFS_PROFILE=pi0-pgp LFS_ROOT_PASSWORD='a root password' LFS_USER=alice LFS_PASSWORD='a password'
