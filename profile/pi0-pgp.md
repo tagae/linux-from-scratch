@@ -22,6 +22,11 @@ YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface 
 security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2 and OTP
 interfaces through, belong to the group `users`.
 
+The regular account reads the state of the system (`systemctl status`, `systemctl --failed`) but
+cannot change it: without polkit, only root changes anything through D-Bus, so `poweroff`, `reboot`
+and `systemctl restart` fail with `Access denied`. To power the machine off, `exit` and log in as
+`root`.
+
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
 the shell profile (`/etc/profile`) and the udev rules that give the group `users` the security keys

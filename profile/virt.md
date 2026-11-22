@@ -15,6 +15,8 @@ What the System Holds
 | Package      | What it is for                                                                        |
 |--------------|---------------------------------------------------------------------------------------|
 | `systemd`    | Init, with the journal in memory                                                      |
+| `dbus`       | The system bus, which `busctl` and `systemd-run --wait` reach systemd through         |
+| `expat`      | The XML parser that D-Bus reads its configuration with                                |
 | `util-linux` | `mount`, `agetty` and `sulogin`, and the `libmount` and `libblkid` that systemd links |
 | `shadow`     | `login`, which checks the password and starts root's shell                            |
 | `libxcrypt`  | `crypt(3)`, with strong hashes for new passwords and glibc's for older ones           |
@@ -27,7 +29,7 @@ What the System Holds
 The descriptions of ncurses are those of `dumb`, `linux`, `vt100`, `vt220`, `xterm` and
 `xterm-256color`, built into the library, instead of a database of every known terminal.
 
-There is no network, no D-Bus, no PAM, no `logind`, and no documentation. The account database is
+There is no network, no PAM, no polkit, no `logind`, and no documentation. The account database is
 static.
 
 

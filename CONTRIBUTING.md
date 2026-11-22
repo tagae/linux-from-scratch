@@ -336,10 +336,12 @@ systemd
   (`profile/<profile>/etc/systemd/system/<target>.target.d/<unit>.conf`, with `Wants=`).
 * The image bakes a machine ID (`lib/image.sh`): the first boot is ordinary, and a first-boot
   `preset-all` would only warn about generated units. Images are per build, not per card.
-* There is no D-Bus, PAM, polkit or logind, and passwd is static: services run as root unless the
-  user exists in the static files. Where upstream's unit needs a dedicated user or
-  `PrivateUsers=full`, ship a small unit of our own (`pcscd.service`). Prefer socket activation
-  (`--auto-exit`).
+* D-Bus is there (`dbus`, started by its socket), and there is no PAM, polkit or logind. Without
+  polkit, only root changes anything through the bus (`poweroff`, `systemctl restart`); other users
+  read (`systemctl status`).
+* Passwd is static: services run as root unless the user exists in the static files. Where
+  upstream's unit needs a dedicated user or `PrivateUsers=full`, ship a small unit of our own
+  (`pcscd.service`). Prefer socket activation (`--auto-exit`).
 * The `sysctl.d` file `50-default.conf` is rewritten in `package/systemd.sh`.
 * A new service leaves `is-system-running` at `running`, `--failed` empty, and nothing new at
   warning level.

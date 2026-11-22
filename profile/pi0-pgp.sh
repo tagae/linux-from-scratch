@@ -16,7 +16,8 @@ lfs_system_install gcc#runtime
 #===[ systemd ]===
 
 # systemd, with the strict minimum it needs to boot the system and log root in on the console: it
-# mounts the file systems, runs the services and the journal, and keeps the clock across boots.
+# mounts the file systems, runs the services and the journal, and keeps the clock across boots; and
+# D-Bus, for its tools.
 
 lfs_system_install dash
 
@@ -62,6 +63,13 @@ lfs_system_install shadow
 
 lfs_system_install systemd
 lfs_sysroot_install systemd#dev
+
+# D-Bus, which systemctl, busctl and systemd-run reach systemd through (systemctl, for any user but
+# root), started by its socket. There is no polkit or logind, so only root changes anything through
+# it. It reads its configuration with expat, and links systemd's libsystemd.
+lfs_system_install expat
+lfs_sysroot_install expat#dev
+lfs_system_install dbus
 
 #===[ Kernel and boot ]===
 
@@ -210,8 +218,8 @@ lfs_system_install python/cryptography
 lfs_system_install python/pyscard
 
 # What ykman imports. Left out are the libraries of keyring's backend for a secret service over
-# D-Bus, which the systems lack: keyring has no backend, and ykman then reports that it cannot
-# remember a password. The packages carry no metadata, in which keyring would look for backends.
+# D-Bus, which the systems have none of: keyring has no backend, and ykman then reports that it
+# cannot remember a password. The packages carry no metadata, in which keyring would look for backends.
 lfs_system_install python/six
 lfs_system_install python/dateutil
 lfs_system_install python/pskc

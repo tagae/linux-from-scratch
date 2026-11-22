@@ -36,8 +36,9 @@ btrfs error counters (`/sys/fs/btrfs/*/devinfo/1/error_stats/*`) are 0.
 ## Absent by design (not faults)
 
 No networking (only `lo`), LED class, thermal or hwmon (undervoltage cannot be detected), RTC, input, graphics, cpufreq
-or swap. USB only with the `usb` capability (a profile names it in its `capabilities`). No D-Bus: `systemd-run --wait`/`--pipe` and `busctl`
-fail with `Failed to connect to system scope bus` (journal); plain `systemd-run` and `--scope` work. No
+or swap. USB only with the `usb` capability (a profile names it in its `capabilities`). No polkit or logind: only root changes anything
+through D-Bus, so for a regular account `poweroff` and `systemctl restart` fail with `Access denied`, and
+`systemctl status` works. No
 `/etc/hostname` (the name is `localhost`). The clock has no source: timesyncd saves it every minute and at shutdown and
 the next boot continues from it; a new image starts at its build time; real times need `date -u -s`. The machine ID is
 made with the image and persists. `find`, `tar`, `less`, `file`, `ip` are not installed.
