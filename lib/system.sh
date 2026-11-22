@@ -165,12 +165,26 @@ lfs_system_add_profile_files() (
     done
 )
 
-# The password hashed with SHA-512, which libxcrypt checks whatever it hashes with for new
-# passwords. No password is an empty hash, which the login on the console takes as an account that
-# asks for nothing. The systems have no remote login, so the console is the way in, and whoever
-# reaches it has the machine.
-_system_password_hash() {
-    [ -z "$1" ] || printf '%s\n' "$1" | openssl passwd -6 -stdin
+# Runs an account tool of the build machine (useradd, usermod, chpasswd) on the system tree. The tools
+# stamp the day of a password change, which is pinned to day 19000, so that the same build makes the
+# same files whatever the day. They leave the previous version of the files next to them.
+_system_account() {
+    local tool=$1
+    shift
+    SOURCE_DATE_EPOCH=$((19000 * 86400)) $tool --prefix $system_dir "$@"
+    rm -f $system_dir/etc/passwd- $system_dir/etc/shadow-
+}
+
+# Sets the password of an account of the system: hashed with SHA-512, which the C library of every
+# system checks, whatever it hashes with for new passwords. No password is an empty hash, which the
+# login on the console takes as an account that asks for nothing. The systems have no remote login,
+# so the console is the way in, and whoever reaches it has the machine.
+_system_set_password() {
+    if [ -n "$2" ]; then
+        printf '%s:%s\n' "$1" "$2" | _system_account chpasswd --crypt-method SHA512
+    else
+        _system_account usermod --password '' -- "$1"
+    fi
 }
 
 # Sets root's account: no password, unless LFS_ROOT_PASSWORD asks for one, and `root_shell` for
@@ -178,13 +192,10 @@ _system_password_hash() {
 # so a profile that does not call this has no way to log in. The account belongs to the build, not
 # to a package: it is in no archive.
 lfs_system_set_root() (
-    local password=${LFS_ROOT_PASSWORD:-} shell=${root_shell:-/bin/sh} hash
-    grep -q '^root:' $system_dir/etc/passwd && grep -q '^root:' $system_dir/etc/shadow \
-        || bail "The system has no account root: the init ships it"
+    local shell=${root_shell:-/bin/sh}
     [ -x $system_dir$shell ] || bail "root_shell '$shell' is not in the system"
-    hash=$(_system_password_hash "$password")
-    sed -i "s|^\(root:.*:\)[^:]*\$|\1$shell|" $system_dir/etc/passwd
-    sed -i "s|^root:[^:]*:|root:$hash:|" $system_dir/etc/shadow
+    _system_account usermod --shell $shell -- root
+    _system_set_password root "${LFS_ROOT_PASSWORD:-}"
     mkdir -pv -m 0700 $system_dir/root
 )
 
@@ -193,18 +204,15 @@ lfs_system_set_root() (
 # that lib/image.sh gives to it. The account belongs to the build, not to a package: it is in no
 # archive.
 lfs_system_add_user() (
-    local name=${LFS_USER:-} password=${LFS_PASSWORD:-} hash
+    local name=${LFS_USER:-}
     [ -n "$name" ] || bail "LFS_USER, the name of the regular account, is not set"
-    case $name in
-        [!a-z_]*|*[!a-z0-9_-]*) bail "LFS_USER '$name' is not a valid account name" ;;
-    esac
+    # The name that utmp, which the console's login records, can hold; useradd checks the rest.
     [ ${#name} -le 32 ] || bail "LFS_USER '$name' is longer than 32 characters"
-    ! grep -q "^$name:" $system_dir/etc/passwd || bail "LFS_USER '$name' is an account of the system"
-    hash=$(_system_password_hash "$password")
-    echo "$name:x:1000:999:$name:/home/$name:${user_shell:-/bin/sh}" >> $system_dir/etc/passwd
-    echo "$name:$hash:19000:0:99999:7:::" >> $system_dir/etc/shadow
+    _system_account useradd --uid 1000 --gid users --home-dir "/home/$name" --no-create-home \
+        --no-log-init --shell ${user_shell:-/bin/sh} -- "$name"
+    _system_set_password "$name" "${LFS_PASSWORD:-}"
     mkdir -pv $system_dir/home
-    mkdir -v -m 0700 $system_dir/home/$name
+    mkdir -v -m 0700 "$system_dir/home/$name"
 )
 
 # Installs a package of the cross toolchain, which runs on the build machine and compiles for the

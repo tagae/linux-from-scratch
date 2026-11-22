@@ -177,6 +177,11 @@ lfs_tools_build() {
     lfs_install_package btrfs-progs
     lfs_install_package dosfstools
     lfs_install_package mtools
+    # useradd, usermod and chpasswd write the accounts of a system tree (lib/system.sh), and hash
+    # its passwords with libxcrypt.
+    lfs_install_package libxcrypt
+    lfs_install_package libxcrypt#dev
+    lfs_install_package shadow
 }
 
 # Installs a package that runs on the build machine into LFS_TOOL_DIR, built as the tools are, from
