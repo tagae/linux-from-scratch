@@ -1,4 +1,15 @@
+To make an OpenPGP key:
 
-You made it in. Look around, but mind the sharp edges:
-this system was built from source, one tarball at a time.
+  1. Plug the YubiKey and a FAT USB stick labelled KEYS.
+  2. Set the clock, as the Pi has no battery-backed one:
+       date -u -s 'YYYY-MM-DD HH:MM:SS'
+  3. Run the key generator, /usr/bin/gpg-genkey:
+       PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
 
+The header comment of the script lists its options. The secret key is made
+in memory, under /dev/shm, and leaves only on the stick, which systemd mounts
+on /mnt/usb when something reads it and unmounts after 10 seconds of disuse:
+wait that long before pulling it out.
+
+To move the subkeys to the YubiKey, use `gpg --edit-key` and `keytocard`.
+`gpg --card-status` and `ykman info` show what the YubiKey holds.
