@@ -1,9 +1,7 @@
 The `pi0-pgp` Profile
 =====================
 
-A Raspberry Pi Zero (platform `pi0`) to make OpenPGP keys and keep them on a YubiKey and USB
-storage. It is defined in [`pi0-pgp.sh`](pi0-pgp.sh).
-
+A Raspberry Pi Zero Linux to make OpenPGP keys and keep them on a YubiKey and USB storage.
 
 Accounts
 --------
@@ -18,10 +16,6 @@ The system has two accounts, both with a shell on the serial console:
   ```shell
   make docker-image/pi0-pgp.img LFS_USER=alice LFS_PASSWORD='a password'
   ```
-
-  The account has user ID 1000, belongs to the group `users` and has a home directory, `/home/alice`.
-  It is made when the system is built, so it is in no package archive: changing either variable
-  rebuilds no package. Only root changes passwords (`passwd alice`), as nothing is setuid.
 
 The regular account makes keys (`gpg`, `gpg-genkey`), reads and writes the USB stick, and uses a
 YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface through, and the
