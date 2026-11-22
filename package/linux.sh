@@ -163,6 +163,5 @@ _has_modules() {
 }
 
 _set_kernel_config() {
-    local key="$1" value="$2"
-    sed -i 's/CONFIG_'"$key"'="[^"]*"/CONFIG_'"$key"'="'"$value"'"/g' $package_build_dir/.config
+    $package_source_dir/scripts/config --file $package_build_dir/.config --set-str "$1" "$2"
 }
