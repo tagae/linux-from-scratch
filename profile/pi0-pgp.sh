@@ -154,13 +154,12 @@ lfs_sysroot_install libusb#dev
     )
 )
 
-# Makes a key in memory and exports it to a USB stick.
-lfs_system_install gpg-genkey
-
 #===[ USB sticks ]===
 
-# mkfs.fat makes the FAT file system that gpg-genkey wants on the stick, labelled KEYS (fatlabel
-# changes the label of one that exists), and fsck.fat checks it.
+# The key procedure's own script, gpg-genkey, makes a key in memory and exports it to a USB stick,
+# which mnt-usb.automount mounts on /mnt/usb: they are files of the profile. mkfs.fat makes the FAT
+# file system that the script wants on the stick, labelled KEYS (fatlabel changes the label of one
+# that exists), and fsck.fat checks it.
 lfs_system_install dosfstools
 
 #===[ Processes and memory ]===
