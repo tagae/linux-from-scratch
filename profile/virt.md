@@ -14,7 +14,7 @@ What the System Holds
 
 | Package      | What it is for                                                                        |
 |--------------|---------------------------------------------------------------------------------------|
-| `systemd`    | Init, with the journal in memory and `timesyncd` to keep the clock                    |
+| `systemd`    | Init, with the journal in memory                                                      |
 | `util-linux` | `mount`, `agetty` and `sulogin`, and the `libmount` and `libblkid` that systemd links |
 | `shadow`     | `login`, which checks the password and starts root's shell                            |
 | `libxcrypt`  | `crypt(3)`, with strong hashes for new passwords and glibc's for older ones           |
@@ -77,8 +77,7 @@ single btrfs partition, on a virtio disk, which the kernel mounts as its root (`
 The console is virtio's (`console=hvc0`).
 
 The image bakes a machine ID, so that the first boot is an ordinary one. systemd then starts as
-init. No preset runs: the recipe enables `systemd-timesyncd`, which has no NTP servers, so that it
-only saves the clock every minute and on shutdown, and restores it at the next boot.
+init. No preset runs, and nothing enables `systemd-timesyncd`, which the recipe builds.
 
 systemd's getty generator starts `agetty` on the console. `agetty` runs `login`, which asks for the
 password and starts bash.

@@ -136,16 +136,6 @@ install() {
             cp -rv $package_files_dir/etc $package_files_dir/usr $package_install_dir/
             chmod -v 0600 $package_install_dir/etc/shadow
 
-            # Boards without a battery-backed clock start each boot at the date systemd was built.
-            # timesyncd saves the clock every minute and on shutdown, and restores it at the next
-            # boot. It has no NTP servers: without a network it only keeps the clock. Distributions
-            # enable it with a preset; nothing here applies presets, so make the link that
-            # `systemctl enable` makes from its [Install] section (the alias is for D-Bus
-            # activation, which these systems lack).
-            mkdir -pv $package_install_dir/etc/systemd/system/sysinit.target.wants
-            ln -sv $prefix/lib/systemd/system/systemd-timesyncd.service \
-                $package_install_dir/etc/systemd/system/sysinit.target.wants/
-
             # The default settings for what these kernels lack (SysRq, core dumps, an IPv4 stack)
             # fail at every boot. Only the file protections apply.
             cat > $package_install_dir$prefix/lib/sysctl.d/50-default.conf <<'EOF'

@@ -118,9 +118,9 @@ Images are in UTC. To use another zone, install the `tzdata` package and pass th
 with `LFS_TIMEZONE` (e.g., `make image LFS_PROFILE=pi0-pgp LFS_TIMEZONE=Europe/Berlin`). The clock
 stays in UTC; the zone only changes how time is shown.
 
-Boards without a battery-backed clock (the Raspberry Pi Zero) keep time across reboots through
-systemd-timesyncd, which saves the clock every minute and at shutdown, and restores it at the next
-boot.
+The `pi0-pgp` profile, for a board without a battery-backed clock (the Raspberry Pi Zero), keeps time
+across reboots through systemd-timesyncd, which saves the clock every minute and at shutdown, and
+restores it at the next boot.
 
 Localisation
 ------------
