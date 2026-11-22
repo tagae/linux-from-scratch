@@ -1,0 +1,4 @@
+# The block devices of USB sticks and card readers belong to the group `users`, which the regular
+# account is in, so that it can make the file system that gpg-genkey wants (mkfs.fat) and read its
+# label (blkid). The SD card is not on USB: it stays with root and the group `disk`.
+SUBSYSTEM=="block", SUBSYSTEMS=="usb", GROUP="users", MODE="0660"

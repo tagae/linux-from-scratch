@@ -44,10 +44,10 @@ sudo dd if=image/pi0-pgp.img of=/dev/disk4 bs=4M status=progress
 
 The Zero has one USB data port, the micro-USB one marked *USB*, so connect a hub to it (through an
 OTG adapter) and plug both the YubiKey and a USB stick in the hub. The stick holds a FAT file
-system labelled `KEYS`, on its first partition or on the whole device (`fatlabel /dev/sdb1 KEYS`
-gives it the label). Log in as the regular account on the serial console, whose shell is bash: arrow
-keys, Tab completion and a history of the session, which is not saved, as commands carry
-passphrases.
+system labelled `KEYS`, on its first partition or on the whole device, which
+[the Pi can make](#formatting-the-usb-stick). Log in as the regular account on the serial console,
+whose shell is bash: arrow keys, Tab completion and a history of the session, which is not saved, as
+commands carry passphrases.
 
 systemd mounts the stick on `/mnt/usb` the first time anything reads the directory, whoever it is,
 and unmounts it when it has not been used for ten seconds: wait that long before pulling the stick
@@ -96,6 +96,31 @@ YubiKey Management
 ------------------
 
 The system also has `ykman`, to configure the YubiKey (Python, `cryptography` and the smart card
+Formatting the USB Stick
+------------------------
+
+The system makes the FAT file system that the stick needs, with `mkfs.fat` and `fatlabel` (from
+`dosfstools`), and finds the stick with `blkid` (from `util-linux`), which lists the SD card's
+partitions (`mmcblk0p1` and `mmcblk0p2`) too: the stick is `/dev/sda`, the first on the hub. The
+regular account can format it: a udev rule
+([`70-usb-sticks.rules`](pi0-pgp/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives the block devices of
+USB sticks to the group `users`, and leaves the SD card, which is not on USB, to root. This erases
+the stick:
+
+```shell
+mkfs.fat -I -F 32 -n KEYS /dev/sda
+```
+
+The file system is FAT32, labelled `KEYS`, on the whole device (`-I` allows that). To make it on a
+partition that the stick already has, name the partition (`/dev/sda1`) and leave `-I` out.
+`fatlabel /dev/sda1 KEYS` gives the label to a file system that exists. The stick is ready at once:
+systemd mounts it at the next access.
+
+The system has no tool to partition the stick (`fdisk` and `sfdisk` need three more libraries of
+`util-linux`): partition it on another computer, which makes the file system go on the first
+partition.
+
+
 daemon `pcscd` come with it, about 60 MB). GnuPG reaches the YubiKey through `pcscd` rather than
 through its own USB driver (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and
 `ykman` can use the key in turn.

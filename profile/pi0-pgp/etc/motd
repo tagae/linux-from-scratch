@@ -11,5 +11,10 @@ in memory, under /dev/shm, and leaves only on the stick, which systemd mounts
 on /mnt/usb when something reads it and unmounts after 10 seconds of disuse:
 wait that long before pulling it out.
 
+To format a stick for the keys, find it with `blkid`: it is sda, and mmcblk0
+is the SD card. This erases the stick:
+
+  mkfs.fat -I -F 32 -n KEYS /dev/sda
+
 To move the subkeys to the YubiKey, use `gpg --edit-key` and `keytocard`.
 `gpg --card-status` and `ykman info` show what the YubiKey holds.

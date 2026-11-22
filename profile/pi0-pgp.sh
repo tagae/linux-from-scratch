@@ -50,12 +50,12 @@ lfs_system_install shadow
 )
 
 # util-linux: mount and umount, agetty and sulogin, which systemd and the key procedure run; libblkid
-# and libmount, which systemd links; dmesg, to read the kernel log; and more, which man shows the
-# manual pages in.
+# and libmount, which systemd links; blkid, which finds the stick to format; dmesg, to read the
+# kernel log; and more, which man shows the manual pages in.
 (
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
     libblkid=yes libmount=yes
-    mount=yes agetty=yes sulogin=yes dmesg=yes more=yes
+    mount=yes blkid=yes agetty=yes sulogin=yes dmesg=yes more=yes
     lfs_system_install util-linux
     lfs_sysroot_install util-linux#dev
 )
@@ -156,6 +156,12 @@ lfs_sysroot_install libusb#dev
 
 # Makes a key in memory and exports it to a USB stick.
 lfs_system_install gpg-genkey
+
+#===[ USB sticks ]===
+
+# mkfs.fat makes the FAT file system that gpg-genkey wants on the stick, labelled KEYS (fatlabel
+# changes the label of one that exists), and fsck.fat checks it.
+lfs_system_install dosfstools
 
 #===[ Processes and memory ]===
 
