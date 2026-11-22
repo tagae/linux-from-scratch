@@ -50,7 +50,7 @@ How It Boots
 
 The kernel mounts devtmpfs on `/dev` before it starts init (the `devtmpfs` capability), and starts
 `/sbin/init`, which is BusyBox's. Init reads
-[`/etc/inittab`](../package/busybox/etc/inittab):
+[`/etc/inittab`](virt-busybox/etc/inittab), a file of the profile:
 
 * It mounts `proc`, `sysfs` and a `tmpfs` on `/run`, which the kernel does not mount.
 * It keeps a `getty` on `hvc0`, the virtio console, which runs `login`, which starts ash.
