@@ -7,7 +7,7 @@
 # The key's smart card interface is reached through pcscd (pcsc-lite with the CCID driver), started
 # by systemd when a program connects to it, and its FIDO2 and OTP interfaces through hidraw.
 # GnuPG's scdaemon reaches the key through pcscd as well, instead of through its own CCID driver
-# over libusb, so that gpg and ykman can share it.
+# over libusb (etc/gnupg/scdaemon.conf of the profile), so that gpg and ykman can share it.
 
 lfs_system_toolchain glibc
 # glibc loads libgcc_s to unwind stacks.
@@ -182,7 +182,6 @@ lfs_system_install tzdata
 lfs_system_install pcsc-lite
 lfs_sysroot_install pcsc-lite#dev
 lfs_system_install ccid
-lfs_system_install scdaemon-pcsc
 
 lfs_system_install libffi
 lfs_sysroot_install libffi#dev
