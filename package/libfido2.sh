@@ -56,9 +56,6 @@ install() {
     case $package_component in
         libfido2)
             DESTDIR=$package_install_dir cmake --install .
-            # Access to the keys' devices for the regular account, which upstream's rules give
-            # through logind's seats.
-            cp -rv $package_files_dir/usr $package_install_dir/
             move_to_dev_component
             move_to_docs_component
             ;;

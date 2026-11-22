@@ -101,7 +101,7 @@ pi0-pgp has an account, `LFS_USER` (the user that ran make), with no password un
 `examples/user-commands.exp` logs in as it and runs lines. Its stick is the one labelled `KEYS`
 (`LABEL=KEYS $Q/make-fat-stick PATH`), which systemd mounts on `/mnt/usb` at the first access of any user
 and unmounts after 10 s idle. The emulated `usb-kbd` is no security key, so its hidraw device stays root's:
-to see the rule at work as root, copy `70-security-keys.rules` to `/etc/udev/rules.d` with `1050` replaced
+to see the rule at work as root, copy `70-security-keys.rules` (`profile/pi0-pgp/usr/lib/udev/rules.d/`) to `/etc/udev/rules.d` with `1050` replaced
 by `0627`, `udevadm control --reload; udevadm trigger --subsystem-match=hidraw --settle`. Type nothing
 until the login has completed, `Password:` answered if the account has one (a login that times out is a
 flake: run again).
