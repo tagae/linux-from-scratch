@@ -22,8 +22,12 @@ YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface 
 security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2 and OTP
 interfaces through, belong to the group `users`.
 
-The issue that `agetty` prints before the login prompt, the message of the day that `login` prints
-after it, and the shell profile (`/etc/profile`) are the files of [`pi0-pgp/`](pi0-pgp).
+The issue that `agetty` prints before the login prompt (which names the regular account: the build
+replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
+the shell profile (`/etc/profile`) and the udev rules that give the group `users` the security keys
+and USB sticks are files of [`pi0-pgp/`](pi0-pgp). So is what only this system has: the key
+procedure (`gpg-genkey` and the mount units of the stick), scdaemon's configuration, and the
+drop-ins that give pcscd's socket its group and start the stick's automount and `timesyncd`.
 
 
 Making OpenPGP Keys
@@ -92,10 +96,6 @@ GnuPG's home, for the regular account, is `~/.gnupg` on the SD card unless `GNUP
 for the PIN prompt to find it.
 
 
-YubiKey Management
-------------------
-
-The system also has `ykman`, to configure the YubiKey (Python, `cryptography` and the smart card
 Formatting the USB Stick
 ------------------------
 
@@ -121,6 +121,10 @@ The system has no tool to partition the stick (`fdisk` and `sfdisk` need three m
 partition.
 
 
+YubiKey Management
+------------------
+
+The system also has `ykman`, to configure the YubiKey (Python, `cryptography` and the smart card
 daemon `pcscd` come with it, about 60 MB). GnuPG reaches the YubiKey through `pcscd` rather than
 through its own USB driver (`/etc/gnupg/scdaemon.conf` has `disable-ccid`), so that `gpg` and
 `ykman` can use the key in turn.

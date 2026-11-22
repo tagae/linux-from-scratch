@@ -271,7 +271,7 @@ Where Code Goes
 | Applets of BusyBox | `package/busybox/<category>.config`, named in the `applets` of the profiles that rely on it: the category's applets that the kernels serve and a bare system has a use for, and their options, each category with its reasons; `base.config` has the options that every system gets |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`), shipped by the init, with root locked (`!`) and `/bin/sh` |
-| The files that give a system its look (issue, motd, the shell profile, root's dotfiles) | `profile/<profile>/<path as installed>`, which the build copies after the profile's packages: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
+| The files that give a system its look and its policy, and what only it has (issue, motd, the shell profile, root's dotfiles, the udev rules and systemd drop-ins that name its regular account or its devices, a script of its own with its units) | `profile/<profile>/<path as installed>`, which the build copies after the profile's packages, with `$LFS_USER` (the regular account's name) replaced and nothing else: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
 | root's password and shell | `( root_shell=/bin/bash; lfs_system_set_root )` in the profile, after the packages: it has no password unless `LFS_ROOT_PASSWORD` sets one, which belongs to the build, so no package ships it |
 | The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name is `LFS_USER`, and it has no password unless `LFS_PASSWORD` sets one; both belong to the build, so no package ships the account |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
@@ -331,7 +331,9 @@ systemd
 
 * No presets run. A unit is enabled as `systemctl enable` does it: the recipe makes the symlink
   under `/etc/systemd/system/<target>.wants/`, with an absolute target in
-  `/usr/lib/systemd/system`; a symlink under `/usr/lib` reads as "disabled" to `is-enabled`.
+  `/usr/lib/systemd/system`; a symlink under `/usr/lib` reads as "disabled" to `is-enabled`. A
+  profile ships regular files only, so it enables a unit with a drop-in that wants it
+  (`profile/<profile>/etc/systemd/system/<target>.target.d/<unit>.conf`, with `Wants=`).
 * The image bakes a machine ID (`lib/image.sh`): the first boot is ordinary, and a first-boot
   `preset-all` would only warn about generated units. Images are per build, not per card.
 * There is no D-Bus, PAM, polkit or logind, and passwd is static: services run as root unless the
