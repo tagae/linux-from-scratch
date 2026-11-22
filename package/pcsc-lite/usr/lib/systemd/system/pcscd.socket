@@ -3,7 +3,6 @@ Description=PC/SC Smart Card Daemon Activation Socket
 
 [Socket]
 ListenStream=/run/pcscd/pcscd.comm
-SocketGroup=users
 SocketMode=0660
 
 [Install]

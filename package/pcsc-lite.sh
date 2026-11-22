@@ -59,8 +59,8 @@ install() {
 
             # Upstream's units run the daemon as a pcscd user and in sandboxes that these kernels
             # lack (user namespaces, seccomp), and these systems have no such user. The daemon is
-            # root's and creates /run/pcscd, and its socket belongs to the group `users`, which the
-            # regular account is in: the service starts when a program connects to it.
+            # root's and creates /run/pcscd, and a profile gives its socket the group that may
+            # connect: the service starts when a program connects to it.
             # Distributions enable units with a preset; nothing here applies presets, so make the
             # link that `systemctl enable` makes from the [Install] section.
             cp -rv $package_files_dir/usr .
