@@ -150,7 +150,8 @@ lfs_system_install() {
 # path of a file under the profile's directory is its path in the system (profile/virt/etc/issue is
 # /etc/issue). A file is 0755 if the checkout has it executable, else 0644. The profile's files
 # belong to it alone: a path that a package installed is an error. The files are in no archive and
-# no SBOM, as the build copies them each time.
+# no SBOM, as the build copies them each time. The name of the regular account, LFS_USER, is the
+# only variable that envsubst replaces in them: a file names it as `$LFS_USER`.
 lfs_system_add_profile_files() (
     local dir=$profile_dir/$LFS_PROFILE file
     [ -d $dir ] || return 0
@@ -159,7 +160,7 @@ lfs_system_add_profile_files() (
         ! [ -e $system_dir/$file ] && ! [ -L $system_dir/$file ] \
             || bail "profile/$LFS_PROFILE/$file is a file of a package, not of the profile"
         mkdir -p $system_dir/$(dirname $file)
-        cp $file $system_dir/$file
+        envsubst '$LFS_USER' < $file > $system_dir/$file
         if [ -x $file ]; then chmod 0755 $system_dir/$file; else chmod 0644 $system_dir/$file; fi
     done
 )
