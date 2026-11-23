@@ -1,21 +1,47 @@
-The `pi0-pgp` Profile
-=====================
+Pretty Good Privacy for Raspberry Pi Zero
+=========================================
 
-A Raspberry Pi Zero Linux to make OpenPGP keys and keep them on a YubiKey and USB storage.
+A Raspberry Pi Zero Linux to make OpenPGP keys and keep them on USB storage.
+
+Also allows YubiKey management, in particular to import generated OpenPGP keys.
+
+
+Quick Start
+-----------
+
+1. Build the image with
+
+   ```shell
+   make docker-image/pi0-pgp.img LFS_TIMEZONE=Europe/Brussels
+   ```
+
+2. Explore it in an emulated host:
+
+   ```shell
+   ./lfs qemu image/pi0-pgp.img
+   ```
+
+   The image won't be modified, since all changes are written to an overlay.
+
+3. Flash the image on an SD card:
+
+   ```shell
+   dd if=image/pi0-pgp.img of=/dev/sdcard bs=4M status=progress
+   ```
+
+4. Boot the SD card on the Pi.
+
+   You can access the system
+   * through the serial console (e.g., through an USB TTL adapter),
+   * or through an USB keyboard and an HDMI display.
+
 
 Accounts
 --------
 
-The system has two accounts, both with a shell on the serial console:
-
-* `root`, with no password, unless `LFS_ROOT_PASSWORD` sets one.
-* A regular account, for working with keys without administrative rights. Its name is `LFS_USER`,
-  which defaults to the name of the user who runs `make`. It has no password, unless `LFS_PASSWORD`
-  sets one:
-
-  ```shell
-  make docker-image/pi0-pgp.img LFS_USER=alice LFS_PASSWORD='a password'
-  ```
+The system has two accounts, `root` and `$LFS_USER`, the later defaulting to the user who built the
+image. Both accounts are passwordless, unless `LFS_ROOT_PASSWORD` or `LFS_PASSWORD` are set
+respectively upon building the image.
 
 The regular account makes keys (`gpg`, `gpg-genkey`), reads and writes the USB stick, and uses a
 YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface through, and the
