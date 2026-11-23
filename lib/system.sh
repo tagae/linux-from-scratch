@@ -151,17 +151,19 @@ lfs_system_install() {
 # /etc/issue). A file is 0755 if the checkout has it executable, else 0644. The profile's files
 # belong to it alone: a path that a package installed is an error. The files are in no archive and
 # no SBOM, as the build copies them each time. The name of the regular account, LFS_USER, is the
-# only variable that envsubst replaces in them: a file names it as `$LFS_USER`.
+# only variable that envsubst replaces in them, in their paths as in their contents: a file names it
+# as `$LFS_USER`, and a file of the account's home directory is under home/$LFS_USER/.
 lfs_system_add_profile_files() (
-    local dir=$profile_dir/$LFS_PROFILE file
+    local dir=$profile_dir/$LFS_PROFILE file dest
     [ -d $dir ] || return 0
     cd $dir
     for file in $(find . -type f | sed 's|^\./||' | sort); do
-        ! [ -e $system_dir/$file ] && ! [ -L $system_dir/$file ] \
+        dest=$(printf '%s' "$file" | envsubst '$LFS_USER')
+        ! [ -e $system_dir/$dest ] && ! [ -L $system_dir/$dest ] \
             || bail "profile/$LFS_PROFILE/$file is a file of a package, not of the profile"
-        mkdir -p $system_dir/$(dirname $file)
-        envsubst '$LFS_USER' < $file > $system_dir/$file
-        if [ -x $file ]; then chmod 0755 $system_dir/$file; else chmod 0644 $system_dir/$file; fi
+        mkdir -p $system_dir/$(dirname $dest)
+        envsubst '$LFS_USER' < $file > $system_dir/$dest
+        if [ -x $file ]; then chmod 0755 $system_dir/$dest; else chmod 0644 $system_dir/$dest; fi
     done
 )
 
