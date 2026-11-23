@@ -76,10 +76,11 @@ lfs_system_install dbus
 # The kernel, with the serial console, the btrfs root file system, FAT file systems (the Pi layout's
 # boot partition, and sticks), its self-protection, loadable modules, the options that systemd
 # relies on, USB devices (YubiKeys, USB sticks and card readers, also from user space through
-# /dev/bus/usb), and HID devices on USB as /dev/hidraw*. The firmware's bootloader and configuration
+# /dev/bus/usb), HID devices on USB as /dev/hidraw*, and the zeroing of memory as it is freed, which
+# keeps keys from outliving the programs that held them. The firmware's bootloader and configuration
 # start it from the FAT partition of the Pi layout.
 (
-    capabilities="btrfs console fat hardening hidraw modules serial-console systemd usb usb-storage"
+    capabilities="btrfs console fat hardening hidraw modules serial-console systemd usb usb-storage zero-on-free"
     lfs_system_install linux
 )
 lfs_system_install firmware

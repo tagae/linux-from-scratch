@@ -107,6 +107,7 @@ Capabilities can also differ platform: `package/linux/<capability>.<platform>.co
 | `usb`            | USB devices, also from user space through `/dev/bus/usb`     |
 | `usb-storage`    | USB sticks and card readers                                  |
 | `hidraw`         | HID devices on USB, such as security keys, as `/dev/hidraw*` |
+| `zero-on-free`   | Zeroing of memory as it is freed, so secrets do not linger   |
 
 
 Time & Date
