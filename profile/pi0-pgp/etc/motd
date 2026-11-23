@@ -7,14 +7,15 @@ To make an OpenPGP key:
        PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
 
 The header comment of the script lists its options. The secret key is made
-in memory, under /dev/shm, and leaves only on the stick, which systemd mounts
-on /mnt/usb when something reads it and unmounts after 10 seconds of disuse:
-wait that long before pulling it out.
+in memory, under /run/gnupg, which never swaps, and leaves only on the stick,
+which systemd mounts on /mnt/usb when something reads it and unmounts after
+10 seconds of disuse: wait that long before pulling it out.
 
 To format a stick for the keys, find it with `blkid`: it is sda, and mmcblk0
 is the SD card. This erases the stick:
 
   mkfs.fat -I -F 32 -n KEYS /dev/sda
 
-To move the subkeys to the YubiKey, use `gpg --edit-key` and `keytocard`.
-`gpg --card-status` and `ykman info` show what the YubiKey holds.
+To move the subkeys to the YubiKey, use `gpg --edit-key` and `keytocard`: the
+keys stay in memory until the Pi powers off. `gpg --list-secret-keys`,
+`gpg --card-status` and `ykman info` show what the keys and the YubiKey hold.

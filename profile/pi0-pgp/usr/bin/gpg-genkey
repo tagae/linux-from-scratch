@@ -3,8 +3,10 @@
 #
 # The key is made for a security key such as a YubiKey: a primary key that only certifies, and
 # subkeys to sign, to encrypt and to authenticate. The secret key material lives in memory only:
-# GnuPG's home is a new directory under /dev/shm, a tmpfs that every user may write, and it is wiped
-# on every exit path. The secret key leaves only on the stick, protected by the passphrase.
+# GnuPG's home is /run/gnupg, a tmpfs that no other user opens and that never swaps
+# (run-gnupg.mount). The keys stay in it after the script ends, for `gpg` to list and to edit (to
+# move the subkeys to the YubiKey, say), until the Pi powers off. The secret key leaves only on
+# the stick, protected by the passphrase.
 #
 # The stick is the one whose file system has the label KEYS, a FAT file system that systemd mounts
 # on /mnt/usb when the script first reads it, and unmounts when it has not been used for a while.
@@ -63,16 +65,25 @@ ls "$USB_MOUNT" > /dev/null 2>&1 || {
 echo "gpg-genkey: stick mounted on $USB_MOUNT"
 
 # Everything GnuPG writes is under GNUPGHOME: the keyring, the random pool, the revocation
-# certificate.
-GNUPGHOME=$(mktemp -d /dev/shm/gnupg.XXXXXX)
+# certificate. It must be that mount, a tmpfs mounted noswap, and not a directory of a file system
+# that can swap: the field after the file system's type and source in /proc/self/mountinfo holds
+# the options that `noswap` is among.
+GNUPGHOME=/run/gnupg
+awk -v root="$GNUPGHOME" '
+    $5 == root {
+        for (i = 6; $i != "-"; i++) ;
+        ok = ($(i + 1) == "tmpfs" && ("," $(i + 3) ",") ~ /,noswap,/)
+    }
+    END { exit !ok }' /proc/self/mountinfo || {
+    echo "gpg-genkey: $GNUPGHOME is not a tmpfs mounted noswap (run-gnupg.mount)" >&2
+    exit 1
+}
 export GNUPGHOME
 echo "gpg-genkey: GNUPGHOME=$GNUPGHOME (tmpfs, memory only)"
 
-cleanup() {
-    gpgconf --kill gpg-agent 2>/dev/null || true
-    rm -rf "$GNUPGHOME"
-}
-trap cleanup EXIT
+# The agent keeps the passphrase for ten minutes: it quits when the script ends, however it ends,
+# and starts again when gpg next needs it. The keys stay.
+trap 'gpgconf --kill gpg-agent 2>/dev/null || true' EXIT
 trap 'exit 1' INT TERM HUP
 
 # The passphrase reaches gpg on its standard input, out of the process list, and the agent through
@@ -81,8 +92,14 @@ gpg_batch() {
     printf '%s\n' "$PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 "$@"
 }
 
-gpg_batch --quick-generate-key "$NAME <$EMAIL>" "$ALGO" cert 0
-FPR=$(gpg --batch --with-colons --list-keys "$EMAIL" | awk -F: '$1 == "fpr" { print $10; exit }')
+# The fingerprint is the one that gpg reports for the key it makes: the keyring can hold other keys
+# of the same address.
+STATUS=$(gpg_batch --status-fd 1 --quick-generate-key "$NAME <$EMAIL>" "$ALGO" cert 0)
+FPR=$(printf '%s\n' "$STATUS" | awk '$2 == "KEY_CREATED" { print $4 }')
+[ -n "$FPR" ] || {
+    echo "gpg-genkey: gpg did not report the key it made" >&2
+    exit 1
+}
 gpg_batch --quick-add-key "$FPR" "$ALGO" sign 0
 gpg_batch --quick-add-key "$FPR" "$ENCR_ALGO" encr 0
 gpg_batch --quick-add-key "$FPR" "$ALGO" auth 0
@@ -98,3 +115,4 @@ cp "$GNUPGHOME/openpgp-revocs.d/$FPR.rev" "$USB_MOUNT/$EMAIL-revoke.asc"
 sync
 echo "gpg-genkey: exported the secret and public keys and the revocation certificate to $USB_MOUNT"
 echo "gpg-genkey: done: the stick is safe to pull out ten seconds after this"
+echo "gpg-genkey: the keys stay in memory, in $GNUPGHOME, until the Pi powers off"

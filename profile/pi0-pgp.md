@@ -29,10 +29,12 @@ and `systemctl restart` fail with `Access denied`. To power the machine off, `ex
 
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
-the shell profile (`/etc/profile`) and the udev rules that give the group `users` the security keys
-and USB sticks are files of [`pi0-pgp/`](pi0-pgp). So is what only this system has: the key
-procedure (`gpg-genkey` and the mount units of the stick), scdaemon's configuration, and the
-drop-ins that give pcscd's socket its group and start the stick's automount and `timesyncd`.
+the shell profile (`/etc/profile`), the regular account's own (`~/.profile`, which the build puts
+under `/home/$LFS_USER`) and the udev rules that give the group `users` the security keys and USB
+sticks are files of [`pi0-pgp/`](pi0-pgp). So is what only this system has: the key procedure
+(`gpg-genkey` and the mount units of the stick and of GnuPG's memory),
+scdaemon's configuration, and the drop-ins that give pcscd's socket its group and start the mounts
+and `timesyncd`.
 
 
 Making OpenPGP Keys
@@ -70,9 +72,9 @@ out. Without a stick, the access fails after ten seconds.
    ```
 
 2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
-   authenticate, none of which expires. GnuPG's home is a new directory under `/dev/shm`, a tmpfs, which
-   is deleted when the command ends. Give the passphrase through the environment, so that it stays
-   out of the process list:
+   authenticate, none of which expires. GnuPG's home is `/run/gnupg`, in memory (see [Keys in
+   Memory](#keys-in-memory)), and the keys stay in it when the command ends. Give the passphrase
+   through the environment, so that it stays out of the process list:
 
    ```shell
    PASSPHRASE='a long passphrase' gpg-genkey -n 'Your Name' -e you@example.org
@@ -82,12 +84,10 @@ out. Without a stick, the access fails after ten seconds.
    `-public.asc` and `-revoke.asc`. The keys are ed25519, with a cv25519 encryption subkey; `-a
    rsa4096` makes RSA keys instead.
 
-3. Move the subkeys to the YubiKey. Import the secret key into a keyring in memory, and copy each
-   subkey to its slot (the card asks for its Admin PIN):
+3. Move the subkeys to the YubiKey, when you wish: the keys are still in memory, and `gpg
+   --list-secret-keys` shows them. Copy each subkey to its slot (the card asks for its Admin PIN):
 
    ```shell
-   export GNUPGHOME=$(mktemp -d /dev/shm/gnupg.XXXXXX)
-   gpg --import /mnt/usb/you@example.org-secret.asc
    gpg --edit-key you@example.org
    ```
 
@@ -96,9 +96,32 @@ out. Without a stick, the access fails after ten seconds.
    (authentication); then `save`. `gpg --card-status` lists the three keys on the card. The stick
    keeps the whole secret key.
 
-GnuPG's home, for the regular account, is `~/.gnupg` on the SD card unless `GNUPGHOME` says otherwise.
-`GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal (`echo hi | gpg --clearsign`),
-for the PIN prompt to find it.
+GnuPG's home, for the regular account, is `/run/gnupg`, which its `~/.profile` sets in `GNUPGHOME`:
+in memory, so empty after a reboot (`gpg --import /mnt/usb/you@example.org-secret.asc` brings a key
+back from the stick). root's is `~/.gnupg` on the SD card. `GPG_TTY=$(tty)` must be set when
+GnuPG's input is not the terminal (`echo hi | gpg --clearsign`), for the PIN prompt to find it.
+
+
+Keys in Memory
+--------------
+
+`gpg-genkey` keeps GnuPG's home, with the keyring, the agent's private keys, the random pool and
+the revocation certificate, in `/run/gnupg`, a tmpfs that
+[`run-gnupg.mount`](pi0-pgp/usr/lib/systemd/system/run-gnupg.mount) mounts at boot, and leaves it
+there: `gpg` lists and edits the keys at any moment, until the Pi powers off.
+
+* It is mounted `noswap`: the kernel never writes its pages to swap. A tmpfs without that option
+  can, `/dev/shm` and `/run` included, if the kernel has swap: the guarantee does not depend on
+  the kernel's configuration.
+* Only the regular account opens it (mode 0700), nothing runs from it (`noexec`, `nosuid` and
+  `nodev`), and it holds 8 MB at most.
+* `gpg-genkey` refuses to start unless `/run/gnupg` is a tmpfs mounted `noswap`.
+* The agent, which keeps the passphrase for ten minutes, quits when `gpg-genkey` ends, however it
+  ends, and starts again when `gpg` needs it.
+* Nothing deletes the keys: they go when the Pi powers off. Unmounting the tmpfs frees its pages,
+  and the kernel zeroes every page that it frees (`init_on_free`, the capability
+  [`zero-on-free`](../package/linux/zero-on-free.config)), which costs run time on every
+  allocation.
 
 
 Formatting the USB Stick

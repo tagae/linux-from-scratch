@@ -165,10 +165,11 @@ lfs_sysroot_install libusb#dev
 
 #===[ USB sticks ]===
 
-# The key procedure's own script, gpg-genkey, makes a key in memory and exports it to a USB stick,
-# which mnt-usb.automount mounts on /mnt/usb: they are files of the profile. mkfs.fat makes the FAT
-# file system that the script wants on the stick, labelled KEYS (fatlabel changes the label of one
-# that exists), and fsck.fat checks it.
+# The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory,
+# in /run/gnupg (a tmpfs that never swaps, run-gnupg.mount, which the account's ~/.profile gives to
+# gpg), and exports it to a USB stick, which mnt-usb.automount mounts on /mnt/usb. mkfs.fat makes
+# the FAT file system that the script wants on the stick, labelled KEYS (fatlabel changes the label
+# of one that exists), and fsck.fat checks it.
 lfs_system_install dosfstools
 
 #===[ Processes and memory ]===
