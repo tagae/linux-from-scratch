@@ -24,8 +24,9 @@ interfaces through, belong to the group `users`.
 
 The regular account reads the state of the system (`systemctl status`, `systemctl --failed`) but
 cannot change it: without polkit, only root changes anything through D-Bus, so `poweroff`, `reboot`
-and `systemctl restart` fail with `Access denied`. To power the machine off, `exit` and log in as
-`root`.
+and `systemctl restart` fail with `Access denied`. (systemd's own `poweroff`, `reboot` and `halt`
+fail without a word, so the account's `~/.profile` makes them aliases of `systemctl poweroff`,
+`reboot` and `halt`, which say why.) To power the machine off, `exit` and log in as `root`.
 
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
