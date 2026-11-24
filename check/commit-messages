@@ -1,14 +1,14 @@
 #!/bin/sh
 
 # Checks that each commit since the last version tag follows docs/commit-messages.md: the summary
-# line starts with a capital, an imperative verb, and meta-information is no part of it; it has at
-# most 50 characters and no sentence-ending period; a blank line follows it; and the other lines
-# have at most 72 characters, unless they hold a URL, code (indented, or fenced) or other atypical
-# text. bin/version derives the next version from the first word of each summary line. Merges,
-# fixups and squashes are left alone.
+# line is `<type>: <subject>`, of a type that the document lists, with a subject that starts with a
+# lowercase imperative verb; it has at most 72 characters and no sentence-ending period; a blank
+# line follows it; and the other lines have at most 72 characters, unless they hold a URL, code
+# (indented, or fenced) or other atypical text. bin/version derives the next version from the type
+# of each summary line. Merges, reverts, fixups and squashes are left alone.
 #
 # The mood of the verb is checked as far as a script can tell: it must not end in -ed or -ing, nor
-# be the third person of one of the recommended verbs (Adds, Fixes...).
+# be the third person of one of the recommended verbs (adds, fixes...).
 #
 # With no tag, the whole history is checked.
 #
@@ -22,18 +22,25 @@ set -o errexit -o nounset
 problems() {
     awk '
         BEGIN {
-            verbs = " Add Drop Fix Bump Make Start Stop Optimize Document Refactor Reformat Rearrange"
-            verbs = verbs " Redraw Reword Revise Refit Refresh Renew Reload Update Major Minor Patch "
+            types = " feat feat! fix perf refactor drop drop! docs style test build ci chore conf "
+            verbs = " add drop fix bump make start stop remove move rename use keep leave let give"
+            verbs = verbs " name set split install build run pin patch update document refactor "
         }
         function report(text) { print "    " text }
         NR == 1 {
             summary = $0
-            if (length(summary) > 50)
-                report("the summary has " length(summary) " characters: keep it within 50")
-            if (summary !~ /^[A-Z]/)
-                report("the summary does not start with a capital letter")
-            if (summary ~ /^[[(]/ || summary ~ /^#[0-9]/ || summary ~ /^[A-Za-z]+-[0-9]+/ || summary ~ /^[^ ]*:/)
-                report("the summary starts with meta-information: put it in a trailer")
+            if (length(summary) > 72)
+                report("the summary has " length(summary) " characters: keep it within 72")
+            if (!match(summary, /^[^ :]+: /)) {
+                report("the summary is not <type>: <subject>")
+                next
+            }
+            type = substr(summary, 1, RLENGTH - 2)
+            if (!index(types, " " type " "))
+                report("the summary has an unknown type: " type)
+            summary = substr(summary, RLENGTH + 1)
+            if (summary !~ /^[a-z]/)
+                report("the subject does not start with a lowercase letter")
             last = summary
             sub(/^.* /, "", last)
             if (summary ~ /\.$/ && last !~ /\..*\.$/)
@@ -41,8 +48,8 @@ problems() {
             word = summary
             sub(/ .*$/, "", word)
             wrong = 0
-            if (word ~ /ing$/ && word != "Bring") wrong = 1
-            else if (word ~ /ed$/ && word !~ /eed$/ && word != "Embed") wrong = 1
+            if (word ~ /ing$/ && word != "bring") wrong = 1
+            else if (word ~ /ed$/ && word !~ /eed$/ && word != "embed") wrong = 1
             else if (word ~ /s$/) {
                 plain = word
                 sub(/s$/, "", plain)
@@ -72,7 +79,7 @@ if [ "${1:-}" = --message ]; then
     # at the start.
     message=$(awk '/^# -+ >8 -+$/ { exit } /^#/ { next } { print }' "$2" | sed '/./,$!d')
     case $message in
-        Merge\ * | fixup!\ * | squash!\ * | amend!\ *) exit 0 ;;
+        Merge\ * | Revert\ * | fixup!\ * | squash!\ * | amend!\ *) exit 0 ;;
     esac
     found=$(printf '%s\n' "$message" | problems)
     [ -z "$found" ] || {
@@ -109,7 +116,7 @@ fi
 failed=
 for commit in $(git rev-list --reverse "$range"); do
     case $(git log -1 --format=%s "$commit") in
-        Merge\ * | fixup!\ * | squash!\ * | amend!\ *) continue ;;
+        Merge\ * | Revert\ * | fixup!\ * | squash!\ * | amend!\ *) continue ;;
     esac
     found=$(git log -1 --format=%B "$commit" | problems)
     [ -z "$found" ] || {

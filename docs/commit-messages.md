@@ -4,10 +4,15 @@ Git Commit Message Conventions
 Start with a summary line
 -------------------------
 
-Begin the message with a short summary line a.k.a. subject:
+Begin the message with a short summary line a.k.a. subject, in the form of a semantic commit:
 
-  * Start with an imperative present active verb: Add, Drop, Fix, Refactor, Optimize, etc.
-  * Use up to 50 characters (convention used by the Git project itself).
+    <type>: <subject>
+
+  * Start with a type that tells what the commit does: `feat`, `fix`, `refactor`, etc. (see below).
+  * Use one of the types below: a type is a word of its own, and `feat!` is as much a type as `feat`.
+    There are no scopes, as in `feat(virt):`.
+  * Start the subject with an imperative present active verb, in lowercase: add, drop, fix, etc.
+  * Use up to 72 characters for the whole line.
   * Finish without a sentence-ending period.
 
 
@@ -26,116 +31,87 @@ Summary examples
 
 Summary examples of good commit messages:
 
-  * Add foo
-  * Drop foo
-  * Fix foo
-  * Refactor foo
-  * Optimize foo
+  * feat: add foo
+  * drop: remove foo
+  * fix: stop foo from hanging
+  * refactor: move foo to lib/foo.sh
+  * perf: build foo once for all platforms
+  * feat!: prefix the variables of foo with FOO_
+  * drop!: remove the foo command
+  * drop: remove the unused foo option
 
-Summary keywords
-----------------
+Types
+-----
 
-We recommend these summary keywords because they use imperative mood, present tense, active voice, and are verbs:
+The type is one of these:
 
-  * **Add**: Create a capability e.g. feature, test, dependency.
-  * **Drop**: Delete a capability e.g. feature, test, dependency.
-  * **Fix**: Fix an issue e.g. bug, typo, accident, misstatement.
-  * **Bump**: Increase the version of something e.g. a dependency.
-  * **Make**: Change the build process, or tools, or infrastructure.
-  * **Start**: Begin doing something; e.g. enable a toggle, feature flag, etc.
-  * **Stop**: End doing something; e.g. disable a toggle, feature flag, etc.
-  * **Optimize**: A change that MUST be just about performance, e.g. speed up code.
-  * **Document**: A change that MUST be only in the documentation, e.g. help files.
-  * **Refactor**: A change that MUST be just a refactoring patch
-  * **Reformat**: A change that MUST be just a formatting patch, e.g. change spaces.
-  * **Rearrange**: A change that MUST be just an arranging patch, e.g. change layout.
-  * **Redraw**: A change that MUST be just a drawing patch, e.g. change a graphic, image, icon, etc.
-  * **Reword**: A change that MUST be just a wording patch, e.g. change a comment, label, doc, etc.
-  * **Revise**: A change that MUST be just a revising patch e.g. a change, an alteration, a correction, etc.
-  * **Refit/Refresh/Renew/Reload**: A change that MUST be just a patch e.g. update test data, API keys, etc.
-
-We recommend these summary keywords for things that don't fit into the above categories:
-
-  * **Major**: Anything that causes a major version increase.
-  * **Minor**: Anything that causes a minor version increase.
-  * **Patch**: Anything that causes a patch version increase.
-
-Real-world examples
--------------------
-
-Real-world examples show how we use imperative mood, present tense, active voice, and verbs:
-
-  * **Add** feature for a user to like a post
-  * **Drop** feature for a user to like a post
-  * **Fix** association between a user and a post
-  * **Update** dependency library to current version
-  * **Make** build process use caches for speed
-  * **Start** feature flag for a user to like a post
-  * **Stop** feature flag for a user to like a post
-  * **Optimize** search speed for a user to see posts
-  * **Document** community guidelines for post content
-  * **Refactor** user model to new language syntax
-  * **Reformat** home page text to use more whitespace
-  * **Rearrange** buttons so OK is on the lower right
-  * **Redraw** diagram of how our web app works
-  * **Reword** home page text to be more welcoming
-  * **Revise** link to update it to the new URL
-
-Real-world examples for things that don't fit into the above categories:
-
-  * **Major** overhaul of our API from version 1 to 2
-  * **Minor** improvement of our API from version 1.1 to 1.2
-  * **Patch** our API from version 1.1.1 to 1.1.2
+| Type       | Use it for                                                                         |
+|------------|------------------------------------------------------------------------------------|
+| `feat`     | Create a capability e.g. a package, profile, option, command or file of an image.  |
+| `feat!`    | Change a capability that users rely on, in a way that breaks them.                 |
+| `fix`      | Fix an issue e.g. bug, typo, accident, misstatement, or an insecure package.       |
+| `perf`     | A change that MUST be just about performance, e.g. build faster or ship less.      |
+| `refactor` | A change that MUST be just a refactoring: it changes nothing that users can see.   |
+| `drop`     | Delete a capability that nothing relies on e.g. feature, option, package, command. |
+| `drop!`    | Delete a capability that users rely on.                                            |
+| `docs`     | A change that MUST be only in the documentation or in comments.                    |
+| `style`    | A change that MUST be just about format or looks, e.g. whitespace, a banner.       |
+| `test`     | Add or change tests.                                                               |
+| `build`    | Change the build process, or tools, or infrastructure, e.g. Makefile, Dockerfiles. |
+| `ci`       | Change the continuous integration workflows.                                       |
+| `chore`    | Any other upkeep, e.g. bump a dependency that has no vulnerability, remove a file. |
+| `conf`     | Change the configuration of Claude or of another tool.                             |
 
 Use semantic versioning
 -----------------------
 
-We use [semantic versioning](https://semver.org/spec/v2.0.0) for many of our projects:
+We use [semantic versioning](https://semver.org/spec/v2.0.0) for many of our projects. The type of
+the summary line sets the bump:
 
-  * **Add**, **Start**: Increment SemVer MINOR version when there is a new capability.
-  * **Drop**, **Stop**: Increment SemVer MAJOR version when there is an incompatibility.
-  * **Fix**, **Optimize**, **Refactor**: Increment SemVer PATCH version.
-  * **Major**, **Minor**, **Patch**: Increment SemVer MAJOR, MINOR, PATCH version respectively.
-  * Any other word, such as **Bump**, **Make**, **Document**, **Reformat**, **Reword** or **Remove**,
-    increments no SemVer version.
+| Type                                                                       | Increments        |
+|----------------------------------------------------------------------------|-------------------|
+| `feat!`, `drop!`                                                           | SemVer MAJOR      |
+| `feat`                                                                     | SemVer MINOR      |
+| `fix`, `perf`, `refactor`                                                  | SemVer PATCH      |
+| Any other: `drop`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `conf` | no SemVer version |
 
-Use **Drop** and **Stop** only when what goes was relied upon, since they increment the MAJOR version.
-Use **Remove** instead when nothing relies on it.
+Use `drop!` only when what goes was relied upon, and `feat!` for any other change that breaks what
+users rely on, since both increment the MAJOR version. Use `drop` when nothing relies on what goes.
+
+A `BREAKING CHANGE:` trailer means nothing: a change that is incompatible says so with its type.
 
 Specifics for right and wrong
 -----------------------------
 
-Capitalize the summary.
+Start the subject with a lowercase letter.
 
-  * Right: Add feature
-  * Wrong: add feature
+  * Right: feat: add feature
+  * Wrong: feat: Add feature
 
-Finish the summary without a sentence-ending a period.
+Finish the summary without a sentence-ending period.
 
-  * Right: Add feature
-  * Wrong: Add feature.
+  * Right: feat: add feature
+  * Wrong: feat: add feature.
 
 If the summary ends with an non-sentence-ending period, use it.
 
-  * Right: Add feature for U.S.A.
-  * Wrong: Add feature for U.S.A
+  * Right: feat: add feature for U.S.A.
+  * Wrong: feat: add feature for U.S.A
 
 Use imperative mood: present tense, active voice, and lead verb.
 
-  * Right: Add feature
-  * Wrong: Adds feature (this is indicative mood, not imperative mood)
-  * Wrong: Added feature (this is past tense, not present tense)
-  * Wrong: Adding feature (this lead is a gerund, not a verb)
-  * Wrong: Feature added (this is passive voice, not active voice)
+  * Right: feat: add feature
+  * Wrong: feat: adds feature (this is indicative mood, not imperative mood)
+  * Wrong: feat: added feature (this is past tense, not present tense)
+  * Wrong: feat: adding feature (this lead is a gerund, not a verb)
+  * Wrong: feat: feature added (this is passive voice, not active voice)
 
 Specifics for length
 --------------------
 
-Keep the summary line within 50 characters.
+Keep the summary line within 72 characters.
 
-  * The purpose is easy readability.
-  * This is the Git official convention.
-  * This is the same convention as writing an email message.
+  * The purpose is easy readability, in the log and on the web, where longer lines get cut.
 
 Use a blank line after the summary line.
 
@@ -159,14 +135,13 @@ Use as many characters as needed for atypical text, such as URLs, output, format
 Reject these formats
 --------------------
 
-We reject Git commit message styles that put meta-information into the summary line.
+We reject Git commit message styles that put other meta-information into the summary line.
 
 Example:
 
   * [bug] ...
   * (release) ...
   * \#12345 ...
-  * docs: ...
   * JIRA-666 #time 1w 2d 4h 30m #comment Task completed ahead of schedule #resolve
 
 We reject using a ticket ID number in the summary line.
@@ -199,7 +174,7 @@ To refer to external links, we use Markdown links.
 
 Example:
 
-    Fix foo
+    fix: parse the input of foo
 
     The fix changes how we parse the input. See [the issue](https://example.com/25)
     for details.
@@ -214,7 +189,7 @@ To keep track of these, we write a Git commit message body that uses email heade
 
 Example:
 
-    Fix foo
+    fix: parse the input of foo
 
     Keywords: security, encryption, authentication
     Importance: high
@@ -231,6 +206,9 @@ We use some of these to help our teams focus on the most important work.
 
 Related links
 -------------
+
+Semantic commits are those of [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/),
+without scopes, and with `feat!` and `drop!` as types of their own.
 
 Blog posts about how to write Git commit messages:
 

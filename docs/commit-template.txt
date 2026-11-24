@@ -1,12 +1,12 @@
-##################################################
-# Write a title summarizing what this commit does.
-# Start with an uppercase imperative verb, such as
-# Add, Drop, Fix, Refactor, Bump; see ideas below.
+########################################################################
+# Write a title summarizing what this commit does, as <type>: <subject>.
+# Start with a type, such as feat, fix, refactor, drop, docs, chore;
+# see below. Follow it with a lowercase imperative verb, e.g. add.
 # Think of your title as akin to an email subject,
 # so you don't need to end with a sentence period.
-# Use 50 char maximum, which is this line's width.
-##################################################
-<Title>
+# Use 72 char maximum, which is this line's width.
+########################################################################
+<type>: <subject>
 
 ########################################################################
 # Why is this change happening?
@@ -31,55 +31,53 @@
 ########################################################################
 # ## Subject ##
 #
-# Use imperative present active verbs, capitalized, e.g. Add foo.
-# Wrong: add foo, Adds foo, Added foo, Adding foo, Foo added.
+# <type>: <subject>
 #
-#   Add = Create a capability e.g. feature, test, dependency.
-#   Drop = Delete a capability e.g. feature, test, dependency.
-#   Fix = Fix an issue e.g. bug, typo, accident, misstatement.
-#   Bump = Increase the version of something e.g. a dependency.
-#   Make = Change the build process, or tools, or infrastructure.
-#   Start = Begin doing something; e.g. enable a toggle, feature flag, etc.
-#   Stop = End doing something; e.g. disable a toggle, feature flag, etc.
-#   Optimize = A change that MUST be just about performance, e.g. speed up code.
-#   Document = A change that MUST be only in the documentation, e.g. help files.
-#   Refactor = A change that MUST be just a refactoring patch.
-#   Reformat = A change that MUST be just a formatting patch, e.g. change spaces.
-#   Rearrange = A change that MUST be just an arranging patch, e.g. change layout.
-#   Redraw = A change that MUST be just a drawing patch, e.g. change a graphic.
-#   Reword = A change that MUST be just a wording patch, e.g. change a comment.
-#   Revise = A change that MUST be just a revising patch, e.g. a correction.
-#   Refit/Refresh/Renew/Reload = A change that MUST be just a patch, e.g.
-#     update test data, API keys, etc.
+# The type is one of these, and no other (there are no scopes):
 #
-# For things that fit none of these:
+#   feat = Create a capability e.g. a package, profile, option, command
+#     or file of an image.
+#   feat! = Change a capability that users rely on, in a way that
+#     breaks them.
+#   fix = Fix an issue e.g. bug, typo, accident, misstatement, or an
+#     insecure package.
+#   perf = A change that MUST be just about performance.
+#   refactor = A change that MUST be just a refactoring.
+#   drop = Delete a capability that nothing relies on e.g. feature,
+#     option, package, platform.
+#   drop! = Delete a capability that users rely on.
+#   docs = A change that MUST be only in the documentation or comments.
+#   style = A change that MUST be just about format or looks.
+#   test = Add or change tests.
+#   build = Change the build process, or tools, or infrastructure.
+#   ci = Change the continuous integration workflows.
+#   chore = Any other upkeep, e.g. bump a dependency that has no
+#     vulnerability.
+#   conf = Change the configuration of Claude or of another tool.
 #
-#   Major = Anything that causes a major version increase.
-#   Minor = Anything that causes a minor version increase.
-#   Patch = Anything that causes a patch version increase.
+# Start the subject with a lowercase imperative present active verb,
+# e.g. add foo. Wrong: adds foo, added foo, adding foo, foo added.
 #
-# Keep the summary within 50 characters.
+# Keep the summary within 72 characters.
 #
 # Do not use a sentence-ending period, unless it ends an abbreviation,
-# e.g. Add feature for U.S.A.
+# e.g. feat: add feature for U.S.A.
 #
-# Do not put meta-information in the summary: no [bug], (release),
-# #12345, docs: or JIRA-666. Pass a ticket ID as a trailer instead,
+# Do not put other meta-information in the summary: no [bug], (release),
+# #12345 or JIRA-666. Pass a ticket ID as a trailer instead,
 # e.g. Issue: 25.
 #
 # ## SemVer ##
 #
-# The first word of the summary sets the version bump:
+# The type of the summary sets the version bump:
 #
-#   Add, Start = MINOR, when there is a new capability.
-#   Drop, Stop = MAJOR, when there is an incompatibility.
-#   Fix, Optimize, Refactor = PATCH.
-#   Major, Minor, Patch = MAJOR, MINOR, PATCH respectively.
-#   Any other word, such as Bump, Make, Document, Reword or Remove =
-#   no bump.
+#   feat!, drop! = MAJOR, when there is an incompatibility.
+#   feat = MINOR, when there is a new capability.
+#   fix, perf, refactor = PATCH.
+#   Any other type = no bump.
 #
-# Use Drop and Stop only when what goes was relied upon. Use Remove
-# instead when nothing relies on it.
+# Use drop! only when what goes was relied upon. Use drop instead when
+# nothing relies on it.
 #
 # ## Body ##
 #

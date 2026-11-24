@@ -209,39 +209,41 @@ version, named by the abbreviated hash of the top commit, as short as git finds 
 (`0.2.0-abc1234`), and ended by `-dirty` when the tree differs from its commit. A hash of digits alone
 that starts with 0, which SemVer does not allow in a number, takes an `r`, for revision
 (`0.2.0-r0123456`). The next version is the tag's, raised by the summary lines of the commits since
-it: an `Add` after `0.1.0` makes `0.2.0`, and a `Fix` on top of it changes the hash, not the version.
+it: a `feat` after `0.1.0` makes `0.2.0`, and a `fix` on top of it changes the hash, not the version.
 (Build metadata, `+hash`, would not do: SemVer ignores it when it compares versions.) `bin/release`
 tags the next version (`--dry-run` says which first), and `git push github X.Y.Z` publishes the tag.
 The Makefile gives an image its release (`LFS_RELEASE`, the output of `bin/version`: os-release's
 `VERSION`, the SBOM). It goes into no archive, as every revision shares them.
 
-Commit messages follow [docs/commit-messages.md](docs/commit-messages.md). The first word of the
-summary line tells what bump the commit makes:
+Commit messages are semantic commits, `<type>: <subject>`, without scopes, as
+[docs/commit-messages.md](docs/commit-messages.md) says. The type of the summary line tells what
+bump the commit makes:
 
-| First word                                                                  | Bumps         |
-|-----------------------------------------------------------------------------|---------------|
-| `Drop`, `Stop`, `Major`                                                     | the major one |
-| `Add`, `Start`, `Minor`                                                     | the minor one |
-| `Fix`, `Optimize`, `Refactor`, `Patch`                                      | the patch     |
-| any other, such as `Bump`, `Make`, `Document`, `Reword`, `Remove` or `Move` | nothing       |
+| Type                                                                       | Bumps         |
+|----------------------------------------------------------------------------|---------------|
+| `feat!`, `drop!`                                                           | the major one |
+| `feat`                                                                     | the minor one |
+| `fix`, `perf`, `refactor`                                                  | the patch     |
+| any other: `drop`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `conf` | nothing       |
 
 The highest bump of the commits since the last tag applies, and sets the parts after it to 0. With
 only commits that bump nothing since the last tag, `bin/version` shows a pre-release of the next
 patch (a pre-release of the tag would sort before it), and `bin/release` has nothing to tag. Merges,
 fixups and squashes bump nothing. A trailer such as `BREAKING CHANGE:` means nothing: a change that
-breaks the interface says so with its first word. `Drop` and `Stop` are for what users may rely on,
-which they remove or end; `Major` is for any other change that breaks the interface (a feature that
-changes in a way that breaks its users). `Remove` is for what nothing relies on.
+breaks the interface says so with its type. `drop!` is for what users may rely on, which it
+removes; `feat!` is for any other change that breaks the interface (a feature that changes in a way
+that breaks its users). `drop` is for what nothing relies on.
 
 The interface is what users and profiles rely on: the make targets and their defaults, the `lfs`
 commands and environment, the formats of `profile/`, `platform/` and the options of recipes, and the
 layout of an image and of its SBOM. What an image holds is not the interface: updating a package
-that has vulnerabilities is a `Fix`, and any other update a `Bump`, which bumps nothing.
+that has vulnerabilities is a `fix`, and any other update a `chore`, which bumps nothing.
 
 `check/commit-messages` (`make commit-lint`, which CI runs) checks the messages since the last tag,
-or all of them when there is none: the summary line, a blank line after it and the width of the
-body. `git config core.hooksPath check/hooks` makes git refuse a commit whose message fails it, and
-`git config commit.template docs/commit-template.txt` gives the editor the template of a message.
+or all of them when there is none: the type and the subject of the summary line, its width, a blank
+line after it and the width of the body. `git config core.hooksPath check/hooks` makes git refuse a
+commit whose message fails it, and `git config commit.template docs/commit-template.txt` gives the
+editor the template of a message.
 
 ### Documentation
 
