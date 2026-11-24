@@ -1,17 +1,10 @@
 name: Tools
 
-# The sources and the build tools, which every system shares: the workflows of the profiles (virt,
-# pi0-pgp, virt-busybox) start when this one ends, and only unpack the archives that it saved.
-# A push that changes nothing but documentation builds nothing.
+# The sources and the build tools, which every system shares: CI (ci.yaml) calls the workflows of
+# the profiles (virt, pi0-pgp, virt-busybox) after this one has succeeded, and they only unpack the
+# archives that it saved.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.claude/**'
-      - LICENSE
-  workflow_dispatch:
+  workflow_call:
     inputs:
       cold:
         description: Build from scratch, without the cache
@@ -20,11 +13,6 @@ on:
 
 permissions:
   contents: read
-
-# Runs queue rather than cancel one another: a cancelled build loses its archives.
-concurrency:
-  group: tools
-  cancel-in-progress: false
 
 jobs:
   # Every source that a build pins is downloaded here, once, into the cache that all the builds
@@ -35,7 +23,7 @@ jobs:
     with:
       name: download
       command: make fetch
-      cold: ${{ inputs.cold == true }}
+      cold: ${{ inputs.cold }}
       archives: false
 
   # The build tools are built in two ways, on the runner and through Docker Compose (the bootstrap
@@ -47,7 +35,7 @@ jobs:
     with:
       name: bootstrap
       command: make tools-bootstrap
-      cold: ${{ inputs.cold == true }}
+      cold: ${{ inputs.cold }}
 
   tools:
     needs: bootstrap
@@ -62,7 +50,7 @@ jobs:
     with:
       name: docker-bootstrap
       command: make docker-tools-bootstrap
-      cold: ${{ inputs.cold == true }}
+      cold: ${{ inputs.cold }}
       docker: true
 
   docker-tools:
