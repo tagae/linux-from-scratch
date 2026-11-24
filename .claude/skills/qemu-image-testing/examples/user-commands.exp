@@ -4,7 +4,7 @@
 # each one's output between the markers.
 #
 #   TEST_USER=alice USER_CMDS='id
-#   ls /mnt/usb' EXPECT_SCRIPT=.claude/skills/qemu-image-testing/examples/user-commands.exp \
+#   ls /mnt/keys' EXPECT_SCRIPT=.claude/skills/qemu-image-testing/examples/user-commands.exp \
 #       qemu-check pi0-pgp "-drive if=none,id=stick,file=<copy of a stick>,format=raw -device usb-storage,drive=stick"
 #
 # A stick that pi0-pgp mounts has the label KEYS: LABEL=KEYS make-fat-stick PATH.

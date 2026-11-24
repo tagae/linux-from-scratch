@@ -1,0 +1,21 @@
+# A FAT stick with another label than KEYS is mounted on /mnt/usb-storage, whoever reads it, and is
+# no longer the stick of the keys: the stick of the tests, which holds the keys' files, is given
+# another label.
+
+login user
+# fatlabel writes to the stick, which must not be mounted: systemd unmounts it when it is idle.
+run_ok {n=0; while grep -q ' /mnt/keys .* vfat ' /proc/self/mountinfo && [ $n -lt 30 ]; do sleep 1; n=$((n + 1)); done; ! grep -q ' /mnt/keys .* vfat ' /proc/self/mountinfo}
+run_ok {fatlabel /dev/sda DATA}
+# udev finds the new label a while after it is written.
+run_ok {n=0; while [ ! -e /dev/usb-storage ] && [ $n -lt 30 ]; do sleep 1; n=$((n + 1)); done; [ -e /dev/usb-storage ]}
+run_ok {n=0; while ! ls /mnt/usb-storage > /dev/null 2>&1 && [ $n -lt 30 ]; do sleep 1; n=$((n + 1)); done; ls /mnt/usb-storage}
+expect_match [run_ok {ls /mnt/usb-storage}] {test@example\.org-secret\.asc} "the files of the stick"
+run_ok {echo probe > /mnt/usb-storage/probe.txt}
+expect_equal [run_ok {cat /mnt/usb-storage/probe.txt}] probe "what was written to the stick"
+set mount [run_ok {grep ' /mnt/usb-storage .* vfat ' /proc/self/mountinfo}]
+foreach option {nosuid nodev noexec} {
+    expect_match $mount $option "the mount options of /mnt/usb-storage"
+}
+# Without the label KEYS, nothing is on /mnt/keys: the access fails after the job's ten seconds.
+run_ok {! ls /mnt/keys > /dev/null 2>&1}
+logout

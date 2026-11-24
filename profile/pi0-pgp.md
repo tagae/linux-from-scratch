@@ -89,9 +89,19 @@ system labelled `KEYS`, on its first partition or on the whole device, which
 whose shell is bash: arrow keys, Tab completion and a history of the session, which is not saved, as
 commands carry passphrases.
 
-systemd mounts the stick on `/mnt/usb` the first time anything reads the directory, whoever it is,
+systemd mounts the stick on `/mnt/keys` the first time anything reads the directory, whoever it is,
 and unmounts it when it has not been used for ten seconds: wait that long before pulling the stick
 out. Without a stick, the access fails after ten seconds.
+
+Any other USB stick with a FAT file system, whatever its label, is mounted the same way on
+`/mnt/usb-storage`, for the regular account to read and write: a udev rule
+([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) links it as
+`/dev/usb-storage`, and
+[`mnt-usb\x2dstorage.mount`](pi0-pgp/files/usr/lib/systemd/system/mnt-usb%5Cx2dstorage.mount) mounts
+that link. Both mounts are `nosuid`, `nodev` and `noexec`. The KEYS stick is never on
+`/mnt/usb-storage`, and `gpg-genkey` writes to `/mnt/keys` alone, so that a key never lands on a
+stick that was plugged in for another purpose. With two sticks that are not KEYS, the link follows
+one of them.
 
 1. The Pi has no battery-backed clock. It restores the time it last saved, and a new image starts at
    the time it was made. Keys record the time they are made at, so set it:
@@ -126,7 +136,7 @@ out. Without a stick, the access fails after ten seconds.
    keeps the whole secret key.
 
 GnuPG's home, for the regular account, is `/run/gnupg`, which its `~/.profile` sets in `GNUPGHOME`:
-in memory, so empty after a reboot (`gpg --import /mnt/usb/you@example.org-secret.asc` brings a key
+in memory, so empty after a reboot (`gpg --import /mnt/keys/you@example.org-secret.asc` brings a key
 back from the stick). root's is `~/.gnupg` on the SD card. `GPG_TTY=$(tty)` must be set when
 GnuPG's input is not the terminal (`echo hi | gpg --clearsign`), for the PIN prompt to find it.
 
@@ -170,8 +180,9 @@ mkfs.fat -I -F 32 -n KEYS /dev/sda
 
 The file system is FAT32, labelled `KEYS`, on the whole device (`-I` allows that). To make it on a
 partition that the stick already has, name the partition (`/dev/sda1`) and leave `-I` out.
-`fatlabel /dev/sda1 KEYS` gives the label to a file system that exists. The stick is ready at once:
-systemd mounts it at the next access.
+`fatlabel /dev/sda1 KEYS` gives the label to a file system that exists, and any other label
+(`fatlabel /dev/sda1 DATA`) moves the stick from `/mnt/keys` to `/mnt/usb-storage`. The stick is
+ready at once: systemd mounts it at the next access.
 
 The system has no tool to partition the stick (`fdisk` and `sfdisk` need three more libraries of
 `util-linux`): partition it on another computer, which makes the file system go on the first

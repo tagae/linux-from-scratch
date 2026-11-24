@@ -1,11 +1,12 @@
 # The regular account makes the file system that gpg-genkey wants on the stick, as the message of the
-# day says, and systemd mounts it when something reads /mnt/usb, and lets it write there.
+# day says, and systemd mounts it when something reads /mnt/keys, and lets it write there.
 
 login user
 # The kernel finds the stick a while after the boot, and udev its label a while after it is made.
 run_ok {n=0; while [ ! -b /dev/sda ] && [ $n -lt 60 ]; do sleep 1; n=$((n + 1)); done; [ -b /dev/sda ]}
 run_ok {mkfs.fat -I -F 32 -n KEYS /dev/sda}
-run_ok {n=0; while ! ls /mnt/usb > /dev/null 2>&1 && [ $n -lt 30 ]; do sleep 1; n=$((n + 1)); done; ls /mnt/usb}
-run_ok {echo probe > /mnt/usb/probe.txt}
-expect_equal [run_ok {cat /mnt/usb/probe.txt}] probe "what was written to the stick"
+run_ok {n=0; while ! ls /mnt/keys > /dev/null 2>&1 && [ $n -lt 30 ]; do sleep 1; n=$((n + 1)); done; ls /mnt/keys}
+run_ok {[ ! -e /dev/usb-storage ]}
+run_ok {echo probe > /mnt/keys/probe.txt}
+expect_equal [run_ok {cat /mnt/keys/probe.txt}] probe "what was written to the stick"
 logout

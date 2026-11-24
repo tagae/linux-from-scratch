@@ -2,6 +2,6 @@
 
 login user
 expect_match [run_ok {gpg-genkey -n 'Test User' -e test@example.org -p 'a passphrase'}] {done} "gpg-genkey"
-run_ok {[ -s /mnt/usb/test@example.org-secret.asc ] && [ -s /mnt/usb/test@example.org-public.asc ] && [ -s /mnt/usb/test@example.org-revoke.asc ]}
+run_ok {[ -s /mnt/keys/test@example.org-secret.asc ] && [ -s /mnt/keys/test@example.org-public.asc ] && [ -s /mnt/keys/test@example.org-revoke.asc ]}
 expect_match [run_ok {gpg --list-secret-keys}] {test@example\.org} "the key, which stays in memory"
 logout

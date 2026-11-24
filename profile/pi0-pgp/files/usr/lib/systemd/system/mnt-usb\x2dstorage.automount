@@ -1,8 +1,8 @@
 [Unit]
-Description=Mount of the USB stick with the label KEYS on first access
+Description=Mount of a USB stick with a FAT file system that is not labelled KEYS on first access
 
 [Automount]
-Where=/mnt/usb
+Where=/mnt/usb-storage
 # The stick can be pulled out when it has not been used for this long.
 TimeoutIdleSec=10s
 

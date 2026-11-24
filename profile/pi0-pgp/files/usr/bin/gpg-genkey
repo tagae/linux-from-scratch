@@ -9,7 +9,7 @@
 # the stick, protected by the passphrase.
 #
 # The stick is the one whose file system has the label KEYS, a FAT file system that systemd mounts
-# on /mnt/usb when the script first reads it, and unmounts when it has not been used for a while.
+# on /mnt/keys when the script first reads it, and unmounts when it has not been used for a while.
 #
 # Usage: gpg-genkey -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE
 #   -n NAME        Real name of the key's user ID                 ($NAME)
@@ -28,7 +28,7 @@
 set -eu
 
 ALGO=${ALGO:-ed25519}
-USB_MOUNT=/mnt/usb
+KEYS_MOUNT=/mnt/keys
 
 usage() {
     echo "Usage: $(basename "$0") -n NAME -e EMAIL [-a ALGO] -p PASSPHRASE" >&2
@@ -58,11 +58,11 @@ case $ALGO in
 esac
 
 # Reading the directory has systemd mount the stick, or fail when there is none.
-ls "$USB_MOUNT" > /dev/null 2>&1 || {
+ls "$KEYS_MOUNT" > /dev/null 2>&1 || {
     echo "gpg-genkey: no USB stick with a FAT file system labelled KEYS" >&2
     exit 1
 }
-echo "gpg-genkey: stick mounted on $USB_MOUNT"
+echo "gpg-genkey: stick mounted on $KEYS_MOUNT"
 
 # Everything GnuPG writes is under GNUPGHOME: the keyring, the random pool, the revocation
 # certificate. It must be that mount, a tmpfs mounted noswap, and not a directory of a file system
@@ -105,14 +105,14 @@ gpg_batch --quick-add-key "$FPR" "$ENCR_ALGO" encr 0
 gpg_batch --quick-add-key "$FPR" "$ALGO" auth 0
 echo "gpg-genkey: key $FPR generated in memory for $EMAIL"
 
-gpg_batch --armor --export-secret-keys "$FPR" > "$USB_MOUNT/$EMAIL-secret.asc"
-gpg --armor --export "$FPR" > "$USB_MOUNT/$EMAIL-public.asc"
+gpg_batch --armor --export-secret-keys "$FPR" > "$KEYS_MOUNT/$EMAIL-secret.asc"
+gpg --armor --export "$FPR" > "$KEYS_MOUNT/$EMAIL-public.asc"
 
 # Making the primary key stored a revocation certificate, which is how GnuPG makes one without
 # asking questions on a terminal.
-cp "$GNUPGHOME/openpgp-revocs.d/$FPR.rev" "$USB_MOUNT/$EMAIL-revoke.asc"
+cp "$GNUPGHOME/openpgp-revocs.d/$FPR.rev" "$KEYS_MOUNT/$EMAIL-revoke.asc"
 
 sync
-echo "gpg-genkey: exported the secret and public keys and the revocation certificate to $USB_MOUNT"
+echo "gpg-genkey: exported the secret and public keys and the revocation certificate to $KEYS_MOUNT"
 echo "gpg-genkey: done: the stick is safe to pull out ten seconds after this"
 echo "gpg-genkey: the keys stay in memory, in $GNUPGHOME, until the Pi powers off"

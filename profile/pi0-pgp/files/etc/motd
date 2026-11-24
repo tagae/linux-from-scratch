@@ -8,8 +8,9 @@ To make an OpenPGP key:
 
 The header comment of the script lists its options. The secret key is made
 in memory, under /run/gnupg, which never swaps, and leaves only on the stick,
-which systemd mounts on /mnt/usb when something reads it and unmounts after
-10 seconds of disuse: wait that long before pulling it out.
+which systemd mounts on /mnt/keys when something reads it and unmounts after
+10 seconds of disuse: wait that long before pulling it out. Any other FAT
+stick is mounted the same way on /mnt/usb-storage.
 
 To format a stick for the keys, find it with `blkid`: it is sda, and mmcblk0
 is the SD card. This erases the stick:

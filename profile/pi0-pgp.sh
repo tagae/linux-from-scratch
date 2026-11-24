@@ -171,7 +171,7 @@ lfs_sysroot_install libusb#dev
 
 # The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory,
 # in /run/gnupg (a tmpfs that never swaps, run-gnupg.mount, which the account's ~/.profile gives to
-# gpg), and exports it to a USB stick, which mnt-usb.automount mounts on /mnt/usb. mkfs.fat makes
+# gpg), and exports it to a USB stick, which mnt-keys.automount mounts on /mnt/keys. mkfs.fat makes
 # the FAT file system that the script wants on the stick, labelled KEYS (fatlabel changes the label
 # of one that exists), and fsck.fat checks it.
 lfs_system_install dosfstools
@@ -265,8 +265,8 @@ lfs_system_install polkit
 
 # A regular account besides root, for working with keys without administrative rights: LFS_USER, of
 # the group `users`, with bash for shell. Its group reaches the security keys' hidraw devices and the
-# devices of USB sticks (the profile's udev rules), and the files of the stick that mnt-usb.mount
-# mounts (gpg-genkey).
+# devices of USB sticks (the profile's udev rules), and the files of the sticks that mnt-keys.mount
+# (gpg-genkey) and mnt-usb\x2dstorage.mount mount.
 (
     user_shell=/bin/bash
     lfs_system_add_user
