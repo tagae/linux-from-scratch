@@ -64,7 +64,7 @@ data port, so real use needs a hub. The emulated reader is 08E6:4433 (in ccid's 
 
 - Missing libraries and RPATHs first: `missing-libs` (lfs-build-iteration).
 - Clock across boots: `IMAGE_COPY=/tmp/x.img`; `qemu-check KEY "" 'date -u -s "2026-12-31 12:00:00"; sleep 75'`
-  (timesyncd saves every 60 s and at exit), then `... 'date -u'`: it continues from the saved time and PID 1
+  (timesyncd saves every 60 s, not at exit: a restart sooner goes back to the last save), then `... 'date -u'`: it continues from the saved time and PID 1
   logs "System time advanced to timestamp on /var/lib/systemd/timesync/clock". Delete `/tmp/x.img` and
   `/tmp/x.qcow2` after.
 - Probes in the same line: `ykman --version`, `python3 -c 'import cryptography'`,

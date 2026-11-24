@@ -42,8 +42,8 @@ No networking (only `lo`), LED class, thermal or hwmon (undervoltage cannot be d
 or swap. USB only with the `usb` capability (a profile names it in its `capabilities`). No logind, and polkit only in pi0-pgp, whose rule lets the regular account
 `poweroff`, `reboot` and `halt` and refuses it the rest (`systemctl restart` fails with `Access denied`);
 without polkit (virt) only root changes anything through D-Bus. `systemctl status` works. No
-`/etc/hostname` (the name is `localhost`). The clock has no source: timesyncd saves it every minute and at shutdown and
-the next boot continues from it; a new image starts at its build time; real times need `date -u -s`. The machine ID is
+`/etc/hostname` (the name is `localhost`). The clock has no source: timesyncd saves it every minute (not at shutdown) and
+the next boot continues from that save; a new image starts at its build time; real times need `date -u -s`. The machine ID is
 made with the image and persists. `find`, `tar`, `less`, `file`, `ip` are not installed.
 
 ## A health-check pass (one line each in the guest; `qemu-check` runs them under QEMU too)

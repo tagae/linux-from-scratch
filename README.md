@@ -120,8 +120,10 @@ with `LFS_TIMEZONE` (e.g., `make image LFS_PROFILE=pi0-pgp LFS_TIMEZONE=Europe/B
 stays in UTC; the zone only changes how time is shown.
 
 The `pi0-pgp` profile, for a board without a battery-backed clock (the Raspberry Pi Zero), keeps time
-across reboots through systemd-timesyncd, which saves the clock every minute and at shutdown, and
-restores it at the next boot.
+across reboots through systemd-timesyncd, which saves the clock every minute, and restores it at the
+next boot. It does not save at shutdown, so a boot goes back to the last minute's save: a time set
+less than a minute before the machine stops can be lost, and keys made just before look as if they
+were made in the future.
 
 Localisation
 ------------
