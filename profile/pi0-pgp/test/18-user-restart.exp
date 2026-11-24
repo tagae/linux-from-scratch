@@ -1,0 +1,19 @@
+# The regular account restarts the machine, and the new boot is a different one, with no error in its
+# journal, a running system, and the account logged in again. `restart` returns at the login prompt,
+# which drops whatever the boot printed before it, so the journal of the boot is what is checked (by
+# root: the regular account does not read the journal).
+
+login user
+set before [run_ok {cat /proc/sys/kernel/random/boot_id}]
+restart
+expect_silence 15 "after the restart"
+login user
+
+set after [run_ok {cat /proc/sys/kernel/random/boot_id}]
+if {$after eq $before} { fail "the machine did not restart: its boot ID is still $before" }
+expect_equal [run_ok {systemctl is-system-running --wait}] running "the state of the system after the restart"
+logout
+
+login root
+expect_equal [run_ok {journalctl --boot --priority=err --no-pager --quiet}] "" "the errors of the boot"
+logout

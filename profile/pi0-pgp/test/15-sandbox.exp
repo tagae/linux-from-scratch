@@ -1,0 +1,17 @@
+# The daemons that systemd starts for others run as the accounts of their own, in the sandbox that
+# their units ask for: system calls filtered (seccomp), no new privileges, and a namespace apart.
+
+login root
+run_ok {systemctl start polkit.service pcscd.service}
+
+# Per unit: the account, and the namespace that the unit's sandbox gives it.
+foreach {unit account namespace} {polkit.service polkitd net pcscd.service pcscd user} {
+    set pid [run_ok "systemctl show --property MainPID --value $unit"]
+    expect_equal [run_ok "stat -c %U /proc/$pid"] $account "the account of $unit"
+    expect_equal [run_ok "awk '/^Seccomp:/ {print \$2}' /proc/$pid/status"] 2 "the seccomp filter of $unit"
+    expect_equal [run_ok "awk '/^NoNewPrivs:/ {print \$2}' /proc/$pid/status"] 1 "no new privileges of $unit"
+    run_ok "\[ \"\$(readlink /proc/$pid/ns/$namespace)\" != \"\$(readlink /proc/1/ns/$namespace)\" \]"
+}
+
+expect_equal [run_ok {systemctl --failed --no-pager --no-legend --plain}] "" "the failed units"
+logout

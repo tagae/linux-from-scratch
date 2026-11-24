@@ -1,0 +1,13 @@
+# GnuPG makes a key in the memory home of the regular account, signs and verifies with it, and
+# encrypts and decrypts.
+
+login user
+set gpg {gpg --batch --pinentry-mode loopback --passphrase ''}
+run_ok "$gpg --quick-generate-key quick@example.org default default 0"
+expect_match [run_ok "$gpg --list-secret-keys quick@example.org"] {quick@example\.org} "the key that was made"
+
+set signed [run_ok "echo hello | $gpg --clearsign | $gpg --verify 2>&1"]
+expect_match $signed {Good signature from} "verifying what was signed"
+
+expect_equal [run_ok "echo hello | $gpg --trust-model always --encrypt -r quick@example.org | $gpg --decrypt 2>/dev/null"] hello "decrypting what was encrypted"
+logout

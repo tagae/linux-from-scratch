@@ -1,0 +1,8 @@
+# The regular account logs in on the console, to its own shell and home directory, with the GnuPG
+# home of the profile.
+
+login user
+expect_equal [run_ok {id -un}] $env(LFS_USER) "the account that logged in"
+expect_equal [run_ok {echo $HOME}] /home/$env(LFS_USER) "its home directory"
+expect_equal [run_ok {echo $GNUPGHOME}] /run/gnupg "its GnuPG home"
+logout

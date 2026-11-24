@@ -1,0 +1,4 @@
+# root logs in on the console, and out.
+
+login root
+logout

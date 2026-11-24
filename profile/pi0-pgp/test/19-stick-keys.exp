@@ -1,0 +1,10 @@
+# After the restart, the keys are gone from memory, and are on the stick, whose secret key works.
+
+login user
+run_ok {gpg --list-secret-keys test@example.org} 2
+run_ok {n=0; while ! ls /mnt/usb > /dev/null 2>&1 && [ $n -lt 60 ]; do sleep 1; n=$((n + 1)); done; ls /mnt/usb}
+expect_match [run_ok {head -n 1 /mnt/usb/test@example.org-secret.asc}] {BEGIN PGP PRIVATE KEY BLOCK} "the secret key on the stick"
+# The clock goes back to the last minute's save at a restart, which makes the key younger than the machine.
+run_ok {printf '%s\n' 'a passphrase' | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --ignore-time-conflict --import /mnt/usb/test@example.org-secret.asc}
+expect_match [run_ok {gpg --list-secret-keys test@example.org}] {test@example\.org} "the key imported from the stick"
+logout

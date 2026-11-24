@@ -1,0 +1,4 @@
+# Nothing is printed on the idle console after the boot: the kernel shows errors only, so the devices
+# that it finds (the reader, the stick) do not land in the middle of what is typed.
+
+expect_silence 15 "after the boot"

@@ -1,0 +1,9 @@
+# The kernel is as the profile asks for it: the console shows errors only, init_on_free zeroes memory
+# as it is freed, nothing taints the kernel, and there is no network.
+
+login root
+expect_equal [run_ok {read level rest < /proc/sys/kernel/printk; echo $level}] 4 "the console log level"
+expect_match [run_ok {dmesg | grep 'mem auto-init'}] {heap free:on} "zeroing of freed memory"
+expect_equal [run_ok {cat /proc/sys/kernel/tainted}] 0 "the taint of the kernel"
+expect_equal [run_ok {ls /sys/class/net}] lo "the network interfaces"
+logout

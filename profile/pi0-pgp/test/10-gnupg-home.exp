@@ -1,0 +1,10 @@
+# The GnuPG home of the regular account is memory that never swaps, and belongs to it alone.
+
+login user
+set mount [run_ok {grep ' /run/gnupg ' /proc/self/mountinfo}]
+foreach option {nosuid nodev noexec noswap mode=700} {
+    expect_match $mount $option "the mount options of /run/gnupg"
+}
+expect_equal [run_ok {stat -c '%U:%G %a' /run/gnupg}] "$env(LFS_USER):users 700" "the owner of /run/gnupg"
+run_ok {touch /run/gnupg/probe && rm /run/gnupg/probe}
+logout

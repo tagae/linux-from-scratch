@@ -1,0 +1,9 @@
+# What the machine keeps is in memory: there is no swap, the journal is in /run, and the shell keeps
+# no history file.
+
+login user
+# A kernel with no swap has no /proc/swaps at all.
+run_ok {[ ! -e /proc/swaps ] || [ "$(tail -n +2 /proc/swaps | wc -l)" = 0 ]}
+run_ok {[ ! -e /var/log/journal ] && [ -d /run/log/journal ]}
+expect_equal [run_ok {echo "${HISTFILE-unset}"}] unset "the history file of the shell"
+logout

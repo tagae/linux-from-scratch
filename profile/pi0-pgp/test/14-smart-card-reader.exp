@@ -1,0 +1,8 @@
+# The regular account reaches a smart card reader through pcscd, which starts when it connects, and
+# which GnuPG's scdaemon and ykman share: the one that comes second reaches it too.
+
+login user
+run {gpg --card-status}
+set readers [run_ok {ykman list --readers}]
+expect_match $readers {[^[:space:]]} "the readers that ykman lists"
+logout

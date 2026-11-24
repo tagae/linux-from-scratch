@@ -193,3 +193,21 @@ Testing
 `make pi0-pgp-test` boots the system in QEMU's emulation of the Zero, which takes emulated USB
 devices (`LFS_QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey: the
 key can only be tried on the Pi.
+
+It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (README, Tests):
+
+* The console stays silent after the boot; the issue is on it before the login prompt and the message
+  of the day after the login; root and the regular account log in; the regular account powers the
+  machine off and restarts it, and is refused the rest.
+* The system is healthy as `systemctl status` shows it; the kernel shows errors only on the console,
+  zeroes memory as it is freed and has no network; nothing is kept but in memory (no swap, the
+  journal in `/run`, no shell history); the programs that the system is for, and the manual pages and
+  their index, are there.
+* GnuPG makes a key in the GnuPG home, which is memory that does not swap, signs, verifies, encrypts
+  and decrypts.
+* A USB stick, which the account formats as the message of the day says, is mounted and written;
+  `gpg-genkey` exports a key to it, and after a boot the key is gone from memory, and the stick's copy
+  imports back.
+* A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
+  polkit and `pcscd` run in the sandbox of their units; the machine restarts, the clock goes on from
+  the last minute's save, and the machine powers off.
