@@ -8,6 +8,9 @@
 # move the subkeys to the YubiKey, say), until the Pi powers off. The secret key leaves only on
 # the stick, protected by the passphrase.
 #
+# The YubiKey, when one is plugged in, adds the randomness of its own generator to the Pi's, which
+# makes the script wait a minute; without one, the script warns and goes on.
+#
 # The stick is the one whose file system has the label KEYS, a FAT file system that systemd mounts
 # on /mnt/keys when the script first reads it, and unmounts when it has not been used for a while.
 #
@@ -85,6 +88,26 @@ echo "gpg-genkey: GNUPGHOME=$GNUPGHOME (tmpfs, memory only)"
 # and starts again when gpg next needs it. The keys stay.
 trap 'gpgconf --kill gpg-agent 2>/dev/null || true' EXIT
 trap 'exit 1' INT TERM HUP
+
+# The keys' randomness comes from the kernel, which the Pi's hardware generator seeds; the
+# YubiKey's generator, which is independent of it, adds to it. What is written to /dev/random is
+# mixed in uncredited: it adds to the seed whatever it is worth, and cannot stand in for it. The
+# kernel takes it in when it next reseeds, at the first request a minute or less after the write,
+# as only root can have it reseed at once. The agent then quits, so that the one that makes the
+# keys starts after the reseed and seeds its own generator from it. Without a YubiKey, the keys
+# rest on the Pi's generator alone.
+CARD_RANDOM=$GNUPGHOME/card-random
+gpg-connect-agent 'SCD RANDOM 64' /bye > "$CARD_RANDOM" 2> /dev/null || true
+if [ "$(tail -n 1 "$CARD_RANDOM")" = OK ]; then
+    cat "$CARD_RANDOM" > /dev/random
+    rm "$CARD_RANDOM"
+    gpgconf --kill gpg-agent
+    echo "gpg-genkey: mixed the YubiKey's randomness in; a minute for the kernel to take it"
+    sleep 61
+else
+    rm "$CARD_RANDOM"
+    echo "gpg-genkey: warning: no YubiKey answered; the keys rest on the Pi's generator alone" >&2
+fi
 
 # The passphrase reaches gpg on its standard input, out of the process list, and the agent through
 # the loopback pinentry. Keys never expire: this GnuPG rejects the expiration "default".

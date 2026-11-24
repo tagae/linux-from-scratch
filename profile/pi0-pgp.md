@@ -112,8 +112,10 @@ one of them.
 
 2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
    authenticate, none of which expires. GnuPG's home is `/run/gnupg`, in memory (see [Keys in
-   Memory](#keys-in-memory)), and the keys stay in it when the command ends. Give the passphrase
-   through the environment, so that it stays out of the process list:
+   Memory](#keys-in-memory)), and the keys stay in it when the command ends. Plug the YubiKey in
+   first: its random number generator adds to the Pi's (see [Randomness](#randomness)), which
+   makes the command wait a minute; without it, the command warns and relies on the Pi's alone.
+   Give the passphrase through the environment, so that it stays out of the process list:
 
    ```shell
    PASSPHRASE='a long passphrase' gpg-genkey -n 'Your Name' -e you@example.org
@@ -161,6 +163,38 @@ there: `gpg` lists and edits the keys at any moment, until the Pi powers off.
   and the kernel zeroes every page that it frees (`init_on_free`, the capability
   [`zero-on-free`](../package/linux/zero-on-free.config)), which costs run time on every
   allocation.
+
+
+Randomness
+----------
+
+GnuPG takes the randomness of a key from the kernel, whose generator is seeded from a pool of what
+it gathers. Each input is *credited* with the number of unpredictable bits that it is trusted to
+hold, and the generator serves nobody until 256 bits have been credited; from then on its output
+is unpredictable however much of it is read, and it reseeds from the pool at least once a minute.
+Input that is mixed in without credit counts for nothing towards those 256 bits, but whatever it
+is worth goes into the seed all the same: a weak input cannot weaken it.
+
+* The Pi's hardware random number generator (`HW_RANDOM_BCM2835`, in
+  [`pi0.config`](../package/linux/pi0.config)) feeds the pool from the boot on, with full credit:
+  the generator is ready within seconds, long before anyone logs in. The SoC has no cycle counter,
+  so the kernel's own timing jitter adds little to it.
+* `gpg-genkey` mixes 64 bytes of the YubiKey's own generator into the pool (`SCD RANDOM 64` through
+  the agent), without credit, so that the keys depend on two independent generators, either of which
+  would make them unpredictable. Only root may credit what it writes, and the YubiKey has no need
+  of credit: the Pi's generator has made the kernel's ready already. It then waits a minute, for the
+  kernel to reseed with it, and has the agent that makes the keys start after that.
+* GnuPG's own random seed file (`random_seed`) lives in `/run/gnupg`, which is empty at every
+  boot. systemd's seed of the kernel's pool (`/var/lib/systemd/random-seed`) is on the SD card, and
+  someone who has had the card could read it: it is only mixed in, so the keys do not depend on it.
+
+To see the hardware generator at work:
+
+```shell
+cat /sys/class/misc/hw_random/rng_current            # bcm2835-rng
+cat /sys/module/rng_core/parameters/default_quality  # 1024: full credit
+dmesg | grep -i crng                                 # crng init done, early in the boot
+```
 
 
 Formatting the USB Stick
