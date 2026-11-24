@@ -48,17 +48,18 @@ YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface 
 security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2 and OTP
 interfaces through, belong to the group `users`.
 
-The regular account reads the state of the system (`systemctl status`, `systemctl --failed`) but
-cannot change it: without polkit, only root changes anything through D-Bus, so `poweroff`, `reboot`
-and `systemctl restart` fail with `Access denied`. (systemd's own `poweroff`, `reboot` and `halt`
-fail without a word, so the account's `~/.profile` makes them aliases of `systemctl poweroff`,
-`reboot` and `halt`, which say why.) To power the machine off, `exit` and log in as `root`.
+The regular account reads the state of the system (`systemctl status`, `systemctl --failed`), and
+powers the machine off, restarts it and halts it (`poweroff`, `reboot`, `halt`), but changes nothing
+else: systemd asks polkit, which the bus starts when it is first asked, and the rule of the profile
+([`50-power.rules`](pi0-pgp/files/etc/polkit-1/rules.d/50-power.rules)) answers yes to the group `users`
+for those three, and no to the rest, so `systemctl restart` fails with `Access denied`. Nobody
+authenticates (there is no PAM), and root needs no rule.
 
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
 the shell profile (`/etc/profile`), the regular account's own (`~/.profile`, which the build puts
-under `/home/$LFS_USER`) and the udev rules that give the group `users` the security keys and USB
-sticks are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
+under `/home/$LFS_USER`), the udev rules that give the group `users` the security keys and USB
+sticks, and the polkit rule are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
 (`gpg-genkey` and the mount units of the stick and of GnuPG's memory),
 scdaemon's configuration, and the drop-ins that give pcscd's socket its group and start the mounts
 and `timesyncd`.

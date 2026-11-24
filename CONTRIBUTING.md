@@ -336,9 +336,12 @@ systemd
   (`profile/<profile>/files/etc/systemd/system/<target>.target.d/<unit>.conf`, with `Wants=`).
 * The image bakes a machine ID (`lib/image.sh`): the first boot is ordinary, and a first-boot
   `preset-all` would only warn about generated units. Images are per build, not per card.
-* D-Bus is there (`dbus`, started by its socket), and there is no PAM, polkit or logind. Without
-  polkit, only root changes anything through the bus (`poweroff`, `systemctl restart`); other users
-  read (`systemctl status`).
+* D-Bus is there (`dbus`, started by its socket), and there is no PAM or logind. Without polkit
+  (`virt`), only root changes anything through the bus (`poweroff`, `systemctl restart`); other
+  users read (`systemctl status`), and systemd's own `poweroff` fails for them without a word. With
+  it (`pi0-pgp`: `polkit`, which the bus starts as the static account `polkitd`), systemd asks it
+  about every change, and the rules of the profile (`etc/polkit-1/rules.d`) say who may make which.
+  Nobody authenticates, so the setuid helpers are left out.
 * Passwd is static: services run as root unless the user exists in the static files. Where
   upstream's unit needs a dedicated user or `PrivateUsers=full`, ship a small unit of our own
   (`pcscd.service`). Prefer socket activation (`--auto-exit`).

@@ -238,6 +238,26 @@ lfs_system_install python/keyring
 lfs_system_install python/fido2
 lfs_system_install python/yubikey-manager
 
+#===[ Polkit ]===
+
+# polkit, which systemd asks over D-Bus whether an account may power the machine off, and whose
+# rules (etc/polkit-1/rules.d of the profile) answer. It needs GLib, which needs PCRE2 (and libffi
+# and libmount above), and runs its rules in JavaScript, with duktape. GLib's code generators
+# run on the build machine, besides its libraries on the Zero.
+lfs_tools_install pcre2
+lfs_tools_install pcre2#dev
+lfs_tools_install glib
+lfs_tools_install glib#dev
+
+lfs_system_install pcre2
+lfs_sysroot_install pcre2#dev
+lfs_system_install glib
+lfs_sysroot_install glib#dev
+lfs_system_install duktape
+lfs_sysroot_install duktape#dev
+lfs_sysroot_install dbus#dev
+lfs_system_install polkit
+
 #===[ Accounts ]===
 
 # root logs in with bash, and with no password unless LFS_ROOT_PASSWORD sets one.

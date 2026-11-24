@@ -1,0 +1,15 @@
+// The regular account, of the group `users`, powers the machine off, restarts it and halts it, and
+// is refused everything else (an account that could ask for more has nobody to authenticate
+// it). systemd asks for manage-units, with the unit it is asked about and what it is asked to do
+// with it.
+polkit.addRule(function(action, subject) {
+    if (!subject.isInGroup("users")) {
+        return polkit.Result.NOT_HANDLED;
+    }
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("verb") == "start" &&
+        ["poweroff.target", "reboot.target", "halt.target"].indexOf(action.lookup("unit")) >= 0) {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NO;
+});
