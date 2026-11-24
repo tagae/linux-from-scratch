@@ -364,6 +364,10 @@ the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NE
 `tar --include` extracts from the tarball, and verify the resolved `.config`, never the files of `package/linux/`.
 
 Pi facts:
+The console shows errors and worse (`CONFIG_CONSOLE_LOGLEVEL_DEFAULT=4`, in `base.config`): what the
+kernel finds, a USB device say, would otherwise print in the middle of what a person types at the
+console. `dmesg` has it all; `loglevel=7` on the command line brings it back to the console.
+
 
 * The USB power domain needs `CONFIG_PM` and `RASPBERRYPI_POWER`, else dwc2 probes ten seconds
   late.

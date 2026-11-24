@@ -6,6 +6,9 @@ driver with paced input: expect+tio dropped the stream) are in git history: `git
 .claude/skills/pi-serial-console` shows them as deleted. Never `poweroff` a real Pi (no remote power-on):
 `reboot` is safe.
 
+The serial console shows kernel messages of errors and worse only (`CONFIG_CONSOLE_LOGLEVEL_DEFAULT=4`);
+the timings below are the kernel's own, from `dmesg`, which has them all.
+
 ## A healthy boot
 
 From `reboot`: shutdown done +4.1-4.6 s, kernel starts +6.5-7.0 s, `init` +8.0-8.5 s, serial getty +20 s, login
