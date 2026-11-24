@@ -17,7 +17,7 @@
 # package.
 #
 # What gives a system its own look and accounts belongs to the profile, not to a package: the files
-# in profile/<profile>/ (issue, motd, the shell profile), which the build copies once the packages
+# in profile/<profile>/files/ (issue, motd, the shell profile), which the build copies once the packages
 # are in, and the accounts that the profile adds (lfs_system_set_root, lfs_system_add_user).
 
 lfs_system_build() {
@@ -146,21 +146,21 @@ lfs_system_install() {
     lfs_sbom_record_package $1
 }
 
-# Copies the files of the profile, profile/<profile>/, into the system once its packages are in: the
-# path of a file under the profile's directory is its path in the system (profile/virt/etc/issue is
+# Copies the files of the profile, profile/<profile>/files/, into the system once its packages are in:
+# the path of a file under that directory is its path in the system (profile/virt/files/etc/issue is
 # /etc/issue). A file is 0755 if the checkout has it executable, else 0644. The profile's files
 # belong to it alone: a path that a package installed is an error. The files are in no archive and
 # no SBOM, as the build copies them each time. The name of the regular account, LFS_USER, is the
 # only variable that envsubst replaces in them, in their paths as in their contents: a file names it
 # as `$LFS_USER`, and a file of the account's home directory is under home/$LFS_USER/.
 lfs_system_add_profile_files() (
-    local dir=$profile_dir/$LFS_PROFILE file dest
+    local dir=$profile_dir/$LFS_PROFILE/files file dest
     [ -d $dir ] || return 0
     cd $dir
     for file in $(find . -type f | sed 's|^\./||' | sort); do
         dest=$(printf '%s' "$file" | envsubst '$LFS_USER')
         ! [ -e $system_dir/$dest ] && ! [ -L $system_dir/$dest ] \
-            || bail "profile/$LFS_PROFILE/$file is a file of a package, not of the profile"
+            || bail "profile/$LFS_PROFILE/files/$file is a file of a package, not of the profile"
         mkdir -p $system_dir/$(dirname $dest)
         envsubst '$LFS_USER' < $file > $system_dir/$dest
         if [ -x $file ]; then chmod 0755 $system_dir/$dest; else chmod 0644 $system_dir/$dest; fi

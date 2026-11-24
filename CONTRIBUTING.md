@@ -7,7 +7,7 @@ Overview
 * `lfs`: CLI frontend
 * `lib/`: framework implementation; contains the `lfs` subcommands
 * `platform/`: platform definitions
-* `profile/`: system recipes, the files of each system (`profile/<profile>/`), and the documentation
+* `profile/`: system recipes, the files of each system (`profile/<profile>/files/`), and the documentation
   of a profile (`profile/<profile>.md`)
 * `package/`: package recipes
 * `download/`: fetched artefacts
@@ -65,7 +65,7 @@ it in its first statement, `lfs_system_toolchain glibc|musl`, which gives the sy
 Everything else comes from the profile definition at `profile/$LFS_PROFILE.sh`, compiled with that
 toolchain. This includes the kernel (`linux` with a given set of capabilities), init (`systemd` or
 `busybox`), and further packages. Once the profile has run, the build copies the files of
-`profile/$LFS_PROFILE/` into the system tree.
+`profile/$LFS_PROFILE/files/` into the system tree.
 
 
 Images
@@ -271,7 +271,7 @@ Where Code Goes
 | Applets of BusyBox | `package/busybox/<category>.config`, named in the `applets` of the profiles that rely on it: the category's applets that the kernels serve and a bare system has a use for, and their options, each category with its reasons; `base.config` has the options that every system gets |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
 | Static users and groups | `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`), shipped by the init, with root locked (`!`) and `/bin/sh` |
-| The files that give a system its look and its policy, and what only it has (issue, motd, the shell profile, the dotfiles of root and of the regular account (`home/$LFS_USER/`), the udev rules and systemd drop-ins that name its regular account or its devices, a script of its own with its units) | `profile/<profile>/<path as installed>`, which the build copies after the profile's packages, with `$LFS_USER` (the regular account's name) replaced, in the path and in the contents, and nothing else: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
+| The files that give a system its look and its policy, and what only it has (issue, motd, the shell profile, the dotfiles of root and of the regular account (`home/$LFS_USER/`), the udev rules and systemd drop-ins that name its regular account or its devices, a script of its own with its units) | `profile/<profile>/files/<path as installed>`, which the build copies after the profile's packages, with `$LFS_USER` (the regular account's name) replaced, in the path and in the contents, and nothing else: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
 | root's password and shell | `( root_shell=/bin/bash; lfs_system_set_root )` in the profile, after the packages: it has no password unless `LFS_ROOT_PASSWORD` sets one, which belongs to the build, so no package ships it |
 | The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name is `LFS_USER`, and it has no password unless `LFS_PASSWORD` sets one; both belong to the build, so no package ships the account |
 | The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
@@ -333,7 +333,7 @@ systemd
   under `/etc/systemd/system/<target>.wants/`, with an absolute target in
   `/usr/lib/systemd/system`; a symlink under `/usr/lib` reads as "disabled" to `is-enabled`. A
   profile ships regular files only, so it enables a unit with a drop-in that wants it
-  (`profile/<profile>/etc/systemd/system/<target>.target.d/<unit>.conf`, with `Wants=`).
+  (`profile/<profile>/files/etc/systemd/system/<target>.target.d/<unit>.conf`, with `Wants=`).
 * The image bakes a machine ID (`lib/image.sh`): the first boot is ordinary, and a first-boot
   `preset-all` would only warn about generated units. Images are per build, not per card.
 * D-Bus is there (`dbus`, started by its socket), and there is no PAM, polkit or logind. Without

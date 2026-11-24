@@ -58,7 +58,7 @@ The issue that `agetty` prints before the login prompt (which names the regular 
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
 the shell profile (`/etc/profile`), the regular account's own (`~/.profile`, which the build puts
 under `/home/$LFS_USER`) and the udev rules that give the group `users` the security keys and USB
-sticks are files of [`pi0-pgp/`](pi0-pgp). So is what only this system has: the key procedure
+sticks are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
 (`gpg-genkey` and the mount units of the stick and of GnuPG's memory),
 scdaemon's configuration, and the drop-ins that give pcscd's socket its group and start the mounts
 and `timesyncd`.
@@ -134,7 +134,7 @@ Keys in Memory
 
 `gpg-genkey` keeps GnuPG's home, with the keyring, the agent's private keys, the random pool and
 the revocation certificate, in `/run/gnupg`, a tmpfs that
-[`run-gnupg.mount`](pi0-pgp/usr/lib/systemd/system/run-gnupg.mount) mounts at boot, and leaves it
+[`run-gnupg.mount`](pi0-pgp/files/usr/lib/systemd/system/run-gnupg.mount) mounts at boot, and leaves it
 there: `gpg` lists and edits the keys at any moment, until the Pi powers off.
 
 * It is mounted `noswap`: the kernel never writes its pages to swap. A tmpfs without that option
@@ -158,7 +158,7 @@ The system makes the FAT file system that the stick needs, with `mkfs.fat` and `
 `dosfstools`), and finds the stick with `blkid` (from `util-linux`), which lists the SD card's
 partitions (`mmcblk0p1` and `mmcblk0p2`) too: the stick is `/dev/sda`, the first on the hub. The
 regular account can format it: a udev rule
-([`70-usb-sticks.rules`](pi0-pgp/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives the block devices of
+([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives the block devices of
 USB sticks to the group `users`, and leaves the SD card, which is not on USB, to root. This erases
 the stick:
 

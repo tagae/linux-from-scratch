@@ -17,7 +17,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   (`pi0-pgp` runs on `pi0`) and is the key of everything: `archive/<profile>/`, `work/<profile>/system`, `work/<profile>/sysroot`,
   `work/<profile>/source`, `work/boot/<profile>`, `image/<profile>.img`. There are no features, no `INIT`, no
   `FEATURES`: to add a package, add its lines to the profile. The files of the system itself (issue, motd, `/etc/profile`)
-  are `profile/<profile>/<path as installed>`, copied after the profile's packages, and root's account is set by
+  are `profile/<profile>/files/<path as installed>`, copied after the profile's packages, and root's account is set by
   `lfs_system_set_root` (`LFS_ROOT_PASSWORD`): neither is in an archive, so changing them rebuilds no package.
 - Build: `make docker-image/<profile>.img` (Linux hosts: `make image/<profile>.img`); also `make image
   LFS_PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb}`.

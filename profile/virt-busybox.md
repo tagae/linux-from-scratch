@@ -28,7 +28,7 @@ Accounts
 The system has one account, `root`, with no password unless `LFS_ROOT_PASSWORD` sets one, and ash as
 its shell. The static accounts are those of [`package/busybox/etc`](../package/busybox/etc), where
 root is locked: the build sets root's password, or empties it.
-root's prompt is in [`virt-busybox/root/.profile`](virt-busybox/root/.profile), which ash reads when
+root's prompt is in [`virt-busybox/files/root/.profile`](virt-busybox/files/root/.profile), which ash reads when
 root logs in. The system has neither an issue nor a message of the day.
 
 
@@ -50,7 +50,7 @@ How It Boots
 
 The kernel mounts devtmpfs on `/dev` before it starts init (the `devtmpfs` capability), and starts
 `/sbin/init`, which is BusyBox's. Init reads
-[`/etc/inittab`](virt-busybox/etc/inittab), a file of the profile:
+[`/etc/inittab`](virt-busybox/files/etc/inittab), a file of the profile:
 
 * It mounts `proc`, `sysfs` and a `tmpfs` on `/run`, which the kernel does not mount.
 * It keeps a `getty` on `hvc0`, the virtio console, which runs `login`, which starts ash.

@@ -41,7 +41,7 @@ as its shell. The static accounts, root's, locked, and those of systemd's servic
 [`package/systemd/etc`](../package/systemd/etc): the build sets root's password, or empties it, and
 its shell.
 
-The system's own files are those of [`virt/`](virt):
+The system's own files are those of [`virt/files/`](virt/files):
 
 * `etc/issue`, which `agetty` prints before the login prompt.
 * `etc/motd`, which `login` prints after a login: without PAM, `login` prints the file that
