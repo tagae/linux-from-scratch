@@ -18,8 +18,10 @@ prepare() {
             # multiarch directory), split-bin (whether /usr/sbin is a symlink) and the system
             # UID/GID ranges (/etc/login.defs); the ranges match the login.defs that shadow
             # installs.
-            # libmount, blkid and kmod are required rather than detected, so that a missing
-            # library fails the build. logind would need PAM to register sessions.
+            # libmount, blkid, kmod and seccomp are required rather than detected, so that a
+            # missing library fails the build: without libseccomp, systemd cannot filter the
+            # system calls of its units, and would ignore the settings that ask for it. logind
+            # would need PAM to register sessions.
             # The journal stays in memory, which spares SD cards; creating /var/log/journal makes
             # it persistent.
             # The build scripts run through their `#!/usr/bin/env python3` shebang and need jinja2,
@@ -105,6 +107,7 @@ prepare() {
                 -Djournal-storage-default=auto \
                 -Dcreate-log-dirs=false \
                 -Dkmod=enabled \
+                -Dseccomp=enabled \
                 -Dlibmount=enabled \
                 -Dblkid=enabled
             ;;

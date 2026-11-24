@@ -95,12 +95,12 @@ Kernel
 The kernel is configured from `allnoconfig`, the layers that every system gets, and the
 capabilities that the profile names, in `package/linux/`:
 
-| Capability  | What it gives                                                                  |
-|-------------|--------------------------------------------------------------------------------|
-| `btrfs`     | The root file system that images are made with                                 |
-| `console`   | The terminal layer that the console builds on                                  |
-| `hardening` | Self-protection, with the options that the architecture and the kernel add     |
-| `systemd`   | What systemd relies on: cgroups, namespaces, Unix sockets, BPF, `autofs`...    |
+| Capability  | What it gives                                                                        |
+|-------------|--------------------------------------------------------------------------------------|
+| `btrfs`     | The root file system that images are made with                                       |
+| `console`   | The terminal layer that the console builds on                                        |
+| `hardening` | Self-protection, with the options that the architecture and the kernel add           |
+| `systemd`   | What systemd relies on: cgroups, namespaces, seccomp, Unix sockets, BPF, `autofs`... |
 
 The platform's layer (`virt.config`) adds PCI Express, the virtio framework, the block device, the
 console (`hvc0`) and the random number generator (`virtio-rng`).

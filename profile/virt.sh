@@ -47,6 +47,10 @@ lfs_system_install shadow
     lfs_system_install util-linux
     lfs_sysroot_install util-linux#dev
 )
+# libseccomp, which systemd links to filter the system calls of its units, as they ask for it.
+lfs_system_install libseccomp
+lfs_sysroot_install libseccomp#dev
+
 lfs_system_install systemd
 lfs_sysroot_install systemd#dev
 
