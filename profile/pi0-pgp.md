@@ -26,7 +26,7 @@ Quick Start
 3. Flash the image on an SD card:
 
    ```shell
-   dd if=image/pi0-pgp.img of=/dev/sdcard bs=4M status=progress
+   sudo dd if=image/pi0-pgp.img of=/dev/$SD_CARD_DEV bs=4M status=progress
    ```
 
 4. Boot the SD card on the Pi.
