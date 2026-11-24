@@ -72,8 +72,11 @@ confirm_erase() {
     bail "To go ahead, set LFS_ERASE=$device"
 }
 
-# The size of the Pi layout's FAT boot partition, in MiB.
-readonly boot_size=128
+# The size of the Pi layout's FAT boot partition, in MiB. It holds only the firmware, the kernel and
+# the device tree, so it is about as small as FAT32 allows: that needs 65525 clusters, which the
+# one-sector clusters that mkfs.fat makes at this size reach at 33 MiB. 35 MiB, after the MiB of the
+# partition table, starts the root partition at a multiple of 4 MiB.
+readonly boot_size=35
 
 # Where the root file system's partition begins, in MiB: after the MiB that holds the partition
 # table, and after the boot partition of the Pi layout. sfdisk aligns partitions to the MiB.
