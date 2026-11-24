@@ -191,7 +191,7 @@ lfs_system_install tzdata
 
 # ykman is a Python program: it needs ctypes, which needs libffi, cryptography, and pyscard for
 # pcscd, besides pure Python libraries. pcscd links systemd's libraries and is started by its
-# socket, and Python links zlib.
+# socket, as its own account, which ccid's udev rules give the readers to; Python links zlib.
 lfs_system_install pcsc-lite
 lfs_sysroot_install pcsc-lite#dev
 lfs_system_install ccid
@@ -264,9 +264,9 @@ lfs_system_install polkit
 ( root_shell=/bin/bash; lfs_system_set_root )
 
 # A regular account besides root, for working with keys without administrative rights: LFS_USER, of
-# the group `users`, with bash for shell. Its group reaches pcscd's socket, the security keys'
-# hidraw devices and the devices of USB sticks (the profile's udev rules), and the files of the
-# stick that mnt-usb.mount mounts (gpg-genkey).
+# the group `users`, with bash for shell. Its group reaches the security keys' hidraw devices and the
+# devices of USB sticks (the profile's udev rules), and the files of the stick that mnt-usb.mount
+# mounts (gpg-genkey).
 (
     user_shell=/bin/bash
     lfs_system_add_user

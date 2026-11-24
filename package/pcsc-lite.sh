@@ -57,21 +57,18 @@ install() {
             DESTDIR=$package_install_dir ninja install
             cd $package_install_dir
 
-            # Upstream's units run the daemon as a pcscd user and in sandboxes that these kernels
-            # lack (user namespaces, seccomp), and these systems have no such user. The daemon is
-            # root's and creates /run/pcscd, and a profile gives its socket the group that may
-            # connect: the service starts when a program connects to it.
+            # Upstream's units run the daemon as the account pcscd (one of the static ones), in a
+            # user namespace, and start it when a program connects to its socket, which any
+            # account may.
             # Distributions enable units with a preset; nothing here applies presets, so make the
             # link that `systemctl enable` makes from the [Install] section.
-            cp -rv $package_files_dir/usr .
             mkdir -pv etc/systemd/system/sockets.target.wants
             ln -sv $prefix/lib/systemd/system/pcscd.socket etc/systemd/system/sockets.target.wants/
 
-            # The tracer is GPL-3.0 and of no use here. What is left of upstream's units: the
-            # daemon's environment file (read by its unit only), the account of its user, and the
-            # AppStream metadata.
+            # The tracer is GPL-3.0 and of no use here. The account that sysusers.d would make
+            # exists already, and the AppStream metadata is for software centres.
             rm -v usr/lib/libpcscspy.so* usr/bin/pcsc-spy
-            rm -rv etc/default usr/lib/sysusers.d usr/share/metainfo
+            rm -rv usr/lib/sysusers.d usr/share/metainfo
             find . -type d -empty -delete
 
             move_to_dev_component

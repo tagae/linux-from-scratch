@@ -17,6 +17,7 @@ input:x:24:
 render:x:25:
 sgx:x:26:
 polkitd:x:27:
+pcscd:x:28:
 kvm:x:61:
 systemd-journal-gateway:x:73:
 systemd-journal-remote:x:74:

@@ -342,9 +342,14 @@ systemd
   it (`pi0-pgp`: `polkit`, which the bus starts as the static account `polkitd`), systemd asks it
   about every change, and the rules of the profile (`etc/polkit-1/rules.d`) say who may make which.
   Nobody authenticates, so the setuid helpers are left out.
-* Passwd is static: services run as root unless the user exists in the static files. Where
-  upstream's unit needs a dedicated user or `PrivateUsers=full`, ship a small unit of our own
-  (`pcscd.service`). Prefer socket activation (`--auto-exit`).
+* Passwd is static: services run as root unless the user exists in the static files
+  (`package/systemd/etc`: `messagebus`, `polkitd`, `pcscd`), so a daemon that upstream runs as its
+  own user gets an account there, and its recipe leaves out the `sysusers.d` file. Units are
+  upstream's, with the sandboxes they ask for: systemd links libseccomp, and the kernel's `systemd`
+  capability has the seccomp and the namespaces they need (`polkit.service`, `pcscd.service` run as
+  shipped); where a profile has a policy of its own, it is a drop-in of the unit, and one that the
+  service's own settings (a runtime directory is chowned to its user, sockets in it with it) do not
+  undo. Prefer socket activation (`--auto-exit`).
 * The `sysctl.d` file `50-default.conf` is rewritten in `package/systemd.sh`.
 * A new service leaves `is-system-running` at `running`, `--failed` empty, and nothing new at
   warning level.

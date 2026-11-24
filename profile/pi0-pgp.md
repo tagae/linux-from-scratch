@@ -44,9 +44,11 @@ image. Both accounts are passwordless, unless `LFS_ROOT_PASSWORD` or `LFS_PASSWO
 respectively upon building the image.
 
 The regular account makes keys (`gpg`, `gpg-genkey`), reads and writes the USB stick, and uses a
-YubiKey: pcscd's socket, which GnuPG and `ykman` reach the smart card interface through, and the
-security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2 and OTP
-interfaces through, belong to the group `users`.
+YubiKey: the security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2
+and OTP interfaces through, belong to the group `users`. The smart card interface is `pcscd`'s, which
+GnuPG and `ykman` reach through its socket, as upstream ships it: any account may connect, and every
+reader is open to whoever does. The daemon runs as its own account, `pcscd`, in a user namespace, and
+opens the readers through the group that ccid's udev rules give them to.
 
 The regular account reads the state of the system (`systemctl status`, `systemctl --failed`), and
 powers the machine off, restarts it and halts it (`poweroff`, `reboot`, `halt`), but changes nothing
@@ -61,8 +63,7 @@ the shell profile (`/etc/profile`), the regular account's own (`~/.profile`, whi
 under `/home/$LFS_USER`), the udev rules that give the group `users` the security keys and USB
 sticks, and the polkit rule are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
 (`gpg-genkey` and the mount units of the stick and of GnuPG's memory),
-scdaemon's configuration, and the drop-ins that give pcscd's socket its group and start the mounts
-and `timesyncd`.
+scdaemon's configuration, and the drop-ins that start the mounts and `timesyncd`.
 
 
 Making OpenPGP Keys
