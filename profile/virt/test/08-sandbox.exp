@@ -1,0 +1,11 @@
+# The kernel and systemd give units the sandbox that they ask for: a filter of system calls, no new
+# privileges, a network namespace and a user namespace of their own.
+
+login root
+set sandbox [run_ok {systemd-run --wait --pipe --quiet -p SystemCallFilter=@system-service -p NoNewPrivileges=yes -p PrivateNetwork=yes bash -c 'while read k v; do [[ $k == Seccomp: || $k == NoNewPrivs: ]] && echo $k $v; done < /proc/self/status; [[ /proc/self/ns/net -ef /proc/1/ns/net ]] && echo net-shared || echo net-private'}]
+expect_match $sandbox {Seccomp: 2} "the seccomp filter"
+expect_match $sandbox {NoNewPrivs: 1} "no new privileges"
+expect_match $sandbox {net-private} "the network namespace"
+set users [run_ok {systemd-run --wait --pipe --quiet -p PrivateUsers=yes bash -c 'read from to count < /proc/self/uid_map; echo count=$count'}]
+expect_match $users {count=1$} "the user namespace"
+logout

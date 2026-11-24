@@ -6,7 +6,11 @@ and to log root in on its console. It is the default profile, and is defined in
 [`virt.sh`](virt.sh).
 
 It shows that the framework produces a system that boots cleanly, logs root in, and powers off:
-`make test` boots it, and so does CI.
+`make test` boots it and runs its tests ([`virt/test/`](virt/test)), and so does CI. They check that
+the console stays silent after the boot, that the issue and the message of the day are shown, that
+the system is healthy, that D-Bus answers, that systemd gives units the sandbox they ask for (a
+filter of system calls, no new privileges, namespaces), that the machine restarts and is healthy
+after it, and that it powers off.
 
 
 What the System Holds

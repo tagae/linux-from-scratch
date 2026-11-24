@@ -1,0 +1,8 @@
+# The machine restarts, and is healthy after it.
+
+login root
+restart
+expect_silence 10 "after the restart"
+login root
+expect_equal [run_ok {systemctl is-system-running --wait}] running "the state of the system after the restart"
+logout

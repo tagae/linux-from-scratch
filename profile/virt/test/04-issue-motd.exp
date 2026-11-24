@@ -1,0 +1,6 @@
+# The issue is on the console before the login prompt, and the message of the day after the login.
+
+set after_login [login root]
+expect_lines_of $after_login profile/$profile/files/etc/motd "the message of the day, after the login"
+set before_login [logout]
+expect_lines_of $before_login profile/$profile/files/etc/issue "the issue, before the login"

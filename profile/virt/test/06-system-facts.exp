@@ -1,0 +1,9 @@
+# The system is as the profile says: the console shows errors only, there is no network, the journal is
+# in memory, and root's shell is bash. Nothing here but bash and systemd's tools to ask with.
+
+login root
+expect_equal [run_ok {read level rest < /proc/sys/kernel/printk; echo $level}] 4 "the console log level"
+expect_equal [run_ok {echo /sys/class/net/*}] /sys/class/net/lo "the network interfaces"
+run_ok {[[ ! -e /var/log/journal && -d /run/log/journal ]]}
+expect_equal [run_ok {while IFS=: read user x id gid name home shell; do [[ $user == root ]] && echo $shell; done < /etc/passwd; true}] /bin/bash "root's shell"
+logout

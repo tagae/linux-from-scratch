@@ -1,0 +1,6 @@
+# D-Bus is there: systemd answers on it, and runs a command as a transient unit.
+
+login root
+expect_match [run_ok {busctl --no-pager --full list}] {org\.freedesktop\.systemd1} "the bus"
+expect_match [run_ok {systemd-run --wait --pipe --quiet bash -c 'echo hello'}] {hello} "a transient unit"
+logout

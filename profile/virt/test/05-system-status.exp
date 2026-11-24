@@ -1,0 +1,9 @@
+# The system is healthy: it has started, and no unit failed.
+
+login root
+expect_equal [run_ok {systemctl is-system-running --wait}] running "the state of the system"
+expect_equal [run_ok {systemctl --failed --no-pager --no-legend --plain}] "" "the failed units"
+set status [run_ok {systemctl status --no-pager}]
+expect_match $status {State: running} "systemctl status"
+expect_match $status {Failed: 0 units} "systemctl status"
+logout

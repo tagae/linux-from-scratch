@@ -1,0 +1,3 @@
+# Nothing is printed on the idle console after the boot.
+
+expect_silence 10 "after the boot"
