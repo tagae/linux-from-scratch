@@ -6,7 +6,7 @@ model: sonnet
 
 # Testing images under QEMU
 
-`qemu-check` spawns `./lfs qemu` (as `check/boot` does), so each platform runs the command its
+`qemu-check` spawns `./lfs qemu` (as `check/test` does), so each platform runs the command its
 `platform/<platform>.sh` defines. Needs the built image (`make docker-image/<key>.img`), `expect` and the
 platform's `qemu-system-*`. Paths are from the repo root; `Q=.claude/skills/qemu-image-testing/scripts`.
 
@@ -24,6 +24,16 @@ made anew: the image itself is never written, and the copy gives each check a fr
 Prompts), `VERBOSE=1`, `TIMEOUT=s` (400), `LFS_STATE_DIR=`. `--print` prints the quoted QEMU command for
 `image/KEY.qemu.img` (made, with `image/KEY.qemu.qcow2`; delete both after): to see what a platform runs, or
 to hand the user a command that needs root.
+
+## The project's tests
+
+`check/test PROFILE` (`make PROFILE-test`) runs `profile/PROFILE/test/*.exp`, in order, on one boot of the image
+(README, Tests; the procedures and conventions are in the header of `check/test`). It boots through a link to
+the image, so it leaves `image/` as it was. Run it after a change that ends up in an image, and add a test for
+what the change does: they found a real bug (pcscd's socket lost its group once the daemon started) that
+single checks missed. `LFS_TEST_TIMEOUT` (120 s a phase) for a slow machine. Never run it while a build saturates the host (a gcc
+compile took the load average past 100): guests stall for minutes, a getty seems hung, QEMU dies in the middle of a
+command, and every one of those failures vanishes on an idle machine.
 
 ## Checks and baselines
 
@@ -52,7 +62,7 @@ platform's QEMU machine spares the `pci-host-generic ... Memory resource size ex
 | Tested | end to end | end to end |
 
 Without a pty (an agent sandbox that refuses them: `The system has no more ptys` from `expect`, so from
-`qemu-check`, `check-baseline` and `check/boot` too), boot the `--print` command with stdin from a pipe or FIFO
+`qemu-check`, `check-baseline` and `check/test` too), boot the `--print` command with stdin from a pipe or FIFO
 and wait for markers (`login:`, `Password:`) in the output file instead; the same `check-boot.cmd` then
 works, joined on one line with `; ` before the last `echo`.
 

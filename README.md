@@ -42,7 +42,8 @@ Else, you need a Linux host with the following utilities.
 Quick Start
 -----------
 
-Build a toolchain, use it to build a disk image, boot it, login and power off:
+Build a toolchain, use it to build a disk image, boot it, and run the tests of the profile (log in,
+power off...):
 
 ```shell
 make test
@@ -140,6 +141,24 @@ console without one, like root):
 
 ```shell
 make image LFS_PROFILE=pi0-pgp LFS_ROOT_PASSWORD='a root password' LFS_USER=alice LFS_PASSWORD='a password'
+```
+
+
+Tests
+-----
+
+`make test` boots the image in QEMU and runs the tests of the profile on it: the files of
+`profile/<profile>/test/`, in the order of their names (`01-boot.exp`, `02-root-login.exp`...). The
+first boots the machine and the last powers it off; each in between logs in, checks what it is about,
+and logs out, on the one console. The suite ends at the first failure, and says which test, why, and
+what the console showed last. The tests start from the image as it was built, whatever earlier runs
+left, and leave it as it was.
+
+The accounts are those that the image was built with, so the tests read the same variables
+(`LFS_USER`, `LFS_PASSWORD`, `LFS_ROOT_PASSWORD`).
+
+```shell
+check/test pi0-pgp        # the same as make pi0-pgp-test, without building
 ```
 
 

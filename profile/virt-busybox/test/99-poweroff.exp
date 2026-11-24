@@ -1,0 +1,4 @@
+# root powers the machine off.
+
+login root
+power_off

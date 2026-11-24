@@ -7,8 +7,8 @@ Overview
 * `lfs`: CLI frontend
 * `lib/`: framework implementation; contains the `lfs` subcommands
 * `platform/`: platform definitions
-* `profile/`: system recipes, the files of each system (`profile/<profile>/files/`), and the documentation
-  of a profile (`profile/<profile>.md`)
+* `profile/`: system recipes, the files of each system (`profile/<profile>/files/`), its tests
+  (`profile/<profile>/test/`), and the documentation of a profile (`profile/<profile>.md`)
 * `package/`: package recipes
 * `download/`: fetched artefacts
 * `work/`: per profile (e.g., `work/virt`) and for the tools (`work/tools`): unpacked sources
@@ -270,6 +270,7 @@ Where Code Goes
 | Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a platform, `package/linux/<capability>.<platform>.config` |
 | Applets of BusyBox | `package/busybox/<category>.config`, named in the `applets` of the profiles that rely on it: the category's applets that the kernels serve and a bare system has a use for, and their options, each category with its reasons; `base.config` has the options that every system gets |
 | A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
+| A profile's tests | `profile/<profile>/test/<number>-<what>.exp`, Tcl scripts that `check/test` (`make <profile>-test`) runs in the order of their names, on one boot of the image, with the procedures that it defines (its header has the conventions). Every profile has `01-boot.exp`, the first; a test is about one thing, starts and ends at the login prompt, and fails with `fail`, which says what was expected. The last powers the machine off |
 | Static users and groups | `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`), shipped by the init, with root locked (`!`) and `/bin/sh` |
 | The files that give a system its look and its policy, and what only it has (issue, motd, the shell profile, the dotfiles of root and of the regular account (`home/$LFS_USER/`), the udev rules and systemd drop-ins that name its regular account or its devices, a script of its own with its units) | `profile/<profile>/files/<path as installed>`, which the build copies after the profile's packages, with `$LFS_USER` (the regular account's name) replaced, in the path and in the contents, and nothing else: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
 | root's password and shell | `( root_shell=/bin/bash; lfs_system_set_root )` in the profile, after the packages: it has no password unless `LFS_ROOT_PASSWORD` sets one, which belongs to the build, so no package ships it |
@@ -363,11 +364,11 @@ the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NE
 `NETWORK_FILESYSTEMS`, `NETDEVICES`: each bit once). Find dependencies in the Kconfig, which
 `tar --include` extracts from the tarball, and verify the resolved `.config`, never the files of `package/linux/`.
 
-Pi facts:
 The console shows errors and worse (`CONFIG_CONSOLE_LOGLEVEL_DEFAULT=4`, in `base.config`): what the
 kernel finds, a USB device say, would otherwise print in the middle of what a person types at the
 console. `dmesg` has it all; `loglevel=7` on the command line brings it back to the console.
 
+Pi facts:
 
 * The USB power domain needs `CONFIG_PM` and `RASPBERRYPI_POWER`, else dwc2 probes ten seconds
   late.
@@ -439,8 +440,9 @@ Before Calling a Change Done
    and no error.
 2. No library is newly needed but unshipped; `readelf -A` is right; licences and hashes are
    verified.
-3. The system boots in QEMU: the standard checks are clean, and the change is exercised with
-   emulated devices.
+3. The system boots in QEMU: the standard checks are clean, the profile's tests pass
+   (`make <profile>-test`), and the change is exercised with emulated devices, by a test of the
+   profile where it can be.
 4. The real build command, run again, is a no-op.
 5. Comments are timeless and nothing is duplicated; no test leftovers remain under `image/`,
    `work/` or the repository; the README is updated when user-visible behaviour changed.

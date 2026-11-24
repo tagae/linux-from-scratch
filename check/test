@@ -1,0 +1,270 @@
+#!/usr/bin/expect -f
+
+# Boots the image of a profile in QEMU and runs the profile tests (profile/<profile>/test/*.exp).
+#
+# The tests are Tcl scripts that interact with the serial console.
+
+# The first test boots the machine, and the last powers it off.
+# Intermediate tests start and end with the console at the login prompt.
+#
+# The suite ends at the first failure.
+#
+# The image is not written, since the tests boot it through a temporary overlay, which is discarded
+# at the end.
+#
+# Exits 0 if every test passed, 1 if one did not, and 2 if it could not run them.
+#
+# Usage, from the repository root: [LFS_TEST_TIMEOUT=seconds] check/test [PROFILE].
+
+
+# Don't mirror the spawned process's raw output to our controlling terminal. The guest sends escape
+# queries (cursor position, window size) over the serial console; with logging on, they reach the
+# real terminal, which answers them when the guest is gone, so that the answer is left as garbage
+# input at the next shell prompt.
+log_user 0
+
+# Seconds that a phase (the boot, a command) may take.
+set timeout [expr {[info exists env(LFS_TEST_TIMEOUT)] ? $env(LFS_TEST_TIMEOUT) : 120}]
+
+# The console of a boot is longer than the 2000 bytes that expect keeps by default.
+match_max 16384
+
+# Commands run, to tell their markers apart; and the test that runs, for the report.
+set commands 0
+set current_test ""
+
+# Whether the machine runs.
+set running 0
+
+# The value of an environment variable, or the default.
+proc env_or {name default} {
+    global env
+    expr {[info exists env($name)] ? $env($name) : $default}
+}
+
+# Without the carriage returns and the escape sequences of the terminal (colours, bracketed paste).
+proc clean {text} {
+    regsub -all {\x1b\[[0-9;:?]*[a-zA-Z]} [string map {"\r" ""} $text] "" text
+    return $text
+}
+
+#===[ For the tests ]===
+
+# Ends the suite as failed, saying which test, why, and what the console showed last.
+proc fail {message} {
+    global console current_test
+    puts "FAIL $current_test: $message"
+    log_file
+    set in [open $console]
+    set lines [split [clean [read $in]] "\n"]
+    close $in
+    puts "    The console, last:"
+    foreach line [lrange $lines end-20 end] {
+        puts "        $line"
+    }
+    exit 1
+}
+
+# Fails unless the two are equal.
+proc expect_equal {actual expected what} {
+    if {$actual ne $expected} {
+        fail "$what: expected '$expected', got '$actual'"
+    }
+}
+
+# Fails unless the text matches the regular expression.
+proc expect_match {text pattern what} {
+    if {![regexp -- $pattern $text]} {
+        fail "$what: '$text' does not match '$pattern'"
+    }
+}
+
+# Fails unless every line of the file of the profile is in the text, as the console showed it. The
+# file is what the build copies into the system, so $LFS_USER in it is the account's name, and a line
+# with a backslash is left out, as agetty expands the escapes of the issue.
+proc expect_lines_of {text file what} {
+    global env
+    set in [open $file]
+    set lines [split [string map [list {$LFS_USER} $env(LFS_USER)] [read $in]] "\n"]
+    close $in
+    foreach line $lines {
+        if {[string trim $line] eq "" || [string first "\\" $line] >= 0} continue
+        if {[string first $line $text] < 0} { fail "$what: the line '$line' is missing" }
+    }
+}
+
+# QEMU arguments that attach a USB stick, for `boot`: an image of 128 MB with nothing on it, in the
+# directory of the run.
+proc stick {} {
+    global work
+    set image $work/stick.img
+    if {![file exists $image]} {
+        set out [open $image w]
+        fconfigure $out -translation binary
+        seek $out [expr {128 * 1024 * 1024 - 1}]
+        puts -nonewline $out "\0"
+        close $out
+    }
+    return "-drive if=none,id=stick,file=$image,format=raw -device usb-storage,drive=stick"
+}
+
+# Fails if the console prints anything within the seconds. The system is idle at the login prompt, and
+# a message there would land in the middle of what a person types.
+proc expect_silence {seconds what} {
+    expect -timeout $seconds {
+        -re {.+}  { fail "the console printed $what: [string trim [clean $expect_out(buffer)]]" }
+        timeout   { }
+        eof       { fail "QEMU exited while the console was idle $what" }
+    }
+}
+
+# Waits for the login prompt, and returns the console up to there (the issue is the end of it).
+proc wait_for_login_prompt {what} {
+    expect {
+        "login:" { return [clean $expect_out(buffer)] }
+        timeout  { fail "timed out waiting for the login prompt $what" }
+        eof      { fail "QEMU exited before the login prompt $what" }
+    }
+}
+
+# Boots the image up to the login prompt. The argument is more QEMU arguments (lfs qemu reads them
+# from LFS_QEMU_EXTRA), such as `-device usb-ccid`.
+proc boot {{qemu_extra ""}} {
+    # spawn sets spawn_id where it is called, which every other procedure reads as the global.
+    global env spawn_id running work profile
+    set env(LFS_QEMU_EXTRA) $qemu_extra
+    spawn -noecho ./lfs qemu $work/$profile.img
+    set running 1
+    wait_for_login_prompt "after the boot"
+}
+
+# Logs in on the console, as root or as the regular account (user), and waits for the shell's prompt.
+# Returns what the console printed meanwhile (the message of the day).
+proc login {who} {
+    global env
+    if {$who eq "root"} {
+        set name root
+        set password [env_or LFS_ROOT_PASSWORD ""]
+    } elseif {$who eq "user"} {
+        set name $env(LFS_USER)
+        set password [env_or LFS_PASSWORD ""]
+    } else {
+        error "login: who is root or user, not $who"
+    }
+    send -- "$name\r"
+    expect {
+        "Password:" {
+            if {$password eq ""} { fail "$name asked for a password, which the test has none of" }
+            send -- "$password\r"
+            expect {
+                -re {[#$] $} { return [clean $expect_out(buffer)] }
+                "Login incorrect" { fail "$name's password was refused" }
+                timeout { fail "timed out after $name's password" }
+                eof     { fail "QEMU exited after $name's password" }
+            }
+        }
+        -re {[#$] $} { return [clean $expect_out(buffer)] }
+        timeout { fail "timed out after the user name $name" }
+        eof     { fail "QEMU exited after the user name $name" }
+    }
+}
+
+# Runs a line in the shell, and returns its output (without the terminal's carriage returns) and its
+# exit status, as a list. The markers are written from split strings, so that the shell's echo of the
+# typed line does not match them: only what the shell prints does. The console, a serial line behind
+# a pty, can end a line with two carriage returns.
+proc run {line} {
+    global commands
+    incr commands
+    set id C$commands
+    send -- "echo BEGIN''_$id; $line; echo END''_$id=\$?\r"
+    expect {
+        -re "BEGIN_$id\[\r\n\]+(.*)END_$id=(\[0-9\]+)" {
+            return [list [string trim [clean $expect_out(1,string)]] $expect_out(2,string)]
+        }
+        timeout { fail "the command did not finish: $line" }
+        eof     { fail "QEMU exited during the command: $line" }
+    }
+}
+
+# Fails unless the line exits with the status (0 by default); returns its output.
+proc run_ok {line {expected 0}} {
+    lassign [run $line] output status
+    if {$status != $expected} {
+        fail "'$line' exited with $status, not $expected, saying: $output"
+    }
+    return $output
+}
+
+# Logs out, back to the login prompt, and returns the console up to there (the issue).
+proc logout {} {
+    send -- "exit\r"
+    return [wait_for_login_prompt "after logging out"]
+}
+
+# Restarts the machine from the shell of whoever is logged in, up to the login prompt of the new boot.
+proc restart {} {
+    send -- "reboot\r"
+    wait_for_login_prompt "after the restart"
+}
+
+# Powers the machine off from the shell of whoever is logged in, which is up to the system to allow,
+# and waits for QEMU to exit.
+proc power_off {} {
+    global running
+    send -- "poweroff\r"
+    expect {
+        eof     { }
+        timeout { fail "timed out waiting for QEMU to exit after poweroff" }
+    }
+    lassign [wait] pid session os_error status
+    if {$os_error != 0 || $status != 0} {
+        fail "QEMU exited with status $status after poweroff"
+    }
+    set running 0
+}
+
+#===[ The suite ]===
+
+cd [file dirname [file dirname [file normalize [info script]]]]
+
+set profile [expr {$argc > 0 ? [lindex $argv 0] : [env_or LFS_PROFILE virt]}]
+set tests [lsort -dictionary [glob -nocomplain profile/$profile/test/*.exp]]
+if {[llength $tests] == 0} {
+    puts stderr "check/test: profile/$profile/test has no tests (*.exp)"
+    exit 2
+}
+
+set image [env_or LFS_IMAGE_DIR [env_or LFS_STATE_DIR [pwd]]/image]/$profile.img
+if {![file exists $image]} {
+    puts stderr "check/test: $image is missing: make image/$profile.img first"
+    exit 2
+}
+
+set env(LFS_PROFILE) $profile
+set env(LFS_USER) [env_or LFS_USER [exec id -un]]
+
+# `lfs qemu` makes the overlay next to the image it boots, backed by it: a link to the image gives the
+# overlay a directory of its own, and leaves the image as it is.
+set work [exec mktemp -d [env_or TMPDIR /tmp]/lfs-test.XXXXXX]
+exit -onexit {file delete -force $work}
+file link -symbolic $work/$profile.img [file normalize $image]
+
+# For the report of a failure.
+set console $work/console
+log_file -a $console
+
+foreach file $tests {
+    set current_test [file rootname [file tail $file]]
+    set started [clock seconds]
+    if {[catch {source $file} message]} {
+        fail "the test itself failed: $message"
+    }
+    puts "PASS $current_test ([expr {[clock seconds] - $started}] s)"
+}
+
+set current_test "the suite"
+if {$running} {
+    fail "the machine is still running: the last test powers it off"
+}
+puts "$profile: [llength $tests] tests passed"

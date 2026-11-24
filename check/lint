@@ -126,6 +126,14 @@ for profile in profile/*.sh; do
         || finding "$profile: lfs_system_toolchain glibc|musl is missing, the toolchain of the profile"
 done
 
+# Every profile has the test that boots it, which the others follow (check/test runs them).
+for profile in profile/*.sh; do
+    profile=${profile#profile/}
+    profile=${profile%.sh}
+    [ -f profile/$profile/test/01-boot.exp ] \
+        || finding "profile/$profile/test/01-boot.exp is missing, the first test of every profile"
+done
+
 # Every kernel capability that a profile names is a file of the linux package, which would otherwise
 # fail when the kernel is configured, long into a build.
 for profile in profile/*.sh; do

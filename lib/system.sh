@@ -148,7 +148,8 @@ lfs_system_install() {
 
 # Copies the files of the profile, profile/<profile>/files/, into the system once its packages are in:
 # the path of a file under that directory is its path in the system (profile/virt/files/etc/issue is
-# /etc/issue). A file is 0755 if the checkout has it executable, else 0644. The profile's files
+# /etc/issue). Next to it, test/ has the profile's tests, which stay out of the system. A file is 0755
+# if the checkout has it executable, else 0644. The profile's files
 # belong to it alone: a path that a package installed is an error. The files are in no archive and
 # no SBOM, as the build copies them each time. The name of the regular account, LFS_USER, is the
 # only variable that envsubst replaces in them, in their paths as in their contents: a file names it

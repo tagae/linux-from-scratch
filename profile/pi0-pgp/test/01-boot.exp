@@ -1,0 +1,3 @@
+# The machine boots up to the login prompt, with a smart card reader and a USB stick that has nothing on it.
+
+boot "-device usb-ccid [stick]"

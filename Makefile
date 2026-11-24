@@ -88,9 +88,9 @@ image/%.img: %-system FORCE
 	mkdir -p image
 	$(SUDO) ./lfs image build
 
-# Check that the image boots and root can login/poweroff.
+# Boot the image and run the tests of its profile, profile/<profile>/test/ (see check/test).
 %-test: image/%.img
-	check/boot $*
+	check/test $*
 
 # Boot the image in QEMU, with an interactive serial console.
 %-qemu: image/%.img
@@ -153,7 +153,7 @@ docker-image/%.img: docker-%-system FORCE
 
 # The image built through Docker runs on the host.
 docker-%-test: docker-image/%.img
-	check/boot $*
+	check/test $*
 
 docker-dev: .env
 	docker compose run --rm --build dev

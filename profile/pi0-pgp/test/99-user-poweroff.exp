@@ -1,0 +1,4 @@
+# The regular account powers the machine off: polkit lets it, by the rule of the profile.
+
+login user
+power_off
