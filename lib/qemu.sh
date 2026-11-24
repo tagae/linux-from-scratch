@@ -24,7 +24,6 @@ qemu() {
         qemu-img create -q -f qcow2 -b "${image##*/}" -F raw "$overlay" ${size}M
     fi
     exec ${qemu_system:-qemu-system-$target_arch} -nodefaults -no-user-config ${qemu_flags:-} \
-        -no-reboot \
         "$@" \
         -append "${qemu_append:-} \
         rootfstype=btrfs rootflags=subvol=root/$root_volume rw rootwait" \

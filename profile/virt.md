@@ -85,8 +85,7 @@ systemd's getty generator starts `agetty` on the console. `agetty` runs `login`,
 password and starts bash.
 
 A qcow2 overlay (`image/virt.qcow2`) takes what the system writes, so that the image stays as it was
-made. The overlay lasts until the image is made anew. `reboot` stops QEMU, as with `poweroff`
-(QEMU runs with `-no-reboot`).
+made. The overlay lasts until the image is made anew. `reboot` restarts the machine, and `poweroff` stops QEMU.
 
 
 Kernel
