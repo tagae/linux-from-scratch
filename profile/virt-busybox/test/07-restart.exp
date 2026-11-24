@@ -1,0 +1,11 @@
+# The machine restarts, and what was written before is there after it: init's shutdown unmounts the file
+# systems, or remounts read-only those that are busy.
+
+login root
+run_ok {echo persisted > /root/probe}
+restart
+expect_silence 10 "after the restart"
+login root
+expect_equal [run_ok {cat /root/probe}] persisted "what was written before the restart"
+run_ok {rm /root/probe}
+logout

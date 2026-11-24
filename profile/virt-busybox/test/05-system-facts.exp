@@ -1,0 +1,10 @@
+# The system is as the profile says: the console shows errors only, the file systems that init mounts
+# are mounted, there is no issue, message of the day or module directory, and musl is the C library.
+
+login root
+expect_equal [run_ok {read level rest < /proc/sys/kernel/printk; echo $level}] 4 "the console log level"
+expect_equal [run_ok {grep -c -E '^(proc /proc|sysfs /sys|tmpfs /run|devtmpfs /dev) ' /proc/mounts}] 4 "the file systems that init mounts"
+expect_equal [run_ok {grep -c ' / btrfs ' /proc/mounts}] 1 "the root file system"
+run_ok {[ ! -e /etc/issue ] && [ ! -e /etc/motd ] && [ ! -e /usr/lib/modules ]}
+run_ok {ls /lib/ld-musl-*.so.1}
+logout

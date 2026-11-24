@@ -1,0 +1,8 @@
+# init is the first process, and the shell of root is a login shell: init keeps a getty on the console,
+# which became login, which became the shell.
+
+login root
+set processes [run_ok {ps}]
+expect_match $processes {1 root +[0-9]+ S +init} "init, the first process"
+expect_match $processes {-sh} "the login shell of root"
+logout

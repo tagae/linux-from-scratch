@@ -44,6 +44,12 @@ make docker-virt-busybox-test    # the same, building through Docker Compose
 
 Log in as `root` on the console. `poweroff` stops the machine, and QEMU exits.
 
+`make virt-busybox-test` runs the tests of [`virt-busybox/test/`](virt-busybox/test): the console stays
+silent after the boot; BusyBox is init and `/bin/sh`, the applets of the profile are there and those
+that the kernel cannot serve are not; init has mounted its file systems, and the system has no issue,
+message of the day or module directory; init keeps a getty on the console; and the machine restarts,
+without losing what was written before, and powers off.
+
 
 How It Boots
 ------------

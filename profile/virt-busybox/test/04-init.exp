@@ -1,0 +1,10 @@
+# BusyBox is the system: its init, its shell, and the applets that the profile names, and not the ones
+# that the kernel cannot serve.
+
+login root
+expect_equal [run_ok {cat /proc/1/comm}] init "the first process"
+expect_match [run_ok {readlink /proc/1/exe}] {busybox} "init's program"
+expect_match [run_ok {readlink /bin/sh}] {busybox} "/bin/sh"
+expect_equal [run_ok {for a in tar ls vi sed awk grep find xargs init halt poweroff reboot getty login su less ps mount umount blkid dmesg ash which hostname; do busybox --list | grep -qx $a || echo "missing $a"; done}] "" "the applets that are missing"
+expect_equal [run_ok {for a in modprobe insmod ip ping unshare nsenter hwclock who hush; do busybox --list | grep -qx $a && echo "unexpected $a"; done; true}] "" "the applets that are there and should not be"
+logout
