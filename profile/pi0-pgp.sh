@@ -16,8 +16,7 @@ lfs_system_install gcc#runtime
 #===[ systemd ]===
 
 # systemd, with the strict minimum it needs to boot the system and log root in on the console: it
-# mounts the file systems, runs the services and the journal, and keeps the clock across boots; and
-# D-Bus, for its tools.
+# mounts the file systems, and runs the services and the journal; and D-Bus, for its tools.
 
 lfs_system_install dash
 
@@ -77,18 +76,26 @@ lfs_system_install dbus
 
 #===[ Kernel and boot ]===
 
-# The kernel, with the serial console, the btrfs root file system, FAT file systems (the Pi layout's
-# boot partition, and sticks), its self-protection, loadable modules, the options that systemd
-# relies on, USB devices (YubiKeys, USB sticks and card readers, also from user space through
-# /dev/bus/usb), HID devices on USB as /dev/hidraw*, and the zeroing of memory as it is freed, which
-# keeps keys from outliving the programs that held them. The firmware's bootloader and configuration
-# start it from the FAT partition of the Pi layout.
+# The kernel, with the serial console, the btrfs root file system, FAT file systems (sticks), its
+# self-protection, loadable modules, overlay file systems (memory over the read-only root), the
+# options that systemd relies on, USB devices (YubiKeys, USB sticks and card readers, also from user
+# space through /dev/bus/usb), HID devices on USB as /dev/hidraw*, and the zeroing of memory as it is
+# freed, which keeps keys from outliving the programs that held them. The firmware's bootloader and
+# configuration start it from the FAT partition of the Pi layout.
 (
-    capabilities="btrfs console fat hardening hidraw modules serial-console systemd usb usb-storage zero-on-free"
+    capabilities="btrfs console fat hardening hidraw modules overlay serial-console systemd usb usb-storage zero-on-free"
     lfs_system_install linux
 )
 lfs_system_install firmware
-lfs_system_install boot
+# The root file system is read-only, so that the system keeps nothing of what is done on it: what is
+# written to the home directories and to /var goes to memory, through the overlays of the profile
+# (home.mount, root.mount, var.mount), and /tmp is systemd's tmpfs. The boot partition is not
+# mounted. The clock, which the Pi has no battery for, starts every boot at the time the image was
+# made.
+(
+    read_only_root=yes
+    lfs_system_install boot
+)
 
 #===[ Libraries and tools ]===
 
@@ -169,9 +176,9 @@ lfs_sysroot_install libusb#dev
 
 #===[ USB sticks ]===
 
-# The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory,
-# in /run/gnupg (a tmpfs that never swaps, run-gnupg.mount, which the account's ~/.profile gives to
-# gpg), and exports it to a USB stick, which mnt-keys.automount mounts on /mnt/keys. mkfs.fat makes
+# The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory, in
+# GnuPG's home, ~/.gnupg (the overlay of /home, whose writes go to a tmpfs that never swaps), and
+# exports it to a USB stick, which mnt-keys.automount mounts on /mnt/keys. mkfs.fat makes
 # the FAT file system that the script wants on the stick, labelled KEYS (fatlabel changes the label
 # of one that exists), and fsck.fat checks it.
 lfs_system_install dosfstools

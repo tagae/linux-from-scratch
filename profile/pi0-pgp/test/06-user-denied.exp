@@ -2,8 +2,8 @@
 # service stays as it was.
 
 login user
-lassign [run {systemctl restart systemd-timesyncd}] output status
+lassign [run {systemctl restart systemd-journald}] output status
 expect_match $output {Access denied} "restarting a service"
 if {$status == 0} { fail "restarting a service succeeded" }
-expect_equal [run_ok {systemctl is-active systemd-timesyncd}] active "the service that was left alone"
+expect_equal [run_ok {systemctl is-active systemd-journald}] active "the service that was left alone"
 logout

@@ -103,6 +103,7 @@ Capabilities can also differ platform: `package/linux/<capability>.<platform>.co
 | `fat`            | FAT file systems, such as the Pi's boot partition and sticks |
 | `hardening`      | Kernel self-protection and CPU vulnerability mitigations     |
 | `modules`        | Loadable kernel modules, and their protection                |
+| `overlay`        | Overlay file systems, such as memory over a read-only root   |
 | `serial-console` | A UART as the kernel's console and early console             |
 | `systemd`        | systemd requirements                                         |
 | `usb`            | USB devices, also from user space through `/dev/bus/usb`     |
@@ -120,11 +121,9 @@ Images are in UTC. To use another zone, install the `tzdata` package and pass th
 with `LFS_TIMEZONE` (e.g., `make image LFS_PROFILE=pi0-pgp LFS_TIMEZONE=Europe/Berlin`). The clock
 stays in UTC; the zone only changes how time is shown.
 
-The `pi0-pgp` profile, for a board without a battery-backed clock (the Raspberry Pi Zero), keeps time
-across reboots through systemd-timesyncd, which saves the clock every minute, and restores it at the
-next boot. It does not save at shutdown, so a boot goes back to the last minute's save: a time set
-less than a minute before the machine stops can be lost, and keys made just before look as if they
-were made in the future.
+A board without a battery-backed clock (the Raspberry Pi Zero) starts every boot at the time the
+image was made, which systemd takes from the modification time of `/usr/lib/clock-epoch`: the
+`pi0-pgp` profile keeps nothing across boots, the time included, and is set by hand.
 
 Localisation
 ------------

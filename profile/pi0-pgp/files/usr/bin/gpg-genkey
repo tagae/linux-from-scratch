@@ -3,10 +3,10 @@
 #
 # The key is made for a security key such as a YubiKey: a primary key that only certifies, and
 # subkeys to sign, to encrypt and to authenticate. The secret key material lives in memory only:
-# GnuPG's home is /run/gnupg, a tmpfs that no other user opens and that never swaps
-# (run-gnupg.mount). The keys stay in it after the script ends, for `gpg` to list and to edit (to
-# move the subkeys to the YubiKey, say), until the Pi powers off. The secret key leaves only on
-# the stick, protected by the passphrase.
+# GnuPG's home is ~/.gnupg, in the overlay of /home, which writes to a tmpfs that never swaps
+# (home.mount, run-memory.mount). The keys stay in it after the script ends, for `gpg` to list and
+# to edit (to move the subkeys to the YubiKey, say), until the Pi powers off. The secret key leaves
+# only on the stick, protected by the passphrase.
 #
 # The YubiKey, when one is plugged in, adds the randomness of its own generator to the Pi's, which
 # makes the script wait a minute; without one, the script warns and goes on.
@@ -67,22 +67,26 @@ ls "$KEYS_MOUNT" > /dev/null 2>&1 || {
 }
 echo "gpg-genkey: stick mounted on $KEYS_MOUNT"
 
-# Everything GnuPG writes is under GNUPGHOME: the keyring, the random pool, the revocation
-# certificate. It must be that mount, a tmpfs mounted noswap, and not a directory of a file system
-# that can swap: the field after the file system's type and source in /proc/self/mountinfo holds
-# the options that `noswap` is among.
-GNUPGHOME=/run/gnupg
-awk -v root="$GNUPGHOME" '
-    $5 == root {
+# Everything GnuPG writes is under its home: the keyring, the random pool, the revocation
+# certificate. The home directories must be the overlay that writes to /run/memory, and that a tmpfs
+# mounted noswap, so that nothing reaches the SD card or swap. In /proc/self/mountinfo, the fields
+# after the separator are the file system's type, its source and its own options: the upper
+# directory of the overlay, and the `noswap` of the tmpfs.
+GNUPGHOME=$HOME/.gnupg
+awk '
+    function fs_options(type) {
         for (i = 6; $i != "-"; i++) ;
-        ok = ($(i + 1) == "tmpfs" && ("," $(i + 3) ",") ~ /,noswap,/)
+        return $(i + 1) == type ? "," $(i + 3) "," : ""
     }
-    END { exit !ok }' /proc/self/mountinfo || {
-    echo "gpg-genkey: $GNUPGHOME is not a tmpfs mounted noswap (run-gnupg.mount)" >&2
+    $5 == "/home" { home = fs_options("overlay") ~ /,upperdir=\/run\/memory\// }
+    $5 == "/run/memory" { memory = fs_options("tmpfs") ~ /,noswap,/ }
+    END { exit !(home && memory) }' /proc/self/mountinfo || {
+    echo "gpg-genkey: /home is not an overlay on a tmpfs mounted noswap (home.mount)" >&2
     exit 1
 }
+mkdir -p -m 0700 "$GNUPGHOME"
 export GNUPGHOME
-echo "gpg-genkey: GNUPGHOME=$GNUPGHOME (tmpfs, memory only)"
+echo "gpg-genkey: GNUPGHOME=$GNUPGHOME (memory only)"
 
 # The agent keeps the passphrase for ten minutes: it quits when the script ends, however it ends,
 # and starts again when gpg next needs it. The keys stay.

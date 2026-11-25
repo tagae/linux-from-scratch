@@ -1,0 +1,13 @@
+[Unit]
+Description=root's home directory in memory, over the image's
+RequiresMountsFor=/run/memory
+
+[Mount]
+What=overlay
+Where=/root
+Type=overlay
+# The image's /root underneath, read-only like the rest of the root file system; whatever is
+# written goes to memory (run-memory.mount), and is gone when the Pi powers off. The overlay's root
+# directory is the upper directory, which systemd makes with this mode, root's alone.
+Options=lowerdir=/root,upperdir=/run/memory/root/upper,workdir=/run/memory/root/work,nosuid,nodev
+DirectoryMode=0700

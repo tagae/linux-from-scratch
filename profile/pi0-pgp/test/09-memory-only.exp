@@ -1,9 +1,33 @@
-# What the machine keeps is in memory: there is no swap, the journal is in /run, and the shell keeps
-# no history file.
+# What the machine keeps is in memory: the root file system is read-only, even to root, and the boot
+# partition is not mounted; the home directories and /var are overlays that write to a tmpfs that
+# never swaps, and /tmp is a tmpfs; there is no swap, the journal is in /run, and the shell keeps no
+# history file.
+#
+# A line of /proc/self/mountinfo has the mount point in its fifth field, the options of the mount in
+# its sixth, and after the separator the type of the file system, its source and its own options.
+
+login root
+expect_match [run_ok {awk '$5 == "/"' /proc/self/mountinfo}] { ro,.* - btrfs } "the mount of the root file system"
+lassign [run {touch /etc/probe}] output status
+expect_match $output {Read-only file system} "writing to the root file system as root"
+if {$status == 0} { fail "writing to the root file system succeeded" }
+expect_equal [run_ok {awk '$5 == "/boot"' /proc/self/mountinfo}] "" "the mount of the boot partition"
+set memory [run_ok {awk '$5 == "/run/memory"' /proc/self/mountinfo}]
+foreach option {nosuid nodev { - tmpfs } noswap mode=700} {
+    expect_match $memory $option "the mount of /run/memory"
+}
+foreach dir {/home /root /var} {
+    expect_match [run_ok "awk '\$5 == \"$dir\"' /proc/self/mountinfo"] " - overlay .*lowerdir=$dir,upperdir=/run/memory$dir/upper," "the overlay of $dir"
+}
+expect_match [run_ok {awk '$5 == "/home"' /proc/self/mountinfo}] { /home [^ ]*noexec} "the mount of /home"
+expect_match [run_ok {awk '$5 == "/tmp"' /proc/self/mountinfo}] { - tmpfs } "the mount of /tmp"
+expect_equal [run_ok {stat -c %a /root}] 700 "the mode of root's home"
+logout
 
 login user
 # A kernel with no swap has no /proc/swaps at all.
 run_ok {[ ! -e /proc/swaps ] || [ "$(tail -n +2 /proc/swaps | wc -l)" = 0 ]}
 run_ok {[ ! -e /var/log/journal ] && [ -d /run/log/journal ]}
 expect_equal [run_ok {echo "${HISTFILE-unset}"}] unset "the history file of the shell"
+expect_equal [run_ok {stat -c '%U %a' ~}] "$env(LFS_USER) 700" "the owner and mode of the home directory"
 logout

@@ -1,0 +1,13 @@
+[Unit]
+Description=Memory that takes what is written to the home directories and /var
+
+[Mount]
+What=tmpfs
+Where=/run/memory
+Type=tmpfs
+# The upper directories of the overlays of /home, /root and /var (home.mount, root.mount,
+# var.mount), which systemd makes when it mounts them. noswap keeps the pages off any swap that the
+# kernel has: a tmpfs without it, /dev/shm and /run among them, can write its files to disk. Only
+# root opens the directory, as everyone else reaches the files through the overlays, whose own
+# options say what runs from them. The size stops a runaway write from taking the memory.
+Options=noswap,nosuid,nodev,mode=0700,size=64M

@@ -1,0 +1,20 @@
+# A restart forgets what was done on the machine: what root and the regular account wrote to their
+# homes, to /var and to /tmp, and the time that was set, as the clock, which the Pi has no battery
+# for, starts again at the time the image was made.
+
+login root
+run_ok {date -u -s '2031-01-02 03:04:05'}
+run_ok {touch /root/probe /var/tmp/probe /tmp/probe}
+logout
+login user
+run_ok {touch ~/probe}
+set before [run_ok {cat /proc/sys/kernel/random/boot_id}]
+restart
+expect_silence 15 "after the restart"
+login root
+set after [run_ok {cat /proc/sys/kernel/random/boot_id}]
+if {$after eq $before} { fail "the machine did not restart: its boot ID is still $before" }
+run_ok "\[ ! -e /root/probe \] && \[ ! -e /var/tmp/probe \] && \[ ! -e /tmp/probe \] && \[ ! -e /home/$env(LFS_USER)/probe \]"
+if {[run_ok {date -u +%Y}] eq 2031} { fail "the time that was set outlived the restart" }
+run_ok {[ "$(date +%s)" -ge "$(stat -c %Y /usr/lib/clock-epoch)" ]}
+logout

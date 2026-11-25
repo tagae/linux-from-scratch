@@ -68,8 +68,7 @@ prepare() {
                 -Dfdisk=disabled \
                 -Dnetworkd=false \
                 -Dresolve=false \
-                -Dtimesyncd=true \
-                -Dntp-servers= \
+                -Dtimesyncd=false \
                 -Dhostnamed=false \
                 -Dlocaled=false \
                 -Dtimedated=false \

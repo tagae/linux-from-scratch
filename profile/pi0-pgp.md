@@ -59,11 +59,11 @@ authenticates (there is no PAM), and root needs no rule.
 
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
-the shell profile (`/etc/profile`), the regular account's own (`~/.profile`, which the build puts
-under `/home/$LFS_USER`), the udev rules that give the group `users` the security keys and USB
-sticks, and the polkit rule are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
-(`gpg-genkey` and the mount units of the stick and of GnuPG's memory),
-scdaemon's configuration, and the drop-ins that start the mounts and `timesyncd`.
+the shell profile (`/etc/profile`), the udev rules that give the group `users` the security keys
+and USB sticks, and the polkit rule are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only
+this system has: the key procedure (`gpg-genkey` and the mount units of the stick), the mount units
+of the memory over the read-only root ([Nothing Kept](#nothing-kept)), scdaemon's configuration,
+and the drop-ins that start the mounts.
 
 
 Making OpenPGP Keys
@@ -103,15 +103,15 @@ that link. Both mounts are `nosuid`, `nodev` and `noexec`. The KEYS stick is nev
 stick that was plugged in for another purpose. With two sticks that are not KEYS, the link follows
 one of them.
 
-1. The Pi has no battery-backed clock. It restores the time it last saved, and a new image starts at
-   the time it was made. Keys record the time they are made at, so set it:
+1. The Pi has no battery-backed clock, and the system keeps nothing across boots: every boot starts
+   at the time the image was made. Keys record the time they are made at, so set it:
 
    ```shell
    date -u -s '2026-10-19 08:30:00'
    ```
 
 2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
-   authenticate, none of which expires. GnuPG's home is `/run/gnupg`, in memory (see [Keys in
+   authenticate, none of which expires. GnuPG's home is `~/.gnupg`, in memory (see [Keys in
    Memory](#keys-in-memory)), and the keys stay in it when the command ends. Plug the YubiKey in
    first: its random number generator adds to the Pi's (see [Randomness](#randomness)), which
    makes the command wait a minute; without it, the command warns and relies on the Pi's alone.
@@ -137,26 +137,50 @@ one of them.
    (authentication); then `save`. `gpg --card-status` lists the three keys on the card. The stick
    keeps the whole secret key.
 
-GnuPG's home, for the regular account, is `/run/gnupg`, which its `~/.profile` sets in `GNUPGHOME`:
-in memory, so empty after a reboot (`gpg --import /mnt/keys/you@example.org-secret.asc` brings a key
-back from the stick). root's is `~/.gnupg` on the SD card. `GPG_TTY=$(tty)` must be set when
-GnuPG's input is not the terminal (`echo hi | gpg --clearsign`), for the PIN prompt to find it.
+GnuPG's home is `~/.gnupg`, for root as for the regular account: in memory, as the home
+directories are, so empty after a reboot (`gpg --import /mnt/keys/you@example.org-secret.asc` brings
+a key back from the stick). `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal
+(`echo hi | gpg --clearsign`), for the PIN prompt to find it.
+
+
+Nothing Kept
+------------
+
+The system forgets what is done on it when the Pi powers off: the files that the accounts write,
+the logins that `login` records, the time that was set. Nothing is written to the SD card while the
+system runs.
+
+* The root file system is read-only: the kernel mounts it so (the `ro` of `cmdline.txt`), and its
+  btrfs subvolume is read-only too, so that a remount alone does not make it writable. The boot
+  partition is not mounted (`mount /dev/mmcblk0p1 /boot` mounts it for root).
+* The home directories (`/home` and root's `/root`) and `/var` are overlays
+  ([`home.mount`](pi0-pgp/files/usr/lib/systemd/system/home.mount),
+  [`root.mount`](pi0-pgp/files/usr/lib/systemd/system/root.mount),
+  [`var.mount`](pi0-pgp/files/usr/lib/systemd/system/var.mount)): the image's directory underneath,
+  which holds what the build put there, and memory on top, which takes what is written, deletions
+  included. The memory is one tmpfs, `/run/memory`
+  ([`run-memory.mount`](pi0-pgp/files/usr/lib/systemd/system/run-memory.mount)), which only root
+  opens, and which holds 64 MB at most. `/tmp` is systemd's tmpfs, the journal is in `/run`, and
+  there is no swap.
+* The clock starts every boot at the time the image was made (systemd reads it from the date of
+  `/usr/lib/clock-epoch`), whatever time was set before.
 
 
 Keys in Memory
 --------------
 
 `gpg-genkey` keeps GnuPG's home, with the keyring, the agent's private keys, the random pool and
-the revocation certificate, in `/run/gnupg`, a tmpfs that
-[`run-gnupg.mount`](pi0-pgp/files/usr/lib/systemd/system/run-gnupg.mount) mounts at boot, and leaves it
-there: `gpg` lists and edits the keys at any moment, until the Pi powers off.
+the revocation certificate, in `~/.gnupg`, in the memory of the overlay of `/home`
+([Nothing Kept](#nothing-kept)), and leaves it there: `gpg` lists and edits the keys at any moment,
+until the Pi powers off.
 
-* It is mounted `noswap`: the kernel never writes its pages to swap. A tmpfs without that option
-  can, `/dev/shm` and `/run` included, if the kernel has swap: the guarantee does not depend on
-  the kernel's configuration.
-* Only the regular account opens it (mode 0700), nothing runs from it (`noexec`, `nosuid` and
-  `nodev`), and it holds 8 MB at most.
-* `gpg-genkey` refuses to start unless `/run/gnupg` is a tmpfs mounted `noswap`.
+* The memory, `/run/memory`, is mounted `noswap`: the kernel never writes its pages to swap. A tmpfs
+  without that option can, `/dev/shm` and `/run` included, if the kernel has swap: the guarantee
+  does not depend on the kernel's configuration.
+* Only the regular account opens `~/.gnupg` (mode 0700), and nothing runs from `/home` (`noexec`,
+  `nosuid` and `nodev`).
+* `gpg-genkey` refuses to start unless `/home` is an overlay that writes to `/run/memory`, and that
+  a tmpfs mounted `noswap`.
 * The agent, which keeps the passphrase for ten minutes, quits when `gpg-genkey` ends, however it
   ends, and starts again when `gpg` needs it.
 * Nothing deletes the keys: they go when the Pi powers off. Unmounting the tmpfs frees its pages,
@@ -184,9 +208,9 @@ is worth goes into the seed all the same: a weak input cannot weaken it.
   would make them unpredictable. Only root may credit what it writes, and the YubiKey has no need
   of credit: the Pi's generator has made the kernel's ready already. It then waits a minute, for the
   kernel to reseed with it, and has the agent that makes the keys start after that.
-* GnuPG's own random seed file (`random_seed`) lives in `/run/gnupg`, which is empty at every
-  boot. systemd's seed of the kernel's pool (`/var/lib/systemd/random-seed`) is on the SD card, and
-  someone who has had the card could read it: it is only mixed in, so the keys do not depend on it.
+* GnuPG's own random seed file (`random_seed`) lives in `~/.gnupg`, which is empty at every boot,
+  and so does systemd's seed of the kernel's pool (`/var/lib/systemd/random-seed`), in the memory of
+  `/var`: no seed outlives a boot, or is on the SD card for someone who has had it to read.
 
 To see the hardware generator at work:
 
@@ -245,14 +269,16 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
   of the day after the login; root and the regular account log in; the regular account powers the
   machine off and restarts it, and is refused the rest.
 * The system is healthy as `systemctl status` shows it; the kernel shows errors only on the console,
-  zeroes memory as it is freed and has no network; nothing is kept but in memory (no swap, the
-  journal in `/run`, no shell history); the programs that the system is for, and the manual pages and
+  zeroes memory as it is freed and has no network; nothing is kept but in memory (the root file
+  system read-only even to root, the boot partition unmounted, the home directories and `/var`
+  overlays on memory that does not swap, `/tmp` a tmpfs, no swap, the journal in `/run`, no shell
+  history); the programs that the system is for, and the manual pages and
   their index, are there.
-* GnuPG makes a key in the GnuPG home, which is memory that does not swap, signs, verifies, encrypts
-  and decrypts.
+* GnuPG makes a key in its home, `~/.gnupg`, signs, verifies, encrypts and decrypts.
 * A USB stick, which the account formats as the message of the day says, is mounted and written;
   `gpg-genkey` exports a key to it, and after a boot the key is gone from memory, and the stick's copy
   imports back.
 * A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
-  polkit and `pcscd` run in the sandbox of their units; the machine restarts, the clock goes on from
-  the last minute's save, and the machine powers off.
+  polkit and `pcscd` run in the sandbox of their units; the machine restarts, and forgets the files
+  written to the home directories, `/var` and `/tmp`, and the time that was set; and the machine
+  powers off.

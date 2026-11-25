@@ -73,10 +73,11 @@ data port, so real use needs a hub. The emulated reader is 08E6:4433 (in ccid's 
 ## Also
 
 - Missing libraries and RPATHs first: `missing-libs` (lfs-build-iteration).
-- Clock across boots: `IMAGE_COPY=/tmp/x.img`; `qemu-check KEY "" 'date -u -s "2026-12-31 12:00:00"; sleep 75'`
-  (timesyncd saves every 60 s, not at exit: a restart sooner goes back to the last save), then `... 'date -u'`: it continues from the saved time and PID 1
-  logs "System time advanced to timestamp on /var/lib/systemd/timesync/clock". Delete `/tmp/x.img` and
-  `/tmp/x.qcow2` after.
+- Clock across boots: nothing saves it. Every boot starts at the image's build time, the date of
+  `/usr/lib/clock-epoch`, whatever was set before (`date -u` right after a boot shows it).
+- pi0-pgp's root is read-only (`ro` in its `cmdline.txt`, and a read-only subvolume): to change a
+  file of the image for a probe, write it in `/home`, `/root`, `/var` or `/tmp` (memory, gone at the
+  next boot), or rebuild the image.
 - Probes in the same line: `ykman --version`, `python3 -c 'import cryptography'`,
   `gpg-connect-agent "scd getinfo reader_list" /bye` (after `mkdir -p -m700 /root/.gnupg`).
 

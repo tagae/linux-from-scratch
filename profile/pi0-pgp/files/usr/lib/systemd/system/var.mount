@@ -1,0 +1,12 @@
+[Unit]
+Description=/var in memory, over the image's
+RequiresMountsFor=/run/memory
+
+[Mount]
+What=overlay
+Where=/var
+Type=overlay
+# The image's /var underneath, read-only like the rest of the root file system; what systemd and
+# login keep there (the random seed, the records of logins, /var/tmp) goes to memory
+# (run-memory.mount), and is gone when the Pi powers off.
+Options=lowerdir=/var,upperdir=/run/memory/var/upper,workdir=/run/memory/var/work,nosuid,nodev

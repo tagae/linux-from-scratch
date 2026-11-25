@@ -5,7 +5,7 @@ login user
 set output [run_ok {gpg-genkey -n 'Test User' -e test@example.org -p 'a passphrase'}]
 expect_match $output {no YubiKey answered} "the warning that the keys rest on the Pi's generator"
 expect_match $output {done} "gpg-genkey"
-run_ok {[ ! -e /run/gnupg/card-random ]}
+run_ok {[ ! -e ~/.gnupg/card-random ]}
 run_ok {[ -s /mnt/keys/test@example.org-secret.asc ] && [ -s /mnt/keys/test@example.org-public.asc ] && [ -s /mnt/keys/test@example.org-revoke.asc ]}
 expect_match [run_ok {gpg --list-secret-keys}] {test@example\.org} "the key, which stays in memory"
 logout

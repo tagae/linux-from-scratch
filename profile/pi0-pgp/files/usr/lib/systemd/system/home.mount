@@ -1,0 +1,12 @@
+[Unit]
+Description=Home directories in memory, over the image's
+RequiresMountsFor=/run/memory
+
+[Mount]
+What=overlay
+Where=/home
+Type=overlay
+# The image's /home underneath, read-only like the rest of the root file system, with the files
+# that the build put in it; whatever is written goes to memory (run-memory.mount), and is gone when
+# the Pi powers off. Nothing runs from it.
+Options=lowerdir=/home,upperdir=/run/memory/home/upper,workdir=/run/memory/home/work,nosuid,nodev,noexec

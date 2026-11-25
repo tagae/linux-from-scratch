@@ -1,16 +1,17 @@
 To make an OpenPGP key:
 
   1. Plug the YubiKey and a FAT USB stick labelled KEYS.
-  2. Set the clock, as the Pi has no battery-backed one:
+  2. Set the clock, which starts each boot at the time the image was made:
        date -u -s 'YYYY-MM-DD HH:MM:SS'
   3. Run the key generator, /usr/bin/gpg-genkey:
        PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
 
 The header comment of the script lists its options. The secret key is made
-in memory, under /run/gnupg, which never swaps, and leaves only on the stick,
+in memory, under ~/.gnupg, which never swaps, and leaves only on the stick,
 which systemd mounts on /mnt/keys when something reads it and unmounts after
 10 seconds of disuse: wait that long before pulling it out. Any other FAT
-stick is mounted the same way on /mnt/usb-storage.
+stick is mounted the same way on /mnt/usb-storage. The SD card is read-only:
+whatever is written elsewhere is in memory, and gone when the Pi powers off.
 
 To format a stick for the keys, find it with `blkid`: it is sda, and mmcblk0
 is the SD card. This erases the stick:

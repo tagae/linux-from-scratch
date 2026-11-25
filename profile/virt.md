@@ -83,7 +83,7 @@ single btrfs partition, on a virtio disk, which the kernel mounts as its root (`
 The console is virtio's (`console=hvc0`).
 
 The image bakes a machine ID, so that the first boot is an ordinary one. systemd then starts as
-init. No preset runs, and nothing enables `systemd-timesyncd`, which the recipe builds.
+init. No preset runs.
 
 systemd's getty generator starts `agetty` on the console. `agetty` runs `login`, which asks for the
 password and starts bash.
