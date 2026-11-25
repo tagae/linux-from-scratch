@@ -14,6 +14,10 @@ prepare() {
 
             meson_cross_file
 
+            # timedated sets the clock and the time zone over D-Bus (timedatectl), for root and for
+            # whoever polkit lets.
+            : ${timedated:=no}
+
             # Pinned because meson would otherwise take them from the build machine: libdir (a
             # multiarch directory), split-bin (whether /usr/sbin is a symlink) and the system
             # UID/GID ranges (/etc/login.defs); the ranges match the login.defs that shadow
@@ -71,7 +75,7 @@ prepare() {
                 -Dtimesyncd=false \
                 -Dhostnamed=false \
                 -Dlocaled=false \
-                -Dtimedated=false \
+                -Dtimedated=$([ $timedated = yes ] && echo true || echo false) \
                 -Dmachined=false \
                 -Dnspawn=disabled \
                 -Dportabled=false \

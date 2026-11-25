@@ -50,12 +50,16 @@ GnuPG and `ykman` reach through its socket, as upstream ships it: any account ma
 reader is open to whoever does. The daemon runs as its own account, `pcscd`, in a user namespace, and
 opens the readers through the group that ccid's udev rules give them to.
 
-The regular account reads the state of the system (`systemctl status`, `systemctl --failed`), and
-powers the machine off, restarts it and halts it (`poweroff`, `reboot`, `halt`), but changes nothing
-else: systemd asks polkit, which the bus starts when it is first asked, and the rule of the profile
-([`50-power.rules`](pi0-pgp/files/etc/polkit-1/rules.d/50-power.rules)) answers yes to the group `users`
-for those three, and no to the rest, so `systemctl restart` fails with `Access denied`. Nobody
-authenticates (there is no PAM), and root needs no rule.
+The regular account reads the state of the system (`systemctl status`, `systemctl --failed`),
+powers the machine off, restarts it and halts it (`poweroff`, `reboot`, `halt`), and sets the clock
+(`timedatectl set-time`), but changes nothing else: systemd, and its time service `timedated`, ask
+polkit, which the bus starts when it is first asked, and the rule of the profile
+([`50-users.rules`](pi0-pgp/files/etc/polkit-1/rules.d/50-users.rules)) answers yes to the group
+`users` for those four, and no to the rest, so `systemctl restart` fails with `Access denied`.
+Whoever may set the time may set the time zone too, as the policy of `timedated` has it, but the
+zone is on the read-only root, so it stays the image's: `timedatectl set-timezone` fails with
+`Read-only file system`, for root as well. Nobody authenticates (there is no PAM), and root needs
+no rule.
 
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
@@ -107,8 +111,11 @@ one of them.
    at the time the image was made. Keys record the time they are made at, so set it:
 
    ```shell
-   date -u -s '2026-10-19 08:30:00'
+   timedatectl set-time '2026-10-19 08:30:00 UTC'
    ```
+
+   Without `UTC`, the time is read in the image's time zone. `timedated` refuses a time before the
+   date of the systemd release that it is part of; root's `date -s` sets any.
 
 2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
    authenticate, none of which expires. GnuPG's home is `~/.gnupg`, in memory (see [Keys in
@@ -282,5 +289,6 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
   imports back.
 * A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
   polkit and `pcscd` run in the sandbox of their units; the machine restarts, and forgets the files
-  written to the home directories, `/var` and `/tmp`, and the time that was set; and the machine
+  written to the home directories, `/var` and `/tmp`, and the time that was set.
+* The regular account sets the clock, while the time zone stays the image's; and the machine
   powers off.

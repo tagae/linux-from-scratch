@@ -64,12 +64,17 @@ lfs_system_install shadow
 lfs_system_install libseccomp
 lfs_sysroot_install libseccomp#dev
 
-lfs_system_install systemd
+(
+    # timedatectl, with which the regular account sets the clock, as polkit lets it.
+    timedated=yes
+    lfs_system_install systemd
+)
 lfs_sysroot_install systemd#dev
 
-# D-Bus, which systemctl, busctl and systemd-run reach systemd through (systemctl, for any user but
-# root), started by its socket. There is no polkit or logind, so only root changes anything through
-# it. It reads its configuration with expat, and links systemd's libsystemd.
+# D-Bus, which systemctl, timedatectl, busctl and systemd-run reach systemd through (systemctl, for
+# any user but root), started by its socket. There is no logind, and polkit (below) says what an
+# account other than root changes through it. It reads its configuration with expat, and links
+# systemd's libsystemd.
 lfs_system_install expat
 lfs_sysroot_install expat#dev
 lfs_system_install dbus
@@ -250,10 +255,10 @@ lfs_system_install python/yubikey-manager
 
 #===[ Polkit ]===
 
-# polkit, which systemd asks over D-Bus whether an account may power the machine off, and whose
-# rules (etc/polkit-1/rules.d of the profile) answer. It needs GLib, which needs PCRE2 (and libffi
-# and libmount above), and runs its rules in JavaScript, with duktape. GLib's code generators
-# run on the build machine, besides its libraries on the Zero.
+# polkit, which systemd and timedated ask over D-Bus whether an account may power the machine off
+# or set the clock, and whose rules (etc/polkit-1/rules.d of the profile) answer. It needs GLib,
+# which needs PCRE2 (and libffi and libmount above), and runs its rules in JavaScript, with
+# duktape. GLib's code generators run on the build machine, besides its libraries on the Zero.
 lfs_tools_install pcre2
 lfs_tools_install pcre2#dev
 lfs_tools_install glib

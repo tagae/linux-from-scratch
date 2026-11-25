@@ -1,0 +1,16 @@
+# The regular account sets the clock, which keys take the time they are made at from, with the line
+# of the message of the day: timedated does it, as polkit lets the account ask. The time zone stays
+# the image's, on the read-only root, and the account is refused the rest of timedated's.
+
+login user
+run_ok {timedatectl set-time '2032-03-04 05:06:07 UTC'}
+expect_match [run_ok {date -u '+%F %H'}] {^2032-03-04 05$} "the time that was set"
+# timedated lets anyone "set" the zone that the system has: ask for one that no image is made with.
+lassign [run {timedatectl set-timezone Antarctica/Troll}] output status
+expect_match $output {Read-only file system} "setting the time zone"
+if {$status == 0} { fail "setting the time zone succeeded" }
+lassign [run {timedatectl set-local-rtc 1}] output status
+expect_match $output {Access denied} "keeping the hardware clock in local time"
+if {$status == 0} { fail "keeping the hardware clock in local time succeeded" }
+expect_equal [run_ok {systemctl --failed --no-pager --no-legend --plain}] "" "the failed units"
+logout

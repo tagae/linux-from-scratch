@@ -2,7 +2,7 @@ To make an OpenPGP key:
 
   1. Plug the YubiKey and a FAT USB stick labelled KEYS.
   2. Set the clock, which starts each boot at the time the image was made:
-       date -u -s 'YYYY-MM-DD HH:MM:SS'
+       timedatectl set-time 'YYYY-MM-DD HH:MM:SS UTC'
   3. Run the key generator, /usr/bin/gpg-genkey:
        PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
 
