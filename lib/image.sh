@@ -139,9 +139,15 @@ find_partitions() {
 # Makes the file systems on their devices, or in their files, with --shrink to make the root file
 # system as small as its files allow. Data and metadata share their chunks (-M): a shrunk file system
 # has no room to make chunks in, and what one kind's chunks have free would be lost to the other.
+# The root subvolume is read-only where the kernel mounts the root read-only (the `ro` of the boot
+# package's command line), so that a remount alone never makes it writable.
 create_filesystems() {
+    local root_mode=rw cmdline=$system_dir/boot/cmdline.txt
+    if [ -f $cmdline ] && tr ' ' '\n' < $cmdline | grep -qx ro; then
+        root_mode=ro
+    fi
     mkfs.btrfs -f -L base --checksum xxhash -M \
-        --rootdir $base_dir --subvol rw:root/$root_volume ${1:-} $base_device
+        --rootdir $base_dir --subvol $root_mode:root/$root_volume ${1:-} $base_device
     if [ "${image_layout:-pi}" != single ]; then
         [ -b $boot_device ] || truncate -s ${boot_size}M $boot_device
         mkfs.fat -c -f 1 -F 32 -n BOOT $boot_device
@@ -164,9 +170,12 @@ stage_root() {
     else
         tar -C $system_dir --owner=0 --group=0 --numeric-owner -cf - --exclude=./boot . \
             | tar -C $root_dir -xpf -
-        # Where the boot partition is mounted.
+        # Where the boot partition can be mounted.
         mkdir $root_dir/boot
     fi
+    # The mode that systemd-tmpfiles gives the root directory at boot (root.conf), which a read-only
+    # root could not take then.
+    chmod 555 $root_dir
     # The home directory of an account belongs to it.
     local name uid gid home
     while IFS=: read -r name _ uid gid _ home _; do
@@ -176,12 +185,11 @@ stage_root() {
     done < $root_dir/etc/passwd
     # What the kernel was built from is kept next to the image (build_image), not in it.
     rm -rf $root_dir/usr/share/lfs
-    # Boards without a battery-backed clock start at systemd's build date. systemd and timesyncd
-    # never start the clock earlier than the modification time of this file, so an image boots no
-    # earlier than the time it was made. Systems without timesyncd have no use for it.
-    if [ -e $root_dir/usr/lib/systemd/systemd-timesyncd ]; then
-        mkdir -p $root_dir/var/lib/systemd/timesync
-        touch $root_dir/var/lib/systemd/timesync/clock
+    # Boards without a battery-backed clock start at systemd's build date. systemd never starts the
+    # clock earlier than the modification time of this file, so an image boots no earlier than the
+    # time it was made. Systems without systemd have no use for it.
+    if [ -e $root_dir/usr/lib/systemd/systemd ]; then
+        touch $root_dir/usr/lib/clock-epoch
     fi
     # The time zone belongs to the image, so that the system is the same for every zone. A system
     # without tzdata keeps UTC, which needs no zone file.

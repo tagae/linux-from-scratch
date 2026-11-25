@@ -20,7 +20,7 @@ Paths are from the repo root; `B=.claude/skills/lfs-build-iteration/scripts`.
   are `profile/<profile>/files/<path as installed>`, copied after the profile's packages, and root's account is set by
   `lfs_system_set_root` (`LFS_ROOT_PASSWORD`): neither is in an archive, so changing them rebuilds no package.
 - Build: `make docker-image/<profile>.img` (Linux hosts: `make image/<profile>.img`); also `make image
-  LFS_PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb}`.
+  LFS_PROFILE=pi0-pgp`. Result: `image/<profile>.img` and `work/boot/<profile>/{kernel.img,*.dtb,cmdline.txt}` (`cmdline.txt` for the Pi layout, whose boot package makes it).
 - Packages are archived once: `archive/<profile>/<name>-<version>[-component].tar.xz` + `.sha256`: the
   toolchain, the kernel and every package of the profile under one key, so profiles share no archive. The build
   tools (`<name>-bootstrap-<version>`, `<name>-tools-<version>`) are under the key `tools`, built once for every

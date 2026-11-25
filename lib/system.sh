@@ -57,12 +57,14 @@ lfs_system_build() {
     lfs_system_add_profile_files
 
     # QEMU runs on the host, which cannot see the system tree (in a Docker volume), but sees
-    # LFS_WORK_DIR/boot: the kernel that the profile installed, and the platform's device tree.
+    # LFS_WORK_DIR/boot: the kernel that the profile installed, the platform's device tree, and the
+    # kernel command line of a system that has one (the boot package's).
     rm -rf $LFS_WORK_DIR/boot/$LFS_PROFILE
     mkdir -pv $LFS_WORK_DIR/boot/$LFS_PROFILE
     (
         cd $system_dir/boot
         cp -v kernel.img ${dev_tree_blob:+${dev_tree_blob##*/}} $LFS_WORK_DIR/boot/$LFS_PROFILE/
+        [ ! -e cmdline.txt ] || cp -v cmdline.txt $LFS_WORK_DIR/boot/$LFS_PROFILE/
     )
 }
 

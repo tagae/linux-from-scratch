@@ -27,13 +27,6 @@ install() {
 
     chmod -v 1777 tmp
 
-    # File systems by the labels images give them. The Pi layout boots from a FAT partition, which
-    # holds what the firmware loads.
-    {
-        echo "LABEL=base / btrfs defaults 0 0"
-        [ "${image_layout:-pi}" = single ] || echo "LABEL=BOOT /boot vfat defaults 0 0"
-    } > etc/fstab
-
     cat > etc/lsb-release <<EOF
 DISTRIB_ID="Linux From Scratch"
 DISTRIB_CODENAME="${LFS_DISTRIB_CODENAME:-local}"

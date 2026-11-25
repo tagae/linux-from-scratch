@@ -1,8 +1,8 @@
 # BusyBox init's table, in the format <id>:<runlevels>:<action>:<process>. The system has no
 # runlevels, so the runlevels field is empty.
 #
-# The kernel mounts devtmpfs on /dev before init starts, so /dev is not mounted here. `mount -a` is
-# not used: the root entry of /etc/fstab would mount the root file system a second time.
+# The kernel mounts devtmpfs on /dev before init starts, so /dev is not mounted here. The system has
+# no fstab: the file systems are mounted here, by name.
 #
 # init runs a process through /bin/sh only when its command has shell characters, and none of these
 # has any.

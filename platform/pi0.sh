@@ -36,9 +36,10 @@ readonly qemu_flags="\
 # system on the SD card's second partition.
 readonly kernel_cmdline="earlycon=pl011,0x20201000 console=ttyAMA0,115200 root=/dev/mmcblk0p2"
 
-# Under QEMU, `rootdelay` lets the emulated SD card settle, and `initcall_blacklist` works around a
-# known QEMU pm-driver hang on this machine model.
-readonly qemu_append="$kernel_cmdline rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
+# What QEMU adds to the system's kernel command line (cmdline.txt): `rootdelay` lets the emulated SD
+# card settle, and `initcall_blacklist` works around a known QEMU pm-driver hang on this machine
+# model.
+readonly qemu_append="rootdelay=5 initcall_blacklist=bcm2835_pm_driver_init"
 
 # Disk drive interface name.
 readonly qemu_disk_if=sd
