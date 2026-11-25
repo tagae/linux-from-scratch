@@ -1,0 +1,60 @@
+.Dd November 26, 2026
+.Dt PI0-PGP 7
+.Os
+.Sh NAME
+.Nm pi0-pgp
+.Nd make OpenPGP keys offline and move them to a YubiKey
+.Sh DESCRIPTION
+To make an OpenPGP key:
+.Bl -enum
+.It
+Plug the YubiKey and a FAT USB stick labelled KEYS.
+.It
+Set the clock, which starts each boot at the time the image was made:
+.Bd -literal -offset indent -compact
+timedatectl set-time 'YYYY-MM-DD HH:MM:SS UTC'
+.Ed
+.It
+Run the key generator,
+.Pa /usr/bin/gpg-genkey :
+.Bd -literal -offset indent -compact
+PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
+.Ed
+.El
+.Pp
+The header comment of the script lists its options.
+.Ss Memory and USB sticks
+The secret key is made in memory, under
+.Pa ~/.gnupg ,
+which never swaps, and leaves only on the stick, which systemd mounts on
+.Pa /mnt/keys
+when something reads it and unmounts after 10 seconds of disuse: wait that
+long before pulling it out.
+Any other FAT stick is mounted the same way on
+.Pa /mnt/usb-storage .
+The SD card is read-only: whatever is written elsewhere is in memory, and gone
+when the Pi powers off.
+.Ss Formatting a stick for the keys
+To format a stick for the keys, find it with
+.Ic blkid :
+it is sda, and mmcblk0 is the SD card.
+This erases the stick:
+.Bd -literal -offset indent
+mkfs.fat -I -F 32 -n KEYS /dev/sda
+.Ed
+.Ss Moving the subkeys to the YubiKey
+To move the subkeys to the YubiKey, use
+.Ic gpg\ --edit-key
+and
+.Ic keytocard :
+the keys stay in memory until the Pi powers off.
+These show what the keys and the YubiKey hold:
+.Bd -literal -offset indent
+gpg --list-secret-keys
+gpg --card-status
+ykman info
+.Ed
+.Sh SEE ALSO
+.Xr gpg 1 ,
+.Xr blkid 8 ,
+.Xr mkfs.fat 8

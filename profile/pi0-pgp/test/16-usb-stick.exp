@@ -1,5 +1,6 @@
-# The regular account makes the file system that gpg-genkey wants on the stick, as the message of the
-# day says, and systemd mounts it when something reads /mnt/keys, and lets it write there.
+# The regular account makes the file system that gpg-genkey wants on the stick, as the page of the
+# system, pi0-pgp(7), says, and systemd mounts it when something reads /mnt/keys, and lets it write
+# there.
 
 login user
 # The kernel finds the stick a while after the boot, and udev its label a while after it is made.

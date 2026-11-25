@@ -63,11 +63,13 @@ no rule.
 
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
-the shell profile (`/etc/profile`), the udev rules that give the group `users` the security keys
-and USB sticks, and the polkit rule are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only
-this system has: the key procedure (`gpg-genkey` and the mount units of the stick), the mount units
-of the memory over the read-only root ([Nothing Kept](#nothing-kept)), scdaemon's configuration,
-and the drop-ins that start the mounts.
+the manual page that the message names, [`pi0-pgp(7)`](pi0-pgp/files/usr/share/man/man7/pi0-pgp.7)
+(`man pi0-pgp` on the system tells how to make a key there), the shell profile (`/etc/profile`),
+the udev rules that give the group `users` the security keys and USB sticks, and the polkit rule
+are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
+(`gpg-genkey` and the mount units of the stick), the mount units of the memory over the read-only
+root ([Nothing Kept](#nothing-kept)), scdaemon's configuration, and the drop-ins that start the
+mounts.
 
 
 Making OpenPGP Keys
@@ -281,10 +283,10 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
   zeroes memory as it is freed and has no network; nothing is kept but in memory (the root file
   system read-only even to root, the boot partition unmounted, the home directories and `/var`
   overlays on memory that does not swap, `/tmp` a tmpfs, no swap, the journal in `/run`, no shell
-  history); the programs that the system is for, and the manual pages and
-  their index, are there.
+  history); the programs that the system is for, and the manual pages and their index, the page of
+  the system among them, are there.
 * GnuPG makes a key in its home, `~/.gnupg`, signs, verifies, encrypts and decrypts.
-* A USB stick, which the account formats as the message of the day says, is mounted and written;
+* A USB stick, which the account formats as `man pi0-pgp` says, is mounted and written;
   `gpg-genkey` exports a key to it, and after a boot the key is gone from memory, and the stick's copy
   imports back.
 * A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
