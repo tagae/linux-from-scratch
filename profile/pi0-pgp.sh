@@ -108,13 +108,14 @@ lfs_system_install firmware
 lfs_system_install zlib
 lfs_sysroot_install zlib#dev
 
-# The GNU tools: the core utilities, grep and sed for the console, and gawk, which gpg-genkey, a shell
-# script, runs.
+# The GNU tools: the core utilities, find and xargs, grep and sed for the console, and gawk, which
+# gpg-genkey, a shell script, runs.
 (
     # One program for all the utilities, which otherwise carry a copy of the same library each.
     single_binary=symlinks
     lfs_system_install coreutils
 )
+lfs_system_install findutils
 lfs_system_install grep
 lfs_system_install sed
 lfs_system_install gawk

@@ -1,7 +1,7 @@
 # The programs that the system is for are there.
 
 login user
-expect_equal [run_ok {for t in gpg gpg-agent gpgconf gpg-genkey pinentry-tty ykman fido2-token fido2-cred fido2-assert mkfs.fat fsck.fat fatlabel blkid python3 man info pcscd top; do command -v $t > /dev/null || echo "missing $t"; done}] "" "the programs that are missing"
+expect_equal [run_ok {for t in gpg gpg-agent gpgconf gpg-genkey pinentry-tty ykman fido2-token fido2-cred fido2-assert mkfs.fat fsck.fat fatlabel blkid python3 man info pcscd find xargs top; do command -v $t > /dev/null || echo "missing $t"; done}] "" "the programs that are missing"
 expect_match [run_ok {gpg --version | head -n 1}] {gpg \(GnuPG\)} "gpg"
 expect_match [run_ok {gpgconf --list-components}] {scdaemon} "the components of GnuPG"
 expect_match [run_ok {ykman --version}] {YubiKey Manager} "ykman"
