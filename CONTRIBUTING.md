@@ -65,7 +65,8 @@ it in its first statement, `lfs_system_toolchain glibc|musl`, which gives the sy
 Everything else comes from the profile definition at `profile/$LFS_PROFILE.sh`, compiled with that
 toolchain. This includes the kernel (`linux` with a given set of capabilities), init (`systemd` or
 `busybox`), and further packages. Once the profile has run, the build copies the files of
-`profile/$LFS_PROFILE/files/` into the system tree.
+`profile/$LFS_PROFILE/files/` into the system tree, and then indexes the manual and Info pages of a
+system that ships them (`man=yes`, `info=yes`), so that no profile does so itself.
 
 
 Images

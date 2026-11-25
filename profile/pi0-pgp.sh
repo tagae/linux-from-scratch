@@ -287,19 +287,3 @@ lfs_system_install polkit
     user_shell=/bin/bash
     lfs_system_add_user
 )
-
-#===[ Documentation ]===
-
-# The index of the man pages, which man and apropos search, and the directory of the Info pages, which
-# info starts from. They are made here, with mandoc and texinfo built for the build machine, as the
-# system's cannot run on it. A page that has no entry for the directory is left out of it.
-if [ "${man:-no}" = yes ]; then
-    lfs_tools_install mandoc
-    makewhatis $system_dir/usr/share/man
-fi
-if [ "${info:-no}" = yes ]; then
-    lfs_tools_install texinfo
-    for file in $system_dir/usr/share/info/*.info; do
-        install-info --dir-file=$system_dir/usr/share/info/dir $file || :
-    done
-fi

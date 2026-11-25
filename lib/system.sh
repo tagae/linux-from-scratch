@@ -53,8 +53,13 @@ lfs_system_build() {
     # The Python packages of the profile are for this version, which lib/python.sh reads.
     python_version=$(lfs_package_version python)
 
-    ( . $profile_dir/$LFS_PROFILE.sh )
-    lfs_system_add_profile_files
+    # The documentation is indexed in the profile's shell, whose man and info say what the system
+    # ships, once every page is in.
+    (
+        . $profile_dir/$LFS_PROFILE.sh
+        lfs_system_add_profile_files
+        lfs_system_index_documentation
+    )
 
     # QEMU runs on the host, which cannot see the system tree (in a Docker volume), but sees
     # LFS_WORK_DIR/boot: the kernel that the profile installed, the platform's device tree, and the
@@ -169,6 +174,24 @@ lfs_system_add_profile_files() (
         if [ -x $file ]; then chmod 0755 $system_dir/$dest; else chmod 0644 $system_dir/$dest; fi
     done
 )
+
+# Indexes the manual pages, which man, whatis and apropos search, and makes the directory of the
+# Info pages, which info starts from, in a system that ships them (man=yes, info=yes), with mandoc and
+# texinfo built for the build machine, as the system's cannot run on it. An Info page that has no
+# entry for the directory is left out of it.
+lfs_system_index_documentation() {
+    if [ "${man:-no}" = yes ]; then
+        lfs_tools_install mandoc
+        makewhatis $system_dir/usr/share/man
+    fi
+    if [ "${info:-no}" = yes ]; then
+        lfs_tools_install texinfo
+        local file
+        for file in $system_dir/usr/share/info/*.info; do
+            install-info --dir-file=$system_dir/usr/share/info/dir $file || :
+        done
+    fi
+}
 
 # Runs an account tool of the build machine (useradd, usermod, chpasswd) on the system tree. The tools
 # stamp the day of a password change, which is pinned to day 19000, so that the same build makes the
