@@ -290,5 +290,5 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
 * A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
   polkit and `pcscd` run in the sandbox of their units; the machine restarts, and forgets the files
   written to the home directories, `/var` and `/tmp`, and the time that was set.
-* The regular account sets the clock, while the time zone stays the image's; and the machine
-  powers off.
+* The regular account sets the clock, while the time zone stays the image's; `top` runs in batch
+  mode and on the console; and the machine powers off.

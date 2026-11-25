@@ -14,6 +14,10 @@ prepare() {
         ncurses)
             : ${normal:=no} ${debug:=no} ${ada:=no} ${cxx_binding:=no} ${db_install:=no}
 
+            # make writes the table of fallback descriptions where there is none: a build directory
+            # that has one keeps it, whatever the descriptions asked for.
+            find . -mindepth 1 -delete
+
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
@@ -45,6 +49,10 @@ build() {
             ;;
         ncurses)
             make
+            # Where the build machine lacks tic or infocmp, which write the table, configure leaves
+            # the fallback descriptions out without a word.
+            [ -z "${fallbacks:-}" ] || grep -q 'fallback entries for' ncurses/fallback.c \
+                || bail "No fallback terminal descriptions in ncurses: tic or infocmp is missing"
             ;;
         *)
             default_build
@@ -59,13 +67,12 @@ install() {
             ;;
         ncurses)
             make install DESTDIR=$package_install_dir
-            # The tools of the terminfo database: to compile, compare, list and convert descriptions,
-            # which the systems have no use for with the few that the library holds built in.
-            for tool in tic infocmp toe captoinfo infotocap; do
-                rm -v $package_install_dir$prefix/bin/$tool
-            done
-            # Plus the script that tells the flags for compiling against it.
-            move_to_dev_component 'usr/bin/ncurses*-config'
+            # The tools of the terminfo database (to compile, compare, list and convert descriptions)
+            # go with the development files: the systems have no use for them with the few
+            # descriptions that the library holds built in, which the build tools' tic and infocmp
+            # write. So does the script that tells the flags for compiling against ncurses.
+            move_to_dev_component usr/bin/tic usr/bin/infocmp usr/bin/toe usr/bin/captoinfo \
+                usr/bin/infotocap 'usr/bin/ncurses*-config'
             move_to_docs_component
             ;;
         dev)

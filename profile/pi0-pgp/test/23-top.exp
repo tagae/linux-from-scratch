@@ -1,0 +1,20 @@
+# top runs: ncurses, which it draws with, has the descriptions of the terminals built in, as the
+# system has no database of them. It takes the dumb one in batch mode, and the console's own on the
+# screen, which q leaves.
+
+login user
+# The whole of the output, a line per process, is more than the console's buffer keeps.
+expect_match [run_ok {top -b -n 1 > /tmp/top.out && head -n 5 /tmp/top.out}] {load average:} "top in batch mode"
+send -- "top\r"
+expect {
+    "load average:" { }
+    timeout { fail "top showed nothing on the console" }
+    eof     { fail "QEMU exited while top ran" }
+}
+send -- "q"
+expect {
+    -re {[#$] $} { }
+    timeout { fail "q did not leave top" }
+    eof     { fail "QEMU exited while top ran" }
+}
+logout
