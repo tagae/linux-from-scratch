@@ -1,0 +1,15 @@
+# The regular account copies with dd: a file to a partition of the drive, whatever the partition
+# held, and the beginning of the stick to another partition. Each copy is read back from its device,
+# past the cache, and compared.
+
+login user
+run_ok {dd if=/dev/urandom of=/tmp/data bs=1M count=4 status=none}
+set sum [run_ok {sha256sum < /tmp/data}]
+run_ok {dd if=/tmp/data of=/dev/sdb1 bs=1M conv=fsync status=none}
+expect_equal [run_ok {dd if=/dev/sdb1 bs=1M count=4 iflag=direct status=none | sha256sum}] $sum "the copy of the file"
+
+run_ok {dd if=/dev/sda of=/dev/sdb2 bs=1M count=4 iflag=direct oflag=direct status=none}
+set stick [run_ok {dd if=/dev/sda bs=1M count=4 iflag=direct status=none | sha256sum}]
+expect_equal [run_ok {dd if=/dev/sdb2 bs=1M count=4 iflag=direct status=none | sha256sum}] $stick "the copy of the stick"
+run_ok {rm /tmp/data}
+logout

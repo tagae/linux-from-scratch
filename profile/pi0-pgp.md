@@ -76,8 +76,9 @@ USB sticks, drives and card readers are the block devices `/dev/sda`, `/dev/sdb`
 order the system finds them, and their partitions (`/dev/sda1`). `fdisk -l` shows the model and size
 of each, and `blkid` the file systems that they hold. A udev rule
 ([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives them to the
-group `users`, and leaves the SD card, which is not on USB, to root. Check the name of a device
-before writing to it, as most of these commands erase without asking.
+group `users`, and leaves the SD card, which is not on USB, to root: the regular account does what
+this section tells, but for the mounts that systemd does not make. Check the name of a device before
+writing to it, as most of these commands erase without asking.
 
 ### Partitioning
 
@@ -131,6 +132,49 @@ without its manual pages, which take Sphinx to build (`btrfs --help` lists the c
 programs without zstd and LZO: the kernel reads the files that these compress, which `btrfs restore`
 cannot.
 
+### Mounting and Moving Files
+
+systemd mounts two FAT file systems for the regular account, the first time anything reads their
+directory, whoever it is:
+
+* the one labelled `KEYS` on `/mnt/keys`,
+* and one with another label on `/mnt/usb-storage`: a udev rule
+  ([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) links it as
+  `/dev/usb-storage`, which
+  [`mnt-usb\x2dstorage.mount`](pi0-pgp/files/usr/lib/systemd/system/mnt-usb%5Cx2dstorage.mount)
+  mounts. Of several, the link follows one.
+
+It unmounts them when they have not been used for ten seconds: wait that long before pulling a device
+out. Without one, the access fails after ten seconds. Both mounts are `nosuid`, `nodev` and
+`noexec`. The KEYS stick is never on `/mnt/usb-storage`, and `gpg-genkey` writes to `/mnt/keys`
+alone, so that a key never lands on a stick that was plugged in for another purpose.
+
+Nothing else is mounted by itself: root mounts ext4 and BTRFS, and further FAT file systems, and
+unmounts them before the device is pulled out.
+
+```shell
+mount --mkdir -o nosuid,nodev,noexec /dev/sdb2 /tmp/archive
+cp -r /mnt/usb-storage/photos /tmp/archive
+umount /tmp/archive
+```
+
+The top directory of a new ext4 or BTRFS file system is root's, whoever made it. Mounting hands a
+file system to the kernel, whose code a crafted one can exploit.
+
+### Copying Devices
+
+`dd`, of the core utilities, copies a device or a partition to another, or to a file, block by block.
+This copies `/dev/sda` over `/dev/sdb`, which must be at least as large:
+
+```shell
+dd if=/dev/sda of=/dev/sdb bs=4M conv=fsync status=progress
+```
+
+`dd` overwrites what `of=` names without asking, mounted or not. An image of a device goes to a file
+on a mounted file system with room for it, as the memory of the system is too small for most. Writing
+over flash storage does not erase it for certain: sticks, cards and SSDs keep blocks that no write
+reaches.
+
 
 Making OpenPGP Keys
 -------------------
@@ -151,23 +195,10 @@ sudo dd if=image/pi0-pgp.img of=/dev/disk4 bs=4M status=progress
 The Zero has one USB data port, the micro-USB one marked *USB*, so connect a hub to it (through an
 OTG adapter) and plug both the YubiKey and a USB stick in the hub. The stick holds a FAT file
 system labelled `KEYS`, on its first partition or on the whole device, which
-[the Pi can make](#formatting-the-usb-stick). Log in as the regular account on the serial console,
-whose shell is bash: arrow keys, Tab completion and a history of the session, which is not saved, as
-commands carry passphrases.
-
-systemd mounts the stick on `/mnt/keys` the first time anything reads the directory, whoever it is,
-and unmounts it when it has not been used for ten seconds: wait that long before pulling the stick
-out. Without a stick, the access fails after ten seconds.
-
-Any other USB stick with a FAT file system, whatever its label, is mounted the same way on
-`/mnt/usb-storage`, for the regular account to read and write: a udev rule
-([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) links it as
-`/dev/usb-storage`, and
-[`mnt-usb\x2dstorage.mount`](pi0-pgp/files/usr/lib/systemd/system/mnt-usb%5Cx2dstorage.mount) mounts
-that link. Both mounts are `nosuid`, `nodev` and `noexec`. The KEYS stick is never on
-`/mnt/usb-storage`, and `gpg-genkey` writes to `/mnt/keys` alone, so that a key never lands on a
-stick that was plugged in for another purpose. With two sticks that are not KEYS, the link follows
-one of them.
+[the Pi can make](#formatting-the-usb-stick), and which systemd mounts on `/mnt/keys`
+([Mounting and Moving Files](#mounting-and-moving-files)). Log in as the regular account on the
+serial console, whose shell is bash: arrow keys, Tab completion and a history of the session, which
+is not saved, as commands carry passphrases.
 
 1. The Pi has no battery-backed clock, and the system keeps nothing across boots: every boot starts
    at the time the image was made. Keys record the time they are made at, so set it:
@@ -353,5 +384,6 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
 * The regular account sets the clock, while the time zone stays the image's, and `top` runs in batch
   mode and on the console.
 * A drive plugged into the running machine is partitioned by the regular account, which makes and
-  checks a FAT, an ext4 and a BTRFS file system on it, while the SD card is refused to it; and the
-  machine powers off.
+  checks a FAT, an ext4 and a BTRFS file system on it, while the SD card is refused to it; files go
+  from the stick through each of them, which the account is refused to mount and root does; `dd`
+  copies a file and the stick to partitions; and the machine powers off.

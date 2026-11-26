@@ -90,6 +90,31 @@ BTRFS has no manual pages: see
 .Ic btrfs --help
 and
 .Ic mkfs.btrfs --help .
+.Ss Moving files
+The regular account reads and writes the FAT file systems that systemd mounts.
+root mounts ext4 and BTRFS, and any further device, and unmounts them before
+the device is pulled out:
+.Bd -literal -offset indent
+mount --mkdir -o nosuid,nodev,noexec /dev/sdb2 /tmp/archive
+cp -r /mnt/usb-storage/photos /tmp/archive
+umount /tmp/archive
+.Ed
+.Pp
+Mounting a file system has the kernel read whatever it holds: after a device
+that you do not trust, power off before you work on secrets.
+.Ss Copying devices
+.Ic dd
+copies a device or a partition to another, or to a file, block by block.
+This copies /dev/sda over /dev/sdb, which must be at least as large:
+.Bd -literal -offset indent
+dd if=/dev/sda of=/dev/sdb bs=4M conv=fsync status=progress
+.Ed
+.Pp
+dd overwrites what
+.Cm of=
+names without asking, mounted or not.
+Writing over flash storage does not erase it for certain, as it keeps blocks
+that no write reaches.
 .Ss Formatting a stick for the keys
 To format a stick for the keys, find it with
 .Ic blkid :
@@ -111,6 +136,7 @@ gpg --card-status
 ykman info
 .Ed
 .Sh SEE ALSO
+.Xr dd 1 ,
 .Xr gpg 1 ,
 .Xr blkid 8 ,
 .Xr cfdisk 8 ,
@@ -119,4 +145,5 @@ ykman info
 .Xr fsck.fat 8 ,
 .Xr mke2fs 8 ,
 .Xr mkfs.fat 8 ,
+.Xr mount 8 ,
 .Xr sfdisk 8

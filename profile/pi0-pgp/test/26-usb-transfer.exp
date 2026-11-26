@@ -1,0 +1,39 @@
+# Files go from one storage device to another: root mounts the file systems of the drive, the stick
+# along with them, copies a file from each to the next, and reads every copy back from its device.
+# The regular account is refused to mount one, and finds the drive's file systems sound afterwards.
+
+login user
+lassign [run {mount /dev/sdb2 /tmp}] output status
+expect_match $output {must be superuser} "mounting ext4 as the regular account"
+if {$status == 0} { fail "mounting ext4 as the regular account succeeded" }
+logout
+
+# The stick, then the drive's FAT, ext4 and btrfs file systems.
+set devices {/dev/sda /tmp/stick /dev/sdb1 /tmp/fat /dev/sdb2 /tmp/ext4 /dev/sdb3 /tmp/btrfs}
+
+login root
+foreach {device directory} $devices {
+    run_ok "mount --mkdir -o nosuid,nodev,noexec $device $directory"
+}
+foreach {directory type} {/tmp/stick vfat /tmp/fat vfat /tmp/ext4 ext4 /tmp/btrfs btrfs} {
+    expect_match [run_ok "awk '\$5 == \"$directory\"' /proc/self/mountinfo"] " - $type " "the file system on $directory"
+}
+run_ok {dd if=/dev/urandom of=/tmp/stick/transfer.bin bs=1M count=4 status=none}
+set sum [run_ok {sha256sum < /tmp/stick/transfer.bin}]
+run_ok {cp /tmp/stick/transfer.bin /tmp/ext4/ && cp /tmp/ext4/transfer.bin /tmp/btrfs/ && cp /tmp/btrfs/transfer.bin /tmp/fat/}
+run_ok {umount /tmp/stick /tmp/fat /tmp/ext4 /tmp/btrfs}
+
+# With the caches dropped, what is read comes from the devices.
+run_ok {echo 3 > /proc/sys/vm/drop_caches}
+foreach {device directory} $devices {
+    run_ok "mount -o ro $device $directory"
+    expect_equal [run_ok "sha256sum < $directory/transfer.bin"] $sum "the copy on $device"
+    run_ok "umount $directory"
+}
+logout
+
+login user
+run_ok {fsck.fat -n /dev/sdb1}
+run_ok {fsck.ext4 -f -n /dev/sdb2}
+run_ok {btrfs check /dev/sdb3}
+logout
