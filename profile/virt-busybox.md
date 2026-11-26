@@ -27,9 +27,9 @@ Accounts
 
 The system has one account, `root`, with no password unless `LFS_ROOT_PASSWORD` sets one, and ash as
 its shell. The static accounts are those of [`package/busybox/etc`](../package/busybox/etc), where
-root is locked: the build sets root's password, or empties it.
-root's prompt is in [`virt-busybox/files/root/.profile`](virt-busybox/files/root/.profile), which ash reads when
-root logs in. The system has neither an issue nor a message of the day.
+root is locked: the build sets root's password, or empties it. root's prompt is in
+[`virt-busybox/files/root/.profile`](virt-busybox/files/root/.profile), which ash reads when root
+logs in. The system has neither an issue nor a message of the day.
 
 
 Building and Booting
@@ -44,11 +44,11 @@ make docker-virt-busybox-test    # the same, building through Docker Compose
 
 Log in as `root` on the console. `poweroff` stops the machine, and QEMU exits.
 
-`make virt-busybox-test` runs the tests of [`virt-busybox/test/`](virt-busybox/test): the console stays
-silent after the boot; BusyBox is init and `/bin/sh`, the applets of the profile are there and those
-that the kernel cannot serve are not; init has mounted its file systems, and the system has no issue,
-message of the day or module directory; init keeps a getty on the console; and the machine restarts,
-without losing what was written before, and powers off.
+`make virt-busybox-test` runs the tests of [`virt-busybox/test/`](virt-busybox/test): the console;
+BusyBox as init, `/bin/sh` and the applets of the profile, without those that the kernel cannot
+serve; the file systems that init mounts, and what the system lacks (issue, message of the day,
+module directory); the getty that init keeps on the console; a restart that keeps what was written;
+and the power-off.
 
 
 How It Boots

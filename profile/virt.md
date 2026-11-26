@@ -6,11 +6,9 @@ and to log root in on its console. It is the default profile, and is defined in
 [`virt.sh`](virt.sh).
 
 It shows that the framework produces a system that boots cleanly, logs root in, and powers off:
-`make test` boots it and runs its tests ([`virt/test/`](virt/test)), and so does CI. They check that
-the console stays silent after the boot, that the issue and the message of the day are shown, that
-the system is healthy, that D-Bus answers, that systemd gives units the sandbox they ask for (a
-filter of system calls, no new privileges, namespaces), that the machine restarts and is healthy
-after it, and that it powers off.
+`make test` boots it and runs its tests ([`virt/test/`](virt/test)), and so does CI. They check the
+console, the issue and the message of the day, the health of the system, D-Bus, the sandboxes that
+systemd gives units, a restart, and the power-off.
 
 
 What the System Holds
@@ -66,9 +64,9 @@ make docker-virt-test    # the same, building through Docker Compose
 
 `virt` is the default profile, so `make test` and `make docker-test` do the same.
 
-Log in as `root` on the console. `poweroff` stops the machine, and QEMU exits. QEMU is given the
-build machine's architecture, so that it can run the guest with an accelerator (HVF on macOS, KVM on
-Linux), with one CPU and 512 MiB of memory.
+Log in as `root` on the console. `reboot` restarts the machine; `poweroff` stops it, and QEMU exits.
+QEMU is given the build machine's architecture, so that it can run the guest with an accelerator
+(HVF on macOS, KVM on Linux), with one CPU and 512 MiB of memory.
 
 Devices that the profile does not bring, such as a USB stick, are added with `LFS_QEMU_EXTRA`. The
 machine has the controller (xHCI) for USB devices, but the kernel of this profile has no driver for
@@ -89,7 +87,7 @@ systemd's getty generator starts `agetty` on the console. `agetty` runs `login`,
 password and starts bash.
 
 A qcow2 overlay (`image/virt.qcow2`) takes what the system writes, so that the image stays as it was
-made. The overlay lasts until the image is made anew. `reboot` restarts the machine, and `poweroff` stops QEMU.
+made. The overlay lasts until the image is made anew.
 
 
 Kernel
@@ -103,6 +101,7 @@ capabilities that the profile names, in `package/linux/`:
 | `btrfs`     | The root file system that images are made with                                       |
 | `console`   | The terminal layer that the console builds on                                        |
 | `hardening` | Self-protection, with the options that the architecture and the kernel add           |
+| `modules`   | Loadable modules, such as the `autofs4` that systemd loads                           |
 | `systemd`   | What systemd relies on: cgroups, namespaces, seccomp, Unix sockets, BPF, `autofs`... |
 
 The platform's layer (`virt.config`) adds PCI Express, the virtio framework, the block device, the

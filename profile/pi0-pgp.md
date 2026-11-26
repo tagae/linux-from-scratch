@@ -23,8 +23,8 @@ Privacy
   typed, a passphrase included.
 
 It does not encrypt storage (there is no LUKS), nor check at boot that the SD card holds what was
-written to it. Its kernel reads what is plugged into it, and a device or a file system made to attack
-it can exploit a flaw in that code: power the Pi off between such a device and secrets.
+written to it. Its kernel reads what is plugged into it, and a device or a file system made to
+attack it can exploit a flaw in that code: power the Pi off between such a device and secrets.
 
 
 Quick Start
@@ -42,7 +42,7 @@ Quick Start
    ./lfs qemu image/pi0-pgp.img
    ```
 
-   The image won't be modified, since all changes are written to an overlay.
+   The image stays unmodified: the writes go to an overlay.
 
 3. Flash the image on an SD card:
 
@@ -50,46 +50,42 @@ Quick Start
    sudo dd if=image/pi0-pgp.img of=/dev/$SD_CARD_DEV bs=4M status=progress
    ```
 
-4. Boot the SD card on the Pi, and log in on the serial console (e.g., through an USB TTL
-   adapter), the only console that the system has.
+4. Boot the SD card on the Pi, and log in on the serial console (e.g., through a USB TTL adapter),
+   the only console that the system has.
 
 
 Accounts
 --------
 
-The system has two accounts, `root` and `$LFS_USER`, the later defaulting to the user who built the
-image. Both accounts are passwordless, unless `LFS_ROOT_PASSWORD` or `LFS_PASSWORD` are set
-respectively upon building the image.
+The system has two accounts: `root`, and `$LFS_USER`, by default the user who built the image.
+Neither has a password unless `LFS_ROOT_PASSWORD` or `LFS_PASSWORD`, respectively, sets one when
+the image is built.
 
-The regular account makes keys (`gpg`, `gpg-genkey`), partitions USB sticks and drives, makes and
-checks their file systems and copies them ([USB Storage](#usb-storage)), reads and writes the FAT
-ones, and uses a YubiKey: the security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's
-tools reach the FIDO2 and OTP interfaces through, belong to the group `users`. The smart card
-interface is `pcscd`'s, which GnuPG and `ykman` reach through its socket, as upstream ships it: any
-account may connect, and every reader is open to whoever does. The daemon runs as its own account,
-`pcscd`, in a user namespace, and opens the readers through the group that ccid's udev rules give
-them to.
+The regular account makes keys (`gpg`, `gpg-genkey`), works on USB sticks and drives ([USB
+Storage](#usb-storage)), and uses a YubiKey. The security keys' `/dev/hidraw*` devices, through
+which `ykman` and libfido2's tools reach the FIDO2 and OTP interfaces, belong to the group `users`.
+The smart card interface is `pcscd`'s, which GnuPG and `ykman` reach through its socket, as
+upstream ships it: any account may connect, and every reader is open to whoever does. The daemon
+runs as its own account, `pcscd`, in a user namespace, and opens the readers through the group that
+ccid's udev rules give them to.
 
 The regular account reads the state of the system (`systemctl status`, `systemctl --failed`),
 powers the machine off, restarts it and halts it (`poweroff`, `reboot`, `halt`), and sets the clock
-(`timedatectl set-time`), but changes nothing else: systemd, and its time service `timedated`, ask
-polkit, which the bus starts when it is first asked, and the rule of the profile
+(`timedatectl set-time`), but changes nothing else (`systemctl restart` fails with `Access
+denied`): systemd and its time service, `timedated`, ask polkit, and the profile's rule
 ([`50-users.rules`](pi0-pgp/files/etc/polkit-1/rules.d/50-users.rules)) answers yes to the group
-`users` for those four, and no to the rest, so `systemctl restart` fails with `Access denied`.
-Whoever may set the time may set the time zone too, as the policy of `timedated` has it, but the
-zone is on the read-only root, so it stays the image's: `timedatectl set-timezone` fails with
-`Read-only file system`, for root as well. Nobody authenticates (there is no PAM), and root needs
-no rule.
+`users` for those four, and no to the rest. Whoever may set the time may set the time zone too, as
+the policy of `timedated` has it, but the zone is on the read-only root: `timedatectl set-timezone`
+fails with `Read-only file system`, for root as well. Nobody authenticates (there is no PAM), and
+root needs no rule.
 
-The issue that `agetty` prints before the login prompt (which names the regular account: the build
-replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
-the manual page that the message names, [`pi0-pgp(7)`](pi0-pgp/files/usr/share/man/man7/pi0-pgp.7)
-(`man pi0-pgp` on the system tells how to use it), the shell profile (`/etc/profile`), the udev
-rules that give the group `users` the security keys, USB sticks and drives, and the polkit rule are
-files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
-(`gpg-genkey` and the mount units of the stick), the mount units of the memory over the read-only
-root ([Nothing Kept](#nothing-kept)), scdaemon's configuration, and the drop-ins that start the
-mounts.
+The files of [`pi0-pgp/files/`](pi0-pgp/files) give the system its look and policy: the issue that
+`agetty` prints before the login prompt, which names the regular account (the build replaces
+`$LFS_USER` in these files); the message of the day, which names the manual page
+[`pi0-pgp(7)`](pi0-pgp/files/usr/share/man/man7/pi0-pgp.7); the shell profile; the udev rules and
+the polkit rule above; `gpg-genkey` and the mount units of the stick; the mount units of the memory
+over the read-only root ([Nothing Kept](#nothing-kept)) and the drop-ins that start the mounts; and
+scdaemon's configuration.
 
 
 USB Storage
@@ -103,8 +99,8 @@ USB sticks, drives and card readers are the block devices `/dev/sda`, `/dev/sdb`
 order the system finds them, and their partitions (`/dev/sda1`). `fdisk -l` shows the model and size
 of each, and `blkid` the file systems that they hold. A udev rule
 ([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives them to the
-group `users`, and leaves the SD card, which is not on USB, to root: the regular account does what
-this section tells, but for the mounts that systemd does not make. Check the name of a device before
+group `users`, and leaves the SD card, which is not on USB, to root: the regular account does all
+that this section tells but the mounts that systemd does not make. Check the name of a device before
 writing to it, as most of these commands erase without asking.
 
 ### Partitioning
@@ -126,9 +122,9 @@ The first type is GPT's "basic data", which FAT partitions have, and `L` is Linu
 options remove the signatures of earlier file systems, which `sfdisk`, reading a script, otherwise
 leaves, with a warning.
 
-As the regular account, `sfdisk` and `fdisk` say that re-reading the partition table failed, since
-only root may ask the kernel to: udev does it as these tools, `cfdisk` too, close the device.
-`sfdisk` refuses a device with a mounted partition, and `fdisk` warns of it.
+Run by the regular account, `sfdisk` and `fdisk` report that re-reading the partition table failed,
+as only root may ask the kernel to; udev has the table re-read when these tools, `cfdisk` too,
+close the device. `sfdisk` refuses a device with a mounted partition, and `fdisk` warns of it.
 
 ### File Systems
 
@@ -171,9 +167,9 @@ directory, whoever it is:
   [`mnt-usb\x2dstorage.mount`](pi0-pgp/files/usr/lib/systemd/system/mnt-usb%5Cx2dstorage.mount)
   mounts. Of several, the link follows one.
 
-It unmounts them when they have not been used for ten seconds: wait that long before pulling a device
-out. Without one, the access fails after ten seconds. Both mounts are `nosuid`, `nodev` and
-`noexec`. The KEYS stick is never on `/mnt/usb-storage`, and `gpg-genkey` writes to `/mnt/keys`
+It unmounts them when they have not been used for ten seconds: wait that long before pulling a
+device out. Without a device, the access fails after ten seconds. Both mounts are `nosuid`, `nodev`
+and `noexec`. The KEYS stick is never on `/mnt/usb-storage`, and `gpg-genkey` writes to `/mnt/keys`
 alone, so that a key never lands on a stick that was plugged in for another purpose.
 
 Nothing else is mounted by itself: root mounts ext4 and BTRFS, and further FAT file systems, and
@@ -190,17 +186,17 @@ file system to the kernel ([Privacy](#privacy)).
 
 ### Copying Devices
 
-`dd`, of the core utilities, copies a device or a partition to another, or to a file, block by block.
-This copies `/dev/sda` over `/dev/sdb`, which must be at least as large:
+`dd`, of the core utilities, copies a device or a partition to another, or to a file, block by
+block. This copies `/dev/sda` over `/dev/sdb`, which must be at least as large:
 
 ```shell
 dd if=/dev/sda of=/dev/sdb bs=4M conv=fsync status=progress
 ```
 
-`dd` overwrites what `of=` names without asking, mounted or not. An image of a device goes to a file
-on a mounted file system with room for it, as the memory of the system is too small for most. Writing
-over flash storage does not erase it for certain: sticks, cards and SSDs keep blocks that no write
-reaches.
+`dd` overwrites what `of=` names without asking, mounted or not. An image of a device goes to a
+file on a mounted file system with room for it, as the memory of the system is too small for most.
+Writing over flash storage does not erase it for certain: sticks, cards and SSDs keep blocks that no
+write reaches.
 
 
 Making OpenPGP Keys
@@ -253,9 +249,8 @@ is not saved, as commands carry passphrases.
    (authentication); then `save`. `gpg --card-status` lists the three keys on the card. The stick
    keeps the whole secret key.
 
-GnuPG's home is `~/.gnupg`, for root as for the regular account: in memory, as the home
-directories are, so empty after a reboot (`gpg --import /mnt/keys/you@example.org-secret.asc` brings
-a key back from the stick). `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal
+GnuPG's home, `~/.gnupg` for root as for the regular account, is empty after a reboot: `gpg
+--import /mnt/keys/you@example.org-secret.asc` brings a key back from the stick. `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal
 (`echo hi | gpg --clearsign`), for the PIN prompt to find it.
 
 ### Formatting the Stick for the Keys
@@ -292,8 +287,7 @@ system runs.
   ([`run-memory.mount`](pi0-pgp/files/usr/lib/systemd/system/run-memory.mount)), which only root
   opens, and which holds 64 MB at most. `/tmp` is systemd's tmpfs, the journal is in `/run`, and
   there is no swap.
-* `systemd-tmpfiles` leaves `/etc` and `/srv` as the image has them
-  ([`read-only-root.conf`](pi0-pgp/files/etc/systemd/system/systemd-tmpfiles-setup.service.d/read-only-root.conf)).
+* `systemd-tmpfiles` leaves `/etc` and `/srv` as the image has them ([`read-only-root.conf`][tmpfiles]).
 * The clock starts every boot at the time the image was made (systemd reads it from the date of
   `/usr/lib/clock-epoch`), whatever time was set before.
 
@@ -303,8 +297,7 @@ Keys in Memory
 
 `gpg-genkey` keeps GnuPG's home, with the keyring, the agent's private keys, the random pool and
 the revocation certificate, in `~/.gnupg`, in the memory of the overlay of `/home`
-([Nothing Kept](#nothing-kept)), and leaves it there: `gpg` lists and edits the keys at any moment,
-until the Pi powers off.
+([Nothing Kept](#nothing-kept)): `gpg` lists and edits the keys until the Pi powers off.
 
 * The memory, `/run/memory`, is mounted `noswap`: the kernel never writes its pages to swap. A tmpfs
   without that option can, `/dev/shm` and `/run` included, if the kernel has swap: the guarantee
@@ -366,30 +359,14 @@ Testing
 -------
 
 `make pi0-pgp-test` boots the system in QEMU's emulation of the Zero, which takes emulated USB
-devices (`LFS_QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey: the
-key can only be tried on the Pi.
+devices (`LFS_QEMU_EXTRA="-device usb-ccid"`, a stick as a `usb-storage` drive) but not a YubiKey:
+the key can only be tried on the Pi.
 
-It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (README, Tests):
+It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test) in order, on one boot ([README,
+Tests](../README.md#tests)), each named after what it checks: the console and the accounts, and
+what polkit lets them do; the kernel, the memory that keeps nothing, and the programs and manual
+pages of the system; GnuPG, `gpg-genkey` and the KEYS stick; the smart card reader and the units'
+sandboxes; restarts, which forget what was done; the clock and `top`; and the partitions, file
+systems, mounts and copies of a drive plugged into the running machine.
 
-* The console stays silent after the boot; the issue is on it before the login prompt and the message
-  of the day after the login; root and the regular account log in; the regular account powers the
-  machine off and restarts it, and is refused the rest.
-* The system is healthy as `systemctl status` shows it; the kernel shows errors only on the console,
-  zeroes memory as it is freed, has no network and has the FAT, ext4 and BTRFS file systems; nothing
-  is kept but in memory (the root file system read-only even to root, the boot partition unmounted,
-  the home directories and `/var` overlays on memory that does not swap, `/tmp` a tmpfs, no swap,
-  the journal in `/run`, no shell history); the programs that the system is for, and the manual pages
-  and their index, the page of the system among them, are there.
-* GnuPG makes a key in its home, `~/.gnupg`, signs, verifies, encrypts and decrypts.
-* A USB stick, which the account formats as `man pi0-pgp` says, is mounted and written;
-  `gpg-genkey` exports a key to it, and after a boot the key is gone from memory, and the stick's copy
-  imports back.
-* A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
-  polkit and `pcscd` run in the sandbox of their units; the machine restarts, and forgets the files
-  written to the home directories, `/var` and `/tmp`, and the time that was set.
-* The regular account sets the clock, while the time zone stays the image's, and `top` runs in batch
-  mode and on the console.
-* A drive plugged into the running machine is partitioned by the regular account, which makes and
-  checks a FAT, an ext4 and a BTRFS file system on it, while the SD card is refused to it; files go
-  from the stick through each of them, which the account is refused to mount and root does; `dd`
-  copies a file and the stick to partitions; and the machine powers off.
+[tmpfiles]: pi0-pgp/files/etc/systemd/system/systemd-tmpfiles-setup.service.d/read-only-root.conf
