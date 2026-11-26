@@ -100,8 +100,7 @@ command -v git > /dev/null 2>&1 || {
     exit 2
 }
 
-# git reads the project's configuration, not the user's, so that it behaves the same for everyone,
-# and trusts the checkout, whose directory a container can show as another user's.
+# git reads the project's configuration (bin/gitconfig), not the user's.
 export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
 
 # A repository that git cannot read is an error, not a repository with no tags.

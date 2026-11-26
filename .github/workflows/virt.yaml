@@ -1,8 +1,7 @@
 name: virt
 
-# The system of the virt profile, which the Makefile builds by default, built and booted in
-# QEMU, on the runner and through Docker Compose. CI (ci.yaml) calls it once the build tools are
-# built (tools.yaml), so that it only unpacks their archives.
+# The system of the virt profile, the Makefile's default, built and booted in QEMU, on the runner
+# and through Docker Compose (ci.yaml).
 on:
   workflow_call:
     inputs:

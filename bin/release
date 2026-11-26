@@ -29,8 +29,7 @@ case "${1:-}" in
         ;;
 esac
 
-# Git reads the project configuration, not the user's, so that it behaves the same for everyone,
-# and trusts the checkout, whose directory a container can show as another user's.
+# Git reads the project's configuration (bin/gitconfig), not the user's.
 export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
 
 # Pending changes, untracked files included, are not in the commit that the tag would name.

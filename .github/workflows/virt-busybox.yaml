@@ -1,8 +1,7 @@
 name: virt-busybox
 
 # The system of the virt-busybox profile, with BusyBox in place of systemd, built and booted in
-# QEMU, on the runner and through Docker Compose. CI (ci.yaml) calls it once the build tools are
-# built (tools.yaml), so that it only unpacks their archives.
+# QEMU, on the runner and through Docker Compose (ci.yaml).
 on:
   workflow_call:
     inputs:

@@ -70,8 +70,7 @@ esac
 # The paths of git and of the rules are those of the repository, wherever the script is run from.
 cd "$(dirname "$0")/.."
 
-# git reads the project's configuration, not the user's, so that it behaves the same for everyone,
-# and trusts the checkout, whose directory a container can show as another user's.
+# git reads the project's configuration (bin/gitconfig), not the user's.
 export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
 
 readonly archive_dir=archive
@@ -203,8 +202,7 @@ select_profile_package() {
         profile_package "$profile $1"
 }
 
-# Rule 8, for a path of profile/: the profile is selected if it runs on the platform that
-# changed.
+# Rule 7, for a profile: it is selected if it runs on the platform that changed.
 select_profile_of_platform() {
     local profile=${1#profile/}
     profile=${profile%.sh}

@@ -1,4 +1,5 @@
-# Git configuration for the project's scripts.
+# Git configuration for the project's scripts, which read it in place of the user's, so that git
+# behaves the same for everyone.
 [safe]
     # A container can show the directory of the checkout as another user's, which Git refuses to
     # work in. The scripts change into the project's own directory before they run Git.

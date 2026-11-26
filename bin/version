@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# Prints the current project version in SemVer formate.
+# Prints the version of the project's tree, in SemVer format (CONTRIBUTING.md, Versions and Commits).
 #
-# When not in the `main` branch, the version is a pre-release of the next one, named by the
-# abbreviated hash of the top commit, and ending in `-dirty` if the tree differs from its commit
-# (`0.2.0-2c03742-dirty`). The next version is calculated by bumping the most recent tag, according
-# to the commits more recent than the tag.
+# A clean tree on the commit of the most recent tag has the tag's version. Any other is a
+# pre-release of the next version, named by `r` and the abbreviated hash of the top commit, and
+# ending in `-dirty` if the tree differs from its commit (`0.2.0-r2c03742-dirty`). The next version
+# is the most recent tag, bumped by the commits since it.
 #
 # Usage: bin/version [--next]    --next: the next version, which bin/release tags
 
@@ -23,8 +23,7 @@ command -v git > /dev/null 2>&1 || {
     exit 2
 }
 
-# Git reads the project configuration, not the user's, so that it behaves the same for everyone,
-# and trusts the checkout, whose directory a container can show as another user's.
+# Git reads the project's configuration (bin/gitconfig), not the user's.
 export GIT_CONFIG_GLOBAL=$PWD/bin/gitconfig GIT_CONFIG_SYSTEM=/dev/null
 
 git rev-parse --git-dir > /dev/null

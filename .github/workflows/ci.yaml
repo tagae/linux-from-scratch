@@ -1,14 +1,13 @@
 name: CI
 
-# Everything that CI builds and boots for a commit, in one run: the sources and the build tools
-# (tools.yaml), which every system shares, then the system of each profile, built and booted in
-# QEMU (<profile>.yaml), which only unpacks the archives of the tools. GitHub holds the commit as
-# pending until the last job of the run ends. A workflow that another one starts when it ends
-# (`workflow_run`) brings its checks to the commit only once it has started, and until then the
-# commit reads as passed.
-# Each profile is a job of its own, so that a failure in one leaves the others to finish. The
-# profiles are also in check/lint and .github/workflows/vulnerabilities.yaml.
-# A push that changes nothing but documentation builds nothing.
+# Everything that CI builds and boots for a commit: the sources and the build tools (tools.yaml),
+# which every system shares, then the system of each profile, built and booted in QEMU
+# (<profile>.yaml), which only unpacks the tools' archives. It is one run, so that GitHub holds the
+# commit as pending until its last job ends: a workflow that another starts when it ends
+# (`workflow_run`) shows its checks only once it has started, and the commit reads as passed until
+# then. Each profile is a job of its own, so that a failure in one leaves the others to finish; the
+# profiles are also in check/lint and vulnerabilities.yaml. A push that changes nothing but
+# documentation builds nothing.
 on:
   push:
     branches: [main]

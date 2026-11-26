@@ -7,7 +7,7 @@ ignore:
   - vulnerability: CVE-2019-1010023
   - vulnerability: CVE-2019-1010024
   - vulnerability: CVE-2019-1010025
-  # A JFS flaw of 2020, fixed in kernel 5.10.4,
+  # A JFS flaw of 2020, fixed in kernel 5.10.4, whose NVD range matches every kernel.
   - vulnerability: CVE-2020-27815
     package:
       name: linux
