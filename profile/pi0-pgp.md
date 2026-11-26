@@ -29,11 +29,8 @@ Quick Start
    sudo dd if=image/pi0-pgp.img of=/dev/$SD_CARD_DEV bs=4M status=progress
    ```
 
-4. Boot the SD card on the Pi.
-
-   You can access the system
-   * through the serial console (e.g., through an USB TTL adapter),
-   * or through an USB keyboard and an HDMI display.
+4. Boot the SD card on the Pi, and log in on the serial console (e.g., through an USB TTL
+   adapter), the only console that the system has.
 
 
 Accounts
