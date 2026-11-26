@@ -13,10 +13,9 @@ prepare() {
             find . -mindepth 1 -delete
             meson_cross_file
 
-            # pkgconf puts the sysroot in front of every absolute path in a .pc file, unless told
-            # to follow freedesktop's rules, where only flags get it. Meson reads systemd.pc's
-            # unit directory as an install directory, which would otherwise land in a copy of the
-            # sysroot's path under the staging directory.
+            # With freedesktop's sysroot rules (CONTRIBUTING.md, Cross-Compiling), meson reads
+            # systemd.pc's unit directory as an install directory, which would otherwise land in a
+            # copy of the sysroot's path under the staging directory.
             # Hotplug comes from udev's netlink events, instead of from polling the bus once a
             # second, and the socket from systemd, which starts the daemon on demand. Readers are
             # USB only, and nothing enforces access control: whoever may connect to the socket may

@@ -11,7 +11,7 @@ prepare() {
             # names a library (`ncursesw`): that code reads /etc/termcap, which a system with
             # ncurses lacks. Left to look for a library, configure would link whichever terminal
             # library the sysroot holds, and bash would then depend on what was installed before
-            # it. It is told that there is one, and make which.
+            # it. configure is told that there is one, and make which.
             if [ -n "${termcap_lib:-}" ]; then bash_termcap=libncurses; else bash_termcap=gnutermcap; fi
 
             bash_cv_termcap_lib=$bash_termcap \

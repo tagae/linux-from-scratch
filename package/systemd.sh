@@ -141,8 +141,6 @@ install() {
             cp -rv $package_files_dir/etc $package_files_dir/usr $package_install_dir/
             chmod -v 0600 $package_install_dir/etc/shadow
 
-            # The default settings for what these kernels lack (SysRq, core dumps, an IPv4 stack)
-            # fail at every boot. Only the file protections apply.
             cat > $package_install_dir$prefix/lib/sysctl.d/50-default.conf <<'EOF'
 # systemd's own 50-default.conf, without the settings for what these kernels lack: SysRq, core
 # dumps and an IPv4 stack. Applying them would fail at every boot.

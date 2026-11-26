@@ -13,9 +13,10 @@ prepare() {
             find . -mindepth 1 -delete
             meson_cross_file
 
-            # The driver goes where libpcsclite.pc says pcscd looks for drivers; see pcsc-lite for
-            # why pkgconf follows freedesktop's rules. Only the readers that the driver lists by
-            # their USB ids are supported: not any device of the CCID class, nor serial readers.
+            # The driver goes where libpcsclite.pc says pcscd looks for drivers, with freedesktop's
+            # sysroot rules (CONTRIBUTING.md, Cross-Compiling). Only the readers that the driver
+            # lists by their USB ids are supported: not any device of the CCID class, nor serial
+            # readers.
             # The udev rules give those readers to the group pcscd, whose account runs the daemon,
             # the only program that opens them.
             env PKG_CONFIG_FDO_SYSROOT_RULES=1 meson setup $package_source_dir \

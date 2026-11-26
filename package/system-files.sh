@@ -9,8 +9,8 @@ install() {
     # whatever puts something in it: a package, or systemd-tmpfiles at boot (/root, /var/log...).
     mkdir -pv dev proc run sys tmp
 
-    # Compatibility symlinks (merged-usr layout: /bin, /sbin, /lib -> usr/*)
-    # These must be created BEFORE any package installs to /bin, /sbin, /lib.
+    # The links of the merged-usr layout (/bin, /sbin, /lib -> usr/*), made before any package
+    # installs there.
     ln -sfnv usr/bin  bin
     ln -sfnv usr/sbin sbin
     ln -sfnv usr/lib  lib

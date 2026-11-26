@@ -77,7 +77,7 @@ install() {
             make install-headers DESTDIR=$package_install_dir
             ;;
         glibc)
-            # LINGUAS= skips installing translated message catalogs
+            # LINGUAS= skips installing translated message catalogs.
             make install DESTDIR=$package_install_dir LINGUAS=
 
             # Avoid i18n: drop locale/charmap source data and the loadable gconv charset modules.

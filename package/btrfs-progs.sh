@@ -14,9 +14,8 @@ prepare() {
 
     # The programs alone: they carry libbtrfsutil linked into them, and nothing else uses the
     # libraries.
-    # pkgconf puts the sysroot in front of every absolute path in a .pc file, unless told to follow
-    # freedesktop's rules, where only flags get it: configure reads udev.pc's directory as the
-    # place that the udev rules are installed in, for a system with udev.
+    # With freedesktop's sysroot rules (CONTRIBUTING.md, Cross-Compiling), configure reads udev.pc's
+    # directory as the place that the udev rules are installed in, for a system with udev.
     env PKG_CONFIG_FDO_SYSROOT_RULES=1 ./configure \
         ${host:+--host=$host} \
         ${build:+--build=$build} \

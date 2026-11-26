@@ -13,9 +13,8 @@ prepare() {
             find . -mindepth 1 -delete
             ${host:+meson_cross_file}
 
-            # pkgconf puts the sysroot in front of every absolute path in a .pc file, unless told
-            # to follow freedesktop's rules, where only flags get it. Meson reads some of them as
-            # install directories.
+            # With freedesktop's sysroot rules (CONTRIBUTING.md, Cross-Compiling), meson reads some
+            # paths of .pc files as install directories.
             # Without introspection, documentation, tests, translations, tracing and the optional
             # libraries (SELinux, extended attributes, ELF files for debugging). The mount table
             # comes from util-linux's libmount, as systemd's does.

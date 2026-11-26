@@ -26,9 +26,8 @@ gio-querymodules = '$LFS_TOOL_DIR/usr/bin/gio-querymodules'
 gdbus-codegen = '$LFS_TOOL_DIR/usr/bin/gdbus-codegen'
 EOF
 
-            # pkgconf puts the sysroot in front of every absolute path in a .pc file, unless told
-            # to follow freedesktop's rules, where only flags get it. Meson reads the unit and
-            # D-Bus directories as install directories.
+            # With freedesktop's sysroot rules (CONTRIBUTING.md, Cross-Compiling), meson reads the
+            # unit and D-Bus directories as install directories.
             # Sessions come from libsystemd, which finds none where there is no logind: the rules
             # of these systems name users and groups. Nobody authenticates, so there is no PAM; the
             # shadow file is what the helper that would check a password reads.

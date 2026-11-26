@@ -28,14 +28,15 @@ esac
 prepare() {
     case $package_component in
         linux)
-            # Overrides of the platform's board file: a host-only USB controller, and no SD write-protect
-            # switch.
+            # Overrides of the platform's board file: a host-only USB controller, and no SD
+            # write-protect switch.
             if [ -n "${dev_tree_blob:-}" ]; then
                 local board=${dev_tree_blob##*/}
                 apply_patch $package_files_dir/${board%.dtb}.patch
             fi
 
-            # A misspelled capability in a profile fails here, instead of configuring a kernel without it.
+            # A misspelled capability in a profile fails here, instead of configuring a kernel
+            # without it.
             local capability
             for capability in ${capabilities:-}; do
                 [ -f $package_files_dir/$capability.config ] \
@@ -99,8 +100,8 @@ install() {
             ;;
         linux)
             if _has_modules; then
-                # modules_install writes to lib/modules/ -not configurable.
-                # Symlink it so that writes go to usr/lib instead.
+                # modules_install writes to lib/modules/, which no variable changes: the link sends
+                # it to usr/lib.
                 mkdir -p $package_install_dir/usr/lib
                 ln -sfn usr/lib $package_install_dir/lib
 

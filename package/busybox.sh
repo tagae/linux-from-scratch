@@ -19,7 +19,8 @@ prepare() {
             find . -mindepth 1 -delete
             cp -a "$package_source_dir/." .
 
-            # A misspelled category in a profile fails here, before a BusyBox without its applets is built.
+            # A misspelled category in a profile fails here, before a BusyBox without its applets is
+            # built.
             local category
             for category in ${applets:-}; do
                 [ -f $package_files_dir/$category.config ] \
@@ -73,7 +74,7 @@ install() {
                 CONFIG_PREFIX=$package_install_dir$prefix install
             cp -a $package_install_dir$prefix$prefix/. $package_install_dir$prefix/
             rm -rf $package_install_dir$prefix$prefix
-            # The static accounts (root, locked) and the init's table.
+            # The static accounts (root, locked).
             cp -rv $package_files_dir/etc $package_install_dir/
             chmod -v 0600 $package_install_dir/etc/shadow
             ;;

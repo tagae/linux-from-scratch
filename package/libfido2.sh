@@ -11,9 +11,10 @@ prepare() {
             case $man in yes) manpages=ON ;; *) manpages=OFF ;; esac
 
             # See libcbor for the cross-compilation settings. The library finds libcbor, libcrypto,
-            # zlib and libudev through pkg-config. Keys are reached through hidraw only: no NFC. The man pages are installed compressed,
-            # as that is how the package makes them. It lints them and makes HTML from them with
-            # mandoc, if it finds one: the platform's, in the sysroot, cannot run here.
+            # zlib and libudev through pkg-config. Keys are reached through hidraw only: no NFC.
+            # The man pages are installed compressed, as that is how the package makes them. It
+            # lints them and makes HTML from them with mandoc, if it finds one: the platform's, in
+            # the sysroot, cannot run here.
             cmake $package_source_dir \
                 ${host:+-DCMAKE_SYSTEM_NAME=Linux} \
                 ${host:+-DCMAKE_SYSTEM_PROCESSOR=$target_arch} \

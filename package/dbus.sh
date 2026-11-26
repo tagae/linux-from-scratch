@@ -13,10 +13,9 @@ prepare() {
             find . -mindepth 1 -delete
             meson_cross_file
 
-            # pkgconf puts the sysroot in front of every absolute path in a .pc file, unless told
-            # to follow freedesktop's rules, where only flags get it. Meson reads systemd.pc's
-            # unit directories as install directories, which would otherwise land in a copy of the
-            # sysroot's path under the staging directory.
+            # With freedesktop's sysroot rules (CONTRIBUTING.md, Cross-Compiling), meson reads
+            # systemd.pc's unit directories as install directories, which would otherwise land in
+            # a copy of the sysroot's path under the staging directory.
             # systemd starts the bus from its socket, and starts the services that the bus
             # activates: the daemon has no setuid helper to start them. There is no session bus,
             # which needs a login session, no security module and no audit, no X11, and the
