@@ -148,6 +148,9 @@ lfs_system_install gawk
 # `man=yes` and `info=yes`).
 lfs_system_install mandoc
 lfs_system_install texinfo
+# The Linux man-pages: of the system calls, the C library, devices, file formats (the files of /etc
+# among them) and glibc's commands, which the releases of Linux and glibc have none of.
+lfs_system_install man-pages
 
 (
     # Only libcrypto is wanted, which libfido2 and cryptography link: not the openssl program or the
