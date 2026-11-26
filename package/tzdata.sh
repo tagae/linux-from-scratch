@@ -33,9 +33,9 @@ build() {
 
 install() {
     make -C $package_source_dir install CC=gcc DESTDIR=$package_install_dir
-    # The programs it installs run on the build machine, and /etc/localtime is for the image to
-    # choose.
+    # The programs it installs run on the build machine, so the system has neither them nor their
+    # manual pages (those of section 8), and /etc/localtime is for the image to choose.
     rm -rf $package_install_dir/etc $package_install_dir/usr/bin $package_install_dir/usr/sbin \
-        $package_install_dir/usr/lib
+        $package_install_dir/usr/lib $package_install_dir/usr/share/man/man8
     move_to_docs_component
 }

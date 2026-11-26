@@ -55,7 +55,10 @@ install() {
             # on a terminal.
             : ${bashbug:=no}
             case $bashbug in
-                no) rm -fv $package_install_dir$prefix/bin/bashbug ;;
+                no)
+                    rm -fv $package_install_dir$prefix/bin/bashbug \
+                        $package_install_dir$prefix/share/man/man1/bashbug.1
+                    ;;
             esac
             move_to_docs_component
             ;;

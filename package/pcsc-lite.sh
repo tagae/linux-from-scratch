@@ -66,7 +66,7 @@ install() {
 
             # The tracer is GPL-3.0 and of no use here. The account that sysusers.d would make
             # exists already, and the AppStream metadata is for software centres.
-            rm -v usr/lib/libpcscspy.so* usr/bin/pcsc-spy
+            rm -v usr/lib/libpcscspy.so* usr/bin/pcsc-spy usr/share/man/man1/pcsc-spy.1
             rm -rv usr/lib/sysusers.d usr/share/metainfo
             find . -type d -empty -delete
 

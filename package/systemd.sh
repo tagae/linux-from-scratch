@@ -163,7 +163,19 @@ EOF
             # Images have an MBR partition table, which GPT auto-discovery does not apply to.
             local generators=$package_install_dir$prefix/lib/systemd/system-generators
             rm -v $generators/systemd-gpt-auto-generator
-            rm -fv $package_install_dir$prefix/share/man/man8/systemd-gpt-auto-generator.8
+
+            # Upstream installs some manual pages whatever the options: that of the generator
+            # above, and those of systemd-inhibit (logind), systemd-keyutil and systemd-sbsign
+            # (OpenSSL), the battery check, the generator of importd, sysusers and the volatile
+            # root.
+            local pages=$package_install_dir$prefix/share/man
+            rm -fv $pages/man1/systemd-inhibit.1 $pages/man1/systemd-keyutil.1 \
+                $pages/man1/systemd-sbsign.1 \
+                $pages/man8/systemd-battery-check.service.8 \
+                $pages/man8/systemd-gpt-auto-generator.8 \
+                $pages/man8/systemd-import-generator.8 \
+                $pages/man8/systemd-sysusers.8 $pages/man8/systemd-sysusers.service.8 \
+                $pages/man8/systemd-volatile-root.8 $pages/man8/systemd-volatile-root.service.8
 
             # Empty directories for configuration and drop-ins (sysctl.d, system-shutdown...),
             # which systemd reads only when they exist: whoever adds a file creates its directory.

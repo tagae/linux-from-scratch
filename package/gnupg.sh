@@ -82,6 +82,17 @@ install() {
                 $package_install_dir$prefix/libexec/gpg-wks-client \
                 $bin/gpg-authcode-sign.sh $sbin/addgnupghome $sbin/applygnupgdefaults \
                 $bin/watchgnupg $bin/gpgsplit $bin/kbxutil
+            # The documentation has the manual pages of every program, whether or not the options
+            # and the removals above leave it.
+            local page name
+            for page in $package_install_dir$prefix/share/man/man[18]/*; do
+                # Without documentation, the pattern matches none.
+                [ -e $page ] || continue
+                name=${page##*/}
+                name=${name%.*}
+                [ -e $bin/$name ] || [ -e $sbin/$name ] \
+                    || [ -e $package_install_dir$prefix/libexec/$name ] || rm -fv $page
+            done
             move_to_dev_component
             move_to_docs_component
             ;;

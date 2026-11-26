@@ -41,6 +41,10 @@ install() {
             # gawkbug mails bug reports, and the program with the version is a second name for gawk.
             rm -v $package_install_dir$prefix/bin/gawkbug \
                 $package_install_dir$prefix/bin/gawk-$package_version
+            # The manual pages of gawkbug, and of the persistent memory that --disable-pma leaves
+            # out.
+            rm -v $package_install_dir$prefix/share/man/man1/gawkbug.1 \
+                $package_install_dir$prefix/share/man/man1/pm-gawk.1
             move_to_dev_component
             # The figures of the manual, which the Info file does not need.
             rm -fv $package_install_dir$prefix/share/info/*.png $package_install_dir$prefix/share/info/*.jpg

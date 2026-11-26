@@ -70,9 +70,13 @@ install() {
             # The tools of the terminfo database (to compile, compare, list and convert descriptions)
             # go with the development files: the systems have no use for them with the few
             # descriptions that the library holds built in, which the build tools' tic and infocmp
-            # write. So does the script that tells the flags for compiling against ncurses.
+            # write. So does the script that tells the flags for compiling against ncurses. Their
+            # manual pages go with them.
             move_to_dev_component usr/bin/tic usr/bin/infocmp usr/bin/toe usr/bin/captoinfo \
-                usr/bin/infotocap 'usr/bin/ncurses*-config'
+                usr/bin/infotocap 'usr/bin/ncurses*-config' \
+                usr/share/man/man1/tic.1m usr/share/man/man1/infocmp.1m \
+                usr/share/man/man1/toe.1m usr/share/man/man1/captoinfo.1m \
+                usr/share/man/man1/infotocap.1m 'usr/share/man/man1/ncurses*-config.1'
             move_to_docs_component
             ;;
         dev)

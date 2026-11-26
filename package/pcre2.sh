@@ -49,7 +49,7 @@ install() {
             rm -v usr/bin/pcre2grep usr/bin/pcre2test \
                 usr/share/man/man1/pcre2grep.1 usr/share/man/man1/pcre2test.1
 
-            move_to_dev_component usr/bin/pcre2-config
+            move_to_dev_component usr/bin/pcre2-config usr/share/man/man1/pcre2-config.1
             move_to_docs_component
             ;;
         dev)

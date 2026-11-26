@@ -46,9 +46,11 @@ install() {
             # Its libtool archive makes libtool put the sysroot in the run-time path of the
             # libraries that link against it.
             rm -fv $package_install_dir$prefix/lib/libgpg-error.la
-            # Plus the script that tells the flags for compiling against it, and the program that
-            # makes man pages, which the build of the documentation installs for the platform.
-            move_to_dev_component usr/bin/gpgrt-config usr/bin/yat2m
+            # Plus the script that tells the flags for compiling against it, with its manual page,
+            # and the program that makes man pages, which the build of the documentation installs
+            # for the platform.
+            move_to_dev_component usr/bin/gpgrt-config usr/share/man/man1/gpgrt-config.1 \
+                usr/bin/yat2m
             move_to_docs_component
             ;;
         dev)
