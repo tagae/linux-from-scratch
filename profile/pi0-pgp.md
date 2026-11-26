@@ -178,9 +178,8 @@ not register the device, which udev does. A file system is checked while it is n
 `fsck.fat -n` and `btrfs check` change nothing, and `fsck.ext4` asks before it repairs what it finds.
 
 `e2fsprogs` also resizes, tunes and inspects ext file systems (`resize2fs`, `tune2fs`, `dumpe2fs`,
-`debugfs`), and `btrfs-progs` copies files out of a damaged BTRFS (`btrfs restore`). BTRFS comes
-without its manual pages, which take Sphinx to build (`btrfs --help` lists the commands), and its
-programs without zstd and LZO: the kernel reads the files that these compress, which `btrfs restore`
+`debugfs`), and `btrfs-progs` copies files out of a damaged BTRFS (`btrfs restore`). Its programs
+come without zstd and LZO: the kernel reads the files that these compress, which `btrfs restore`
 cannot.
 
 ### Mounting and Moving Files

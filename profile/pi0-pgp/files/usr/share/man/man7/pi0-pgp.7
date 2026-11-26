@@ -74,10 +74,6 @@ btrfs check /dev/sda3
 .Ed
 .Pp
 fsck.ext4 asks before it repairs what it finds; the other two change nothing.
-BTRFS has no manual pages: see
-.Ic btrfs --help
-and
-.Ic mkfs.btrfs --help .
 .Ss Moving files
 The regular account reads and writes the FAT file systems that systemd mounts.
 root mounts ext4 and BTRFS, and any further device, and unmounts them before
@@ -161,12 +157,16 @@ Power off before you leave the console to anybody else.
 .Xr dd 1 ,
 .Xr gpg 1 ,
 .Xr tmux 1 ,
+.Xr ykman 1 ,
 .Xr blkid 8 ,
+.Xr btrfs 8 ,
+.Xr btrfs-check 8 ,
 .Xr cfdisk 8 ,
 .Xr e2fsck 8 ,
 .Xr fdisk 8 ,
 .Xr fsck.fat 8 ,
 .Xr mke2fs 8 ,
+.Xr mkfs.btrfs 8 ,
 .Xr mkfs.fat 8 ,
 .Xr mount 8 ,
 .Xr sfdisk 8

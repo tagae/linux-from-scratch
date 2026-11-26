@@ -36,4 +36,14 @@ build() {
 
 install() {
     make install DESTDIR=$package_install_dir
+
+    # The release ships its manual pages ready-made, which the Makefile installs only after making
+    # them anew, with Sphinx.
+    local section
+    for section in 2 5 8; do
+        mkdir -pv $package_install_dir$prefix/share/man/man$section
+        cp -v $package_source_dir/Documentation/*.$section \
+            $package_install_dir$prefix/share/man/man$section/
+    done
+    move_to_docs_component
 }

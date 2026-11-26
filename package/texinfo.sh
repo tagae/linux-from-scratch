@@ -45,6 +45,9 @@ install() {
         texinfo)
             make -C info install DESTDIR=$package_install_dir
             make -C install-info install DESTDIR=$package_install_dir
+            # Of the manual pages that the release ships ready-made, those of what is built.
+            make -C man install DESTDIR=$package_install_dir \
+                man_MANS="info.1 info.5 install-info.1"
             move_to_docs_component
             ;;
         *)

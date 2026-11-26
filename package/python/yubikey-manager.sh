@@ -12,4 +12,8 @@ install() {
     # What the entry point of its project file would generate: a program that runs ykman's main.
     cd $package_install_dir
     cp -rv $package_files_dir/usr .
+
+    mkdir -pv $package_install_dir$prefix/share/man/man1
+    cp -v $package_source_dir/man/ykman.1 $package_install_dir$prefix/share/man/man1/
+    move_to_docs_component
 }
