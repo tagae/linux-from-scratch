@@ -1,16 +1,13 @@
-.Dd November 26, 2026
+.Dd November 27, 2026
 .Dt PI0-PGP 7
 .Os
 .Sh NAME
 .Nm pi0-pgp
 .Nd air-gapped system for private work on OpenPGP keys and USB storage
 .Sh DESCRIPTION
-This Raspberry Pi Zero is for sensitive work that is kept off any network,
-such as making OpenPGP keys and moving them to a YubiKey, or partitioning USB
-sticks and drives and moving files between them.
-It has no network.
-The SD card is read-only: whatever is not written to a USB device or a security
-key is in memory, and gone when the Pi powers off.
+The SD card of this Raspberry Pi Zero is read-only: whatever is not written to
+a USB device or a security key is in memory, which never swaps, and gone when
+the Pi powers off.
 .Ss Finding a USB device
 USB sticks and drives are sda, sdb and so on, in the order the Pi finds them,
 and mmcblk0 is the SD card, which is root's.
@@ -25,14 +22,11 @@ erases one.
 .Ss FAT file systems
 systemd mounts a FAT file system labelled KEYS on
 .Pa /mnt/keys ,
-and one with another label on
+and one of those with other labels on
 .Pa /mnt/usb-storage ,
 when something reads the directory, and unmounts it after 10 seconds of disuse:
 wait that long before pulling the device out, partitioning it or making a file
 system on it.
-Of several that are not labelled KEYS,
-.Pa /mnt/usb-storage
-is one.
 .Ss Partitioning
 .Ic cfdisk ,
 which has a menu,
@@ -103,9 +97,6 @@ that no write reaches.
 The key is made for a security key such as a YubiKey: a primary key that only
 certifies, and subkeys to sign, to encrypt and to authenticate, none of which
 expires.
-The secret key is made in memory, under
-.Pa ~/.gnupg ,
-which never swaps, and leaves the Pi only on the stick.
 Log in as the regular account, and put your own name and address in the commands.
 .Bl -enum -width 2n
 .It
@@ -139,14 +130,14 @@ The kernel takes the randomness in within a minute, and the agent, which makes
 the keys, has to start after that.
 .It
 Make the primary key.
-gpg asks twice for a new passphrase, which protects the secret key, and prints
-the key's fingerprint, 40 hexadecimal digits:
+gpg asks twice for a new passphrase, which protects the secret key and which the
+next two steps ask for again.
+It then prints the key's fingerprint, 40 hexadecimal digits:
 .Bd -literal
 gpg --quick-generate-key 'Your Name <you@example.org>' ed25519 cert 0
 .Ed
 .It
-Add the subkeys to the key of that fingerprint.
-gpg asks for the passphrase at each, and protects the subkey with it:
+Add the subkeys to the key of that fingerprint:
 .Bd -literal
 fpr=FINGERPRINT
 gpg --quick-add-key $fpr ed25519 sign 0
@@ -156,8 +147,8 @@ gpg --quick-add-key $fpr ed25519 auth 0
 .Pp
 For RSA keys, give rsa4096 in place of ed25519 and of cv25519.
 .It
-Write the secret key, for which gpg asks for the passphrase once more, the public
-key and the revocation certificate to the stick:
+Write the secret key, the public key and the revocation certificate to the
+stick:
 .Bd -literal
 backup=/mnt/keys/you@example.org
 gpg -a --export-secret-keys $fpr > $backup-secret.asc
@@ -171,24 +162,17 @@ Have the agent forget the passphrase, which it keeps for ten minutes:
 gpgconf --kill gpg-agent
 .Ed
 .El
-.Pp
-The keys stay in
-.Pa ~/.gnupg
-until the Pi powers off.
-The stick is safe to pull out ten seconds after the last command that reads or
-writes it.
 .Ss Formatting a stick for the keys
-To format a stick for the keys, find it as above: here it is sda.
-This erases the stick:
+This erases the stick, here /dev/sda:
 .Bd -literal -offset indent
 mkfs.fat -I -F 32 -n KEYS /dev/sda
 .Ed
 .Ss Moving the subkeys to the YubiKey
-To move the subkeys to the YubiKey, use
+Use
 .Ic gpg\ --edit-key
-and
-.Ic keytocard :
-the keys stay in memory until the Pi powers off.
+and its
+.Ic keytocard
+command.
 These show what the keys and the YubiKey hold:
 .Bd -literal -offset indent
 gpg --list-secret-keys
@@ -207,7 +191,7 @@ man mkfs.
 .Ed
 .Ss Several shells on the console
 .Ic tmux
-runs several shells on the one console, in windows and panes.
+gives each shell a window or a pane of its own.
 These start a session, come back to it, and end every session of the account:
 .Bd -literal -offset indent
 tmux new-session -s work
@@ -217,8 +201,8 @@ tmux kill-server
 .Pp
 In a session, Ctrl-b % and Ctrl-b \(dq split the pane, Ctrl-b o goes to the
 next one, and Ctrl-b d detaches from the session.
-A session goes on while nobody is attached to it, after a logout too: whoever
-logs into the account afterwards finds it, with what its panes showed.
+A session outlives a logout: whoever logs into the account next finds it, with
+what its panes showed.
 Power off before you leave the console to anybody else.
 .Sh SEE ALSO
 .Xr dd 1 ,
