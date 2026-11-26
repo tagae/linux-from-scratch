@@ -1,9 +1,6 @@
 # A bare-bones virtual machine, to show that the system boots cleanly, that root logs in on the
-# console, and that it powers off: systemd, with the strict minimum it needs to boot the system and
-# log root in, D-Bus, dash, /bin/sh, bash, root's shell, and the kernel. It links kmod, libxcrypt,
-# and util-linux's libmount and libblkid, and runs util-linux's mount, agetty and sulogin, and
-# shadow's login, which starts root's shell. It brings the static accounts, and sets root's. Its
-# issue, motd and shell profile are the files of profile/virt/files/.
+# console, and that it powers off (profile/virt.md): systemd, with the strict minimum it needs to
+# boot the system and log root in, D-Bus, dash, /bin/sh, bash, root's shell, and the kernel.
 
 lfs_system_toolchain glibc
 # glibc loads libgcc_s to unwind stacks.

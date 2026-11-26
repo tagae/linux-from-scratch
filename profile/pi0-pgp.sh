@@ -1,12 +1,7 @@
-# A Raspberry Pi Zero as an air-gapped computer for private, sensitive work, such as handling
-# secrets and moving files between storage devices. There is no network, no key server, and no
+# A Raspberry Pi Zero as an air-gapped computer for private, sensitive work (profile/pi0-pgp.md):
+# OpenPGP keys and YubiKeys, and USB sticks and drives. There is no network, no key server, and no
 # X.509; the system keeps nothing across boots; and what goes in or out of it goes over USB or the
 # serial console.
-#
-# One use is OpenPGP keys: GnuPG makes a key in memory, and gpg-genkey backs it up to a USB stick;
-# ykman, libfido2's tools and GnuPG itself configure and use the YubiKey's OpenPGP, PIV, FIDO2 and
-# OTP applications. Another is USB sticks and drives: to partition them, to make and check their
-# file systems (FAT, ext4 and btrfs), and to copy them with dd.
 #
 # The key's smart card interface is reached through pcscd (pcsc-lite with the CCID driver), started
 # by systemd when a program connects to it, and its FIDO2 and OTP interfaces through hidraw.
@@ -196,12 +191,8 @@ lfs_system_install dosfstools
 lfs_system_install e2fsprogs
 lfs_system_install btrfs-progs
 
-# The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory, in
-# GnuPG's home, ~/.gnupg (the overlay of /home, whose writes go to a tmpfs that never swaps), and
-# exports it to a USB stick with a FAT file system labelled KEYS, which mnt-keys.automount mounts on
-# /mnt/keys.
-# The sticks' mount points (mnt-keys.mount, mnt-usb\x2dstorage.mount), which systemd cannot make on
-# the read-only root.
+# The sticks' mount points (mnt-keys.mount, which gpg-genkey writes to, and
+# mnt-usb\x2dstorage.mount), which systemd cannot make on the read-only root.
 mkdir -pv $system_dir/mnt/keys $system_dir/mnt/usb-storage
 
 #===[ Processes and memory ]===
