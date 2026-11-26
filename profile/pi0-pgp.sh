@@ -82,14 +82,15 @@ lfs_system_install dbus
 
 #===[ Kernel and boot ]===
 
-# The kernel, with the serial console, the btrfs root file system, FAT file systems (sticks), its
-# self-protection, loadable modules, overlay file systems (memory over the read-only root), the
-# options that systemd relies on, USB devices (YubiKeys, USB sticks and card readers, also from user
-# space through /dev/bus/usb), HID devices on USB as /dev/hidraw*, and the zeroing of memory as it is
-# freed, which keeps keys from outliving the programs that held them. The firmware's bootloader and
-# configuration start it from the FAT partition of the Pi layout.
+# The kernel, with the serial console, btrfs (the root file system's, and that of sticks and drives),
+# ext4 and FAT file systems (sticks and drives), its self-protection, loadable modules, overlay file
+# systems (memory over the read-only root), the options that systemd relies on, USB devices (YubiKeys,
+# USB sticks, drives and card readers, also from user space through /dev/bus/usb), HID devices on USB
+# as /dev/hidraw*, and the zeroing of memory as it is freed, which keeps secrets from outliving the
+# programs that held them. The firmware's bootloader and configuration start it from the FAT partition
+# of the Pi layout.
 (
-    capabilities="btrfs console fat hardening hidraw modules overlay serial-console systemd usb usb-storage zero-on-free"
+    capabilities="btrfs console ext4 fat hardening hidraw modules overlay serial-console systemd usb usb-storage zero-on-free"
     lfs_system_install linux
 )
 lfs_system_install firmware
@@ -181,14 +182,19 @@ lfs_sysroot_install libusb#dev
     )
 )
 
-#===[ USB sticks ]===
+#===[ USB storage ]===
+
+# util-linux's fdisk, sfdisk and cfdisk (above) partition sticks and drives. mkfs.fat and mkfs.ext4
+# make their file systems, which fsck.fat and e2fsck check; fatlabel and e2label name them. dd, of
+# the core utilities, copies devices. The programs of e2fsprogs link util-linux's libuuid and
+# libblkid.
+lfs_system_install dosfstools
+lfs_system_install e2fsprogs
 
 # The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory, in
 # GnuPG's home, ~/.gnupg (the overlay of /home, whose writes go to a tmpfs that never swaps), and
-# exports it to a USB stick, which mnt-keys.automount mounts on /mnt/keys. mkfs.fat makes
-# the FAT file system that the script wants on the stick, labelled KEYS (fatlabel changes the label
-# of one that exists), and fsck.fat checks it.
-lfs_system_install dosfstools
+# exports it to a USB stick with a FAT file system labelled KEYS, which mnt-keys.automount mounts on
+# /mnt/keys.
 # The sticks' mount points (mnt-keys.mount, mnt-usb\x2dstorage.mount), which systemd cannot make on
 # the read-only root.
 mkdir -pv $system_dir/mnt/keys $system_dir/mnt/usb-storage

@@ -102,6 +102,28 @@ As the regular account, `sfdisk` and `fdisk` say that re-reading the partition t
 only root may ask the kernel to: udev does it as these tools, `cfdisk` too, close the device.
 `sfdisk` refuses a device with a mounted partition, and `fdisk` warns of it.
 
+### File Systems
+
+| File system | Makes it     | Checks it     | Labels it   | Package      |
+|-------------|--------------|---------------|-------------|--------------|
+| FAT         | `mkfs.fat`   | `fsck.fat`    | `fatlabel`  | `dosfstools` |
+| ext4        | `mkfs.ext4`  | `fsck.ext4`   | `e2label`   | `e2fsprogs`  |
+
+```shell
+mkfs.fat -F 32 -n PHOTOS /dev/sda1
+mkfs.ext4 -L archive /dev/sda2
+
+fsck.fat -n /dev/sda1
+fsck.ext4 -f /dev/sda2
+```
+
+Where there is a file system, `mkfs.ext4` asks before it erases it, and `mkfs.fat` does not ask. A
+file system is checked while it is not mounted: `fsck.fat -n` changes nothing, and `fsck.ext4` asks
+before it repairs what it finds.
+
+`e2fsprogs` also resizes, tunes and inspects ext file systems (`resize2fs`, `tune2fs`, `dumpe2fs`,
+`debugfs`).
+
 
 Making OpenPGP Keys
 -------------------
@@ -309,11 +331,11 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
   of the day after the login; root and the regular account log in; the regular account powers the
   machine off and restarts it, and is refused the rest.
 * The system is healthy as `systemctl status` shows it; the kernel shows errors only on the console,
-  zeroes memory as it is freed and has no network; nothing is kept but in memory (the root file
-  system read-only even to root, the boot partition unmounted, the home directories and `/var`
-  overlays on memory that does not swap, `/tmp` a tmpfs, no swap, the journal in `/run`, no shell
-  history); the programs that the system is for, and the manual pages and their index, the page of
-  the system among them, are there.
+  zeroes memory as it is freed, has no network and has the FAT, ext4 and BTRFS file systems; nothing
+  is kept but in memory (the root file system read-only even to root, the boot partition unmounted,
+  the home directories and `/var` overlays on memory that does not swap, `/tmp` a tmpfs, no swap,
+  the journal in `/run`, no shell history); the programs that the system is for, and the manual pages
+  and their index, the page of the system among them, are there.
 * GnuPG makes a key in its home, `~/.gnupg`, signs, verifies, encrypts and decrypts.
 * A USB stick, which the account formats as `man pi0-pgp` says, is mounted and written;
   `gpg-genkey` exports a key to it, and after a boot the key is gone from memory, and the stick's copy
@@ -323,5 +345,6 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
   written to the home directories, `/var` and `/tmp`, and the time that was set.
 * The regular account sets the clock, while the time zone stays the image's, and `top` runs in batch
   mode and on the console.
-* A drive plugged into the running machine is partitioned by the regular account, to which the SD
-  card is refused; and the machine powers off.
+* A drive plugged into the running machine is partitioned by the regular account, which makes and
+  checks a FAT and an ext4 file system on it, while the SD card is refused to it; and the machine
+  powers off.

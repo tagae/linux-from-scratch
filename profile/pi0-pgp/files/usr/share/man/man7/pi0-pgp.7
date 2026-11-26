@@ -65,6 +65,21 @@ END
 .Pp
 sfdisk and fdisk tell the regular account that re-reading the partition table
 failed: udev has the kernel read it as the device is closed.
+.Ss Making and checking file systems
+These erase what the partition holds, and label the new file system:
+.Bd -literal -offset indent
+mkfs.fat -F 32 -n PHOTOS /dev/sda1
+mkfs.ext4 -L archive /dev/sda2
+.Ed
+.Pp
+Where there is a file system, mkfs.ext4 asks before it erases it.
+These check them while they are not mounted:
+.Bd -literal -offset indent
+fsck.fat -n /dev/sda1
+fsck.ext4 -f /dev/sda2
+.Ed
+.Pp
+fsck.ext4 asks before it repairs what it finds; fsck.fat -n changes nothing.
 .Ss Formatting a stick for the keys
 To format a stick for the keys, find it with
 .Ic blkid :
@@ -89,6 +104,9 @@ ykman info
 .Xr gpg 1 ,
 .Xr blkid 8 ,
 .Xr cfdisk 8 ,
+.Xr e2fsck 8 ,
 .Xr fdisk 8 ,
+.Xr fsck.fat 8 ,
+.Xr mke2fs 8 ,
 .Xr mkfs.fat 8 ,
 .Xr sfdisk 8

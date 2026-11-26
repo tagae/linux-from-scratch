@@ -100,6 +100,7 @@ Capabilities can also differ platform: `package/linux/<capability>.<platform>.co
 | `btrfs`          | BTRFS root file systems                                      |
 | `console`        | The terminal layer that consoles build on                    |
 | `devtmpfs`       | Device nodes in /dev, mounted before init starts             |
+| `ext4`           | ext4 file systems, such as those of USB sticks and drives    |
 | `fat`            | FAT file systems, such as the Pi's boot partition and sticks |
 | `hardening`      | Kernel self-protection and CPU vulnerability mitigations     |
 | `modules`        | Loadable kernel modules, and their protection                |
