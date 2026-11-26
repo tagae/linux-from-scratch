@@ -11,6 +11,12 @@ prepare() {
             : ${all_programs:=no} ${python:=no} ${systemd:=no} ${udev:=no}
             : ${makeinstall_chown:=no} ${makeinstall_setuid:=no}
 
+            # configure asks the ncurses*-config scripts that it finds before pkg-config. In a cross
+            # build, those are the build machine's, which would give the programs the directory of its
+            # libraries as their RPATH: `false` in their place, which tells no version, leaves the
+            # answer to pkg-config, which sees the sysroot.
+            env ${host:+NCURSESW6_CONFIG=false NCURSESW5_CONFIG=false} \
+                ${host:+NCURSES6_CONFIG=false NCURSES5_CONFIG=false} \
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
