@@ -104,25 +104,32 @@ only root may ask the kernel to: udev does it as these tools, `cfdisk` too, clos
 
 ### File Systems
 
-| File system | Makes it     | Checks it     | Labels it   | Package      |
-|-------------|--------------|---------------|-------------|--------------|
-| FAT         | `mkfs.fat`   | `fsck.fat`    | `fatlabel`  | `dosfstools` |
-| ext4        | `mkfs.ext4`  | `fsck.ext4`   | `e2label`   | `e2fsprogs`  |
+| File system | Makes it     | Checks it     | Labels it                | Package       |
+|-------------|--------------|---------------|--------------------------|---------------|
+| FAT         | `mkfs.fat`   | `fsck.fat`    | `fatlabel`               | `dosfstools`  |
+| ext4        | `mkfs.ext4`  | `fsck.ext4`   | `e2label`                | `e2fsprogs`   |
+| BTRFS       | `mkfs.btrfs` | `btrfs check` | `btrfs filesystem label` | `btrfs-progs` |
 
 ```shell
 mkfs.fat -F 32 -n PHOTOS /dev/sda1
 mkfs.ext4 -L archive /dev/sda2
+mkfs.btrfs -L backup /dev/sda3
 
 fsck.fat -n /dev/sda1
 fsck.ext4 -f /dev/sda2
+btrfs check /dev/sda3
 ```
 
-Where there is a file system, `mkfs.ext4` asks before it erases it, and `mkfs.fat` does not ask. A
-file system is checked while it is not mounted: `fsck.fat -n` changes nothing, and `fsck.ext4` asks
-before it repairs what it finds.
+Where there is a file system, `mkfs.ext4` asks before it erases it, `mkfs.btrfs` refuses to unless
+`-f` tells it to, and `mkfs.fat` does not ask. `mkfs.btrfs` warns the regular account that it could
+not register the device, which udev does. A file system is checked while it is not mounted:
+`fsck.fat -n` and `btrfs check` change nothing, and `fsck.ext4` asks before it repairs what it finds.
 
 `e2fsprogs` also resizes, tunes and inspects ext file systems (`resize2fs`, `tune2fs`, `dumpe2fs`,
-`debugfs`).
+`debugfs`), and `btrfs-progs` copies files out of a damaged BTRFS (`btrfs restore`). BTRFS comes
+without its manual pages, which take Sphinx to build (`btrfs --help` lists the commands), and its
+programs without zstd and LZO: the kernel reads the files that these compress, which `btrfs restore`
+cannot.
 
 
 Making OpenPGP Keys
@@ -346,5 +353,5 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
 * The regular account sets the clock, while the time zone stays the image's, and `top` runs in batch
   mode and on the console.
 * A drive plugged into the running machine is partitioned by the regular account, which makes and
-  checks a FAT and an ext4 file system on it, while the SD card is refused to it; and the machine
-  powers off.
+  checks a FAT, an ext4 and a BTRFS file system on it, while the SD card is refused to it; and the
+  machine powers off.

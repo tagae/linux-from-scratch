@@ -184,12 +184,13 @@ lfs_sysroot_install libusb#dev
 
 #===[ USB storage ]===
 
-# util-linux's fdisk, sfdisk and cfdisk (above) partition sticks and drives. mkfs.fat and mkfs.ext4
-# make their file systems, which fsck.fat and e2fsck check; fatlabel and e2label name them. dd, of
-# the core utilities, copies devices. The programs of e2fsprogs link util-linux's libuuid and
-# libblkid.
+# util-linux's fdisk, sfdisk and cfdisk (above) partition sticks and drives. mkfs.fat, mkfs.ext4
+# and mkfs.btrfs make their file systems, which fsck.fat, e2fsck and `btrfs check` check; fatlabel,
+# e2label and `btrfs filesystem label` name them. dd, of the core utilities, copies devices. The
+# programs of e2fsprogs and btrfs-progs link util-linux's libuuid and libblkid.
 lfs_system_install dosfstools
 lfs_system_install e2fsprogs
+lfs_system_install btrfs-progs
 
 # The key procedure's own script, gpg-genkey, is a file of the profile: it makes a key in memory, in
 # GnuPG's home, ~/.gnupg (the overlay of /home, whose writes go to a tmpfs that never swaps), and

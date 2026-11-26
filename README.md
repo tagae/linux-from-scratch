@@ -97,7 +97,7 @@ Capabilities can also differ platform: `package/linux/<capability>.<platform>.co
 
 | Capability       | Supports                                                     |
 |------------------|--------------------------------------------------------------|
-| `btrfs`          | BTRFS root file systems                                      |
+| `btrfs`          | BTRFS file systems, the root file system among them          |
 | `console`        | The terminal layer that consoles build on                    |
 | `devtmpfs`       | Device nodes in /dev, mounted before init starts             |
 | `ext4`           | ext4 file systems, such as those of USB sticks and drives    |

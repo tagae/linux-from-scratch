@@ -1,15 +1,17 @@
-# The regular account makes a FAT and an ext4 file system on partitions of the drive, and checks
-# them.
+# The regular account makes a FAT, an ext4 and a btrfs file system on the partitions of the drive,
+# and checks them.
 
 login user
 run_ok {mkfs.fat -F 32 -n PHOTOS /dev/sdb1}
 run_ok {mkfs.ext4 -q -L archive /dev/sdb2}
+run_ok {mkfs.btrfs -L backup /dev/sdb3}
 
-foreach {partition type label} {sdb1 vfat PHOTOS sdb2 ext4 archive} {
+foreach {partition type label} {sdb1 vfat PHOTOS sdb2 ext4 archive sdb3 btrfs backup} {
     expect_equal [run_ok "blkid -p -o value -s TYPE /dev/$partition"] $type "the file system of $partition"
     expect_equal [run_ok "blkid -p -o value -s LABEL /dev/$partition"] $label "the label of $partition"
 }
 
 run_ok {fsck.fat -n /dev/sdb1}
 run_ok {fsck.ext4 -f -n /dev/sdb2}
+run_ok {btrfs check /dev/sdb3}
 logout

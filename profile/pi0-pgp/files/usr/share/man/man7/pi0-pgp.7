@@ -70,16 +70,26 @@ These erase what the partition holds, and label the new file system:
 .Bd -literal -offset indent
 mkfs.fat -F 32 -n PHOTOS /dev/sda1
 mkfs.ext4 -L archive /dev/sda2
+mkfs.btrfs -L backup /dev/sda3
 .Ed
 .Pp
-Where there is a file system, mkfs.ext4 asks before it erases it.
+Where there is a file system, mkfs.ext4 asks before it erases it, and
+mkfs.btrfs wants
+.Fl f .
+mkfs.btrfs warns the regular account that it could not register the device,
+which udev does.
 These check them while they are not mounted:
 .Bd -literal -offset indent
 fsck.fat -n /dev/sda1
 fsck.ext4 -f /dev/sda2
+btrfs check /dev/sda3
 .Ed
 .Pp
-fsck.ext4 asks before it repairs what it finds; fsck.fat -n changes nothing.
+fsck.ext4 asks before it repairs what it finds; the other two change nothing.
+BTRFS has no manual pages: see
+.Ic btrfs --help
+and
+.Ic mkfs.btrfs --help .
 .Ss Formatting a stick for the keys
 To format a stick for the keys, find it with
 .Ic blkid :
