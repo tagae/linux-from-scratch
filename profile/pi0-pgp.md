@@ -18,9 +18,10 @@ Privacy
   Bluetooth, and the Zero (unlike the Zero W) has no radio. What goes in or out goes over USB, or
   over the serial console.
 * It keeps nothing: the SD card is not written while the system runs ([Nothing
-  Kept](#nothing-kept)), the shell saves no history, and the kernel zeroes memory as it is freed.
-* Logging out does not end a `tmux` session, whose panes keep what they showed until the session is
-  ended or the Pi powers off ([Several Shells](#several-shells-on-the-console)).
+  Kept](#nothing-kept)), and the kernel zeroes memory as it is freed.
+* Powering off is what protects the work done on it, and logging out does not: until the Pi powers
+  off, whoever logs into an account finds its shell's history, its files, the keys in its GnuPG
+  home and its `tmux` sessions. An account without a password is open to whoever is at the console.
 * The console shows no message of the kernel but errors, so that none lands in the middle of what is
   typed, a passphrase included.
 
@@ -111,8 +112,8 @@ In a session, `Ctrl-b %` and `Ctrl-b "` split the pane, `Ctrl-b o` goes to the n
 
 A session goes on while nobody is attached to it, after a logout too, as the getty's unit leaves
 the processes of a login running (`KillMode=process`): whoever logs into the account afterwards
-finds it, with its panes and what they showed. An account without a password is open to whoever is
-at the console, so end the session before leaving the console to anybody else, or power the Pi off.
+finds it, with its panes and what they showed. Power the Pi off before leaving the console to
+anybody else ([Privacy](#privacy)).
 
 
 USB Storage
@@ -236,8 +237,8 @@ Plug both the YubiKey and a USB stick in a hub ([USB Storage](#usb-storage)). Th
 file system labelled `KEYS`, on its first partition or on the whole device, which
 [the Pi can make](#formatting-the-stick-for-the-keys), and which systemd mounts on `/mnt/keys`
 ([Mounting and Moving Files](#mounting-and-moving-files)). Log in as the regular account on the
-serial console, whose shell is bash: arrow keys, Tab completion and a history of the session, which
-is not saved, as commands carry passphrases.
+serial console, whose shell is bash: arrow keys, Tab completion and history, which it saves in the
+home directory, in memory.
 
 1. The Pi has no battery-backed clock, and the system keeps nothing across boots: every boot starts
    at the time the image was made. Keys record the time they are made at, so set it:
@@ -299,8 +300,8 @@ Nothing Kept
 ------------
 
 The system forgets what is done on it when the Pi powers off: the files that the accounts write,
-the logins that `login` records, the time that was set. Nothing is written to the SD card while the
-system runs.
+the histories of their shells among them, the logins that `login` records, the time that was set.
+Nothing is written to the SD card while the system runs.
 
 * The root file system is read-only: the kernel mounts it so (the `ro` of `cmdline.txt`), and its
   btrfs subvolume is read-only too, so that a remount alone does not make it writable. The boot

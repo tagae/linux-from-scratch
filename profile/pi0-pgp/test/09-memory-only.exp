@@ -1,7 +1,6 @@
 # What the machine keeps is in memory: the root file system is read-only, even to root, and the boot
 # partition is not mounted; the home directories and /var are overlays that write to a tmpfs that
-# never swaps, and /tmp is a tmpfs; there is no swap, the journal is in /run, and the shell keeps no
-# history file.
+# never swaps, and /tmp is a tmpfs; there is no swap, and the journal is in /run.
 #
 # A line of /proc/self/mountinfo has the mount point in its fifth field, the options of the mount in
 # its sixth, and after the separator the type of the file system, its source and its own options.
@@ -28,6 +27,5 @@ login user
 # A kernel with no swap has no /proc/swaps at all.
 run_ok {[ ! -e /proc/swaps ] || [ "$(tail -n +2 /proc/swaps | wc -l)" = 0 ]}
 run_ok {[ ! -e /var/log/journal ] && [ -d /run/log/journal ]}
-expect_equal [run_ok {echo "${HISTFILE-unset}"}] unset "the history file of the shell"
 expect_equal [run_ok {stat -c '%U %a' ~}] "$env(LFS_USER) 700" "the owner and mode of the home directory"
 logout

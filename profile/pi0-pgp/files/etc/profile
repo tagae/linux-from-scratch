@@ -9,10 +9,9 @@ case :$PATH: in *:/usr/sbin:*) ;; *) PATH=$PATH:/usr/sbin ;; esac
 # Programs, tmux among them, otherwise take it for one of ASCII.
 export LANG=C.UTF-8
 
-# bash keeps the history of the session in memory only, as commands can carry passphrases. Set
-# HISTFILE to keep it.
+# bash's history is longer than its default, and leaves out a line that repeats the one before it or
+# starts with a space.
 if [ -n "${BASH_VERSION:-}" ]; then
-    unset HISTFILE
     HISTSIZE=1000
     HISTCONTROL=ignoreboth
 fi
