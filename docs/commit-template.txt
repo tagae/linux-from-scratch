@@ -58,8 +58,6 @@
 # Start the subject with a lowercase imperative present active verb,
 # e.g. add foo. Wrong: adds foo, added foo, adding foo, foo added.
 #
-# Keep the summary within 72 characters.
-#
 # Do not use a sentence-ending period, unless it ends an abbreviation,
 # e.g. feat: add feature for U.S.A.
 #
@@ -76,9 +74,6 @@
 #   fix, perf, refactor = PATCH.
 #   Any other type = no bump.
 #
-# Use drop! only when what goes was relied upon. Use drop instead when
-# nothing relies on it.
-#
 # ## Body ##
 #
 # Add a blank line after the summary line.
@@ -93,48 +88,23 @@
 #
 # ## Trailers ##
 #
-# Trailers suitable for tracking and also for `git interpret-trailers`,
-# one per line, in the style of email headers:
+# Trailers come last, one per line, in the style of email headers, with
+# no blank lines between them (`git interpret-trailers` reads them):
 #
+#     Co-authored-by: Alice Adams <alice@example.com>
 #     Keywords: security, encryption, authentication
 #     Importance: high
 #     References: ...
 #     Supersedes: ...
 #     Obsoletes: ...
-#     See-Also: ...
-#
-# "Importance: high" gives the commit priority for code review and for
-# testing on the continuous integration server. "Supersedes",
-# "References" and "Obsoletes" help look up earlier commits or URLs.
-#
-# Example of "See-Also:" trailers that mean "see this additional
-# information" and links to relevant web pages, issue trackers, blog
-# posts, etc.:
-#
 #     See-Also: https://example.com/
-#     See-Also: Issue #123 <https://example.com/issue/123>
 #
-# Example of "Co-authored-by:" trailers that list each author's name
-# and their preferred commit message email address or contact URL:
-#
-#     Co-authored-by: Alice Adams <alice@example.com>
-#     Co-authored-by: Bob Brown <https://bob.example.com>
-#
-# We like to use the "Co-authored-by:" trailers when we pair program,
-# triple program, and group program. These are parsed automatically by
-# some version control services (e.g. GitHub, GitLab) and will link
-# to the authors' accounts and show up on the authors' commit history.
-#
-# The Git tools require trailers to be last in a commit message,
-# and must be one trailer per line, and with no extra lines between.
+# docs/commit-messages.md has the conventions.
 #
 # ## Usage ##
 #
-# Configure git to use the template file by running:
-#
 #     git config commit.template docs/commit-template.txt
 #
-# This template intends for the commit to strip the comments.
-# To strip the comments, your git `commit.cleanup` config must be `strip`.
+# Git strips these comments when `commit.cleanup` is `strip`.
 #
 ########################################################################

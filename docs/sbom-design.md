@@ -1,44 +1,54 @@
-Image Source Bill Of Materials
-==============================
+Image Software Bill of Materials
+================================
 
 **Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`, and scanned by Grype in CI
 (`.github/workflows/vulnerabilities.yaml`). The document names the upstream packages, with the CPEs
-and PyPI purls that scanners match (see *What scanners find*). Not yet: the patches applied to the
-sources, suppliers and signing (see *Choices for later*).
+and PyPI purls that scanners match ([What Scanners Find](#what-scanners-find)). It leaves out the
+patches applied to the sources, suppliers and signing ([Choices for Later](#choices-for-later)).
 
-**Question:** how should each image get a Software Bill of Materials, and can it be SPDX?
+**Question:** how should each image get a Software Bill of Materials (SBOM), and can it be SPDX?
 
-**Answer:** yes, SPDX fits this project with little new machinery.
-- **Licences:** the recipes already declare their licences as SPDX expressions (`package_license`).
+**Answer:** yes, SPDX fits this project with little new machinery:
+
+- **Licences:** the recipes declare their licences as SPDX expressions (`package_license`).
 - **Provenance:** every source is pinned by URL and SHA-256 (`package_source`,
   `package_source_hash`).
 - **Identity:** the recipes name their upstream packages and versions, from which a CPE follows for
   most of them.
 
-What's missing is a record of which packages went into a system, and a writer for the format.
 
-## Format
+Format
+------
 
 **SPDX 2.3, JSON.** SPDX is an ISO standard (ISO/IEC 5962:2021, for 2.2.1). Version 2.3 is what
-validators, scanners (Grype, Trivy) and Dependency-Track read today. SPDX 3.0 (JSON-LD) models
-builds better (build profile, provenance), but tools barely read it yet. The document maps onto 3.0
-almost one to one, so moving later is cheap.
+validators, scanners (Grype, Trivy) and Dependency-Track read. SPDX 3.0 (JSON-LD) models builds
+better (build profile, provenance), but tools barely read it. The document maps onto 3.0 almost one
+to one, so moving later is cheap.
 
-CycloneDX would also work, but SPDX matches the licence expressions the recipes already use, and
-licence compliance is the other use of the SBOM here (see the licence note in the security
-assessment).
+CycloneDX would also work, but SPDX matches the licence expressions of the recipes, and licence
+compliance is the other use of the SBOM here.
 
-## What an image's SBOM contains
+
+What an Image's SBOM Contains
+-----------------------------
 
 One document per image, `image/<profile>.spdx.json`, next to the image:
 
-| SPDX element | Here | Fields |
-|---|---|---|
-| Document | the SBOM | `documentNamespace` derived from the image's SHA-256; `created` is the time the image is made (`SOURCE_DATE_EPOCH` when builds become reproducible); `creators`: `Tool: lfs-<LFS_RELEASE>` |
-| Package (root) | the image | file name, `downloadLocation` `NONE` (it is published nowhere), `copyrightText` = this project's own, SHA-256 of the image, `versionInfo` = `LFS_RELEASE` (the version of this project's tree, `bin/version`: the tag's when the tree is clean on its commit, else a pre-release of the next version named by the abbreviated hash of the top commit, and ending in `-dirty` when files differ from it; the Makefile computes it, as the containers have no git history); the document `DESCRIBES` it |
-| Package | each upstream package that the system installs (`lfs_system_install`), once: `bash`, `glibc`, `linux`, `cryptography`, ... | `name`, `versionInfo`, `packageFileName` = the source's file name, `checksums` = `package_source_hash`, `downloadLocation` = `package_source`, `licenseDeclared` and `licenseConcluded` = `package_license`, `description`, `externalRefs`: purl and CPEs (see *Identifiers*) |
-| Relationships | | image `CONTAINS` each package (not yet: patches `PATCH_APPLIED` to their source) |
-| Extracted licences | `LicenseRef-*` (the Pi firmware's, the time zone database's) | the licence text, kept in the declaring package's files directory as `LicenseRef-<name>.txt`: the source may not be unpacked when the archive comes from a cache |
+- **Document:** `documentNamespace` derived from the image's SHA-256; `created`, the time the image
+  is made; `creators`, `Tool: lfs-<LFS_RELEASE>`.
+- **Root package, the image:** its file name, `downloadLocation` `NONE` (it is published nowhere),
+  `copyrightText` this project's own, the image's SHA-256, and `versionInfo` `LFS_RELEASE`, the
+  version of this project's tree ([CONTRIBUTING.md](../CONTRIBUTING.md#versions-and-commits)). The
+  document `DESCRIBES` it.
+- **A package for each upstream package that the system installs** (`lfs_system_install`), once:
+  `bash`, `glibc`, `linux`, `cryptography`... It has `name`, `versionInfo`, `packageFileName` (the
+  source's file name), `checksums` (`package_source_hash`), `downloadLocation` (`package_source`),
+  `licenseDeclared` and `licenseConcluded` (`package_license`), `description`, and `externalRefs`:
+  purl and CPEs ([Identifiers](#identifiers)).
+- **Relationships:** the image `CONTAINS` each package.
+- **Extracted licences:** the text of each `LicenseRef-*` (the Pi firmware's, the time zone
+  database's), kept in the declaring package's files directory as `LicenseRef-<name>.txt`, as the
+  source is not unpacked when the archive comes from a cache.
 
 **Example entry** (abridged):
 
@@ -65,22 +75,27 @@ One document per image, `image/<profile>.spdx.json`, next to the image:
 }
 ```
 
-`licenseConcluded` repeats `licenseDeclared`: the recipes take `package_license` from the source's own
-licence files, so no further audit stands behind the conclusion (ScanCode or ORT, under *Tools to
-use*, would give one). `copyrightText` stays `NOASSERTION` for the packages: the notices are in the
-sources, which the SBOM's writer does not see, and nothing gathers them.
+`licenseConcluded` repeats `licenseDeclared`: the recipes take `package_license` from the source's
+own licence files, and no further audit stands behind the conclusion (ScanCode or ORT, in
+[Tools](#tools), would give one). `copyrightText` stays `NOASSERTION` for the packages: the notices
+are in the sources, which the SBOM's writer does not see, and nothing gathers them.
 
 The document names packages, not the archives that the system build made of them: the archives are
 published nowhere, so their digests would tell nobody anything, and scanners match the packages'
-identities alone. A package that the system installs twice is named once. A package without a
-source, such as `system-files`, holds this project's own files, which the image stands for. The
-`dev` component, which a system doesn't get, stays out.
+identities alone. A document that lists the sources alone, each with the CPE and purl of what was
+built from it, gives every finding of one that lists the archives, whether the sources keep their
+purpose (`SOURCE`) or not, and a few more for python and zlib, which Grype matches without a CPE as
+well. A package that the system installs twice is named once. A package without a source, such as
+`system-files`, holds this project's own files, which the image stands for. The `dev` component,
+which a system doesn't get, stays out.
 
 Beside the document, `image/<profile>.kernel-files` lists the files that the image's kernel was
 built from, one path of the kernel's source tree per line. It is not in the image. The kernel's
-recipe makes it, and the vulnerability scan reads it (see *What scanners find*).
+recipe makes it, and the vulnerability scan reads it ([The Kernel](#the-kernel)).
 
-## Identifiers
+
+Identifiers
+-----------
 
 Scanners find a package's vulnerabilities by an identifier that their databases know: the NVD's
 CPE, for most packages, and a package URL of a language's ecosystem, for the Python libraries.
@@ -108,121 +123,143 @@ and glibc, gnupg's gnupg, libgcrypt and libksba, debian's shadow, kernel's util-
 linux_kernel, openssl, python, systemd and zlib. The others rest on Buildroot's and cve-bin-tool's
 tables, or on the rule alone (mandoc and ccid).
 
-## How it is produced
+
+How It Is Produced
+------------------
 
 1. **Record what goes in.** `lfs_system_install` appends each package to a list for the system,
    `$LFS_WORK_DIR/sbom/$LFS_PROFILE`, which the system build empties first. A line holds what the
    recipe says: name, version, licence, source, source digest, CPEs and description. It is taken
    when the package is installed, because only then does the recipe see the variables it was built
-   with (the package key, the Python version). This is the only change to the system build.
-2. **Write the document.** `lib/sbom.sh` does it from that list, at the end of `./lfs image build`,
-   which knows the image's digest, and writes next to the image on the host. It's plain shell,
-   `printf` plus a small JSON string-escaping helper, like the rest of the framework. The SBOM goes
-   into place before the image, which tells that both are complete: an image with no SBOM is made
-   anew.
+   with (the package key, the Python version).
+2. **Write the document.** `lib/sbom.sh` writes it from that list, in plain shell, at the end of
+   `./lfs image build`, which knows the image's digest. The SBOM goes into place before the image,
+   which tells that both are complete: an image with no SBOM is made anew.
 3. **Check it.** `make sbom-check` runs `pyspdxtools --infile` on every `image/*.spdx.json`, which
    validates against the SPDX 2.3 model: licence expressions, identifiers and relationships. The
-   target installs the validator, pinned by version in `check/Makefile`, into a virtual environment
-   under `work/check/`, so that CI runs, after each phase that makes an image, what a developer
-   runs. Not part of the build, which runs with the tools alone.
-4. **Scan it.** CI keeps the SBOM of the virt and pi0 images that their test phases make, and
-   `.github/workflows/vulnerabilities.yaml` scans the latest of each with Grype after each run of CI
-   on main, with the vulnerability data of the day, building nothing. The findings go to the run's
-   summary and to GitHub's code scanning, where an alert can be dismissed with a reason. The scan is
-   a report: it leaves CI's result alone, and fails, as the README's badge shows, when a finding of
-   high or critical severity has a fixed version. `check/grype.yaml` leaves out the findings that do
-   not concern the images, each with its reason, and `check/kernel-vex` those of the kernel that its
-   own CVE records show it does not have, as fixed in its line or as in code that its build did not
-   read, which it writes as an OpenVEX document that CI keeps beside the findings (see *What
-   scanners find*). `make vulnerability-check` is the scan: `check/vulnerabilities` runs Grype,
-   pinned and checked against its digest in `check/Makefile`, on each `image/*.spdx.json`, and the
-   workflow only fetches the SBOM into `image/`, runs it, and sends its SARIF and summary on. A
-   developer's scan gives CI's verdict.
+   validator, pinned in `check/Makefile`, is installed into a virtual environment under
+   `work/check/`, so that CI, after each phase that makes an image, runs what a developer runs. The
+   build, which runs with the tools alone, does not.
+4. **Scan it.** CI keeps the SBOM of the image of each profile that its test phases make, and
+   `.github/workflows/vulnerabilities.yaml` scans the latest of each with `make
+   vulnerability-check` (`check/vulnerabilities`) after each run of CI on main, building nothing.
+   The findings go to the run's summary and to GitHub's code scanning, where an alert can be
+   dismissed with a reason. The scan leaves CI's result alone, and fails, as the README's badge
+   shows, when a finding of high or critical severity has a fixed version. `check/grype.yaml` leaves
+   out the findings that do not concern the images, each with its reason, and `check/kernel-vex`
+   those of the kernel that its own CVE records show it does not have ([The Kernel](#the-kernel)).
+   A developer's scan gives CI's verdict.
 
-## Tools to use
+
+Tools
+-----
 
 No existing generator understands these recipes, so `lib/sbom.sh` writes the document itself. Open
-source tools then validate it, scan it and sign it. These are the well-known, maintained ones; all
-are Apache-2.0 unless noted. The scanners were tried on our documents (see *What scanners find*).
+source tools validate it, scan it and sign it. These are the well-known, maintained ones, all
+Apache-2.0 unless noted; the scanners were tried on the documents ([What Scanners
+Find](#what-scanners-find)).
 
-| Job | Tool | Why / caveat |
-|---|---|---|
-| Validate | [`spdx-tools`](https://github.com/spdx/tools-python) (`pyspdxtools`) | The SPDX project's own library. Fully validates 2.2 and 2.3; 3.0 is experimental and write-only. Another reason to stay on 2.3. |
-| Score | [`sbomqs`](https://github.com/interlynk-io/sbomqs) | Scores an SPDX or CycloneDX file 0–10 and checks it against NTIA minimum elements, BSI TR-03183-2 and OpenChain Telco. Shows which fields (supplier, CPE) are still missing. |
-| Scan | [Grype](https://github.com/anchore/grype) | The one scanner that finds our packages' vulnerabilities, from an SBOM alone, once they carry a CPE, or a PyPI purl for the Python libraries. Writes SARIF, which GitHub's code scanning takes. |
-| Monitor | [OWASP Dependency-Track](https://github.com/DependencyTrack/dependency-track) | Takes SBOMs per product and version and re-evaluates them as vulnerability feeds update. Needs a server; a scheduled scan in CI does the same for one image. |
-| Triage | [OpenVEX / `vexctl`](https://github.com/openvex/vexctl) | Records "not affected" decisions (e.g. a kernel CVE for a driver we don't build) so they don't reappear on every scan. Grype takes them. |
-| Licences | [ScanCode Toolkit](https://github.com/aboutcode-org/scancode-toolkit), [ORT](https://github.com/oss-review-toolkit/ort) | Scan the unpacked sources for licences, to check `package_license` and `licenseConcluded`, and to fill `copyrightText`. A one-off audit, not part of every build. |
-| Convert | [`bomctl`](https://github.com/bomctl/bomctl) | Converts and merges SPDX and CycloneDX. Describes itself as experimental, and has no diff yet. Only needed if a consumer insists on CycloneDX. |
-| Sign | [cosign](https://github.com/sigstore/cosign), [minisign](https://github.com/jedisct1/minisign), GitHub's artifact attestations (`actions/attest-sbom`) | See Signing below. |
+- **Validate:** [`spdx-tools`](https://github.com/spdx/tools-python) (`pyspdxtools`), the SPDX
+  project's own library. It fully validates 2.2 and 2.3; its 3.0 support is experimental and
+  write-only, another reason to stay on 2.3.
+- **Score:** [`sbomqs`](https://github.com/interlynk-io/sbomqs) scores an SPDX or CycloneDX file
+  0–10 and checks it against NTIA minimum elements, BSI TR-03183-2 and OpenChain Telco. It shows
+  which fields (supplier, CPE) are missing.
+- **Scan:** [Grype](https://github.com/anchore/grype), the one scanner that finds the packages'
+  vulnerabilities from an SBOM alone, given a CPE, or a PyPI purl for the Python libraries. It
+  writes SARIF, which GitHub's code scanning takes.
+- **Monitor:** [OWASP Dependency-Track](https://github.com/DependencyTrack/dependency-track) takes
+  SBOMs per product and version and re-evaluates them as vulnerability feeds update. It needs a
+  server; a scheduled scan in CI does the same for one image.
+- **Triage:** [OpenVEX / `vexctl`](https://github.com/openvex/vexctl) records "not affected"
+  decisions (e.g. a kernel CVE for a driver that is not built) so that they don't reappear on every
+  scan. Grype takes them.
+- **Licences:** [ScanCode Toolkit](https://github.com/aboutcode-org/scancode-toolkit) and
+  [ORT](https://github.com/oss-review-toolkit/ort) scan the unpacked sources for licences, to check
+  `package_license` and `licenseConcluded`, and to fill `copyrightText`: a one-off audit, not part
+  of every build.
+- **Convert:** [`bomctl`](https://github.com/bomctl/bomctl) converts and merges SPDX and CycloneDX.
+  It describes itself as experimental, and has no diff. It is needed only if a consumer insists on
+  CycloneDX.
+- **Sign:** [cosign](https://github.com/sigstore/cosign),
+  [minisign](https://github.com/jedisct1/minisign), GitHub's artifact attestations
+  (`actions/attest-sbom`): see Signing in [Choices for Later](#choices-for-later).
 
 **Prior art.** Yocto's `create-spdx` builds SPDX per recipe and image, and its `cve-check` takes a
 CPE product name per recipe (`CVE_PRODUCT`), the same idea as `package_cpe`. Buildroot has
 `make legal-info`, and names each package's CPE vendor and product (`<PKG>_CPE_ID_VENDOR`), a
 source for ours.
 
-## What scanners find
 
-Tried in CI in November 2026, on the documents that `lib/sbom.sh` writes for pi0, with no features
-and with every feature; on the same documents with NVD CPEs and PyPI purls added by hand; on both
-with old versions that have known vulnerabilities (bash 4.3, openssl 3.0.0, Linux 5.10.0,
-cryptography 3.2...), so that a scanner that finds nothing is told from one that matches nothing;
-and on the binaries of the pi0 image.
+What Scanners Find
+------------------
 
-| Scanner | As written (`pkg:generic`) | With CPEs and PyPI purls | The image's binaries |
-|---|---|---|---|
-| Grype 0.121.0 | Nothing, old versions included. `--add-cpes-if-none` guesses `<name>:<name>`, which is right for openssl, python, zlib, gnupg and libusb, and wrong for glibc, gcc, bash, the kernel, systemd, util-linux and shadow | The packages whose CPE is NVD's, old versions of bash, glibc, openssl, systemd, util-linux and the kernel included; the Python libraries through their purl, once named after their PyPI project (`cryptography`, not `python/cryptography`): 7151 findings on the old versions. ncurses 6.1 and procps-ng 3.3.16 matched nothing, so their CPEs need checking | Nothing: Syft knows packages from package databases and manifests, of which the tree has none |
-| Trivy 0.76.1 | Nothing | Nothing, cryptography 3.2 included | — |
-| OSV-Scanner 2.7.0 | Skips every package, as unscannable | The PyPI purls alone (24 for cryptography 3.2): it reads no CPE | — |
-| `sbom-cve-check` 1.3.5 | Cannot read it: its SPDX 2 reader takes Yocto's documents alone, which link each package to its recipe's | — | — |
-| `cve-bin-tool` (main of October 2026) | Matches by bare name, against every vendor that has a product of that name: beside openssl's 25 and glibc's, other vendors' products (gentoo's and redhat's `linux`, microsoft's `python`, sonicwall's `firmware`) and distributions' advisories, 211 findings for pi0 with every feature, most of them false | Adds the kernel through its CPE (138); the false matches stay | Recognises gcc, glibc and the kernel alone (142 findings), not bash, systemd, util-linux, kmod or shadow |
+The scanners were tried in CI in November 2026, on the documents that `lib/sbom.sh` writes for pi0,
+with no features and with every feature; on the same documents with NVD CPEs and PyPI purls added
+by hand; on both with old versions that have known vulnerabilities (bash 4.3, openssl 3.0.0, Linux
+5.10.0, cryptography 3.2...), so that a scanner that finds nothing is told from one that matches
+nothing; and on the binaries of the pi0 image.
 
-`cve-bin-tool`'s last release (3.4) reads NVD feeds that NVD has retired, and its database, fetched
-from NVD's API without a key, takes 24 minutes and 3.8 GB.
+- **Grype 0.121.0.** As written (`pkg:generic`): nothing, old versions included.
+  `--add-cpes-if-none` guesses `<name>:<name>`, which is right for openssl, python, zlib, gnupg and
+  libusb, and wrong for glibc, gcc, bash, the kernel, systemd, util-linux and shadow. With CPEs and
+  PyPI purls: the packages whose CPE is NVD's, old versions of bash, glibc, openssl, systemd,
+  util-linux and the kernel included, and the Python libraries through their purl, once named after
+  their PyPI project (`cryptography`, not `python/cryptography`): 7151 findings on the old
+  versions. ncurses 6.1 and procps-ng 3.3.16 matched nothing, so their CPEs need checking. On the
+  image's binaries: nothing, as Syft knows packages from package databases and manifests, of which
+  the tree has none.
+- **Trivy 0.76.1.** Nothing, with or without CPEs, cryptography 3.2 included.
+- **OSV-Scanner 2.7.0.** As written, it skips every package as unscannable; with purls, it reads the
+  PyPI ones alone (24 findings for cryptography 3.2), and no CPE.
+- **`sbom-cve-check` 1.3.5.** It cannot read the document: its SPDX 2 reader takes Yocto's
+  documents alone, which link each package to its recipe's.
+- **`cve-bin-tool` (main of October 2026).** It matches by bare name, against every vendor that has
+  a product of that name: beside openssl's 25 findings and glibc's, other vendors' products
+  (gentoo's and redhat's `linux`, microsoft's `python`, sonicwall's `firmware`) and distributions'
+  advisories, 211 findings for pi0 with every feature, most of them false. CPEs add the kernel
+  (138), and the false matches stay. On the binaries, it recognises gcc, glibc and the kernel alone
+  (142 findings), not bash, systemd, util-linux, kmod or shadow. Its last release (3.4) reads NVD
+  feeds that NVD has retired, and its database, fetched from NVD's API without a key, takes 24
+  minutes and 3.8 GB.
 
-On the current versions, with CPEs, Grype finds what an update fixes. An OpenSSL 4.0.1 gave 25
-findings (all fixed in 4.0.3), and a Python 3.14.7 gave 14 (10 fixed in 3.14.10): the updates clear
-them. What is left in a pi0 image of mid-November 2026 is 218 findings in 8 packages, 52 of high or
-critical severity with a fixed version: python 3.14.10 (4, whose one high finding is fixed in the
-unreleased 3.14.11), glibc 2.44 (12, 6 of them fixed in the unreleased 2.45) and the kernel, 6.18.60
-(194, 127 with a fixed version). The rest is to triage: CVEs that NVD gives every version, which
-upstream disputes or which concern other builds (glibc's CVE-2010-4756 and CVE-2019-1010022 to
--1010025, coreutils' CVE-2016-2781, shadow's CVE-2013-4235, gcc's CVE-2023-4039 for AArch64's stack
-protector), a CVE of 2020 whose NVD range matches every kernel (CVE-2020-27815, a JFS flaw fixed in
-5.10.4), and the kernel's CVEs from 2016 to 2023.
-
-**The kernel.** Grype matches the kernel by the version ranges of the NVD, which compare mainline
-version numbers: 6.18.60 is in the range of any CVE that is fixed in a later mainline version,
-though the long-term line 6.18 may have the fix. The kernel's own CVE records give the versions that
-fix a CVE in each stable line, which `check/kernel-vex` reads: for the 128 findings with a fixed
-version they say that 106 are fixed in 6.18 at or before 6.18.60, and the scan leaves those out. The
-records also name the files that a CVE concerns. The kernel's recipe saves the list of the files
-that its build read, the source of each object and the headers it includes, as Kbuild records them
-(3,340 files for the Pi's kernel); the image step keeps the list beside the image, as
-`image/<profile>.kernel-files`, and out of it; and `check/kernel-vex` leaves out a CVE none of whose
-source files (.c and .S) is in it, as code that the kernel is not made of. Of the 22 findings with a
-fixed version that the records do not settle, 20 are such: ACPI, MPLS, Greybus, DPLL (the zl3073x
-driver), netfs, ksmbd, JFS, USB gadgets and sound among them. Headers do not count, as every build
-reads headers whose code it never uses (`struct netns_mpls` is in every kernel, with or without
-MPLS); a record that names no source file is judged by its files. A fix of a header's inline
-function that leaves its built users alone would be missed. What is left, CVE-2026-53091 (in
-net/core/dev.c, which the kernel builds) and CVE-2026-53106, is read by a person. The records are
-the kernel CNA's, which a fork of the kernel, the Pi's, follows by version alone.
-
-A document that lists the sources alone, each with the CPE and purl of what was built from it, and
-none of the archives, gives every finding of the one with archives, whether the sources keep their
-purpose (`SOURCE`) or not, and a few more for python and zlib, which Grype matches without a CPE as
-well.
+On the current versions, with CPEs, Grype finds what an update fixes: an OpenSSL 4.0.1 gave 25
+findings, all fixed in 4.0.3, and a Python 3.14.7 gave 14, 10 of them fixed in 3.14.10. The rest is
+to triage, as `check/grype.yaml` does: CVEs that NVD gives every version, which upstream disputes
+or which concern other builds (glibc's CVE-2010-4756 and CVE-2019-1010022 to -1010025, coreutils'
+CVE-2016-2781, shadow's CVE-2013-4235, gcc's CVE-2023-4039 for AArch64's stack protector), and a
+CVE of 2020 whose NVD range matches every kernel (CVE-2020-27815, a JFS flaw fixed in 5.10.4),
+and the kernel's CVEs from 2016 to 2023.
 
 Commercial services that are free for open-source projects add little: Snyk's `sbom test` reads
 purls alone, of the types it knows; Sonatype OSS Index, Mend and Socket cover the packages of
 language ecosystems. GitHub's code scanning, free for public repositories, takes Grype's SARIF, and
 keeps its findings as alerts that can be dismissed with a reason.
 
-## Choices for later
+### The Kernel
 
-- **Suppliers.** NTIA's minimum elements also ask for each component's supplier. A `package_supplier`
-  (e.g. `Organization: GNU Project`), or `NOASSERTION` until then.
+Grype matches the kernel by the version ranges of the NVD, which compare mainline version numbers:
+6.18.60 is in the range of any CVE that is fixed in a later mainline version, though the long-term
+line 6.18 may have the fix: most of the findings of a pi0 image, 194, are the kernel's.
+`check/kernel-vex`, whose header has the method, reads the kernel's own CVE records,
+which the kernel CNA publishes and the Pi's fork follows by version alone:
+
+- The records give the version that fixes a CVE in each stable line: for the 128 findings with a
+  fixed version, they said that 106 were fixed in 6.18 at or before 6.18.60.
+- The records also name the files that a CVE concerns. The kernel's recipe saves the list of the
+  files that its build read, as Kbuild records them (3,340 files for the Pi's kernel). Of the 22
+  findings that the versions did not settle, 20 concern no source file of that list: ACPI, MPLS,
+  Greybus, DPLL (the zl3073x driver), netfs, ksmbd, JFS, USB gadgets and sound among them.
+
+What is left, CVE-2026-53091 (in net/core/dev.c, which the kernel builds) and CVE-2026-53106, is
+read by a person.
+
+
+Choices for Later
+-----------------
+
+- **Suppliers.** NTIA's minimum elements also ask for each component's supplier. A
+  `package_supplier` (e.g. `Organization: GNU Project`), or `NOASSERTION` until then.
 - **Patches.** The patches applied to a source are files of the package, `package/<name>/*.patch`,
   that `apply_patch` applies in a recipe's `prepare`, which does not run when the archive comes from
   the cache, so nothing records them. They would need to be declared by the recipe (a list that
@@ -231,10 +268,8 @@ keeps its findings as alerts that can be dismissed with a reason.
 - **Build tools.** The cross toolchain and the tools that built the system could be added with
   `BUILD_TOOL_OF` relationships. That makes the SBOM describe how the image was built, not only what
   it contains, which is most of what SPDX 3.0's build profile is for.
-- **Files.** Per-file SHA-256s of the tree (`hasFiles`) would let a device check its own files
-  against the SBOM. That's larger, and best left for after reproducible builds.
-- **Signing.** Signing the image's digest and the SBOM together (minisign or cosign) ties the SBOM to
-  the image that was published.
-
-**Effort:** steps 1–3 are a few hundred lines (mostly `lib/sbom.sh`) plus a validation run per
-platform. CPEs and suppliers are recipe metadata, which can be added package by package.
+- **Reproducible builds.** `created` could then be `SOURCE_DATE_EPOCH`, and per-file SHA-256s of
+  the tree (`hasFiles`) would let a device check its own files against the SBOM, at the cost of a
+  much larger document.
+- **Signing.** Signing the image's digest and the SBOM together (minisign or cosign) ties the SBOM
+  to the image that was published.
