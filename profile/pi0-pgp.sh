@@ -182,6 +182,9 @@ lfs_sysroot_install libusb#dev
 # the FAT file system that the script wants on the stick, labelled KEYS (fatlabel changes the label
 # of one that exists), and fsck.fat checks it.
 lfs_system_install dosfstools
+# The sticks' mount points (mnt-keys.mount, mnt-usb\x2dstorage.mount), which systemd cannot make on
+# the read-only root.
+mkdir -pv $system_dir/mnt/keys $system_dir/mnt/usb-storage
 
 #===[ Processes and memory ]===
 

@@ -162,6 +162,8 @@ system runs.
   ([`run-memory.mount`](pi0-pgp/files/usr/lib/systemd/system/run-memory.mount)), which only root
   opens, and which holds 64 MB at most. `/tmp` is systemd's tmpfs, the journal is in `/run`, and
   there is no swap.
+* `systemd-tmpfiles` leaves `/etc` and `/srv` as the image has them
+  ([`read-only-root.conf`](pi0-pgp/files/etc/systemd/system/systemd-tmpfiles-setup.service.d/read-only-root.conf)).
 * The clock starts every boot at the time the image was made (systemd reads it from the date of
   `/usr/lib/clock-epoch`), whatever time was set before.
 
