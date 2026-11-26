@@ -15,7 +15,7 @@ Overview
   (`source/`), build dirs, the system tree (`system/`) and the sysroot of the cross toolchain
 * `tools/`: built tools and cross toolchain for each platform
 * `archive/`: package tarballs and SHA-256 digests
-* `image/`:  built disk images
+* `image/`: built disk images
 * `bin/`: project maintenance commands
 * `check/`: quality assurance utilities
 * `Makefile`: build rules
@@ -27,10 +27,8 @@ Building the Toolchain
 
 ### Bootstrap
 
-An initial (throwaway) toolchain is built through the host's tools.
-
-The following command builds a cross-compiler plus a native set of temporary tools (bash,
-coreutils, make, wget, ...)  into the `tools` directory.
+This command builds, with the host's tools, a native toolchain and a set of temporary tools (bash,
+coreutils, make, wget, meson, ninja...) into the `tools` directory:
 
 ```shell
 ./lfs tools bootstrap
@@ -38,42 +36,39 @@ coreutils, make, wget, ...)  into the `tools` directory.
 
 ### Scratch
 
-A full self-hosted toolchain is built using the bootstrapped toolchain built in the previous stage.
-
-The following command adds build-host-only tooling (Python, meson/ninja, kmod, btrfs-progs, ...)
-into the `tools` directory:
+This command builds, with the bootstrapped tools alone, the rest of the build machine's tools
+(Python, Perl, CMake, kmod, btrfs-progs...) into the `tools` directory, which can then build
+packages:
 
 ```shell
 ./lfs tools build
 ```
 
-With this, the tools are fully functional and can be used to build packages.
-
 
 Building the System
 -------------------
 
-The following command builds the system for a given profile, into `work/$LFS_PROFILE/system`, the system tree:
+This command builds the system of the profile into its system tree, `work/$LFS_PROFILE/system`:
 
 ```shell
 ./lfs system build
 ```
 
 It first builds a cross toolchain for the profile's platform: `binutils`, a first `gcc`, the Linux
-API headers and the C library, `glibc` or `musl`, then the full cross `gcc`. The profile asks for
-it in its first statement, `lfs_system_toolchain glibc|musl`, which gives the system's C library.
-Everything else comes from the profile definition at `profile/$LFS_PROFILE.sh`, compiled with that
-toolchain. This includes the kernel (`linux` with a given set of capabilities), init (`systemd` or
-`busybox`), and further packages. Once the profile has run, the build copies the files of
-`profile/$LFS_PROFILE/files/` into the system tree, and then indexes the manual and Info pages of a
-system that ships them (`man=yes`, `info=yes`), so that no profile does so itself.
+API headers and the C library, `glibc` or `musl`, then the full cross `gcc`. The profile asks for it
+in its first statement, `lfs_system_toolchain glibc|musl`, which gives the system's C library.
+Everything else comes from the profile, `profile/$LFS_PROFILE.sh` ([Profiles](#profiles)), compiled
+with that toolchain: the kernel, the init (`systemd` or `busybox`) and the other packages. Once the
+profile has run, the build copies the files of `profile/$LFS_PROFILE/files/` into the system tree,
+and indexes the manual and Info pages of a system that ships them (`man=yes`, `info=yes`: the pi0
+platform's default).
 
 
 Images
 ------
 
-The following command makes a disk image from the system tree at `work/$LFS_PROFILE/system`, as
-populated by `./lfs system build`:
+This command makes a disk image from the system tree, with its SBOM and its file manifests (see the
+README, [Disk Images](README.md#disk-images)):
 
 ```shell
 ./lfs image build
@@ -81,31 +76,23 @@ populated by `./lfs system build`:
 
 Images observe the [Linux Filesystem Hierarchy Standard].
 
-Images are accompanied by an SBOM document (`<image>.spdx.json`) in SPDX 2.3 format.
-Scanners can use this document to signal vulnerabilities.
-
-They also come with a manifest of the files of each file system, `<image>.root.txt` and, for
-the Pi layout, `<image>.boot.txt`: one path per line, absolute from the file system's root,
-sorted by byte.
-
-It is possible to write the system directly to a device:
+It can also write the system to a device:
 
 ```shell
 sudo LFS_ERASE=/dev/sdb ./lfs image build /dev/sdb
 ```
 
-`LFS_ERASE` is required to ensure the user does intend to obliterate any data that might be present
-on the device.
+`LFS_ERASE` must name the device too, so that no device is erased by mistake.
 
 
 Emulating
 ---------
 
-The following command boots the built image:
+This command boots the built image, through an overlay that takes its writes:
 
-`./lfs qemu`
-
-A qcow2 overlay (`<image>.qcow2`) receives the writes, so that the image remains untouched.
+```shell
+./lfs qemu
+```
 
 
 Package Model
@@ -122,10 +109,9 @@ The directory of a package's name is its category (`python` for `python/click`, 
 The framework puts everything of the package in the category's directory of `download/`,
 `work/<key>/source/`, `work/<key>/` and `archive/<key>/`: its downloads and patches, its unpacked
 sources, its build, stage and component directories, and its archives. Packages of different
-categories therefore never share a path, so `python/foo` and `foo` can coexist.
-
-A category can have helpers for its recipes in `lib/<category>.sh` (`lib/python.sh` for `python`),
-which the framework loads for the recipes of that category.
+categories therefore never share a path, so `python/foo` and `foo` can coexist. A category can have
+helpers for its recipes in `lib/<category>.sh` (`lib/python.sh` for `python`), which the framework
+loads for the recipes of that category alone.
 
 A recipe downloads in `fetch`, and unpacks with `unpack`: `./lfs fetch` runs the `fetch` of every
 recipe for the profile's platform with `unpack` doing nothing, and `make fetch` runs it for each
@@ -136,13 +122,12 @@ A package may list other packages in `package_fetch_dependencies`, whose sources
 The framework fetches them before building the package, and exposes their locations as
 `<dependency>_source_dir` (`libgpg_error_source_dir` for `libgpg-error`).
 
-The `package_license` list the package's license in [SPDX format][SPDX License List]. A licence that
-the list does not have is a `LicenseRef-<name>`, whose text is the file
+`package_license` gives the package's licence as an [SPDX][SPDX License List] expression. A licence
+that the list lacks is a `LicenseRef-<name>`, whose text, the source's own licence file verbatim, is
 `package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `check/lint` looks for.
 
 A package's install can set its development files (headers, static libraries, pkg-config files...)
-aside for its `dev` component with `move_to_dev_component`, which is installed only where
-wanted.
+aside for its `dev` component with `move_to_dev_component`, which is installed only where wanted.
 
 Programs and libraries are stripped as they are linked.
 
@@ -154,31 +139,25 @@ All shell code should be POSIX compliant.
 
 ### External API
 
-Shell variables are part of the **external API** if they are used to parameterise `lfs`. They are
-the only variables that `lfs` passes on to builds, along with `PATH` and `TMPDIR`.
+Shell variables are part of the **external API** if they parameterise `lfs`. They have uppercase
+names, prefixed with `LFS_` so that none clashes with a variable of the caller's (e.g.,
+`LFS_PROFILE`, `LFS_TIMEZONE`). They are the only variables of the caller's that `lfs` passes on to
+builds, with `PATH`, `TMPDIR` and the working directory (`PWD`, `OLDPWD`), which keep their names:
+`lfs` ignores every other variable.
 
-External API variables have uppercase names, prefixed with `LFS_` so that none clashes with a
-variable of the caller's (e.g., `LFS_PROFILE`, `LFS_TIMEZONE`). `PATH` and
-`TMPDIR` are the platform's own, and keep their names. `lfs` ignores every variable that it does not
-name.
-
-After `tools bootstrap`, which builds the first toolsset, `PATH` holds the tools' directories only:
+After `tools bootstrap`, which builds the first tool set, `PATH` holds the tools' directories only:
 nothing of the host's (a program, a config script, an interpreter) finds its way into a build.
 
 ### Internal API
 
-Shell variables are part of the **internal API** if they are used by functions, and are not part of
-the external API (e,g. `package_version`, `prefix`).
-
-Internal API variables have lowercase names.
-
-Internal API variables must not be exported.
+Every other variable that functions use is part of the **internal API** (e.g., `package_version`,
+`prefix`): it has a lowercase name, and is never exported.
 
 ### Encapsulation
 
-A package recipe owns the functions it defines. Other package recipes or profiles should not call
-those functions, as that would make a package depend on the implementation of another.  Packages
-rely only on the framework (`lib/`).
+A package recipe owns the functions it defines. Other recipes and profiles never call them, as that
+would make a package depend on the implementation of another. Packages rely only on the framework
+(`lib/`).
 
 ### Simplicity
 
@@ -204,36 +183,24 @@ The archive step only archives. Profiles are written on request, not speculative
 ### Versions and Commits
 
 The project's versions follow SemVer, and a release is an annotated git tag `MAJOR.MINOR.PATCH`,
-with no prefix, from the baseline `0.0.0`. `bin/version` prints the version of a tree: the tag's when
-the tree is clean and on the commit of the most recent tag, and otherwise a pre-release of the next
-version, named by the abbreviated hash of the top commit, as short as git finds it unambiguous
-(`0.2.0-abc1234`), and ended by `-dirty` when the tree differs from its commit. A hash of digits alone
-that starts with 0, which SemVer does not allow in a number, takes an `r`, for revision
-(`0.2.0-r0123456`). The next version is the tag's, raised by the summary lines of the commits since
-it: a `feat` after `0.1.0` makes `0.2.0`, and a `fix` on top of it changes the hash, not the version.
-(Build metadata, `+hash`, would not do: SemVer ignores it when it compares versions.) `bin/release`
-tags the next version (`--dry-run` says which first), and `git push github X.Y.Z` publishes the tag.
-The Makefile gives an image its release (`LFS_RELEASE`, the output of `bin/version`: os-release's
-`VERSION`, the SBOM). It goes into no archive, as every revision shares them.
+with no prefix, from the baseline `0.0.0`. `bin/version` prints the version of a tree: the tag's
+when the tree is clean and on the commit of the most recent tag, and otherwise a pre-release of the
+next version, named by `r`, for revision, and the abbreviated hash of the top commit, as short as
+git finds it unambiguous (`0.2.0-rabc1234`), and ended by `-dirty` when the tree differs from its
+commit. The `r` keeps valid a hash of digits alone that starts with 0, which SemVer does not allow
+in a number. (Build metadata, `+hash`, would not do: SemVer ignores it when it compares versions.)
+The next version is the tag's, raised by the summary lines of the commits since it: a `feat` after
+`0.1.0` makes `0.2.0`, and a `fix` on top of it changes the hash, not the version. `bin/release`
+tags the next version (`--dry-run` says which first), and `git push github X.Y.Z` publishes the
+tag. The Makefile gives an image its release (`LFS_RELEASE`, the output of `bin/version`: in
+os-release's `VERSION` and in the SBOM). No archive holds it, as every revision shares them.
 
 Commit messages are semantic commits, `<type>: <subject>`, without scopes, as
-[docs/commit-messages.md](docs/commit-messages.md) says. The type of the summary line tells what
-bump the commit makes:
-
-| Type                                                                       | Bumps         |
-|----------------------------------------------------------------------------|---------------|
-| `feat!`, `drop!`                                                           | the major one |
-| `feat`                                                                     | the minor one |
-| `fix`, `perf`, `refactor`                                                  | the patch     |
-| any other: `drop`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `conf` | nothing       |
-
-The highest bump of the commits since the last tag applies, and sets the parts after it to 0. With
-only commits that bump nothing since the last tag, `bin/version` shows a pre-release of the next
-patch (a pre-release of the tag would sort before it), and `bin/release` has nothing to tag. Merges,
-fixups and squashes bump nothing. A trailer such as `BREAKING CHANGE:` means nothing: a change that
-breaks the interface says so with its type. `drop!` is for what users may rely on, which it
-removes; `feat!` is for any other change that breaks the interface (a feature that changes in a way
-that breaks its users). `drop` is for what nothing relies on.
+[docs/commit-messages.md](docs/commit-messages.md) says, with the bump that each type makes. The
+highest bump of the commits since the last tag applies, and sets the parts after it to 0. With only
+commits that bump nothing since the last tag, `bin/version` shows a pre-release of the next patch (a
+pre-release of the tag would sort before it), and `bin/release` has nothing to tag. Merges, fixups
+and squashes bump nothing.
 
 The interface is what users and profiles rely on: the make targets and their defaults, the `lfs`
 commands and environment, the formats of `profile/`, `platform/` and the options of recipes, and the
@@ -262,44 +229,79 @@ hash, as in an example of a version, is fine.
 Where Code Goes
 ---------------
 
-| What | Where |
-|---|---|
-| One package's build | `package/<name>.sh`: `case $package_component`, `default_*` for the rest |
-| Files shipped verbatim | `package/<name>/<path as installed>`, copied by `install` |
-| What a system installs | `profile/<profile>.sh`: `lfs_system_toolchain <libc>`, then flat `lfs_system_install X` (+ `lfs_sysroot_install X#dev` for build-time files), in dependency order, the options of a package at its call site, and the kernel, `( capabilities="<capability>..."; lfs_system_install linux )`, among the packages |
-| Helpers of one profile | in its file, for its own use: no package uses them (see Encapsulation) |
-| Helpers several recipes share | `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or `lib/<category>.sh` for a package category, loaded for that category's recipes alone; recipe-facing names are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*`, and those that install a package are `lfs_<destination>_install` (`lfs_system_install`, `lfs_sysroot_install`, `lfs_tools_install`, `lfs_toolchain_install`) |
-| Kernel options every system needs | `package/linux/{base,<platform>,<arch>}.config`, each with its reason |
-| Kernel options that are optional | `package/linux/<capability>.config`, each with its reason, named in the `capabilities` of the profiles that rely on it, and its part for an architecture, `package/linux/<capability>.<arch>.config`, or for a platform, `package/linux/<capability>.<platform>.config` |
-| Applets of BusyBox | `package/busybox/<category>.config`, named in the `applets` of the profiles that rely on it: the category's applets that the kernels serve and a bare system has a use for, and their options, each category with its reasons; `base.config` has the options that every system gets |
-| A change to an upstream source file (a device tree included) | a patch in `package/<name>/`, applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`. The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later definitions win) |
-| A profile's tests | `profile/<profile>/test/<number>-<what>.exp`, Tcl scripts that `check/test` (`make <profile>-test`) runs in the order of their names, on one boot of the image, with the procedures that it defines (its header has the conventions). Every profile has `01-boot.exp`, the first; a test is about one thing, starts and ends at the login prompt, and fails with `fail`, which says what was expected. The last powers the machine off |
-| Static users and groups | `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`), shipped by the init, with root locked (`!`) and `/bin/sh` |
-| The files that give a system its look and its policy, and what only it has (issue, motd, the shell profile, the dotfiles of root and of the regular account (`home/$LFS_USER/`), the udev rules and systemd drop-ins that name its regular account or its devices, a script of its own with its units) | `profile/<profile>/files/<path as installed>`, which the build copies after the profile's packages, with `$LFS_USER` (the regular account's name) replaced, in the path and in the contents, and nothing else: a path that a package installs is an error. Two profiles that want one file each have a copy of it, as profiles share nothing |
-| root's password and shell | `( root_shell=/bin/bash; lfs_system_set_root )` in the profile, after the packages: it has no password unless `LFS_ROOT_PASSWORD` sets one, which belongs to the build, so no package ships it |
-| The regular account of a system | `( user_shell=/bin/bash; lfs_system_add_user )` in the profile, after the packages: its name is `LFS_USER`, and it has no password unless `LFS_PASSWORD` sets one; both belong to the build, so no package ships the account |
-| The text of a licence that SPDX does not list | `package/<package>/LicenseRef-<name>.txt`: the source's own licence file, verbatim |
+* **One package's build**: `package/<name>.sh`, with `case $package_component`, and `default_*` for
+  the rest.
+* **Files shipped verbatim**: `package/<name>/<path as installed>`, copied by `install`.
+* **What a system installs**: `profile/<profile>.sh` ([Profiles](#profiles)):
+  `lfs_system_toolchain <libc>`, then flat `lfs_system_install X` (+ `lfs_sysroot_install X#dev`
+  for build-time files), in dependency order, the options of a package at its call site, and the
+  kernel, `( capabilities="<capability>..."; lfs_system_install linux )`, among the packages.
+* **Helpers of one profile**: in its file, for its own use: no package uses them (see
+  Encapsulation).
+* **Helpers several recipes share**: `lib/<topic>.sh`, sourced in `lfs` (`lib/meson.sh`), or
+  `lib/<category>.sh` for a package category ([Package Model](#package-model)). Recipe-facing names
+  are plain (`meson_cross_file`, `move_to_dev_component`), framework functions are `lfs_*`, and
+  those that install a package are `lfs_<destination>_install` (`lfs_system_install`,
+  `lfs_sysroot_install`, `lfs_tools_install`, `lfs_toolchain_install`).
+* **Kernel options every system needs**: `package/linux/{base,<platform>,<arch>}.config`, each with
+  its reason.
+* **Kernel options that are optional**: `package/linux/<capability>.config`, each with its reason,
+  named in the `capabilities` of the profiles that rely on it, with its part for an architecture,
+  `package/linux/<capability>.<arch>.config`, or for a platform,
+  `package/linux/<capability>.<platform>.config`.
+* **Applets of BusyBox**: `package/busybox/<category>.config`, named in the `applets` of the
+  profiles that rely on it: the category's applets that the kernels serve and a bare system has a
+  use for, with their options and the category's reasons. `base.config` has the options that every
+  system gets.
+* **A change to an upstream source file** (a device tree included): a patch in `package/<name>/`,
+  applied by `apply_patch` in `prepare`; a recipe never edits a source file with `sed` or `cat >>`.
+  The Pi's device tree is `package/linux/<board>.patch`, which appends override nodes (later
+  definitions win).
+* **A profile's tests**: `profile/<profile>/test/<number>-<what>.exp`, Tcl scripts that
+  `check/test` (`make <profile>-test`) runs in the order of their names, on one boot of the image,
+  with the procedures that it defines (its header has the conventions). Every profile has
+  `01-boot.exp`, the first; a test is about one thing, starts and ends at the login prompt, and
+  fails with `fail`, which says what was expected. The last powers the machine off.
+* **Static users and groups**: `package/<init>/etc/{passwd,group,shadow}` (`systemd`, `busybox`),
+  shipped by the init, with root locked (`!`) and `/bin/sh`.
+* **What gives a system its look and its policy, and what only it has** (issue, motd, the shell
+  profile, the dotfiles of root and of the regular account (`home/$LFS_USER/`), the udev rules and
+  systemd drop-ins that name its regular account or its devices, a script of its own with its
+  units): `profile/<profile>/files/<path as installed>`, which the build copies after the profile's
+  packages, with `$LFS_USER` (the regular account's name) replaced, in the path and in the
+  contents, and nothing else. A path that a package installs is an error. Two profiles that want
+  one file each have a copy of it, as profiles share nothing.
+* **root's password and shell**: `( root_shell=/bin/bash; lfs_system_set_root )` in the profile,
+  after the packages. root has no password unless `LFS_ROOT_PASSWORD` sets one, which belongs to
+  the build, so no package ships it.
+* **The regular account of a system**: `( user_shell=/bin/bash; lfs_system_add_user )` in the
+  profile, after the packages. Its name is `LFS_USER`, and it has no password unless `LFS_PASSWORD`
+  sets one; both belong to the build, so no package ships the account.
+
+### Profiles
 
 A profile is a whole system: the packages it holds, the init system and the kernel among them, as a
 flat list in the order they are installed, with the options of each package at its call site. Its
 name, `<platform>[-<name>]`, starts with the platform it runs on, and is the key of everything built
 for it: `archive/<profile>/`, `work/<profile>/system`, `work/<profile>/sysroot`,
-`work/<profile>/source` and the image. A profile installs in a subshell, and starts with its toolchain,
-`lfs_system_toolchain glibc|musl`, whose C library is the system's: the library gives the ABI of the
-target triplet (`aarch64-scratch-linux-musl`), after which the platform's EABI follows (`eabihf`,
-for the pi0). It sets no kernel option itself. A
-kernel need is a capability, an option of the linux package: the profile names in the
-`capabilities` option every capability it relies on, in alphabetical order, as capabilities do not
-build on each other. Every profile installs the kernel, which `lfs` then copies, with the platform's device tree,
-to `work/boot/<profile>`. Profiles share nothing but the build tools: a package that two profiles
-install is built under each one's key, and the profiles of one platform build their toolchains
-apart. Build-machine tools that a system build needs (swig, the Rust seed, native Python modules)
-are installed into `LFS_TOOL_DIR` from the profile with `lfs_tools_install <package>`, archived
-`*-tools-*` under the profile's key, never shipped. The tools that `lfs tools` builds are archived
-under the key `tools` instead, and every system shares them, so their recipes use nothing of the
-platform (`target_arch`, `kernel_arch` and the like are the platform's). A tool of a profile may:
-`rust` does. Its files in `LFS_TOOL_DIR` are then the platform's, and two systems with such a tool
-cannot be built at once.
+`work/<profile>/source` and the image.
+
+A profile installs in a subshell, and starts with its toolchain, `lfs_system_toolchain glibc|musl`,
+whose C library is the system's: the library gives the ABI of the target triplet
+(`aarch64-scratch-linux-musl`), which the platform's EABI follows (`eabihf`, for the pi0). It sets
+no kernel option itself: it names in the `capabilities` option of the linux package every
+capability it relies on, in alphabetical order, as capabilities do not build on each other. Every
+profile installs the kernel, which `lfs` then copies, with the platform's device tree, to
+`work/boot/<profile>`.
+
+Profiles share nothing but the build tools: a package that two profiles install is built under each
+one's key, and the profiles of one platform build their toolchains apart. Build-machine tools that a
+system build needs (swig, the Rust seed, native Python modules) are installed into `LFS_TOOL_DIR`
+from the profile with `lfs_tools_install <package>`, archived `*-tools-*` under the profile's key,
+and never shipped. The tools that `lfs tools` builds are archived under the key `tools` instead, and
+every system shares them, so their recipes use nothing of the platform (`target_arch`,
+`kernel_arch` and the like are the platform's). A tool of a profile may: `rust` does. Its files in
+`LFS_TOOL_DIR` are then the platform's, and two systems with such a tool cannot be built at once.
 
 
 Writing Recipes
@@ -314,10 +316,11 @@ Read two recipes like yours before starting: copy idioms, not ideas.
   turns it on: the recipe says `: ${gpgsm:=no}`, and a profile or `lib/tools.sh` sets `=yes` for
   the features it uses and `=no` for none. Options that take a value or a place (`hashes`, `bindir`)
   have no such default, and neither has one that is no feature (`stripping`, `ssldirs`).
-* No documentation: no man (unless `man=yes`), info (unless `info=yes`), doc, locale or NLS files; the
-  install calls `move_to_docs_component`. No empty directories in a system, except mount points. Real hardware
-  comes first: the Pi's boot partition is firmware, `config.txt`, `cmdline.txt` and a flat device
-  tree blob.
+* No documentation: no man (unless `man=yes`), info (unless `info=yes`), doc, locale or NLS files;
+  the install calls `move_to_docs_component`.
+* No empty directories in a system, except mount points.
+* Real hardware comes first: the Pi's boot partition is firmware, `config.txt`, `cmdline.txt` and a
+  flat device tree blob.
 * Pin everything: `package_source_hash=sha256:<hex>` of the tarball, checked against the upstream's
   digest or PyPI's JSON API; patches are kept in the repository.
 * `package_license` is in SPDX for every recipe, from the real LICENSE files, bundled code
@@ -351,7 +354,7 @@ systemd
   own user gets an account there, and its recipe leaves out the `sysusers.d` file. Units are
   upstream's, with the sandboxes they ask for: systemd links libseccomp, and the kernel's `systemd`
   capability has the seccomp and the namespaces they need (`polkit.service`, `pcscd.service` run as
-  shipped); where a profile has a policy of its own, it is a drop-in of the unit, and one that the
+  shipped). Where a profile has a policy of its own, it is a drop-in of the unit, and one that the
   service's own settings (a runtime directory is chowned to its user, sockets in it with it) do not
   undo. Prefer socket activation (`--auto-exit`).
 * The `sysctl.d` file `50-default.conf` is rewritten in `package/systemd.sh`.
@@ -362,25 +365,16 @@ systemd
 Kernel
 ------
 
-The kernel is configured from `allnoconfig`, layers and capabilities. Write down every option relied on, even
-the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NET`,
-`NETWORK_FILESYSTEMS`, `NETDEVICES`: each bit once). Find dependencies in the Kconfig, which
-`tar --include` extracts from the tarball, and verify the resolved `.config`, never the files of `package/linux/`.
+The kernel is configured from `allnoconfig`, layers and capabilities. Write down every option relied
+on, even the ones that default to y, and the parents that gate a menu (`USB_SUPPORT`, `NET`,
+`NETWORK_FILESYSTEMS`, `NETDEVICES`: each bit once), each with its reason: the Pi's are in
+`pi0.config`, `arm.config` and `usb.pi0.config`, virt's in `virt.config` and `usb.virt.config`. Find
+dependencies in the Kconfig, which `tar --include` extracts from the tarball, and verify the
+resolved `.config`, never the files of `package/linux/`.
 
-The console shows errors and worse (`CONFIG_CONSOLE_LOGLEVEL_DEFAULT=4`, in `base.config`): what the
-kernel finds, a USB device say, would otherwise print in the middle of what a person types at the
-console. `dmesg` has it all; `loglevel=7` on the command line brings it back to the console.
-
-Pi facts:
-
-* The USB power domain needs `CONFIG_PM` and `RASPBERRYPI_POWER`, else dwc2 probes ten seconds
-  late.
-* `KUSER_HELPERS` is required by libatomic, which OpenSSL's libraries link on ARMv6: an eager
-  `dlopen` of libcrypto faults without it.
-* `HW_RANDOM_BCM2835` and `COMPAT_32BIT_TIME` are set.
-* DMA stays off, for the regression of the bcm2835-dma driver in 6.18.
-* virt takes RNG (virtio-rng) and its console (`hvc0`) from `virt.config`, and its USB host controller
-  (xHCI) from `usb.virt.config`.
+The console shows errors and worse (`CONFIG_CONSOLE_LOGLEVEL_DEFAULT=4`, in `base.config`, which
+says why). `dmesg` has every message; `loglevel=7` on the command line brings them back to the
+console.
 
 
 Cross-Compiling
@@ -416,8 +410,8 @@ Cross-Compiling
 
 ### Platforms with the Build Machine's Own Triple
 
-On virt and arm64, built on an aarch64 Mac, with glibc, the triple is `aarch64-unknown-linux-gnu`, the
-build machine's, though the compiler is the cross `aarch64-scratch-linux-gnu-gcc`: tools that
+On virt and arm64, built on an aarch64 Mac, with glibc, the triple is `aarch64-unknown-linux-gnu`,
+the build machine's, though the compiler is the cross `aarch64-scratch-linux-gnu-gcc`: tools that
 compare triples see a native build. For `cryptography`:
 
 * cargo has one linker setting per triple, shared by build scripts and proc-macros (which run on the
@@ -430,7 +424,6 @@ compare triples see a native build. For `cryptography`:
 * pyo3 detects cross builds by comparing triples: set `PYO3_CROSS=1` with `PYO3_CROSS_LIB_DIR`.
 * The `LFS_TOOL_DIR` Python and the platform's share a multiarch name: select the sysconfigdata by
   name and by path (`python_wheel` sets `_PYTHON_SYSCONFIGDATA_NAME` and `_PATH`).
-* Only ARM32 needs `KUSER_HELPERS`, libatomic's need for it, and 32-bit time.
 
 A recipe is proven on a platform with a different triple (pi0) and on one with the same (virt):
 check the extension's `readelf -d` (RPATH, NEEDED).
@@ -451,6 +444,7 @@ Before Calling a Change Done
    `work/` or the repository; the README is updated when user-visible behaviour changed.
 6. The report names what was not verified (hardware, PINs, speed) and any framework change that it
    proposes.
+
 
 Gotchas
 -------
