@@ -79,8 +79,8 @@ lfs_fetch_dependencies() {
     done
 }
 
-# Executes in the subshell that evaluates package scripts.
-# Functions with a leading underscore denote private APIs that packages shouldn't invoke.
+# Sources a package's recipe into the subshell of the caller. Functions with a leading underscore
+# are private: recipes never call them.
 lfs_source_package() {
     : ${package_name:=${1%#*}}
     : ${package_component=${1#*#}}

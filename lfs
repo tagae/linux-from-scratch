@@ -24,13 +24,13 @@ readonly profile_dir=$project_dir/profile
 
 #===[ Environment ]===
 
-# Override if you wish to store artefacts in a custom dir.
+# Where the artefacts go, the checkout unless set.
 : ${LFS_STATE_DIR:=$project_dir}
 
 # Mutable build state.
 : ${LFS_WORK_DIR:=$LFS_STATE_DIR/work}
 
-# Fetched artefacts. Allows offline work once all needed artefacts have been fetched.
+# Fetched artefacts, which allow offline work once fetched.
 : ${LFS_DOWNLOAD_DIR:=$LFS_STATE_DIR/download}
 
 # Build toolchains.
@@ -46,10 +46,8 @@ readonly LFS_STATE_DIR LFS_WORK_DIR LFS_DOWNLOAD_DIR LFS_TOOL_DIR LFS_ARCHIVE_DI
 
 # Start anew with the same arguments in an environment that holds only allowed variables.
 if ! ${LFS_CLEAN_ENV:-false}; then
-    # Standard variables (first line).
-    # Shell variables (second line).
-    # LFS API variables (remaining lines).
-    # Nothing else from the caller (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH, etc.) is passed.
+    # Standard variables (first line), the shell's (second line) and the external API (the rest):
+    # nothing else from the caller (CFLAGS, PKG_CONFIG_PATH, PYTHONPATH, etc.) is passed.
     exec env - \
          "PATH=$PATH" "TMPDIR=${TMPDIR:-$LFS_WORK_DIR/tmp}" "HOME=$LFS_WORK_DIR" \
          "PWD=$PWD" "OLDPWD=${OLDPWD:-}" \
@@ -131,8 +129,8 @@ readonly root_volume=1
 #===[ Command Execution ]===
 
 if [ "${1:-} ${2:-}" = "tools bootstrap" ]; then
-    # The bootstrap builds a minimal tool set using the host toolchain.
-    # During bootstrap, the host toolchain has precedence over the tools under construction.
+    # The bootstrap builds the first tools with the host's toolchain, which takes precedence over
+    # the tools being built.
     export PATH=$LFS_TOOL_DIR/bin:$PATH:$LFS_TOOL_DIR/usr/bin:$LFS_TOOL_DIR/usr/sbin
     readonly PATH
 elif [ "${1:-} ${2:-}" = "tools build" ] || [ "${1:-}" = "system" ] || [ "${1:-}" = "image" ]; then
@@ -178,8 +176,8 @@ case "${1:-help}" in
 
     system)
         shift
-        # Sources are unpacked and patched in place, and possibly, in parallel.
-        # so each profile has a source directory of its own.
+        # Sources are unpacked and patched in place, by builds that may run at once, so each
+        # profile has a source directory of its own.
         readonly source_dir=$LFS_WORK_DIR/$package_key/source
         case "${1:-help}" in
             build)

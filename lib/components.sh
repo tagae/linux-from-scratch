@@ -1,8 +1,7 @@
 # Package Components
 # ------------------
 #
-# Package components are made of a subset of the files installed by the package.
-# Those files are moved away from the main package, into the dedicated component.
+# A component holds some of the files that the package installs, moved aside from the package.
 
 # Moves aside the development files installed by the package.
 move_to_dev_component() {

@@ -183,7 +183,7 @@ stage_root() {
             /home/*) [ ! -d $root_dir$home ] || chown -R $uid:$gid $root_dir$home ;;
         esac
     done < $root_dir/etc/passwd
-    # What the kernel was built from is kept next to the image (build_image), not in it.
+    # What the kernel was built from is kept next to the image (lfs_build_image), not in it.
     rm -rf $root_dir/usr/share/lfs
     # Boards without a battery-backed clock start at systemd's build date. systemd never starts the
     # clock earlier than the modification time of this file, so an image boots no earlier than the
@@ -242,7 +242,7 @@ assemble_image() {
 }
 
 # Removes what making an image leaves behind, the image itself, and its SBOM and manifests, if
-# incomplete: at the end of build_image, and as the EXIT trap it sets, when it fails.
+# incomplete: at the end of lfs_build_image, and as the EXIT trap it sets, when it fails.
 clean_image() {
     [ -z "${parts_dir:-}" ] || rm -rf "$parts_dir"
     [ -z "${image_file:-}" ] \

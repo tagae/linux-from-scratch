@@ -1,24 +1,14 @@
 # Target System
 # -------------
 #
-# Builds the system's root tree, the system tree, into $system_dir.
+# Builds the system's root tree, the system tree, into $system_dir. Besides the tree's layout
+# (system-files), everything in the system comes from its profile (CONTRIBUTING.md, Profiles): its
+# packages, its files and its accounts.
 #
 # The cross toolchain that compiles the system has a sysroot of its own, which holds the same
-# packages, plus their dev components. The toolchain finds the platform's headers and libraries
-# there, with no extra flags.  Every platform goes through a cross toolchain, even one with the
+# packages, plus their dev components: the toolchain finds the platform's headers and libraries
+# there, with no extra flags. Every platform goes through a cross toolchain, even one with the
 # build machine's architecture.
-#
-# Besides the tree's layout (system-files), everything in the system comes from its profile,
-# profile/<profile>.sh: the whole list of packages, in the order they are installed, with the options
-# of each at its call site. It starts with the cross toolchain (lfs_system_toolchain), which names
-# the system's C library. The init system and the kernel are among the packages. The kernel is
-# configured from layers that every system gets, in package/linux/ (base, platform, architecture),
-# and from the capabilities there that the profile names in the `capabilities` option of the linux
-# package.
-#
-# What gives a system its own look and accounts belongs to the profile, not to a package: the files
-# in profile/<profile>/files/ (issue, motd, the shell profile), which the build copies once the packages
-# are in, and the accounts that the profile adds (lfs_system_set_root, lfs_system_add_user).
 
 lfs_system_build() {
     mkdir -p ${TMPDIR:-/tmp}
@@ -153,14 +143,13 @@ lfs_system_install() {
     lfs_sbom_record_package $1
 }
 
-# Copies the files of the profile, profile/<profile>/files/, into the system once its packages are in:
-# the path of a file under that directory is its path in the system (profile/virt/files/etc/issue is
-# /etc/issue). Next to it, test/ has the profile's tests, which stay out of the system. A file is 0755
-# if the checkout has it executable, else 0644. The profile's files
-# belong to it alone: a path that a package installed is an error. The files are in no archive and
-# no SBOM, as the build copies them each time. The name of the regular account, LFS_USER, is the
-# only variable that envsubst replaces in them, in their paths as in their contents: a file names it
-# as `$LFS_USER`, and a file of the account's home directory is under home/$LFS_USER/.
+# Copies the files of the profile, profile/<profile>/files/, into the system once its packages are
+# in: the path of a file under that directory is its path in the system (profile/virt/files/etc/issue
+# is /etc/issue). A file is 0755 if the checkout has it executable, else 0644. The files belong to
+# the profile alone: a path that a package installed is an error. They are in no archive and no
+# SBOM, as the build copies them each time. The name of the regular account, LFS_USER, is the only
+# variable that envsubst replaces in them, in their paths as in their contents: a file names it as
+# `$LFS_USER`, and a file of the account's home directory is under home/$LFS_USER/.
 lfs_system_add_profile_files() (
     local dir=$profile_dir/$LFS_PROFILE/files file dest
     [ -d $dir ] || return 0

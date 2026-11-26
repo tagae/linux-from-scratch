@@ -1,19 +1,10 @@
 # Build Toolchain
 # ---------------
 #
-# This file contains all the utilities needed to build a build toolchain.
-# The toolchain can then be used to build Linux systems for different platforms.
+# Builds the tools of the build machine, with which the systems of every platform are built.
 #
-# The system on which the tools are being built is called the build system.
-# The system on which the tools will run is called the host system.
-# The system for which the resulting cross compiler generates code is called the target system.
-#
-# When build == host == target, we have a native toolchain.
-# When build == host != target, we have a cross toolchain.
-# When build != host == target, we have a cross-native toolchain.
-# When build != host != target, we have a Canadian toolchain.
-#
-# See https://www.airs.com/ian/configure/configure_5.html
+# The build system builds a program, the host system runs it, and the target system is the one a
+# cross compiler generates code for (https://www.airs.com/ian/configure/configure_5.html).
 
 # The tools run on the build machine whatever the platform, so they are built once under a key of
 # their own. The cross toolchain of a platform, which runs on the build machine too, is built
@@ -118,7 +109,7 @@ lfs_tools_build() {
 
     lfs_tools_set_env
 
-    # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv
+    # glibc's own compiled-in default gconv module path is the literal /usr/lib/gconv.
     export GCONV_PATH=$LFS_TOOL_DIR/usr/lib/gconv
 
     readonly prefix=/usr
@@ -213,11 +204,10 @@ lfs_tools_set_env() {
     unset PKG_CONFIG_SYSTEM_INCLUDE_PATH PKG_CONFIG_SYSTEM_LIBRARY_PATH
 }
 
-# Exports LDFLAGS so that native binaries carry a LFS_TOOL_DIR-relative interpreter/rpath
-# pointing at the native glibc/libstdc++ under LFS_TOOL_DIR/usr.
+# Exports the LDFLAGS that give the programs built for the build machine the dynamic linker and the
+# libraries (glibc, libstdc++) of LFS_TOOL_DIR/usr/lib, where both are.
 lfs_tools_set_rtld_ldflags() {
     local rtld=$(find $LFS_TOOL_DIR/usr/lib -maxdepth 1 -name 'ld-linux-*.so.*' | head -1)
     [ -n "$rtld" ] || bail "Cannot find dynamic linker built by glibc"
-    # A single rpath at $LFS_TOOL_DIR/usr/lib (= $(dirname $rtld)) is enough.
     export LDFLAGS="-Wl,--dynamic-linker=$rtld -Wl,-rpath,$(dirname $rtld)"
 }

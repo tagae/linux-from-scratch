@@ -4,7 +4,8 @@
 # An image gets an SPDX 2.3 document in JSON next to it, <image>.spdx.json. It names the upstream
 # packages that the image holds, each with its version, licence, and the URL and digest of the
 # source it was built from, and with the identifiers that vulnerability scanners match: its CPE, as
-# the NVD names it, and its package URL. docs/sbom-design.md has the reasoning.
+# the NVD names it, and its package URL. docs/sbom-design.md has the reasoning, and the rules of the
+# identifiers.
 #
 # The system build lists the packages as it installs them (lfs_sbom_record_package), and the image
 # build writes the document from that list and the image's digest (lfs_sbom_document). A package
@@ -14,21 +15,6 @@
 # A line of the list holds, separated by tabs: the package's recipe, and its name, version, licence,
 # source, source digest, CPEs and description. Only the description may be empty, as `read` drops an
 # empty field that is not the last; a package without a digest or a CPE has `none`.
-#
-# A CPE is part:vendor:product:version, which the document completes. By default, the product is the
-# package's name, the version its own, and the vendor the owner of the source's project on GitHub or
-# GitLab, or else the name of the site that serves the source (gnu, for ftp.gnu.org). A recipe whose
-# package the NVD names otherwise sets package_cpe to its CPEs, or to `none` where the NVD has
-# none. The document gives a package the version of its first CPE: scanners compare that version
-# with the vulnerable ones. A package from PyPI has no CPE: it is named after its PyPI project, and
-# its package URL is a PyPI one, which scanners match against Python's advisories.
-#
-# A package's concluded licence is its declared one: the recipes take package_license from the
-# source's own licence files. Nothing gathers the copyright notices of the sources, so those stay
-# NOASSERTION; the image's own is this project's.
-#
-# A licence that SPDX does not list is a LicenseRef-<name>, whose text is in the files directory of
-# the package that declares it, as package/<package>/LicenseRef-<name>.txt.
 
 readonly sbom_pypi_sources=https://files.pythonhosted.org/packages/source
 
@@ -69,7 +55,9 @@ lfs_sbom_record_package() (
         >> $(_sbom_packages_file)
 )
 
-# Prints the CPE that the package of the sourced recipe has by default.
+# Prints the CPE that the package of the sourced recipe has by default, part:vendor:product:version,
+# which the document completes. The vendor is the owner of the source's project on GitHub or
+# GitLab, or else the name of the site that serves the source (gnu, for ftp.gnu.org).
 _sbom_default_cpe() {
     local site=${package_source#*://} vendor
     case $site in

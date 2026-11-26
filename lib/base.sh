@@ -20,7 +20,7 @@ stage() {
     fi
 }
 
-# Download a URL into a directory.
+# Downloads a URL into a directory.
 fetch_url() {
     local url=$1 dest=$2 tmp
     mkdir -p "$dest"
@@ -33,8 +33,8 @@ fetch_url() {
     }
 }
 
-# Verify a file against an expected algo:hexdigest pair (e.g., sha256:abc...).
-# The algorithm prefix selects the checker (sha256 -> sha256sum, etc.).
+# Verifies a file against a digest given as algo:hexdigest (sha256:abc...), with the algorithm's
+# checker (sha256sum).
 verify_hash() {
     local file=$1 hash=$2
     local algo=${hash%%:*} digest=${hash#*:}

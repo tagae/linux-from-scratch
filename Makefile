@@ -21,11 +21,11 @@
 # Keep all intermediate files, in particular image/*.img. Otherwise, make deletes them.
 .SECONDARY:
 
-# The `test` goal covers the whole chain for the `virt` platform: tools, system, image, and
-# emulation.
+# The `test` goal covers the whole chain for LFS_PROFILE (virt by default): tools, system, image,
+# and the tests in QEMU.
 .DEFAULT_GOAL := test
 
-# Whatever depends on FORCE will be considered out of date, since it depends on nothing.
+# Whatever depends on FORCE is out of date, as FORCE is never up to date.
 FORCE:
 
 # The release of this project that systems are made as, which the image records (os-release's
@@ -68,14 +68,14 @@ tools-bootstrap:
 	# A native toolchain plus the temporary tools needed to build the rest.
 	./lfs tools bootstrap
 
-# Build the self-contained toolchain that will be used to build everything else.
+# Build the rest of the build tools with the bootstrapped ones.
 tools: tools-bootstrap
 	# Chapter 7: Building Additional Temporary Tools
 	./lfs tools build
 
 %-system image/%.img %-qemu: export LFS_PROFILE = $*
 
-# Build the system for the platform into the system tree.
+# Build the system of the profile into the system tree.
 %-system: tools
 	# Chapter 5: Compiling a Cross-Toolchain
 	# Chapter 8: Installing Basic System Software

@@ -17,12 +17,12 @@ ENV HOME=/mnt/lfs
 ENV SSL_CERT_FILE=/mnt/lfs/tools/etc/ssl/cert.pem
 ENV SSL_CERT_DIR=/mnt/lfs/tools/etc/ssl/certs
 
-# There is no /tmp in this image, and nothing can create one at build time, so TMPDIR at an
-# already-existing writable directory.
+# There is no /tmp in this image, and nothing can create one at build time, so TMPDIR is a
+# writable directory that exists.
 ENV TMPDIR=/mnt/lfs/work/tmp
 
-# No /etc/passwd exists in this image, so USER must be numeric —a name would require a passwd
-# lookup. Match the bootstrap user UID/GID so file ownership on the shared volumes lines up.
+# No /etc/passwd exists in this image, so USER must be numeric: a name would need a passwd lookup.
+# It is the bootstrap user's UID and GID, so that the files on the shared volumes have one owner.
 USER $HOST_UID:$HOST_GID
 WORKDIR /mnt/lfs
 
