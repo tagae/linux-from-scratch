@@ -1,0 +1,66 @@
+# The regular account partitions a USB drive that is plugged into the running machine: the kernel and
+# udev make the devices of the partitions, which the account's group reaches. fdisk lists the table,
+# cfdisk runs on the console, and the SD card stays root's.
+
+# Gives QEMU's monitor a command, which Ctrl-A c switches the console to and back, and returns what
+# the monitor printed.
+proc monitor {command} {
+    send -- "\001c"
+    expect {
+        "(qemu) " { }
+        timeout { fail "QEMU's monitor did not come up" }
+        eof     { fail "QEMU exited when its monitor was asked for" }
+    }
+    send -- "$command\r"
+    expect {
+        "(qemu) " { set output [clean $expect_out(buffer)] }
+        timeout { fail "QEMU's monitor did not answer: $command" }
+        eof     { fail "QEMU exited on the monitor's command: $command" }
+    }
+    send -- "\001c"
+    return $output
+}
+
+# Plugs a blank drive of 512 MiB into the machine, which has a stick already: it is /dev/sdb.
+set drive $work/drive.img
+set out [open $drive w]
+fconfigure $out -translation binary
+seek $out [expr {512 * 1024 * 1024 - 1}]
+puts -nonewline $out "\0"
+close $out
+expect_match [monitor "drive_add 0 if=none,id=drive,file=$drive,format=raw"] {OK} "the drive for QEMU"
+expect_equal [regexp {Error} [monitor "device_add usb-storage,id=drive,drive=drive"]] 0 "plugging the drive in"
+
+login user
+# udev gives the drive to the group a while after the kernel finds it.
+run_ok {n=0; while [ "$(stat -c %G /dev/sdb 2> /dev/null)" != users ] && [ $n -lt 60 ]; do sleep 1; n=$((n + 1)); done; [ "$(stat -c %G /dev/sdb)" = users ]}
+
+# A GPT with a partition for each of the file systems: FAT (a "basic data" partition), ext4 and
+# btrfs (Linux's), the last taking the rest.
+run_ok {printf '%s\n' 'label: gpt' 'size=64MiB, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7' 'size=64MiB, type=L' 'type=L' | sfdisk --wipe always --wipe-partitions always /dev/sdb}
+# udev has the kernel read the new table when sfdisk closes the drive.
+run_ok {n=0; while [ "$(stat -c %G /dev/sdb3 2> /dev/null)" != users ] && [ $n -lt 30 ]; do sleep 1; n=$((n + 1)); done; [ -b /dev/sdb3 ]}
+expect_equal [run_ok {stat -c %G /dev/sdb1 /dev/sdb2 /dev/sdb3}] "users\nusers\nusers" "the group of the partitions"
+set table [run_ok {fdisk -l /dev/sdb}]
+expect_match $table {Disklabel type: gpt} "the partition table that fdisk lists"
+expect_match $table {/dev/sdb1 .* Microsoft basic data} "the first partition that fdisk lists"
+expect_match $table {/dev/sdb3 .* Linux filesystem} "the last partition that fdisk lists"
+
+lassign [run {sfdisk --dump /dev/mmcblk0}] output status
+expect_match $output {Permission denied} "reading the SD card's partition table"
+if {$status == 0} { fail "reading the SD card's partition table succeeded" }
+run_ok {[ ! -r /dev/mmcblk0 ] && [ ! -w /dev/mmcblk0 ]}
+
+send -- "cfdisk /dev/sdb\r"
+expect {
+    "Disk: /dev/sdb" { }
+    timeout { fail "cfdisk showed nothing on the console" }
+    eof     { fail "QEMU exited while cfdisk ran" }
+}
+send -- "q"
+expect {
+    -re {[#$] $} { }
+    timeout { fail "q did not leave cfdisk" }
+    eof     { fail "QEMU exited while cfdisk ran" }
+}
+logout

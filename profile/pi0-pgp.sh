@@ -50,12 +50,13 @@ lfs_system_install shadow
 )
 
 # util-linux: mount and umount, agetty and sulogin, which systemd and the key procedure run; libblkid
-# and libmount, which systemd links; blkid, which finds the stick to format; dmesg, to read the
-# kernel log; and more, which man shows the manual pages in.
+# and libmount, which systemd links; fdisk, sfdisk and cfdisk, which partition USB sticks and drives,
+# with libfdisk, libsmartcols and libuuid under them; blkid, which tells what a device holds; dmesg,
+# to read the kernel log; and more, which man shows the manual pages in.
 (
     bindir=/usr/bin sbindir=/usr/sbin libdir=/usr/lib
-    libblkid=yes libmount=yes
-    mount=yes blkid=yes agetty=yes sulogin=yes dmesg=yes more=yes
+    libblkid=yes libmount=yes libfdisk=yes libsmartcols=yes libuuid=yes
+    fdisks=yes mount=yes blkid=yes agetty=yes sulogin=yes dmesg=yes more=yes
     lfs_system_install util-linux
     lfs_sysroot_install util-linux#dev
 )
@@ -279,10 +280,10 @@ lfs_system_install polkit
 # root logs in with bash, and with no password unless LFS_ROOT_PASSWORD sets one.
 ( root_shell=/bin/bash; lfs_system_set_root )
 
-# A regular account besides root, for working with keys without administrative rights: LFS_USER, of
-# the group `users`, with bash for shell. Its group reaches the security keys' hidraw devices and the
-# devices of USB sticks (the profile's udev rules), and the files of the sticks that mnt-keys.mount
-# (gpg-genkey) and mnt-usb\x2dstorage.mount mount.
+# A regular account besides root, for working with keys and USB storage without administrative
+# rights: LFS_USER, of the group `users`, with bash for shell. Its group reaches the security keys'
+# hidraw devices and the devices of USB sticks and drives (the profile's udev rules), and the files
+# of the sticks that mnt-keys.mount (gpg-genkey) and mnt-usb\x2dstorage.mount mount.
 (
     user_shell=/bin/bash
     lfs_system_add_user

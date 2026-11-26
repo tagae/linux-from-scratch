@@ -107,7 +107,7 @@ Capabilities can also differ platform: `package/linux/<capability>.<platform>.co
 | `serial-console` | A UART as the kernel's console and early console             |
 | `systemd`        | systemd requirements                                         |
 | `usb`            | USB devices, also from user space through `/dev/bus/usb`     |
-| `usb-storage`    | USB sticks and card readers                                  |
+| `usb-storage`    | USB sticks, drives and card readers, with MBR and GPT tables |
 | `hidraw`         | HID devices on USB, such as security keys, as `/dev/hidraw*` |
 | `zero-on-free`   | Zeroing of memory as it is freed, so secrets do not linger   |
 

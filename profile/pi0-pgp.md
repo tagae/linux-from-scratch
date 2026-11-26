@@ -69,6 +69,40 @@ root ([Nothing Kept](#nothing-kept)), scdaemon's configuration, and the drop-ins
 mounts.
 
 
+USB Storage
+-----------
+
+USB sticks, drives and card readers are the block devices `/dev/sda`, `/dev/sdb` and so on, in the
+order the system finds them, and their partitions (`/dev/sda1`). `fdisk -l` shows the model and size
+of each, and `blkid` the file systems that they hold. A udev rule
+([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives them to the
+group `users`, and leaves the SD card, which is not on USB, to root. Check the name of a device
+before writing to it, as most of these commands erase without asking.
+
+### Partitioning
+
+`cfdisk`, which has a menu, `fdisk`, and `sfdisk`, for scripts (all from `util-linux`), write
+partition tables, GPT and MBR (`dos`) among them, both of which the kernel reads. This erases
+`/dev/sda`, and gives it a partition for each of FAT, ext4 and BTRFS, the last taking the rest:
+
+```shell
+sfdisk --wipe always --wipe-partitions always /dev/sda <<END
+label: gpt
+size=1GiB, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
+size=1GiB, type=L
+type=L
+END
+```
+
+The first type is GPT's "basic data", which FAT partitions have, and `L` is Linux's. The `--wipe`
+options remove the signatures of earlier file systems, which `sfdisk`, reading a script, otherwise
+leaves, with a warning.
+
+As the regular account, `sfdisk` and `fdisk` say that re-reading the partition table failed, since
+only root may ask the kernel to: udev does it as these tools, `cfdisk` too, close the device.
+`sfdisk` refuses a device with a mounted partition, and `fdisk` warns of it.
+
+
 Making OpenPGP Keys
 -------------------
 
@@ -250,9 +284,7 @@ partition that the stick already has, name the partition (`/dev/sda1`) and leave
 (`fatlabel /dev/sda1 DATA`) moves the stick from `/mnt/keys` to `/mnt/usb-storage`. The stick is
 ready at once: systemd mounts it at the next access.
 
-The system has no tool to partition the stick (`fdisk` and `sfdisk` need three more libraries of
-`util-linux`): partition it on another computer, which makes the file system go on the first
-partition.
+[Partitioning](#partitioning) tells how to partition the stick.
 
 
 YubiKey Management
@@ -289,5 +321,7 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test), in order, on one boot (REA
 * A smart card reader reaches the account through `pcscd`, which GnuPG and `ykman` share, and
   polkit and `pcscd` run in the sandbox of their units; the machine restarts, and forgets the files
   written to the home directories, `/var` and `/tmp`, and the time that was set.
-* The regular account sets the clock, while the time zone stays the image's; `top` runs in batch
-  mode and on the console; and the machine powers off.
+* The regular account sets the clock, while the time zone stays the image's, and `top` runs in batch
+  mode and on the console.
+* A drive plugged into the running machine is partitioned by the regular account, to which the SD
+  card is refused; and the machine powers off.

@@ -34,6 +34,37 @@ Any other FAT stick is mounted the same way on
 .Pa /mnt/usb-storage .
 The SD card is read-only: whatever is written elsewhere is in memory, and gone
 when the Pi powers off.
+.Ss Finding a USB device
+USB sticks and drives are sda, sdb and so on, in the order the Pi finds them,
+and mmcblk0 is the SD card, which is root's.
+Their models and sizes, and the file systems they hold, tell them apart:
+.Bd -literal -offset indent
+fdisk -l
+blkid
+.Ed
+.Pp
+The regular account writes to them: check the name before any command here that
+erases one.
+.Ss Partitioning
+.Ic cfdisk ,
+which has a menu,
+.Ic fdisk
+and
+.Ic sfdisk
+write partition tables.
+This erases /dev/sda, and gives it a partition for each of FAT, ext4 and BTRFS,
+the last taking the rest:
+.Bd -literal -offset indent
+sfdisk --wipe always --wipe-partitions always /dev/sda <<END
+label: gpt
+size=1GiB, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
+size=1GiB, type=L
+type=L
+END
+.Ed
+.Pp
+sfdisk and fdisk tell the regular account that re-reading the partition table
+failed: udev has the kernel read it as the device is closed.
 .Ss Formatting a stick for the keys
 To format a stick for the keys, find it with
 .Ic blkid :
@@ -57,4 +88,7 @@ ykman info
 .Sh SEE ALSO
 .Xr gpg 1 ,
 .Xr blkid 8 ,
-.Xr mkfs.fat 8
+.Xr cfdisk 8 ,
+.Xr fdisk 8 ,
+.Xr mkfs.fat 8 ,
+.Xr sfdisk 8

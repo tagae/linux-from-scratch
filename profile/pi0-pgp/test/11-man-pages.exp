@@ -4,6 +4,7 @@
 login user
 expect_match [run_ok {man ls | head -n 3}] {LS\(1\)} "the page of ls"
 expect_match [run_ok {man -w gpg}] {/gpg\.1$} "the file of the page of gpg"
+expect_match [run_ok {man -w sfdisk}] {/sfdisk\.8$} "the file of the page of sfdisk"
 expect_match [run_ok {whatis ls}] {ls\(1\) - list directory contents} "whatis"
 expect_match [run_ok {apropos pcscd}] {pcscd\(8\) - PC/SC Smart Card Daemon} "apropos"
 expect_match [run_ok {cat /etc/motd}] {man pi0-pgp$} "the page that the message of the day names"
