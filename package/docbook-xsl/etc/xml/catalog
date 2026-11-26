@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Maps the web addresses by which the sources of manual pages name DocBook's definitions
+     (docbook-xml) and stylesheets (docbook-xsl) to the local copies. -->
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <rewriteSystem systemIdStartString="http://www.oasis-open.org/docbook/xml/"
+                 rewritePrefix="../../usr/share/xml/docbook/xml/docbook-"/>
+  <rewriteSystem systemIdStartString="http://docbook.sourceforge.net/release/xsl/current/"
+                 rewritePrefix="../../usr/share/xml/docbook/xsl/"/>
+  <rewriteURI uriStartString="http://docbook.sourceforge.net/release/xsl/current/"
+              rewritePrefix="../../usr/share/xml/docbook/xsl/"/>
+  <!-- The public identifiers of 4.5, by which shadow's configure looks for it. -->
+  <nextCatalog catalog="../../usr/share/xml/docbook/xml/docbook-4.5/catalog.xml"/>
+</catalog>

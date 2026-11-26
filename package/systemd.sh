@@ -16,7 +16,7 @@ prepare() {
 
             # timedated sets the clock and the time zone over D-Bus (timedatectl), for root and for
             # whoever polkit lets.
-            : ${timedated:=no}
+            : ${timedated:=no} ${man:=no}
 
             # Pinned because meson would otherwise take them from the build machine: libdir (a
             # multiarch directory), split-bin (whether /usr/sbin is a symlink) and the system
@@ -44,7 +44,7 @@ prepare() {
                 -Dsystem-gid-max=999 \
                 -Dnobody-group=nogroup \
                 -Ddev-kvm-mode=0660 \
-                -Dman=disabled \
+                -Dman=$([ $man = yes ] && echo enabled || echo disabled) \
                 -Dhtml=disabled \
                 -Dtranslations=false \
                 -Dtests=false \
@@ -162,6 +162,7 @@ EOF
             # Images have an MBR partition table, which GPT auto-discovery does not apply to.
             local generators=$package_install_dir$prefix/lib/systemd/system-generators
             rm -v $generators/systemd-gpt-auto-generator
+            rm -fv $package_install_dir$prefix/share/man/man8/systemd-gpt-auto-generator.8
 
             # Empty directories for configuration and drop-ins (sysctl.d, system-shutdown...),
             # which systemd reads only when they exist: whoever adds a file creates its directory.

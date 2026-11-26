@@ -13,6 +13,8 @@ prepare() {
             find . -mindepth 1 -delete
             meson_cross_file
 
+            : ${man:=no}
+
             # With freedesktop's sysroot rules (CONTRIBUTING.md, Cross-Compiling), meson reads
             # systemd.pc's unit directories as install directories, which would otherwise land in
             # a copy of the sysroot's path under the staging directory.
@@ -37,7 +39,7 @@ prepare() {
                 -Dmodular_tests=disabled \
                 -Ddoxygen_docs=disabled \
                 -Dducktype_docs=disabled \
-                -Dxml_docs=disabled \
+                -Dxml_docs=$([ $man = yes ] && echo enabled || echo disabled) \
                 -Dqt_help=disabled
             ;;
         *)
@@ -81,6 +83,10 @@ install() {
             rm -rv usr/bin/dbus-cleanup-sockets usr/bin/dbus-launch usr/bin/dbus-run-session \
                 usr/bin/dbus-test-tool usr/bin/dbus-update-activation-environment \
                 etc/dbus-1/session.conf usr/share/dbus-1/session.conf usr/share/xml
+            # The manual pages of those tools.
+            rm -fv usr/share/man/man1/dbus-cleanup-sockets.1 usr/share/man/man1/dbus-launch.1 \
+                usr/share/man/man1/dbus-run-session.1 usr/share/man/man1/dbus-test-tool.1 \
+                usr/share/man/man1/dbus-update-activation-environment.1
 
             # The directories for configuration and services that others add to stay out until
             # they do.

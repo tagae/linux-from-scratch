@@ -14,4 +14,7 @@ expect_equal [run_ok {man -w pi0-pgp}] /usr/share/man/man7/pi0-pgp.7 "the file o
 expect_match [run_ok {man pi0-pgp | head -n 3}] {PI0-PGP\(7\)} "the page of the system"
 expect_match [run_ok {whatis pi0-pgp}] {pi0-pgp\(7\) - air-gapped system} "whatis of the page of the system"
 expect_match [run_ok {apropos OpenPGP | grep '^pi0-pgp'}] {pi0-pgp\(7\)} "apropos of the page of the system"
+# Every command has a manual page, but those whose projects ship none, and gpg-genkey, whose
+# header says how it is used.
+expect_equal [run_ok {for f in /usr/bin/* /usr/sbin/*; do n=${f##*/}; set -- /usr/share/man/man[18]/"$n".[18]*; [ -e "$1" ] || printf '%s ' "$n"; done}] {[ awk egrep fgrep getconf getent gpg-error gpg-genkey ld.so pinentry pinentry-tty pldd sh ldconfig sln} "the commands without a manual page"
 logout

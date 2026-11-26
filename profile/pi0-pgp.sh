@@ -14,6 +14,21 @@ lfs_system_install gcc#runtime
 # The locale of the shells (etc/profile), without whose UTF-8 tmux does not start.
 lfs_system_install glibc#c-utf8
 
+#===[ Manual page tools ]===
+
+# What makes manual pages from their sources: kmod's with scdoc, and shadow's, systemd's, D-Bus's
+# and polkit's from DocBook, with xsltproc and DocBook's definitions and stylesheets.
+lfs_tools_install scdoc
+(
+    # Where xsltproc finds the XML catalog (docbook-xsl's), in the tools rather than in the build
+    # machine's /etc.
+    sysconfdir=$LFS_TOOL_DIR/etc
+    lfs_tools_install libxml2
+)
+lfs_tools_install libxslt
+lfs_tools_install docbook-xml
+lfs_tools_install docbook-xsl
+
 #===[ systemd ]===
 
 # systemd, with the strict minimum it needs to boot the system and log root in on the console: it

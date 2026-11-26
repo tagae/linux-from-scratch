@@ -8,7 +8,7 @@
 prepare() {
     case $package_component in
         kmod)
-            : ${manpages:=no}
+            : ${man:=no}
 
             $package_source_dir/configure \
                 ${host:+--host=$host} \
@@ -22,7 +22,7 @@ prepare() {
                 ${xz:+--with-xz=$xz} \
                 ${zstd:+--with-zstd=$zstd} \
                 ${zlib:+--with-zlib=$zlib} \
-                ${manpages:+--enable-manpages=$manpages}
+                --enable-manpages=$man
             ;;
         *)
             default_prepare
@@ -46,6 +46,7 @@ install() {
         kmod)
             make install DESTDIR=$package_install_dir
             move_to_dev_component
+            move_to_docs_component
             ;;
         dev)
             install_component

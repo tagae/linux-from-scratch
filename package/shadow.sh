@@ -15,10 +15,13 @@
 # glibc has no nscd, whose caches the account tools would flush.
 # Unless a system says otherwise, root is its only account: no program is setuid, and there are no
 # subordinate ids, which serve user namespaces.
+# The manual pages are made from their sources, for this configuration: the ready-made ones of the
+# release leave out yescrypt. configure looks for DocBook in the build machine's XML catalog unless
+# told the tools'.
 prepare() {
     case $package_component in
         shadow)
-            : ${subordinate_ids:=no}
+            : ${subordinate_ids:=no} ${man:=no}
 
             $package_source_dir/configure \
                 ${host:+--host=$host} \
@@ -36,6 +39,8 @@ prepare() {
                 --without-libbsd \
                 --with-group-name-max-length=32 \
                 --with-yescrypt \
+                --enable-man=$man \
+                --with-xml-catalog=$LFS_TOOL_DIR/etc/xml/catalog \
                 ${subordinate_ids:+--enable-subordinate-ids=$subordinate_ids} \
                 ${bcrypt:+--with-bcrypt=$bcrypt}
             ;;

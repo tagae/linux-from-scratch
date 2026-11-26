@@ -13,6 +13,8 @@ prepare() {
             find . -mindepth 1 -delete
             meson_cross_file
 
+            : ${man:=no}
+
             # GLib's .pc files give the paths of its code generators in the sysroot, which are the
             # platform's (and left out): meson takes them from the cross file instead, and they are
             # the tools'.
@@ -46,7 +48,7 @@ EOF
                 -Dintrospection=false \
                 -Dexamples=false \
                 -Dtests=false \
-                -Dman=false \
+                -Dman=$([ $man = yes ] && echo true || echo false) \
                 -Dgtk_doc=false \
                 -Dgettext=false
             ;;
@@ -85,6 +87,7 @@ install() {
                 usr/lib/systemd/system/polkit-agent-helper.socket \
                 usr/lib/sysusers.d/polkit.conf \
                 usr/share/polkit-1/actions/org.freedesktop.policykit.policy
+            rm -fv usr/share/man/man1/pkexec.1 usr/share/man/man8/polkit-agent-helper.8
             rm -rv usr/share/locale usr/share/gettext
 
             # The directories of the rules and of the actions are the profile's and systemd's to
