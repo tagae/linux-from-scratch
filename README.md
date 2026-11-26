@@ -18,7 +18,7 @@ A Linux host needs:
   `bison`, `python3` and `patchelf` commands, and CA certificates;
 * to build images (`make image`): a working `sudo`;
 * to boot images in a VM (`make qemu`): QEMU 11.1 or later, with `qemu-img`;
-* to test them (`make test`): `expect`;
+* to test them (`make test`): `expect` 5.45.3 or later;
 * to version the project: Git 2.36 or later, as the scripts read `bin/gitconfig` in place of the
   user's Git configuration.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/expect -f
+#!/usr/bin/env expect
 
 # Boots the image of a profile in QEMU and runs the profile tests (profile/<profile>/test/*.exp).
 #
@@ -225,6 +225,13 @@ proc power_off {} {
 }
 
 #===[ The suite ]===
+
+# Expect 5.45 takes a read that holds only part of a UTF-8 character for the end of the file, and
+# hangs up on QEMU.
+if {[catch {package require Expect 5.45.3} message]} {
+    puts stderr "check/test: $message"
+    exit 2
+}
 
 cd [file dirname [file dirname [file normalize [info script]]]]
 
