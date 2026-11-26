@@ -1,0 +1,37 @@
+# tmux: what runs in it has a UTF-8 locale and the description of its terminal, which top draws with,
+# and the console is a UTF-8 terminal to it. A session outlives the logout of its account, until it
+# is ended.
+
+login user
+run_ok {tmux new-session -d -s work}
+run_ok {tmux split-window -t work}
+expect_equal [run_ok {tmux list-panes -t work | wc -l}] 2 "the panes of the session"
+run_ok {tmux send-keys -t work 'echo "$TERM $LANG" > /tmp/pane; top' Enter}
+# The shell of the pane takes a while to start on the emulated Pi, and top to draw.
+run_ok {for i in $(seq 60); do tmux capture-pane -p -t work | grep -q 'load average:' && break; sleep 1; done}
+expect_match [run_ok {tmux capture-pane -p -t work}] {load average:} "top in a pane"
+expect_equal [run_ok {cat /tmp/pane}] "tmux-256color C.UTF-8" "the terminal and the locale of a pane"
+run_ok {tmux send-keys -t work q}
+
+# Attached, tmux tells whether it takes the console for a UTF-8 terminal, and detaches.
+send -- "tmux attach -t work\r"
+expect {
+    -ex {[work]} { }
+    timeout      { fail "tmux showed no status line on the console" }
+    eof          { fail "QEMU exited while tmux was attached" }
+}
+send -- "tmux list-clients -F '#{client_utf8}' > /tmp/utf8; tmux detach-client\r"
+expect {
+    -re {detached \(from session work\).*[#$] $} { }
+    timeout { fail "tmux did not detach" }
+    eof     { fail "QEMU exited while tmux detached" }
+}
+expect_equal [run_ok {cat /tmp/utf8}] 1 "whether the console is a UTF-8 terminal to tmux"
+logout
+
+login user
+run_ok {tmux has-session -t work}
+run_ok {tmux kill-server}
+run_ok {tmux has-session -t work 2> /dev/null} 1
+expect_equal [run_ok {systemctl --failed --no-pager --no-legend --plain}] "" "the failed units"
+logout

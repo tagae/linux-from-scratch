@@ -19,6 +19,8 @@ Privacy
   over the serial console.
 * It keeps nothing: the SD card is not written while the system runs ([Nothing
   Kept](#nothing-kept)), the shell saves no history, and the kernel zeroes memory as it is freed.
+* Logging out does not end a `tmux` session, whose panes keep what they showed until the session is
+  ended or the Pi powers off ([Several Shells](#several-shells-on-the-console)).
 * The console shows no message of the kernel but errors, so that none lands in the middle of what is
   typed, a passphrase included.
 
@@ -86,6 +88,31 @@ The files of [`pi0-pgp/files/`](pi0-pgp/files) give the system its look and poli
 the polkit rule above; `gpg-genkey` and the mount units of the stick; the mount units of the memory
 over the read-only root ([Nothing Kept](#nothing-kept)) and the drop-ins that start the mounts; and
 scdaemon's configuration.
+
+The shells run in the `C.UTF-8` locale, which the shell profile sets, and which is the only one that
+the system has besides `C`: the terminal on the serial console is taken to speak UTF-8.
+
+
+Several Shells on the Console
+-----------------------------
+
+The serial console is one terminal, on which `tmux` runs several shells, in windows and panes, so
+that one runs a program while another is looked at (`man tmux`). These start a session, come back
+to it, and end every session of the account:
+
+```shell
+tmux new-session -s work
+tmux attach -t work
+tmux kill-server
+```
+
+In a session, `Ctrl-b %` and `Ctrl-b "` split the pane, `Ctrl-b o` goes to the next one, and
+`Ctrl-b d` detaches from the session.
+
+A session goes on while nobody is attached to it, after a logout too, as the getty's unit leaves
+the processes of a login running (`KillMode=process`): whoever logs into the account afterwards
+finds it, with its panes and what they showed. An account without a password is open to whoever is
+at the console, so end the session before leaving the console to anybody else, or power the Pi off.
 
 
 USB Storage
@@ -366,7 +393,7 @@ It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test) in order, on one boot ([REA
 Tests](../README.md#tests)), each named after what it checks: the console and the accounts, and
 what polkit lets them do; the kernel, the memory that keeps nothing, and the programs and manual
 pages of the system; GnuPG, `gpg-genkey` and the KEYS stick; the smart card reader and the units'
-sandboxes; restarts, which forget what was done; the clock and `top`; and the partitions, file
-systems, mounts and copies of a drive plugged into the running machine.
+sandboxes; restarts, which forget what was done; the clock and `top`; the partitions, file systems,
+mounts and copies of a drive plugged into the running machine; and `tmux`.
 
 [tmpfiles]: pi0-pgp/files/etc/systemd/system/systemd-tmpfiles-setup.service.d/read-only-root.conf

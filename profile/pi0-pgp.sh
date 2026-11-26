@@ -11,6 +11,8 @@
 lfs_system_toolchain glibc
 # glibc loads libgcc_s to unwind stacks.
 lfs_system_install gcc#runtime
+# The locale of the shells (etc/profile), without whose UTF-8 tmux does not start.
+lfs_system_install glibc#c-utf8
 
 #===[ systemd ]===
 
@@ -29,12 +31,12 @@ lfs_sysroot_install kmod#dev
 )
 lfs_system_install shadow
 
-# The terminal library that procps' top links.
+# The terminal library that procps' top and tmux link.
 (
     shared=yes stripping=no
     # The descriptions of the terminals these systems meet are built into the library, instead of a
     # database of every known terminal.
-    fallbacks=dumb,linux,vt100,vt220,xterm,xterm-256color
+    fallbacks=dumb,linux,tmux-256color,vt100,vt220,xterm,xterm-256color
     pc_files=yes pkg_config_libdir=/usr/lib/pkgconfig
     lfs_system_install ncurses
     lfs_sysroot_install ncurses#dev
@@ -199,6 +201,18 @@ mkdir -pv $system_dir/mnt/keys $system_dir/mnt/usb-storage
 
 # ps, top, free, pgrep and the like, from procps-ng. top links ncurses; kill is dash's built-in.
 lfs_system_install procps-ng
+
+#===[ Terminal multiplexer ]===
+
+# tmux, which runs several shells on the one serial console, and keeps them running while it is
+# detached from. It links ncurses, and libevent for its event loop.
+lfs_system_install libevent
+lfs_sysroot_install libevent#dev
+(
+    # What runs in tmux meets this terminal, whose description ncurses holds (above).
+    default_term=tmux-256color
+    lfs_system_install tmux
+)
 
 #===[ Time zones ]===
 

@@ -99,6 +99,14 @@ install() {
         dev)
             install_component
             ;;
+        c-utf8)
+            # The C.UTF-8 locale, compiled by the build tools' localedef, of this same release, as
+            # the system's cannot run on the build machine. Every platform is little-endian.
+            mkdir -pv $package_install_dir$prefix/lib/locale
+            I18NPATH=$package_source_dir/localedata \
+                localedef --no-archive --little-endian -i C -f UTF-8 \
+                $package_install_dir$prefix/lib/locale/C.utf8
+            ;;
         *)
             default_install
             ;;

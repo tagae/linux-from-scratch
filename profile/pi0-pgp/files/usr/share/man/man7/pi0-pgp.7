@@ -142,9 +142,25 @@ gpg --list-secret-keys
 gpg --card-status
 ykman info
 .Ed
+.Ss Several shells on the console
+.Ic tmux
+runs several shells on the one console, in windows and panes.
+These start a session, come back to it, and end every session of the account:
+.Bd -literal -offset indent
+tmux new-session -s work
+tmux attach -t work
+tmux kill-server
+.Ed
+.Pp
+In a session, Ctrl-b % and Ctrl-b \(dq split the pane, Ctrl-b o goes to the
+next one, and Ctrl-b d detaches from the session.
+A session goes on while nobody is attached to it, after a logout too: whoever
+logs into the account afterwards finds it, with what its panes showed.
+End it before you leave the console to anybody else, or power off.
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr gpg 1 ,
+.Xr tmux 1 ,
 .Xr blkid 8 ,
 .Xr cfdisk 8 ,
 .Xr e2fsck 8 ,

@@ -5,6 +5,10 @@ PS1='\u@\h:\w\$ '
 # root a path that has it.
 case :$PATH: in *:/usr/sbin:*) ;; *) PATH=$PATH:/usr/sbin ;; esac
 
+# The terminal at the other end of the serial console is taken to speak UTF-8, as the issue does.
+# Programs, tmux among them, otherwise take it for one of ASCII.
+export LANG=C.UTF-8
+
 # bash keeps the history of the session in memory only, as commands can carry passphrases. Set
 # HISTFILE to keep it.
 if [ -n "${BASH_VERSION:-}" ]; then
