@@ -1,8 +1,12 @@
-# A Raspberry Pi Zero to make OpenPGP keys offline, keep them on USB storage, and export them to a YubiKey.
+# A Raspberry Pi Zero as an air-gapped computer for private, sensitive work, such as handling
+# secrets and moving files between storage devices. There is no network, no key server, and no
+# X.509; the system keeps nothing across boots; and what goes in or out of it goes over USB or the
+# serial console.
 #
-# GnuPG makes a key in memory, and gpg-genkey backs it up to a USB stick; ykman, libfido2's tools
-# and GnuPG itself configure and use the YubiKey's OpenPGP, PIV, FIDO2 and OTP applications. There
-# is no network, no key server, and no X.509.
+# One use is OpenPGP keys: GnuPG makes a key in memory, and gpg-genkey backs it up to a USB stick;
+# ykman, libfido2's tools and GnuPG itself configure and use the YubiKey's OpenPGP, PIV, FIDO2 and
+# OTP applications. Another is USB sticks and drives: to partition them, to make and check their
+# file systems (FAT, ext4 and btrfs), and to copy them with dd.
 #
 # The key's smart card interface is reached through pcscd (pcsc-lite with the CCID driver), started
 # by systemd when a program connects to it, and its FIDO2 and OTP interfaces through hidraw.

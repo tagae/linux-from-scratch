@@ -1,1 +1,2 @@
-To make an OpenPGP key, read the manual page: man pi0-pgp
+An air-gapped system for private work: OpenPGP keys and USB storage.
+To learn how to use it, read the manual page: man pi0-pgp

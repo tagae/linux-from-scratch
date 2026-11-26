@@ -12,6 +12,6 @@ expect_match [run_ok {cat /etc/motd}] {man pi0-pgp$} "the page that the message 
 # man finds a page that the index lacks as well, with a warning, which the exact output rules out.
 expect_equal [run_ok {man -w pi0-pgp}] /usr/share/man/man7/pi0-pgp.7 "the file of the page of the system"
 expect_match [run_ok {man pi0-pgp | head -n 3}] {PI0-PGP\(7\)} "the page of the system"
-expect_match [run_ok {whatis pi0-pgp}] {pi0-pgp\(7\) - make OpenPGP keys} "whatis of the page of the system"
+expect_match [run_ok {whatis pi0-pgp}] {pi0-pgp\(7\) - air-gapped system} "whatis of the page of the system"
 expect_match [run_ok {apropos OpenPGP | grep '^pi0-pgp'}] {pi0-pgp\(7\)} "apropos of the page of the system"
 logout

@@ -1,9 +1,30 @@
-Pretty Good Privacy for Raspberry Pi Zero
-=========================================
+Air-gapped Privacy System for Raspberry Pi Zero
+===============================================
 
-A Raspberry Pi Zero Linux to make OpenPGP keys and keep them on USB storage.
+A Raspberry Pi Zero Linux for private, sensitive work, on a computer that is on no network and keeps
+nothing of what is done on it. Its uses, the first of which names the profile:
 
-Also allows YubiKey management, in particular to import generated OpenPGP keys.
+* making OpenPGP keys, keeping them on USB storage and moving their subkeys to a YubiKey
+  ([Making OpenPGP Keys](#making-openpgp-keys)), and managing the YubiKey
+  ([YubiKey Management](#yubikey-management));
+* partitioning USB sticks and drives, making and checking FAT, ext4 and BTRFS file systems on them,
+  moving files between them, and copying them whole ([USB Storage](#usb-storage)).
+
+
+Privacy
+-------
+
+* The system is on no network: its kernel has no TCP/IP, no network devices, no Wi-Fi and no
+  Bluetooth, and the Zero (unlike the Zero W) has no radio. What goes in or out goes over USB, or
+  over the serial console.
+* It keeps nothing: the SD card is not written while the system runs ([Nothing
+  Kept](#nothing-kept)), the shell saves no history, and the kernel zeroes memory as it is freed.
+* The console shows no message of the kernel but errors, so that none lands in the middle of what is
+  typed, a passphrase included.
+
+It does not encrypt storage (there is no LUKS), nor check at boot that the SD card holds what was
+written to it. Its kernel reads what is plugged into it, and a device or a file system made to attack
+it can exploit a flaw in that code: power the Pi off between such a device and secrets.
 
 
 Quick Start
@@ -40,12 +61,14 @@ The system has two accounts, `root` and `$LFS_USER`, the later defaulting to the
 image. Both accounts are passwordless, unless `LFS_ROOT_PASSWORD` or `LFS_PASSWORD` are set
 respectively upon building the image.
 
-The regular account makes keys (`gpg`, `gpg-genkey`), reads and writes the USB stick, and uses a
-YubiKey: the security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's tools reach the FIDO2
-and OTP interfaces through, belong to the group `users`. The smart card interface is `pcscd`'s, which
-GnuPG and `ykman` reach through its socket, as upstream ships it: any account may connect, and every
-reader is open to whoever does. The daemon runs as its own account, `pcscd`, in a user namespace, and
-opens the readers through the group that ccid's udev rules give them to.
+The regular account makes keys (`gpg`, `gpg-genkey`), partitions USB sticks and drives, makes and
+checks their file systems and copies them ([USB Storage](#usb-storage)), reads and writes the FAT
+ones, and uses a YubiKey: the security keys' `/dev/hidraw*` devices, which `ykman` and libfido2's
+tools reach the FIDO2 and OTP interfaces through, belong to the group `users`. The smart card
+interface is `pcscd`'s, which GnuPG and `ykman` reach through its socket, as upstream ships it: any
+account may connect, and every reader is open to whoever does. The daemon runs as its own account,
+`pcscd`, in a user namespace, and opens the readers through the group that ccid's udev rules give
+them to.
 
 The regular account reads the state of the system (`systemctl status`, `systemctl --failed`),
 powers the machine off, restarts it and halts it (`poweroff`, `reboot`, `halt`), and sets the clock
@@ -61,9 +84,9 @@ no rule.
 The issue that `agetty` prints before the login prompt (which names the regular account: the build
 replaces `$LFS_USER` in the profile's files), the message of the day that `login` prints after it,
 the manual page that the message names, [`pi0-pgp(7)`](pi0-pgp/files/usr/share/man/man7/pi0-pgp.7)
-(`man pi0-pgp` on the system tells how to make a key there), the shell profile (`/etc/profile`),
-the udev rules that give the group `users` the security keys and USB sticks, and the polkit rule
-are files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
+(`man pi0-pgp` on the system tells how to use it), the shell profile (`/etc/profile`), the udev
+rules that give the group `users` the security keys, USB sticks and drives, and the polkit rule are
+files of [`pi0-pgp/files/`](pi0-pgp/files). So is what only this system has: the key procedure
 (`gpg-genkey` and the mount units of the stick), the mount units of the memory over the read-only
 root ([Nothing Kept](#nothing-kept)), scdaemon's configuration, and the drop-ins that start the
 mounts.
@@ -71,6 +94,10 @@ mounts.
 
 USB Storage
 -----------
+
+The Zero has one USB data port, the micro-USB one marked *USB*: connect a hub to it (through an OTG
+adapter) to plug in several devices. A hard disk may draw more power than the Zero can give: use a
+powered hub, or a disk with a supply of its own.
 
 USB sticks, drives and card readers are the block devices `/dev/sda`, `/dev/sdb` and so on, in the
 order the system finds them, and their partitions (`/dev/sda1`). `fdisk -l` shows the model and size
@@ -159,7 +186,7 @@ umount /tmp/archive
 ```
 
 The top directory of a new ext4 or BTRFS file system is root's, whoever made it. Mounting hands a
-file system to the kernel, whose code a crafted one can exploit.
+file system to the kernel ([Privacy](#privacy)).
 
 ### Copying Devices
 
@@ -180,22 +207,11 @@ Making OpenPGP Keys
 -------------------
 
 A Raspberry Pi Zero running the `pi0-pgp` profile can make an OpenPGP key whose secret part never
-touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey:
+touches a disk but the USB stick you back it up to, and move its subkeys to a YubiKey.
 
-```shell
-make docker-image/pi0-pgp.img
-```
-
-Write the image to an SD card, for example with
-
-```shell
-sudo dd if=image/pi0-pgp.img of=/dev/disk4 bs=4M status=progress
-```
-
-The Zero has one USB data port, the micro-USB one marked *USB*, so connect a hub to it (through an
-OTG adapter) and plug both the YubiKey and a USB stick in the hub. The stick holds a FAT file
-system labelled `KEYS`, on its first partition or on the whole device, which
-[the Pi can make](#formatting-the-usb-stick), and which systemd mounts on `/mnt/keys`
+Plug both the YubiKey and a USB stick in a hub ([USB Storage](#usb-storage)). The stick holds a FAT
+file system labelled `KEYS`, on its first partition or on the whole device, which
+[the Pi can make](#formatting-the-stick-for-the-keys), and which systemd mounts on `/mnt/keys`
 ([Mounting and Moving Files](#mounting-and-moving-files)). Log in as the regular account on the
 serial console, whose shell is bash: arrow keys, Tab completion and a history of the session, which
 is not saved, as commands carry passphrases.
@@ -241,6 +257,20 @@ GnuPG's home is `~/.gnupg`, for root as for the regular account: in memory, as t
 directories are, so empty after a reboot (`gpg --import /mnt/keys/you@example.org-secret.asc` brings
 a key back from the stick). `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal
 (`echo hi | gpg --clearsign`), for the PIN prompt to find it.
+
+### Formatting the Stick for the Keys
+
+`mkfs.fat` makes the file system that the stick needs. This erases the stick, `/dev/sda` here:
+
+```shell
+mkfs.fat -I -F 32 -n KEYS /dev/sda
+```
+
+The file system is FAT32, labelled `KEYS`, on the whole device (`-I` allows that). To make it on a
+partition, name the partition (`/dev/sda1`) and leave `-I` out. `fatlabel /dev/sda1 KEYS` gives the
+label to a file system that exists, and any other label (`fatlabel /dev/sda1 DATA`) moves the stick
+from `/mnt/keys` to `/mnt/usb-storage`. The stick is ready at once: systemd mounts it at the next
+access.
 
 
 Nothing Kept
@@ -321,30 +351,6 @@ cat /sys/class/misc/hw_random/rng_current            # bcm2835-rng
 cat /sys/module/rng_core/parameters/default_quality  # 1024: full credit
 dmesg | grep -i crng                                 # crng init done, early in the boot
 ```
-
-
-Formatting the USB Stick
-------------------------
-
-The system makes the FAT file system that the stick needs, with `mkfs.fat` and `fatlabel` (from
-`dosfstools`), and finds the stick with `blkid` (from `util-linux`), which lists the SD card's
-partitions (`mmcblk0p1` and `mmcblk0p2`) too: the stick is `/dev/sda`, the first on the hub. The
-regular account can format it: a udev rule
-([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) gives the block devices of
-USB sticks to the group `users`, and leaves the SD card, which is not on USB, to root. This erases
-the stick:
-
-```shell
-mkfs.fat -I -F 32 -n KEYS /dev/sda
-```
-
-The file system is FAT32, labelled `KEYS`, on the whole device (`-I` allows that). To make it on a
-partition that the stick already has, name the partition (`/dev/sda1`) and leave `-I` out.
-`fatlabel /dev/sda1 KEYS` gives the label to a file system that exists, and any other label
-(`fatlabel /dev/sda1 DATA`) moves the stick from `/mnt/keys` to `/mnt/usb-storage`. The stick is
-ready at once: systemd mounts it at the next access.
-
-[Partitioning](#partitioning) tells how to partition the stick.
 
 
 YubiKey Management

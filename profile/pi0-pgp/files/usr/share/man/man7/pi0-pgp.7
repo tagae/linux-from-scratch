@@ -3,37 +3,14 @@
 .Os
 .Sh NAME
 .Nm pi0-pgp
-.Nd make OpenPGP keys offline and move them to a YubiKey
+.Nd air-gapped system for private work on OpenPGP keys and USB storage
 .Sh DESCRIPTION
-To make an OpenPGP key:
-.Bl -enum
-.It
-Plug the YubiKey and a FAT USB stick labelled KEYS.
-.It
-Set the clock, which starts each boot at the time the image was made:
-.Bd -literal -offset indent -compact
-timedatectl set-time 'YYYY-MM-DD HH:MM:SS UTC'
-.Ed
-.It
-Run the key generator,
-.Pa /usr/bin/gpg-genkey :
-.Bd -literal -offset indent -compact
-PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
-.Ed
-.El
-.Pp
-The header comment of the script lists its options.
-.Ss Memory and USB sticks
-The secret key is made in memory, under
-.Pa ~/.gnupg ,
-which never swaps, and leaves only on the stick, which systemd mounts on
-.Pa /mnt/keys
-when something reads it and unmounts after 10 seconds of disuse: wait that
-long before pulling it out.
-Any other FAT stick is mounted the same way on
-.Pa /mnt/usb-storage .
-The SD card is read-only: whatever is written elsewhere is in memory, and gone
-when the Pi powers off.
+This Raspberry Pi Zero is for sensitive work that is kept off any network,
+such as making OpenPGP keys and moving them to a YubiKey, or partitioning USB
+sticks and drives and moving files between them.
+It has no network.
+The SD card is read-only: whatever is not written to a USB device or a security
+key is in memory, and gone when the Pi powers off.
 .Ss Finding a USB device
 USB sticks and drives are sda, sdb and so on, in the order the Pi finds them,
 and mmcblk0 is the SD card, which is root's.
@@ -45,6 +22,17 @@ blkid
 .Pp
 The regular account writes to them: check the name before any command here that
 erases one.
+.Ss FAT file systems
+systemd mounts a FAT file system labelled KEYS on
+.Pa /mnt/keys ,
+and one with another label on
+.Pa /mnt/usb-storage ,
+when something reads the directory, and unmounts it after 10 seconds of disuse:
+wait that long before pulling the device out, partitioning it or making a file
+system on it.
+Of several that are not labelled KEYS,
+.Pa /mnt/usb-storage
+is one.
 .Ss Partitioning
 .Ic cfdisk ,
 which has a menu,
@@ -115,10 +103,29 @@ dd overwrites what
 names without asking, mounted or not.
 Writing over flash storage does not erase it for certain, as it keeps blocks
 that no write reaches.
+.Ss Making an OpenPGP key
+.Bl -enum
+.It
+Plug the YubiKey and a FAT USB stick labelled KEYS.
+.It
+Set the clock, which starts each boot at the time the image was made:
+.Bd -literal -offset indent -compact
+timedatectl set-time 'YYYY-MM-DD HH:MM:SS UTC'
+.Ed
+.It
+Run the key generator,
+.Pa /usr/bin/gpg-genkey :
+.Bd -literal -offset indent -compact
+PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
+.Ed
+.El
+.Pp
+The header comment of the script lists its options.
+The secret key is made in memory, under
+.Pa ~/.gnupg ,
+which never swaps, and leaves only on the stick.
 .Ss Formatting a stick for the keys
-To format a stick for the keys, find it with
-.Ic blkid :
-it is sda, and mmcblk0 is the SD card.
+To format a stick for the keys, find it as above: here it is sda.
 This erases the stick:
 .Bd -literal -offset indent
 mkfs.fat -I -F 32 -n KEYS /dev/sda
