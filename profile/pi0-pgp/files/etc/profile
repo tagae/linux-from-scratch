@@ -15,3 +15,7 @@ if [ -n "${BASH_VERSION:-}" ]; then
     HISTSIZE=1000
     HISTCONTROL=ignoreboth
 fi
+
+# bash-completion, with which Tab completes what commands take. Its script loads it in interactive
+# bash, and does nothing in dash.
+. /etc/profile.d/bash_completion.sh

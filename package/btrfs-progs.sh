@@ -45,5 +45,15 @@ install() {
         cp -v $package_source_dir/Documentation/*.$section \
             $package_install_dir$prefix/share/man/man$section/
     done
+
+    # The release has a bash completion, which the Makefile does not install.
+    : ${bash_completion:=no}
+    case $bash_completion in
+        yes)
+            mkdir -pv $package_install_dir$prefix/share/bash-completion/completions
+            cp -v $package_source_dir/btrfs-completion \
+                $package_install_dir$prefix/share/bash-completion/completions/btrfs
+            ;;
+    esac
     move_to_docs_component
 }

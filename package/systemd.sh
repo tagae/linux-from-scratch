@@ -16,7 +16,7 @@ prepare() {
 
             # timedated sets the clock and the time zone over D-Bus (timedatectl), for root and for
             # whoever polkit lets.
-            : ${timedated:=no} ${man:=no}
+            : ${timedated:=no} ${man:=no} ${bash_completion:=no}
 
             # Pinned because meson would otherwise take them from the build machine: libdir (a
             # multiarch directory), split-bin (whether /usr/sbin is a symlink) and the system
@@ -105,7 +105,8 @@ prepare() {
                 -Dsysinstall=false \
                 -Dinitrd=false \
                 -Denvironment-d=false \
-                -Dbashcompletiondir=no \
+                -Dbashcompletiondir=$([ $bash_completion = yes ] \
+                    && echo $prefix/share/bash-completion/completions || echo no) \
                 -Dzshcompletiondir=no \
                 -Djournal-storage-default=auto \
                 -Dcreate-log-dirs=false \

@@ -93,6 +93,12 @@ scdaemon's configuration.
 The shells run in the `C.UTF-8` locale, which the shell profile sets, and which is the only one that
 the system has besides `C`: the terminal on the serial console is taken to speak UTF-8.
 
+In bash, Tab completes more than the names of commands and files: options, the units that
+`systemctl` takes, and the names of manual pages (`man mkfs.` and two Tabs list those of the
+programs that make file systems). The completions are `bash-completion`'s, which the shell profile
+loads, and those of `kmod`, `util-linux`, `systemd`, `btrfs-progs` and `ykman`. Upstream calls
+`ykman`'s experimental, and it starts `ykman` at each Tab.
+
 
 Several Shells on the Console
 -----------------------------

@@ -1,0 +1,51 @@
+# Tab completes in bash: the names of manual pages, which bash-completion does, and what the
+# packages complete themselves.
+
+# Types the start of a line and Tab, which the shell completes to the line expected, then discards
+# the line.
+proc expect_completion {typed completed} {
+    send -- "$typed\t"
+    expect {
+        -ex "$completed " { }
+        timeout { fail "Tab did not complete '$typed' to '$completed'" }
+        eof     { fail "QEMU exited at the Tab after '$typed'" }
+    }
+    send -- "\x15"
+    run_ok true
+}
+
+login user
+# A second Tab lists what there is to choose from.
+send -- "man mkfs.\t\t"
+expect {
+    -re {mkfs\.btrfs\s+mkfs\.ext2\s+mkfs\.ext3\s+mkfs\.ext4\s+mkfs\.fat\s*\n} { }
+    timeout { fail "Tab did not list the pages that start with mkfs." }
+    eof     { fail "QEMU exited at the Tab after man mkfs." }
+}
+send -- "\x15"
+run_ok true
+expect_completion {man pi0-} {man pi0-pgp}
+
+# A package's own completion of a command is the one loaded, where bash-completion has one too, as
+# for insmod, mount and udevadm.
+foreach {command function} {
+    insmod    _insmod
+    mount     _mount_module
+    systemctl _systemctl
+    udevadm   _udevadm
+    btrfs     _btrfs
+    ykman     _ykman_completion
+} {
+    expect_match [run_ok "_comp_load $command; complete -p $command"] " -F $function $command\$" \
+        "the completion of $command"
+}
+
+# systemctl's asks systemd for the units, btrfs's uses an older interface of bash-completion, and
+# ykman's runs ykman.
+expect_completion {systemctl status dbus.so} {systemctl status dbus.socket}
+expect_completion {btrfs filesystem sh} {btrfs filesystem show}
+expect_completion {ykman openp} {ykman openpgp}
+
+# dash reads the shell profile too, which loads the completions.
+expect_equal [run_ok {sh -l -c 'echo read'}] read "a login shell of dash"
+logout

@@ -9,7 +9,7 @@ prepare() {
         util-linux)
             # libudev and libsystemd are systemd's, which is built after util-linux.
             : ${all_programs:=no} ${python:=no} ${systemd:=no} ${udev:=no}
-            : ${makeinstall_chown:=no} ${makeinstall_setuid:=no}
+            : ${makeinstall_chown:=no} ${makeinstall_setuid:=no} ${bash_completion:=no}
 
             # configure asks the ncurses*-config scripts that it finds before pkg-config. In a cross
             # build, those are the build machine's, which would give the programs the directory of its
@@ -66,7 +66,8 @@ prepare() {
                 ${makeinstall_chown:+--enable-makeinstall-chown=$makeinstall_chown} \
                 ${makeinstall_setuid:+--enable-makeinstall-setuid=$makeinstall_setuid} \
                 --disable-static \
-                --disable-bash-completion
+                --enable-bash-completion=$bash_completion \
+                --with-bashcompletiondir=$prefix/share/bash-completion/completions
             ;;
         *)
             default_prepare

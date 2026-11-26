@@ -14,6 +14,9 @@ lfs_system_install gcc#runtime
 # The locale of the shells (etc/profile), without whose UTF-8 tmux does not start.
 lfs_system_install glibc#c-utf8
 
+# Every package below that has completions for bash installs them, for bash-completion to load.
+bash_completion=yes
+
 #===[ Manual page tools ]===
 
 # What makes manual pages from their sources: kmod's with scdoc, and shadow's, systemd's, D-Bus's
@@ -64,6 +67,10 @@ lfs_system_install shadow
     termcap_lib=ncursesw
     lfs_system_install bash
 )
+
+# bash-completion, with which Tab also completes what a command takes: options, units, the names of
+# manual pages. etc/profile loads it.
+lfs_system_install bash-completion
 
 # util-linux: mount and umount, agetty and sulogin, which systemd and the key procedure run; libblkid
 # and libmount, which systemd links; fdisk, sfdisk and cfdisk, which partition USB sticks and drives,

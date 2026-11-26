@@ -8,14 +8,15 @@
 prepare() {
     case $package_component in
         kmod)
-            : ${man:=no}
+            : ${man:=no} ${bash_completion:=no}
 
             $package_source_dir/configure \
                 ${host:+--host=$host} \
                 ${build:+--build=$build} \
                 ${prefix:+--prefix=$prefix} \
                 --sysconfdir=/etc \
-                --with-bashcompletiondir= \
+                --with-bashcompletiondir=$([ $bash_completion = yes ] \
+                    && echo $prefix/share/bash-completion/completions) \
                 --with-fishcompletiondir= \
                 --with-zshcompletiondir= \
                 ${openssl:+--with-openssl=$openssl} \
