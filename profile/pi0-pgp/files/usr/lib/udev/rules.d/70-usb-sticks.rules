@@ -1,12 +1,12 @@
 # The block devices of USB sticks, drives and card readers belong to the group `users`, which the
 # regular account is in, so that it can partition them, make, check and label their file systems,
-# the one that gpg-genkey wants among them, and copy them with dd. The SD card is not on USB: it
-# stays with root and the group `disk`.
+# the one for the keys among them, and copy them with dd. The SD card is not on USB: it stays with
+# root and the group `disk`.
 SUBSYSTEM=="block", SUBSYSTEMS=="usb", GROUP="users", MODE="0660"
 
 # A FAT file system of a USB stick that is not labelled KEYS is /dev/usb-storage, which
 # mnt-usb\x2dstorage.mount mounts. The KEYS stick has its own mount (mnt-keys.mount, by label), so
-# that gpg-genkey never writes a key to another stick. 60-persistent-storage.rules has probed the
-# type and the label by now. With two such sticks, the link follows one of them.
+# that a key written to /mnt/keys never lands on another stick. 60-persistent-storage.rules has
+# probed the type and the label by now. With two such sticks, the link follows one of them.
 SUBSYSTEM=="block", SUBSYSTEMS=="usb", ENV{ID_FS_TYPE}=="vfat", ENV{ID_FS_LABEL}!="KEYS", \
     SYMLINK+="usb-storage"

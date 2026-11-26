@@ -126,8 +126,7 @@ lfs_system_install firmware
 lfs_system_install zlib
 lfs_sysroot_install zlib#dev
 
-# The GNU tools: the core utilities, find and xargs, grep and sed for the console, and gawk, which
-# gpg-genkey, a shell script, runs.
+# The GNU tools for the console: the core utilities, find and xargs, grep, sed and gawk.
 (
     # One program for all the utilities, which otherwise carry a copy of the same library each.
     single_binary=symlinks
@@ -208,8 +207,8 @@ lfs_system_install dosfstools
 lfs_system_install e2fsprogs
 lfs_system_install btrfs-progs
 
-# The sticks' mount points (mnt-keys.mount, which gpg-genkey writes to, and
-# mnt-usb\x2dstorage.mount), which systemd cannot make on the read-only root.
+# The sticks' mount points (mnt-keys.mount, for the keys, and mnt-usb\x2dstorage.mount), which
+# systemd cannot make on the read-only root.
 mkdir -pv $system_dir/mnt/keys $system_dir/mnt/usb-storage
 
 #===[ Processes and memory ]===
@@ -314,7 +313,7 @@ lfs_system_install polkit
 # A regular account besides root, for working with keys and USB storage without administrative
 # rights: LFS_USER, of the group `users`, with bash for shell. Its group reaches the security keys'
 # hidraw devices and the devices of USB sticks and drives (the profile's udev rules), and the files
-# of the sticks that mnt-keys.mount (gpg-genkey) and mnt-usb\x2dstorage.mount mount.
+# of the sticks that mnt-keys.mount and mnt-usb\x2dstorage.mount mount.
 (
     user_shell=/bin/bash
     lfs_system_add_user

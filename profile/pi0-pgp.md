@@ -64,7 +64,7 @@ The system has two accounts: `root`, and `$LFS_USER`, by default the user who bu
 Neither has a password unless `LFS_ROOT_PASSWORD` or `LFS_PASSWORD`, respectively, sets one when
 the image is built.
 
-The regular account makes keys (`gpg`, `gpg-genkey`), works on USB sticks and drives ([USB
+The regular account makes keys (`gpg`), works on USB sticks and drives ([USB
 Storage](#usb-storage)), and uses a YubiKey. The security keys' `/dev/hidraw*` devices, through
 which `ykman` and libfido2's tools reach the FIDO2 and OTP interfaces, belong to the group `users`.
 The smart card interface is `pcscd`'s, which GnuPG and `ykman` reach through its socket, as
@@ -86,8 +86,8 @@ The files of [`pi0-pgp/files/`](pi0-pgp/files) give the system its look and poli
 `agetty` prints before the login prompt, which names the regular account (the build replaces
 `$LFS_USER` in these files); the message of the day, which names the manual page
 [`pi0-pgp(7)`](pi0-pgp/files/usr/share/man/man7/pi0-pgp.7); the shell profile; the udev rules and
-the polkit rule above; `gpg-genkey` and the mount units of the stick; the mount units of the memory
-over the read-only root ([Nothing Kept](#nothing-kept)) and the drop-ins that start the mounts; and
+the polkit rule above; the mount units of the sticks; the mount units of the memory over the
+read-only root ([Nothing Kept](#nothing-kept)) and the drop-ins that start the mounts; and
 scdaemon's configuration.
 
 The shells run in the `C.UTF-8` locale, which the shell profile sets, and which is the only one that
@@ -196,8 +196,9 @@ directory, whoever it is:
 
 It unmounts them when they have not been used for ten seconds: wait that long before pulling a
 device out. Without a device, the access fails after ten seconds. Both mounts are `nosuid`, `nodev`
-and `noexec`. The KEYS stick is never on `/mnt/usb-storage`, and `gpg-genkey` writes to `/mnt/keys`
-alone, so that a key never lands on a stick that was plugged in for another purpose.
+and `noexec`. The KEYS stick is never on `/mnt/usb-storage`, and [the key
+procedure](#making-openpgp-keys) writes to `/mnt/keys` alone, so that a key never lands on a stick
+that was plugged in for another purpose.
 
 Nothing else is mounted by itself: root mounts ext4 and BTRFS, and further FAT file systems, and
 unmounts them before the device is pulled out.
@@ -249,23 +250,54 @@ home directory, in memory.
    Without `UTC`, the time is read in the image's time zone. `timedated` refuses a time before the
    date of the systemd release that it is part of; root's `date -s` sets any.
 
-2. Make the key. The primary key only certifies; it has subkeys to sign, to encrypt and to
-   authenticate, none of which expires. GnuPG's home is `~/.gnupg`, in memory (see [Keys in
-   Memory](#keys-in-memory)), and the keys stay in it when the command ends. Plug the YubiKey in
-   first: its random number generator adds to the Pi's (see [Randomness](#randomness)), which
-   makes the command wait a minute; without it, the command warns and relies on the Pi's alone.
-   Give the passphrase through the environment, so that it stays out of the process list:
+2. Add the randomness of the YubiKey's own generator to the Pi's ([Randomness](#randomness)). The
+   first command makes GnuPG's home, `~/.gnupg`, which the second one needs:
 
    ```shell
-   PASSPHRASE='a long passphrase' gpg-genkey -n 'Your Name' -e you@example.org
+   gpg --list-keys
+   gpg-connect-agent 'SCD RANDOM 64' /bye | tee /dev/random | tail -n 1
+   gpgconf --kill gpg-agent
+   sleep 61
    ```
 
-   The root of the stick now holds `you@example.org-secret.asc` (protected by the passphrase),
-   `-public.asc` and `-revoke.asc`. The keys are ed25519, with a cv25519 encryption subkey; `-a
-   rsa4096` makes RSA keys instead.
+   The second command prints `OK` if the YubiKey answered. `ERR` means that none did: the keys then
+   rest on the Pi's generator alone, and there is nothing to wait for.
 
-3. Move the subkeys to the YubiKey, when you wish: the keys are still in memory, and `gpg
-   --list-secret-keys` shows them. Copy each subkey to its slot (the card asks for its Admin PIN):
+3. Make the primary key, which only certifies. `gpg` asks twice for a new passphrase, which protects
+   the secret key, and prints the key's fingerprint:
+
+   ```shell
+   gpg --quick-generate-key 'Your Name <you@example.org>' ed25519 cert 0
+   ```
+
+4. Add the subkeys, to sign, to encrypt and to authenticate, none of which expires. `gpg` asks for
+   the passphrase at each, and protects the subkey with it:
+
+   ```shell
+   fpr=FINGERPRINT
+   gpg --quick-add-key $fpr ed25519 sign 0
+   gpg --quick-add-key $fpr cv25519 encr 0
+   gpg --quick-add-key $fpr ed25519 auth 0
+   ```
+
+   For RSA keys, give `rsa4096` in place of `ed25519` and of `cv25519`.
+
+5. Back the key up to the stick: the secret key (protected by the passphrase, which `gpg` asks for
+   once more), the public key and the revocation certificate. Then have the agent forget the
+   passphrase, which it keeps for ten minutes:
+
+   ```shell
+   backup=/mnt/keys/you@example.org
+   gpg -a --export-secret-keys $fpr > $backup-secret.asc
+   gpg -a --export $fpr > $backup-public.asc
+   cp ~/.gnupg/openpgp-revocs.d/$fpr.rev $backup-revoke.asc
+   sync
+   gpgconf --kill gpg-agent
+   ```
+
+6. Move the subkeys to the YubiKey, when you wish: the keys are still in memory, in `~/.gnupg`
+   ([Keys in Memory](#keys-in-memory)), and `gpg --list-secret-keys` shows them. Copy each subkey to
+   its slot (the card asks for its Admin PIN):
 
    ```shell
    gpg --edit-key you@example.org
@@ -322,8 +354,8 @@ Nothing is written to the SD card while the system runs.
 Keys in Memory
 --------------
 
-`gpg-genkey` keeps GnuPG's home, with the keyring, the agent's private keys, the random pool and
-the revocation certificate, in `~/.gnupg`, in the memory of the overlay of `/home`
+GnuPG's home, with the keyring, the agent's private keys, the random pool and the revocation
+certificate, is `~/.gnupg`, in the memory of the overlay of `/home`
 ([Nothing Kept](#nothing-kept)): `gpg` lists and edits the keys until the Pi powers off.
 
 * The memory, `/run/memory`, is mounted `noswap`: the kernel never writes its pages to swap. A tmpfs
@@ -331,10 +363,10 @@ the revocation certificate, in `~/.gnupg`, in the memory of the overlay of `/hom
   does not depend on the kernel's configuration.
 * Only the regular account opens `~/.gnupg` (mode 0700), and nothing runs from `/home` (`noexec`,
   `nosuid` and `nodev`).
-* `gpg-genkey` refuses to start unless `/home` is an overlay that writes to `/run/memory`, and that
-  a tmpfs mounted `noswap`.
-* The agent, which keeps the passphrase for ten minutes, quits when `gpg-genkey` ends, however it
-  ends, and starts again when `gpg` needs it.
+* The root file system is read-only: without the overlay of `/home`, GnuPG has nowhere to write a
+  key, rather than the card.
+* The agent keeps a passphrase for ten minutes. `gpgconf --kill gpg-agent` ends it sooner, and it
+  starts again when `gpg` needs it.
 * Nothing deletes the keys: they go when the Pi powers off. Unmounting the tmpfs frees its pages,
   and the kernel zeroes every page that it frees (`init_on_free`, the capability
   [`zero-on-free`](../package/linux/zero-on-free.config)), which costs run time on every
@@ -355,11 +387,12 @@ is worth goes into the seed all the same: a weak input cannot weaken it.
   [`pi0.config`](../package/linux/pi0.config)) feeds the pool from the boot on, with full credit:
   the generator is ready within seconds, long before anyone logs in. The SoC has no cycle counter,
   so the kernel's own timing jitter adds little to it.
-* `gpg-genkey` mixes 64 bytes of the YubiKey's own generator into the pool (`SCD RANDOM 64` through
-  the agent), without credit, so that the keys depend on two independent generators, either of which
-  would make them unpredictable. Only root may credit what it writes, and the YubiKey has no need
-  of credit: the Pi's generator has made the kernel's ready already. It then waits a minute, for the
-  kernel to reseed with it, and has the agent that makes the keys start after that.
+* [The key procedure](#making-openpgp-keys) mixes 64 bytes of the YubiKey's own generator into the
+  pool (`SCD RANDOM 64` through the agent), without credit, so that the keys depend on two
+  independent generators, either of which would make them unpredictable. Only root may credit what
+  it writes, and the YubiKey has no need of credit: the Pi's generator has made the kernel's ready
+  already. The procedure then waits a minute, for the kernel to reseed with it, as only root can
+  have it reseed at once, and has the agent that makes the keys start after that.
 * GnuPG's own random seed file (`random_seed`) lives in `~/.gnupg`, which is empty at every boot,
   and so does systemd's seed of the kernel's pool (`/var/lib/systemd/random-seed`), in the memory of
   `/var`: no seed outlives a boot, or is on the SD card for someone who has had it to read.
@@ -392,8 +425,8 @@ the key can only be tried on the Pi.
 It runs the tests of [`pi0-pgp/test/`](pi0-pgp/test) in order, on one boot ([README,
 Tests](../README.md#tests)), each named after what it checks: the console and the accounts, and
 what polkit lets them do; the kernel, the memory that keeps nothing, and the programs and manual
-pages of the system; GnuPG, `gpg-genkey` and the KEYS stick; the smart card reader and the units'
-sandboxes; restarts, which forget what was done; the clock and `top`; the partitions, file systems,
-mounts and copies of a drive plugged into the running machine; and `tmux`.
+pages of the system; GnuPG, the key procedure and the KEYS stick; the smart card reader and the
+units' sandboxes; restarts, which forget what was done; the clock and `top`; the partitions, file
+systems, mounts and copies of a drive plugged into the running machine; and `tmux`.
 
 [tmpfiles]: pi0-pgp/files/etc/systemd/system/systemd-tmpfiles-setup.service.d/read-only-root.conf

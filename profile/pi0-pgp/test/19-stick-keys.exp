@@ -6,6 +6,6 @@ run_ok {n=0; while ! ls /mnt/keys > /dev/null 2>&1 && [ $n -lt 60 ]; do sleep 1;
 expect_match [run_ok {head -n 1 /mnt/keys/test@example.org-secret.asc}] {BEGIN PGP PRIVATE KEY BLOCK} "the secret key on the stick"
 # The clock goes back to the time the image was made at a restart, which makes the key younger than
 # the machine.
-run_ok {printf '%s\n' 'a passphrase' | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --ignore-time-conflict --import /mnt/keys/test@example.org-secret.asc}
+run_ok {printf '%s\n' 'a passphrase of 2 words' | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --ignore-time-conflict --import /mnt/keys/test@example.org-secret.asc}
 expect_match [run_ok {gpg --list-secret-keys test@example.org}] {test@example\.org} "the key imported from the stick"
 logout

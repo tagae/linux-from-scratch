@@ -100,26 +100,83 @@ names without asking, mounted or not.
 Writing over flash storage does not erase it for certain, as it keeps blocks
 that no write reaches.
 .Ss Making an OpenPGP key
-.Bl -enum
+The key is made for a security key such as a YubiKey: a primary key that only
+certifies, and subkeys to sign, to encrypt and to authenticate, none of which
+expires.
+The secret key is made in memory, under
+.Pa ~/.gnupg ,
+which never swaps, and leaves the Pi only on the stick.
+Log in as the regular account, and put your own name and address in the commands.
+.Bl -enum -width 2n
 .It
 Plug in the YubiKey and a USB stick with a FAT file system labelled KEYS.
+This lists what the stick holds, and fails without one:
+.Bd -literal
+ls /mnt/keys
+.Ed
 .It
-Set the clock, which starts each boot at the time the image was made:
-.Bd -literal -offset indent -compact
+Set the clock, which starts each boot at the time the image was made, as keys
+record when they are made:
+.Bd -literal
 timedatectl set-time 'YYYY-MM-DD HH:MM:SS UTC'
 .Ed
 .It
-Run the key generator,
-.Pa /usr/bin/gpg-genkey :
-.Bd -literal -offset indent -compact
-PASSPHRASE='...' gpg-genkey -n 'Your Name' -e you@example.org
+Add the randomness of the YubiKey's own generator to the Pi's.
+The first command makes GnuPG's home,
+.Pa ~/.gnupg ,
+which the second one needs:
+.Bd -literal
+gpg --list-keys
+gpg-connect-agent 'SCD RANDOM 64' /bye | tee /dev/random | tail -n 1
+gpgconf --kill gpg-agent
+sleep 61
+.Ed
+.Pp
+The second command prints OK if the YubiKey answered.
+ERR means that none did: the keys then rest on the Pi's generator alone, and
+there is nothing to wait for.
+The kernel takes the randomness in within a minute, and the agent, which makes
+the keys, has to start after that.
+.It
+Make the primary key.
+gpg asks twice for a new passphrase, which protects the secret key, and prints
+the key's fingerprint, 40 hexadecimal digits:
+.Bd -literal
+gpg --quick-generate-key 'Your Name <you@example.org>' ed25519 cert 0
+.Ed
+.It
+Add the subkeys to the key of that fingerprint.
+gpg asks for the passphrase at each, and protects the subkey with it:
+.Bd -literal
+fpr=FINGERPRINT
+gpg --quick-add-key $fpr ed25519 sign 0
+gpg --quick-add-key $fpr cv25519 encr 0
+gpg --quick-add-key $fpr ed25519 auth 0
+.Ed
+.Pp
+For RSA keys, give rsa4096 in place of ed25519 and of cv25519.
+.It
+Write the secret key, for which gpg asks for the passphrase once more, the public
+key and the revocation certificate to the stick:
+.Bd -literal
+backup=/mnt/keys/you@example.org
+gpg -a --export-secret-keys $fpr > $backup-secret.asc
+gpg -a --export $fpr > $backup-public.asc
+cp ~/.gnupg/openpgp-revocs.d/$fpr.rev $backup-revoke.asc
+sync
+.Ed
+.It
+Have the agent forget the passphrase, which it keeps for ten minutes:
+.Bd -literal
+gpgconf --kill gpg-agent
 .Ed
 .El
 .Pp
-The header comment of the script lists its options.
-The secret key is made in memory, under
-.Pa ~/.gnupg ,
-which never swaps, and leaves only on the stick.
+The keys stay in
+.Pa ~/.gnupg
+until the Pi powers off.
+The stick is safe to pull out ten seconds after the last command that reads or
+writes it.
 .Ss Formatting a stick for the keys
 To format a stick for the keys, find it as above: here it is sda.
 This erases the stick:
@@ -156,6 +213,8 @@ Power off before you leave the console to anybody else.
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr gpg 1 ,
+.Xr gpg-connect-agent 1 ,
+.Xr gpgconf 1 ,
 .Xr timedatectl 1 ,
 .Xr tmux 1 ,
 .Xr ykman 1 ,

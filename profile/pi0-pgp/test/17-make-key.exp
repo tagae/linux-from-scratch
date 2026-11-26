@@ -1,0 +1,50 @@
+# The key procedure of the page of the system, pi0-pgp(7), typed as it gives it: a key made in
+# memory, whose passphrase pinentry asks for on the console, and written to the stick. QEMU has no
+# YubiKey to add randomness to the Pi's, so the first command answers ERR, and there is nothing to
+# wait for.
+
+# Runs a line as run_ok does, typing the passphrase at each of pinentry's prompts for it.
+proc run_asking {line passphrase} {
+    global commands
+    incr commands
+    set id A$commands
+    set output ""
+    send -- "echo BEGIN''_$id; $line; echo END''_$id=\$?\r"
+    expect {
+        -re {(Passphrase|Repeat): ?} {
+            append output $expect_out(buffer)
+            send -- "$passphrase\r"
+            exp_continue
+        }
+        -re "END_$id=(\[0-9\]+)" {
+            append output $expect_out(buffer)
+            set status $expect_out(1,string)
+        }
+        timeout { fail "the command did not finish: $line" }
+        eof     { fail "QEMU exited during the command: $line" }
+    }
+    if {$status != 0} { fail "'$line' exited with $status, saying: [clean $output]" }
+    return [clean $output]
+}
+
+login user
+set passphrase {a passphrase of 2 words}
+# GnuPG's home as after a boot: absent.
+run_ok {gpgconf --kill all && rm -rf ~/.gnupg}
+run_ok {gpg --list-keys}
+expect_match [run_ok {gpg-connect-agent 'SCD RANDOM 64' /bye | tee /dev/random | tail -n 1}] {ERR [0-9]+} "the answer with no YubiKey"
+run_ok {gpgconf --kill gpg-agent}
+set output [run_asking {gpg --quick-generate-key 'Test User <test@example.org>' ed25519 cert 0} $passphrase]
+if {![regexp {[0-9A-F]{40}} $output fingerprint]} { fail "gpg printed no fingerprint: $output" }
+run_ok "fpr=$fingerprint"
+run_asking {gpg --quick-add-key $fpr ed25519 sign 0} $passphrase
+run_asking {gpg --quick-add-key $fpr cv25519 encr 0} $passphrase
+run_asking {gpg --quick-add-key $fpr ed25519 auth 0} $passphrase
+run_ok {backup=/mnt/keys/test@example.org}
+run_asking {gpg -a --export-secret-keys $fpr > $backup-secret.asc} $passphrase
+run_ok {gpg -a --export $fpr > $backup-public.asc}
+run_ok {cp ~/.gnupg/openpgp-revocs.d/$fpr.rev $backup-revoke.asc}
+run_ok {sync; gpgconf --kill gpg-agent}
+run_ok {[ -s $backup-secret.asc ] && [ -s $backup-public.asc ] && [ -s $backup-revoke.asc ]}
+expect_equal [run_ok {gpg --list-secret-keys --with-colons $fpr 2> /dev/null | grep -c '^ssb:'}] 3 "the subkeys of the key, which stays in memory"
+logout

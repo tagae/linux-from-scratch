@@ -1,4 +1,4 @@
-# The regular account makes the file system that gpg-genkey wants on the stick, as the page of the
+# The regular account makes the file system that the keys go to on the stick, as the page of the
 # system, pi0-pgp(7), says, and systemd mounts it when something reads /mnt/keys, and lets it write
 # there.
 
