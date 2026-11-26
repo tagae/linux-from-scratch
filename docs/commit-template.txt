@@ -1,6 +1,6 @@
 ########################################################################
 # Write a title summarizing what this commit does, as <type>: <subject>.
-# Start with a type, such as feat, fix, refactor, drop, docs, chore;
+# Start with a type, such as feat, fix, upgrade, refactor, drop, docs;
 # see below. Follow it with a lowercase imperative verb, e.g. add.
 # Think of your title as akin to an email subject,
 # so you don't need to end with a sentence period.
@@ -39,8 +39,10 @@
 #     or file of an image.
 #   feat! = Change a capability that users rely on, in a way that
 #     breaks them.
-#   fix = Fix an issue e.g. bug, typo, accident, misstatement, or an
-#     insecure package.
+#   fix = Fix an issue e.g. bug, typo, accident, misstatement, or
+#     vulnerability.
+#   upgrade = Upgrade a package or tool, whether or not the new release
+#     fixes a vulnerability.
 #   perf = A change that MUST be just about performance.
 #   refactor = A change that MUST be just a refactoring.
 #   drop = Delete a capability that nothing relies on e.g. feature,
@@ -51,9 +53,7 @@
 #   test = Add or change tests.
 #   build = Change the build process, or tools, or infrastructure.
 #   ci = Change the continuous integration workflows.
-#   chore = Any other upkeep, e.g. bump a dependency that has no
-#     vulnerability.
-#   conf = Change the configuration of Claude or of another tool.
+#   conf = Change a tool configuration.
 #
 # Start the subject with a lowercase imperative present active verb,
 # e.g. add foo. Wrong: adds foo, added foo, adding foo, foo added.
@@ -71,7 +71,7 @@
 #
 #   feat!, drop! = MAJOR, when there is an incompatibility.
 #   feat = MINOR, when there is a new capability.
-#   fix, perf, refactor = PATCH.
+#   fix, upgrade, perf, refactor = PATCH.
 #   Any other type = no bump.
 #
 # ## Body ##

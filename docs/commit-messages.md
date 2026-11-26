@@ -55,6 +55,7 @@ Summary examples
   * feat: add foo
   * drop: remove foo
   * fix: stop foo from hanging
+  * upgrade: bump foo to 2.0
   * refactor: move foo to lib/foo.sh
   * perf: build foo once for all platforms
   * feat!: prefix the variables of foo with FOO_
@@ -71,7 +72,8 @@ The type is one of these:
 |------------|------------------------------------------------------------------------------------|
 | `feat`     | Create a capability e.g. a package, profile, option, command or file of an image.  |
 | `feat!`    | Change a capability that users rely on, in a way that breaks them.                 |
-| `fix`      | Fix an issue e.g. bug, typo, accident, misstatement, or an insecure package.       |
+| `fix`      | Fix an issue e.g. bug, typo, accident, misstatement, or vulnerability.             |
+| `upgrade`  | Upgrade a package or tool, whether or not the new release fixes a vulnerability.   |
 | `perf`     | A change that MUST be just about performance, e.g. build faster or ship less.      |
 | `refactor` | A change that MUST be just a refactoring: it changes nothing that users can see.   |
 | `drop`     | Delete a capability that nothing relies on e.g. feature, option, package, command. |
@@ -81,8 +83,10 @@ The type is one of these:
 | `test`     | Add or change tests.                                                               |
 | `build`    | Change the build process, or tools, or infrastructure, e.g. Makefile, Dockerfiles. |
 | `ci`       | Change the continuous integration workflows.                                       |
-| `chore`    | Any other upkeep, e.g. bump a dependency that has no vulnerability, remove a file. |
-| `conf`     | Change the configuration of Claude or of another tool.                             |
+| `conf`     | Change a tool configuration.                                                       |
+
+A type tells what a commit is about. Avoid catch-all types, such as `chore`, which sidestep that
+duty: when no type describes a change, add one that does.
 
 
 Use semantic versioning
@@ -95,8 +99,8 @@ line sets the bump:
 |----------------------------------------------------------------------------|-------------------|
 | `feat!`, `drop!`                                                           | SemVer MAJOR      |
 | `feat`                                                                     | SemVer MINOR      |
-| `fix`, `perf`, `refactor`                                                  | SemVer PATCH      |
-| Any other: `drop`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `conf` | no SemVer version |
+| `fix`, `upgrade`, `perf`, `refactor`                                       | SemVer PATCH      |
+| Any other: `drop`, `docs`, `style`, `test`, `build`, `ci`, `conf`          | no SemVer version |
 
 Use `drop!` only when what goes was relied upon, and `feat!` for any other change that breaks what
 users rely on, since both increment the MAJOR version. Use `drop` when nothing relies on what goes.

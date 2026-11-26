@@ -204,8 +204,8 @@ and squashes bump nothing.
 
 The interface is what users and profiles rely on: the make targets and their defaults, the `lfs`
 commands and environment, the formats of `profile/`, `platform/` and the options of recipes, and the
-layout of an image and of its SBOM. What an image holds is not the interface: updating a package
-that has vulnerabilities is a `fix`, and any other update a `chore`, which bumps nothing.
+layout of an image and of its SBOM. What an image holds is not the interface: upgrading a package,
+whether or not that fixes a vulnerability, is an `upgrade`, which bumps the patch version.
 
 `check/commit-messages` (`make commit-lint`, which CI runs) checks the messages since the last tag,
 or all of them when there is none: the type and the subject of the summary line, its width, a blank

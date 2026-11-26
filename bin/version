@@ -34,12 +34,12 @@ range=${tag:+$tag..}HEAD
 
 # The bump that the commits make, from the type that starts their summary lines (`feat:`,
 # `drop!:`; see docs/commit-messages.md): 3 the major version (feat!, drop!), 2 the minor (feat), 1
-# the patch (fix, perf, refactor), 0 none (any other type).
+# the patch (fix, upgrade, perf, refactor), 0 none (any other type).
 level=$(git log --format=%s "$range" | awk '
     function raise(l) { if (l > level) level = l }
     $1 == "feat!:" || $1 == "drop!:" { raise(3); next }
     $1 == "feat:" { raise(2); next }
-    $1 == "fix:" || $1 == "perf:" || $1 == "refactor:" { raise(1) }
+    $1 == "fix:" || $1 == "upgrade:" || $1 == "perf:" || $1 == "refactor:" { raise(1) }
     END { print level + 0 }')
 
 # The version that a bump of the last version makes.

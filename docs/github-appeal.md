@@ -458,7 +458,7 @@ Each of these would make the repository look busier without telling a visitor an
   transcript is smaller than a screenshot, can be searched, copied and diffed, and is honest about
   timing.
 * **A line of versions** ("Linux 7.3.1, glibc 2.44, GCC 16.2.0"). It goes stale with every package
-  update, which is a `chore` commit that nobody would think to pair with a README edit. The SBOM
+  update, which is an `upgrade` commit that nobody would think to pair with a README edit. The SBOM
   has the versions.
 * **`profile/README.md`.** It would repeat the README's table, and the README links each profile's
   page directly.

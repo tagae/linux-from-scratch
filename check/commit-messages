@@ -22,7 +22,7 @@ set -o errexit -o nounset
 problems() {
     awk '
         BEGIN {
-            types = " feat feat! fix perf refactor drop drop! docs style test build ci chore conf "
+            types = " feat feat! fix upgrade perf refactor drop drop! docs style test build ci conf "
             verbs = " add drop fix bump make start stop remove move rename use keep leave let give"
             verbs = verbs " name set split install build run pin patch update document refactor "
         }
