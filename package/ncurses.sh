@@ -33,7 +33,9 @@ prepare() {
                 ${fallbacks:+--with-fallbacks=$fallbacks} \
                 ${db_install:+--enable-db-install=$db_install} \
                 ${pc_files:+--enable-pc-files=$pc_files} \
-                ${pkg_config_libdir:+--with-pkg-config-libdir=$pkg_config_libdir}
+                ${pkg_config_libdir:+--with-pkg-config-libdir=$pkg_config_libdir} \
+                --with-manpage-format=normal \
+                --without-manpage-renames
             ;;
         *)
             default_prepare
