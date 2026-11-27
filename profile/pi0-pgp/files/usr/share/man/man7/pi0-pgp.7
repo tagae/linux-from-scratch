@@ -59,8 +59,8 @@ Where there is a file system, mkfs.ext4 asks before it erases it, mkfs.btrfs
 refuses to without
 .Fl f ,
 and mkfs.fat erases it without asking.
-mkfs.btrfs warns the regular account that it could not register the device,
-which does no harm: udev registers it.
+The regular account can ignore the warning of mkfs.btrfs that it could not
+register the device: udev registers it.
 .Pp
 These check the file systems, which must not be mounted:
 .Bd -literal -offset indent
@@ -69,7 +69,8 @@ fsck.ext4 -f /dev/sda2
 btrfs check /dev/sda3
 .Ed
 .Pp
-fsck.ext4 asks before it repairs what it finds; the other two change nothing.
+fsck.ext4 replays the journal without asking, and asks before it repairs
+anything else; the other two change nothing.
 .Ss Moving files
 The regular account reads and writes the FAT file systems that systemd mounts.
 Only root can mount the rest, ext4 and BTRFS file systems among them.
@@ -96,7 +97,7 @@ dd overwrites what
 .Cm of=
 names without asking.
 The kernel protects a mounted device or partition from it, but not a whole
-device whose partitions are mounted: see that none is before you start.
+device whose partitions are mounted: unmount them first.
 Writing over flash storage does not erase it for certain, as it keeps blocks
 that no write reaches.
 .Ss Formatting a stick for the keys
@@ -111,7 +112,7 @@ authenticate.
 None of them expires.
 Log in as the regular account,
 and put your own name and address in the commands.
-For RSA keys, also give rsa4096 in place of ed25519 and of cv25519.
+For RSA keys, give rsa4096 in place of ed25519 and of cv25519.
 .Bl -enum -width 2n
 .It
 Plug in the YubiKey and a USB stick with a FAT file system labelled KEYS.
@@ -174,14 +175,60 @@ Have the agent forget the passphrase, which it keeps for ten minutes:
 gpgconf --kill gpg-agent
 .Ed
 .El
+.Ss Getting the key back from the stick
+After a boot, plug in the stick, set the clock as in step 2 of
+.Sx Making an OpenPGP key ,
+and import the secret key, whose passphrase gpg asks for:
+.Bd -literal -offset indent
+gpg --import /mnt/keys/you@example.org-secret.asc
+.Ed
 .Ss Moving the subkeys to the YubiKey
-Use
-.Ic gpg\ --edit-key
-and its
+At the
+.Ql gpg>
+prompt of
+.Ic gpg\ --edit-key ,
+.Ic key
+selects a subkey by its number, or deselects it, and
 .Ic keytocard
-command.
-These show GnuPG's secret keys, the keys on the YubiKey, and the YubiKey's
-model and applications:
+moves the selected one to a slot of the YubiKey.
+keytocard asks for the slot, the key's passphrase and the YubiKey's Admin PIN,
+and asks again before it replaces a key that the slot holds.
+With no subkey selected, it offers to move the primary key: answer N.
+.Bl -enum -width 2n
+.It
+Plug in the YubiKey, and edit the key:
+.Bd -literal
+gpg --edit-key you@example.org
+.Ed
+.It
+Move the signing subkey to slot 1, signature:
+.Bd -literal
+key 1
+keytocard
+.Ed
+.It
+Move the encryption subkey to slot 2, encryption:
+.Bd -literal
+key 1
+key 2
+keytocard
+.Ed
+.It
+Move the authentication subkey to slot 3, authentication:
+.Bd -literal
+key 2
+key 3
+keytocard
+.Ed
+.It
+Save, which removes the moved subkeys from the Pi; the stick keeps them:
+.Bd -literal
+save
+.Ed
+.El
+.Pp
+Afterwards, these show GnuPG's secret keys, the keys on the YubiKey, and the
+YubiKey's model and applications:
 .Bd -literal -offset indent
 gpg --list-secret-keys
 gpg --card-status
@@ -202,6 +249,12 @@ next one, and Ctrl-b d detaches from the session.
 A session outlives a logout: whoever logs into the account next finds it, with
 what its panes showed.
 Power off before you leave the console to anybody else.
+.Ss Powering off
+Run
+.Ic poweroff ,
+as the regular account or as root, wait for the console to show
+.Ql reboot: Power down ,
+and unplug the Pi.
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr gpg 1 ,
@@ -221,4 +274,5 @@ Power off before you leave the console to anybody else.
 .Xr mkfs.btrfs 8 ,
 .Xr mkfs.fat 8 ,
 .Xr mount 8 ,
+.Xr poweroff 8 ,
 .Xr sfdisk 8
