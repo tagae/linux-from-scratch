@@ -72,7 +72,7 @@ install() {
             # The directory of GIO's modules, which nothing here ships.
             find . -type d -empty -delete
 
-            move_to_dev_component usr/lib/glib-2.0 usr/share/aclocal
+            move_to_dev_component usr/lib/glib-2.0
             move_to_docs_component
             ;;
         dev)
