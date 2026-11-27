@@ -1,6 +1,16 @@
-# The regular account copies with dd: a file to a partition of the drive, whatever the partition
-# held, and the beginning of the stick to another partition. Each copy is read back from its device,
-# past the cache, and compared.
+# The kernel refuses to open a mounted partition for writing, even for root's dd. The regular
+# account then copies with dd: a file to that partition of the drive, unmounted, whatever it held,
+# and the beginning of the stick to another partition. Each copy is read back from its device, past
+# the cache, and compared.
+
+login root
+run_ok {mount --mkdir -o nosuid,nodev,noexec /dev/sdb1 /tmp/fat}
+# count=0 opens the partition and writes nothing, which leaves its file system whole even where the
+# kernel allows the opening.
+expect_match [run_ok {dd if=/dev/zero of=/dev/sdb1 count=0} 1] {Device or resource busy} \
+    "writing to a mounted partition"
+run_ok {umount /tmp/fat}
+logout
 
 login user
 run_ok {dd if=/dev/urandom of=/tmp/data bs=1M count=4 status=none}
