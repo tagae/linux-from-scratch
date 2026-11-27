@@ -43,8 +43,7 @@ install() {
             rm -v $package_install_dir$prefix/bin/dumpsexp $package_install_dir$prefix/bin/mpicalc \
                 $package_install_dir$prefix/bin/hmac256
             rm -fv $package_install_dir$prefix/share/man/man1/hmac256.1
-            # Plus the script that tells the flags for compiling against it.
-            move_to_dev_component usr/bin/libgcrypt-config
+            move_to_dev_component
             move_to_docs_component
             ;;
         dev)

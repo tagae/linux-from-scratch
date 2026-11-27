@@ -3,11 +3,14 @@
 #
 # A component holds some of the files that the package installs, moved aside from the package.
 
-# Moves aside the development files installed by the package.
+# Moves aside the development files installed by the package, with what it installed at the paths
+# named, which are patterns of find(1)'s -path. Each of them has to match, as a file that the
+# install spells otherwise would stay in the package.
 move_to_dev_component() {
-    local file
-    for file; do
-        set -- "$@" -o -path "./$file"
+    local pattern
+    _require_installed "$@"
+    for pattern; do
+        set -- "$@" -o -path "./$pattern"
         shift
     done
     _move_component_files dev \
@@ -44,6 +47,17 @@ install_component() {
     local component_dir=$package_work_dir/component/$package_component
     [ -d $component_dir ] || bail "empty $package_name $package_component component"
     cp -av $component_dir/. $package_install_dir/
+}
+
+# Fails the build unless each of the patterns matches a path that the package installed.
+_require_installed() {
+    local pattern unmatched=
+    for pattern; do
+        [ -n "$(cd $package_install_dir && find . -path "./$pattern")" ] \
+            || unmatched="$unmatched $pattern"
+    done
+    [ -z "$unmatched" ] || bail "$package_name: move_to_dev_component:" \
+        "nothing in $package_install_dir matches$unmatched"
 }
 
 # Moves the files the package installed that match the given find(1) expression aside, for the

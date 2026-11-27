@@ -38,8 +38,7 @@ install() {
     case $package_component in
         libksba)
             make install DESTDIR=$package_install_dir
-            # Plus the script that tells the flags for compiling against it.
-            move_to_dev_component usr/bin/ksba-config
+            move_to_dev_component
             move_to_docs_component
             ;;
         dev)

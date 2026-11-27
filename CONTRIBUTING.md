@@ -126,8 +126,15 @@ The framework fetches them before building the package, and exposes their locati
 that the list lacks is a `LicenseRef-<name>`, whose text, the source's own licence file verbatim, is
 `package/<package>/LicenseRef-<name>.txt`, which the SBOM carries and `check/lint` looks for.
 
-A package's install can set its development files (headers, static libraries, pkg-config files...)
-aside for its `dev` component with `move_to_dev_component`, which is installed only where wanted.
+A package's install can set its development files aside with `move_to_dev_component`, for its `dev`
+component, which is installed only where wanted. The helper takes headers, static libraries,
+pkg-config files and the like by itself, where the install has any. A recipe names whatever else the
+component should hold as patterns of find(1)'s `-path`, relative to the install directory
+(`usr/lib/cmake`) and quoted if they have wildcards. Each pattern has to match, or the build fails,
+so a recipe names only what its install puts in place on every build machine. It names what an
+option adds under the condition that sets the option (`docs_wanted` in `libgpg-error.sh`), and pins
+what configure would otherwise take from the build machine (the format and names of man pages, in
+`ncurses.sh`).
 
 Programs and libraries are stripped as they are linked.
 
