@@ -9,6 +9,8 @@ The SD card of this Raspberry Pi Zero is read-only: whatever is not written to
 a USB device or a security key is in memory, which never swaps, and is gone
 when the Pi powers off.
 .Ss Finding a USB device
+To plug in several devices, such as a YubiKey and a stick, connect a hub,
+through an OTG adapter, to the Pi's one USB data port, marked USB.
 USB sticks and drives are sda, sdb and so on, in the order the Pi finds them,
 and mmcblk0 is the SD card, which is root's.
 Their models and sizes, and the file systems they hold, tell them apart:
@@ -27,6 +29,8 @@ and one of the others, labelled or not, on
 when something reads the directory, and unmounts it after about 10 seconds of
 disuse: wait 15 seconds before pulling the device out, partitioning it or making
 a file system on it.
+A shell whose working directory is there, or a program with a file open there,
+keeps it mounted.
 .Ss Partitioning
 .Ic fdisk ,
 .Ic sfdisk
@@ -244,8 +248,10 @@ tmux attach -t work
 tmux kill-server
 .Ed
 .Pp
-In a session, Ctrl-b % and Ctrl-b \(dq split the pane, Ctrl-b o goes to the
-next one, and Ctrl-b d detaches from the session.
+In a session, Ctrl-b c makes a window, and Ctrl-b n goes to the next one.
+Ctrl-b % and Ctrl-b \(dq split a window into panes, and Ctrl-b o goes to the
+next pane.
+Ctrl-b d detaches from the session.
 A session outlives a logout: whoever logs into the account next finds it, with
 what its panes showed.
 Power off before you leave the console to anybody else.
