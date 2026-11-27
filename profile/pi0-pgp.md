@@ -181,7 +181,8 @@ btrfs check /dev/sda3
 Where there is a file system, `mkfs.ext4` asks before it erases it, `mkfs.btrfs` refuses to unless
 `-f` tells it to, and `mkfs.fat` does not ask. `mkfs.btrfs` warns the regular account that it could
 not register the device, which udev does. A file system is checked while it is not mounted:
-`fsck.fat -n` and `btrfs check` change nothing, and `fsck.ext4` asks before it repairs what it finds.
+`fsck.fat -n` and `btrfs check` change nothing, and `fsck.ext4` replays the journal without asking,
+and asks before it repairs anything else.
 
 `e2fsprogs` also resizes, tunes and inspects ext file systems (`resize2fs`, `tune2fs`, `dumpe2fs`,
 `debugfs`), and `btrfs-progs` copies files out of a damaged BTRFS (`btrfs restore`). Its programs
@@ -194,15 +195,15 @@ systemd mounts two FAT file systems for the regular account, the first time anyt
 directory, whoever it is:
 
 * the one labelled `KEYS` on `/mnt/keys`,
-* and one with another label on `/mnt/usb-storage`: a udev rule
+* and one of the others, labelled or not, on `/mnt/usb-storage`: a udev rule
   ([`70-usb-sticks.rules`](pi0-pgp/files/usr/lib/udev/rules.d/70-usb-sticks.rules)) links it as
   `/dev/usb-storage`, which
   [`mnt-usb\x2dstorage.mount`](pi0-pgp/files/usr/lib/systemd/system/mnt-usb%5Cx2dstorage.mount)
   mounts. Of several, the link follows one.
 
-It unmounts them when they have not been used for ten seconds: wait that long before pulling a
-device out. Without a device, the access fails after ten seconds. Both mounts are `nosuid`, `nodev`
-and `noexec`. The KEYS stick is never on `/mnt/usb-storage`, and [the key
+It unmounts them after about ten seconds without use: wait 15 seconds before pulling a device out.
+Without a device, the access fails after ten seconds. Both mounts are `nosuid`, `nodev` and
+`noexec`. The KEYS stick is never on `/mnt/usb-storage`, and [the key
 procedure](#making-openpgp-keys) writes to `/mnt/keys` alone, so that a key never lands on a stick
 that was plugged in for another purpose.
 
@@ -227,10 +228,11 @@ block. This copies `/dev/sda` over `/dev/sdb`, which must be at least as large:
 dd if=/dev/sda of=/dev/sdb bs=4M conv=fsync status=progress
 ```
 
-`dd` overwrites what `of=` names without asking, mounted or not. An image of a device goes to a
-file on a mounted file system with room for it, as the memory of the system is too small for most.
-Writing over flash storage does not erase it for certain: sticks, cards and SSDs keep blocks that no
-write reaches.
+`dd` overwrites what `of=` names without asking. The kernel refuses to open a mounted device or
+partition for writing, but not a whole device whose partitions are mounted: unmount them first. An
+image of a device goes to a file on a mounted file system with room for it, as the memory of the
+system is too small for most. Writing over flash storage does not erase it for certain: sticks,
+cards and SSDs keep blocks that no write reaches.
 
 
 Making OpenPGP Keys
@@ -302,7 +304,7 @@ home directory, in memory.
    ```
 
 6. Move the subkeys to the YubiKey, when you wish: the keys are still in memory, in `~/.gnupg`
-   ([Keys in Memory](#keys-in-memory)), and `gpg --list-secret-keys` shows them. Copy each subkey to
+   ([Keys in Memory](#keys-in-memory)), and `gpg --list-secret-keys` shows them. Move each subkey to
    its slot (the card asks for its Admin PIN):
 
    ```shell
@@ -314,9 +316,10 @@ home directory, in memory.
    (authentication); then `save`. `gpg --card-status` lists the three keys on the card. The stick
    keeps the whole secret key.
 
-GnuPG's home, `~/.gnupg` for root as for the regular account, is empty after a reboot: `gpg
---import /mnt/keys/you@example.org-secret.asc` brings a key back from the stick. `GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal
-(`echo hi | gpg --clearsign`), for the PIN prompt to find it.
+GnuPG's home, `~/.gnupg` for root as for the regular account, is empty after a reboot: once the
+clock is set, `gpg --import /mnt/keys/you@example.org-secret.asc` brings a key back from the stick.
+`GPG_TTY=$(tty)` must be set when GnuPG's input is not the terminal (`echo hi | gpg --clearsign`),
+for the PIN prompt to find it.
 
 ### Formatting the Stick for the Keys
 
