@@ -58,6 +58,8 @@ lfs_build_image() {
             mv "$image_file.boot.txt" "$stem.boot.txt"
         fi
         mv "$image_file.root.txt" "$stem.root.txt"
+        # A signature (bin/sign) vouches for the old SBOM alone: it goes before the new one comes.
+        rm -f "$sbom.sig"
         mv "$image_file.spdx.json" "$sbom"
         mv "$image_file" "$target"
     fi

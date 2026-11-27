@@ -19,11 +19,14 @@ A Linux host needs:
 * to build images (`make image`): a working `sudo`;
 * to boot images in a VM (`make qemu`): QEMU 11.1 or later, with `qemu-img`;
 * to test them (`make test`): `expect` 5.45.3 or later;
+* to sign images (`make sign`) and check their signatures (`make signature-check`): OpenSSH 8.2 or
+  later, `jq`, `shasum` and `realpath`, and, to sign with a security key, an `ssh-keygen` with FIDO
+  support or an agent that holds the key;
 * to version the project: Git 2.36 or later, as the scripts read `bin/gitconfig` in place of the
   user's Git configuration.
 
 Through Docker (`make docker-test`), containers build the tools and the images: the host, Linux or
-not, needs Docker Compose instead of the first two, and the others to boot, test and version.
+not, needs Docker Compose instead of the first two, and the others to boot, test, sign and version.
 
 
 Quick Start
@@ -169,6 +172,52 @@ scans it for known vulnerabilities:
 ```shell
 make sbom-check            # validates every document under image/ (fetches the validator from PyPI)
 make vulnerability-check   # scans them with Grype, as CI does (fetches Grype, its data, CVE records)
+```
+
+### Signatures
+
+A signature, `<sbom>.sig` next to an SBOM, vouches for that SBOM and, through the hash that the SBOM
+gives, for its image ([design and limits](docs/sbom-design.md#signing)). The build signs nothing.
+Once an image is made, sign it and check the signature:
+
+```shell
+make sign              # signs every SBOM under image/ (a security key asks for a touch for each)
+make signature-check   # checks every SBOM under image/: its signature and its image
+```
+
+Both targets go by the SBOMs, so they skip an image without one, and they stop at the first
+failure. To act on some SBOMs alone, give them as arguments to the scripts that the targets run,
+`bin/sign` and `check/signature`.
+
+Signing and checking require each image to be next to its SBOM and to match the hash in it, and the
+SBOM to be named after the image as the image build names it: `<name>.spdx.json` for `<name>.img`
+(or for an image `<name>`). So an image that is renamed after signing fails the check, even if its
+SBOM is renamed to match.
+
+The signing key is the file that `LFS_SIGNING_KEY` names, or else the file that git's
+`user.signingkey` names: a private key, or a public key whose private half an agent holds.
+
+```shell
+make sign LFS_SIGNING_KEY=<key-file>
+```
+
+The trusted keys are those of `check/allowed_signers`, and signing keeps a signature only if one of
+them made it. An SBOM has one signature, so a second signer's replaces the first. To trust another
+signer, add a line to that file in the
+[allowed signers](https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS) format, with the same
+principal and namespace restriction, and without the key's comment, which can hold personal data:
+
+```text
+lfs-release namespaces="sbom@linux-from-scratch" <key-type> <base64-key>
+```
+
+To check an image from elsewhere, put it in one directory with its SBOM and the signature, their
+names unchanged. Then run the `check/signature` of a checkout that you trust, never one that came
+with the image, because the script trusts the keys of its own checkout. A success names the image
+that it verified.
+
+```shell
+<checkout>/check/signature <directory>/<name>.spdx.json
 ```
 
 [SPDX]: https://spdx.github.io/spdx-spec/v2.3/

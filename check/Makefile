@@ -1,6 +1,6 @@
 # Quality checks.
 
-.PHONY: lint commit-lint sbom-check vulnerability-check
+.PHONY: lint commit-lint sbom-check signature-check vulnerability-check
 
 # Static checks that need no build: shell code, recipes and profiles (needs dash and shellcheck).
 lint:
@@ -22,6 +22,10 @@ sbom-check: $(pyspdxtools)
 	@set -- image/*.spdx.json; \
 	[ -e "$$1" ] || { echo "No SBOM under image/: make an image" >&2; exit 1; }; \
 	for sbom; do echo "$$sbom"; $(pyspdxtools) --infile "$$sbom" || exit 1; done
+
+# Verifies the signatures of the SBOMs under image/, and the images' digests (see check/signature).
+signature-check:
+	check/signature
 
 # Scans the SBOMs under image/ for vulnerabilities with Grype.
 GRYPE_VERSION := 0.121.3

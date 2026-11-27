@@ -1,10 +1,11 @@
 Image Software Bill of Materials
 ================================
 
-**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`, and scanned by Grype in CI
-(`.github/workflows/vulnerabilities.yaml`). The document names the upstream packages, with the CPEs
-and PyPI purls that scanners match ([What Scanners Find](#what-scanners-find)). It leaves out the
-patches applied to the sources, suppliers and signing ([Choices for Later](#choices-for-later)).
+**Status:** implemented in `lib/sbom.sh`, validated with `pyspdxtools`, scanned by Grype in CI
+(`.github/workflows/vulnerabilities.yaml`), and signed on request with `make sign`
+([Signing](#signing)). The document names the upstream packages, with the CPEs and PyPI purls that
+scanners match ([What Scanners Find](#what-scanners-find)). It leaves out suppliers and the patches
+applied to the sources ([Choices for Later](#choices-for-later)).
 
 **Question:** how should each image get a Software Bill of Materials (SBOM), and can it be SPDX?
 
@@ -149,6 +150,46 @@ How It Is Produced
    out the findings that do not concern the images, each with its reason, and `check/kernel-vex`
    those of the kernel that its own CVE records show it does not have ([The Kernel](#the-kernel)).
    A developer's scan gives CI's verdict.
+5. **Sign it.** Once the image is made, `make sign` (`bin/sign`) signs its SBOM, and
+   `make signature-check` (`check/signature`) checks the signature and the image
+   ([Signing](#signing)).
+
+
+Signing
+-------
+
+The SBOM holds the image's digest, which tells that the two belong together, but nothing about where
+they come from: whoever changes either can write an SBOM that matches. A signature of the SBOM,
+`<sbom>.sig`, adds that a trusted key vouches for the SBOM and, through the digest, for the image. A
+check does not say which key.
+
+- **Signer.** OpenSSH (`ssh-keygen -Y sign` and `-Y verify`). The owner signs with the key that git
+  is configured to sign with (`user.signingkey`), so there is no second key to keep: an
+  `sk-ssh-ed25519` key on a YubiKey, which asks for a touch for each signature. Signatures of SBOMs
+  have a namespace of their own, `sbom@linux-from-scratch`, so that a signature that the key makes
+  for another use, such as a git commit, does not pass for one of an SBOM.
+- **Trusted keys.** The public keys are committed, in `check/allowed_signers`. The scripts take
+  them, like their code, from their own checkout, never from the current directory, which anyone may
+  have filled. So whoever can change that checkout can change whom it trusts.
+- **Names.** An SBOM passes only if its file name is that of the image that it describes
+  (`virt.spdx.json` for `virt.img`), so that a success is about the image that the SBOM's name
+  stands for.
+- **A step of its own.** Neither the build nor CI signs. Signing in the image build would need the
+  signer among the build tools, and a touch in the middle of a build that runs under sudo. The image
+  build only deletes the signature of an SBOM that it replaces.
+
+A signature leaves out the file manifests (`*.root.txt`, `*.boot.txt`) and the `*.kernel-files`,
+which the vulnerability scan reads. Nor does it tell that an image is the latest: an older one, with
+its SBOM and signature, passes too.
+
+Other signers fit less well:
+
+- **minisign:** a new dependency, and a second key, kept on disk behind a passphrase, with no
+  support for security keys.
+- **cosign:** a large binary to pin. Its keyless signing records the signer's identity in a public
+  log, and with a YubiKey it needs a separate PIV key.
+- **GitHub's artifact attestations:** they cover only the images that CI builds, which are not
+  published, and leave those built locally unsigned.
 
 
 Tools
@@ -181,9 +222,10 @@ Find](#what-scanners-find)).
 - **Convert:** [`bomctl`](https://github.com/bomctl/bomctl) converts and merges SPDX and CycloneDX.
   It describes itself as experimental, and has no diff. It is needed only if a consumer insists on
   CycloneDX.
-- **Sign:** [cosign](https://github.com/sigstore/cosign),
-  [minisign](https://github.com/jedisct1/minisign), GitHub's artifact attestations
-  (`actions/attest-sbom`): see Signing in [Choices for Later](#choices-for-later).
+- **Sign:** [OpenSSH](https://www.openssh.org/)'s `ssh-keygen` (BSD licences), the one in use.
+  Others are [cosign](https://github.com/sigstore/cosign),
+  [minisign](https://github.com/jedisct1/minisign) (ISC) and GitHub's artifact attestations
+  ([`actions/attest`](https://github.com/actions/attest), MIT) ([Signing](#signing)).
 
 **Prior art.** Yocto's `create-spdx` builds SPDX per recipe and image, and its `cve-check` takes a
 CPE product name per recipe (`CVE_PRODUCT`), the same idea as `package_cpe`. Buildroot has
@@ -271,5 +313,5 @@ Choices for Later
 - **Reproducible builds.** `created` could then be `SOURCE_DATE_EPOCH`, and per-file SHA-256s of
   the tree (`hasFiles`) would let a device check its own files against the SBOM, at the cost of a
   much larger document.
-- **Signing.** Signing the image's digest and the SBOM together (minisign or cosign) ties the SBOM
-  to the image that was published.
+- **Attestations.** Once images are published, GitHub's artifact attestations could also tell which
+  workflow run built each of those that CI makes.

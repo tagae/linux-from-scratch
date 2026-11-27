@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# Whether the images and their SBOMs are as signed (bin/sign): the signature of each SBOM,
+# <sbom>.sig, is one of a key that check/allowed_signers trusts, and the image that the SBOM is
+# named after, next to it, has the digest that the SBOM holds. The signature comes first, as only a
+# signed SBOM is trusted.
+#
+# Exits non-zero at the first SBOM for which this does not hold.
+#
+# Usage: check/signature [SBOM...]
+# The SBOMs are those of image/*.spdx.json in the script's own checkout by default.
+# `make signature-check` runs it.
+
+set -o errexit -o nounset
+
+# The code and the trusted keys are those of the script's own checkout, never of the current
+# directory, which anyone may have filled. realpath has an assignment of its own, so that its
+# failure ends the script: dirname makes the current directory of an empty path.
+script=$(realpath "$0")
+root=$(dirname "$(dirname "$script")")
+. "$root/check/signature.sh"
+
+[ $# -gt 0 ] || set -- "$root"/image/*.spdx.json
+for sbom; do
+    shorten_sbom
+    [ -f "$sbom" ] || fail "No SBOM $sbom: make an image"
+    [ -f "$sbom.sig" ] || fail "$sbom: no signature $sbom.sig: sign it with bin/sign"
+    verify_signature "$sbom" "$sbom.sig" \
+        || fail "$sbom: the signature $sbom.sig does not verify against check/allowed_signers"
+    check_image "$sbom"
+    echo "$sbom: signed, and its image $image matches"
+done

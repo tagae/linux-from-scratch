@@ -7,6 +7,7 @@
 	qemu %-qemu \
 	test %-test \
 	invalidate \
+	sign \
 	clean distclean pristine \
 	FORCE \
 	docker-tools-bootstrap \
@@ -100,6 +101,10 @@ image/%.img: %-system FORCE
 # included: a recipe runs again only when its archive is gone (see bin/invalidate).
 invalidate:
 	bin/invalidate
+
+# Signs the SBOMs under image/, as they are, which vouches for their images too (see bin/sign).
+sign:
+	bin/sign
 
 # The checks have a Makefile of their own.
 include check/Makefile

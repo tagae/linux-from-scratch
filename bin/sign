@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# Signs the SBOMs of images, as <sbom>.sig next to each, once the images are built: nothing in the
+# build signs. A signature vouches for the SBOM and for its image (check/signature.sh), which has to
+# be next to the SBOM, give it its name and match its digest. A new signature is kept, and replaces
+# any old one, only if it verifies against check/allowed_signers.
+#
+# The key is the file LFS_SIGNING_KEY, or else git's user.signingkey, as `ssh-keygen -Y sign -f`
+# takes it: a private key, or a public key whose private half an agent holds. A security key asks
+# for a touch for each signature.
+#
+# Usage: [LFS_SIGNING_KEY=FILE] bin/sign [SBOM...]
+# The SBOMs are those of image/*.spdx.json in the script's own checkout by default. `make sign`
+# runs it.
+
+set -o errexit -o nounset
+
+# The code and the trusted keys are those of the script's own checkout, never of the current
+# directory, which anyone may have filled. realpath has an assignment of its own, so that its
+# failure ends the script: dirname makes the current directory of an empty path.
+script=$(realpath "$0")
+root=$(dirname "$(dirname "$script")")
+. "$root/check/signature.sh"
+
+# git's user.signingkey as the checkout has it, with the user's configuration, which names the key
+# that signs for the user. Git takes a relative path from the top of the checkout.
+signingkey=$(git -C "$root" config --path user.signingkey || true)
+case $signingkey in
+    [!/]*) signingkey=$root/$signingkey ;;
+esac
+key=${LFS_SIGNING_KEY:-$signingkey}
+[ -f "$key" ] || {
+    echo "No key file to sign with${key:+ (tried $key)}: set LFS_SIGNING_KEY, or git's" \
+        "user.signingkey, to one" >&2
+    exit 2
+}
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/lfs-sign.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+# dash runs the EXIT trap on an exit alone, not when a signal ends it.
+trap 'exit 1' HUP INT TERM
+
+[ $# -gt 0 ] || set -- "$root"/image/*.spdx.json
+for sbom; do
+    shorten_sbom
+    [ -f "$sbom" ] || fail "No SBOM $sbom: make an image"
+    # ssh-keygen signs a copy: it asks before it overwrites the <file>.sig of a file, and without
+    # a terminal as its standard input, it may ask an askpass program for a PIN or a passphrase.
+    cat "$sbom" > "$work/sbom"
+    check_image "$sbom"
+    # ssh-keygen says nothing of a touch when an agent signs.
+    echo "Signing $sbom (a security key may wait for a touch)"
+    ssh-keygen -q -Y sign -f "$key" -n $signature_namespace "$work/sbom" \
+        || fail "$sbom: not signed"
+    verify_signature "$sbom" "$work/sbom.sig" \
+        || fail "$sbom: not signed: check/allowed_signers does not accept the signature of $key"
+    mv -f "$work/sbom.sig" "$sbom.sig"
+    echo "Signed $sbom, the SBOM of $image: $sbom.sig"
+done

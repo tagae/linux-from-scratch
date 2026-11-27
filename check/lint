@@ -58,8 +58,9 @@ shell_files=$(
         echo bin/invalidate
         echo bin/version
         echo bin/release
+        echo bin/sign
         echo check/hooks/commit-msg
-        find lib platform profile package -type f -name '*.sh'
+        find check lib platform profile package -type f -name '*.sh'
         for file in check/* $(find package -type f -path '*/usr/bin/*'); do
             if is_sh_script $file; then echo $file; fi
         done
