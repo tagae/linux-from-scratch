@@ -8,10 +8,6 @@ defined in [`virt-busybox.sh`](virt-busybox.sh).
 The system holds musl, BusyBox, and the kernel, which has a console, the btrfs root file system,
 devtmpfs and hardening. There is no `dash`: `/bin/sh` is ash, BusyBox's shell.
 
-The kernel has everything it uses built in and loads no modules (the profile leaves out the
-`modules` capability): it has no `/usr/lib/modules`, and the system has no `modprobe`, `insmod`
-or the like.
-
 
 musl
 ----
@@ -90,28 +86,5 @@ categories below, which makes some 200 applets:
 | `shell`         | `ash` (which is `/bin/sh`), `cttyhack`                                   |
 | `util-linux`    | `mount`, `umount`, `blkid`, `fdisk`, `dmesg`, `taskset`...               |
 
-The categories with a file that the profile leaves out are `e2fsprogs` and `modutils` (the kernel
-has no ext file systems and no modules), `runit` (init is BusyBox's, and starts no supervised
-services), `mailutils` (there is no mail) and `klibc-utils` (there is no initial RAM disk).
-
-Three categories have no file, as their applets need what the kernel lacks: `printutils` (printers
-and sockets), `selinux` (libselinux) and `sysklogd` (`syslogd` takes its messages through a UNIX
-socket, which the kernel has no support for).
-
-Most of what the system leaves out needs a kernel option that no capability of the profile gives:
-
-| Without            | Missing                                                                |
-|--------------------|------------------------------------------------------------------------|
-| Sockets (`NET`)    | `ip`, `ping`, `wget`, `telnet`... (all networking applets), `sendmail` |
-| Terminals (`VT`)   | `openvt`, `chvt`, `loadkmap`, `setfont`, `showkey`, `vlock`...         |
-| Pseudo-terminals   | `script`, `scriptreplay`                                               |
-| Swap, loop devices | `swapon`, `swapoff`, `mkswap`, `losetup`, `mount -o loop`              |
-| Namespaces         | `unshare`, `nsenter`                                                   |
-| `/proc/sys`        | `sysctl`                                                               |
-| A clock device     | `hwclock`, `rtcwake`                                                   |
-
-The system keeps no utmp, so `who`, `w`, `users`, `last` and `wall` are left out too, and `hush`,
-BusyBox's second shell, is not wanted.
-
-An applet that needs such an option is added with a kernel capability for it (`package/linux/`) and
-the applet in the file of its category, in the same change.
+An applet that needs a kernel option is added with a kernel capability for it (`package/linux/`)
+and the applet in the file of its category, in the same change.

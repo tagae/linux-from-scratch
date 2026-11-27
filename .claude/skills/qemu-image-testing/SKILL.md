@@ -58,7 +58,7 @@ platform's QEMU machine spares the `pci-host-generic ... Memory resource size ex
 |---|---|---|
 | QEMU machine | `raspi0`, TCG, ~30 s per check | the Mac's arch with HVF (KVM on Linux), ~10 s |
 | Console, disk | `ttyAMA0`, `mmcblk0p2`, DTB | virtio `hvc0` on stdio shared with the monitor (Ctrl-A c), `vda1`, no DTB |
-| USB | DWC2 behind a hub (`usb` capability) | `qemu-xhci`, which the `virt` profile's kernel has no driver for: a profile that names `usb` gets it |
+| USB | DWC2 behind a hub (`usb` capability) | `qemu-xhci`, whose driver the `usb` capability gives |
 | Tested | end to end | end to end |
 
 Without a pty (an agent sandbox that refuses them: `The system has no more ptys` from `expect`, so from

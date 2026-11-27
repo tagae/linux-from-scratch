@@ -21,12 +21,12 @@ btrfs error counters (`/sys/fs/btrfs/*/devinfo/1/error_stats/*`) are 0.
 
 ## Messages that are expected
 
-- `OF: reserved mem: node linux,cma compatible matching fail`: the vendor devicetree has a CMA node the kernel lacks.
-- `sdhost-bcm2835 ...: unable to initialise DMA channel. Falling back to PIO` and `loaded - DMA disabled`: deliberate
-  (`CONFIG_DMADEVICES` off: the 6.18 bcm2835-dma regression raspberrypi/linux#7136, and QEMU's broken DMA); costs SD speed.
+- `OF: reserved mem: node linux,cma compatible matching fail`: the vendor devicetree's CMA node.
+- `sdhost-bcm2835 ...: unable to initialise DMA channel. Falling back to PIO` and `loaded - DMA disabled`: deliberate;
+  costs SD speed.
 - `check access for rdinit=/init failed: -2, ignoring`: no initramfs.
 - `tmp.mount: x-systemd.graceful-option=usrquota ... suppressing`; `Kernel Trace File System`, `Huge Pages File System`
-  and `configfs` skipped: the kernel lacks them.
+  and `configfs` skipped.
 - With USB: `dwc2 ...: dwc2_check_params: Invalid parameter max_packet_count=511` and `max_transfer_size=65535` (seen
   under QEMU, unconfirmed on silicon), `sd 0:0:0:0: Power-on or device reset occurred` when a stick is plugged in,
   and at info level `PM: genpd: Disabling unused power domains` and `raspberrypi-power ...: sync_state() pending due
@@ -38,13 +38,11 @@ btrfs error counters (`/sys/fs/btrfs/*/devinfo/1/error_stats/*`) are 0.
 
 ## Absent by design (not faults)
 
-No networking (only `lo`), LED class, thermal or hwmon (undervoltage cannot be detected), RTC, input, graphics, cpufreq
-or swap. USB only with the `usb` capability (a profile names it in its `capabilities`). No logind, and polkit only in pi0-pgp, whose rule lets the regular account
-`poweroff`, `reboot` and `halt` and refuses it the rest (`systemctl restart` fails with `Access denied`);
-without polkit (virt) only root changes anything through D-Bus. `systemctl status` works. No
-`/etc/hostname` (the name is `localhost`). The clock has no source and nothing saves it:
-every boot starts at the image's build time (`/usr/lib/clock-epoch`); real times need `date -u -s`. The machine ID is
-made with the image and persists. `find`, `tar`, `less`, `file`, `ip` are not installed.
+No logind, and polkit only in pi0-pgp, whose rule lets the regular account `poweroff`, `reboot` and `halt` and
+refuses it the rest (`systemctl restart` fails with `Access denied`); without polkit (virt) only root changes anything
+through D-Bus. `systemctl status` works. No `/etc/hostname` (the name is `localhost`). The clock has no source and
+nothing saves it: every boot starts at the image's build time (`/usr/lib/clock-epoch`); real times need `date -u -s`.
+The machine ID is made with the image and persists. `find`, `tar`, `less`, `file`, `ip` are not installed.
 
 ## A health-check pass (one line each in the guest; `qemu-check` runs them under QEMU too)
 

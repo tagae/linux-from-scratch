@@ -68,9 +68,7 @@ Log in as `root` on the console. `reboot` restarts the machine; `poweroff` stops
 QEMU is given the build machine's architecture, so that it can run the guest with an accelerator
 (HVF on macOS, KVM on Linux), with one CPU and 512 MiB of memory.
 
-Devices that the profile does not bring, such as a USB stick, are added with `LFS_QEMU_EXTRA`. The
-machine has the controller (xHCI) for USB devices, but the kernel of this profile has no driver for
-them.
+Devices that the profile does not bring are added with `LFS_QEMU_EXTRA`.
 
 
 How It Boots
