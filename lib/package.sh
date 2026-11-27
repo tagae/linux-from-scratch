@@ -15,6 +15,7 @@ lfs_archive_package() (
     lfs_fetch_dependencies "$1"
     lfs_source_package "$1"
 
+    lfs_discard_outdated_source
     fetch
 
     mkdir -pv $package_build_dir
@@ -76,6 +77,27 @@ lfs_fetch_dependencies() {
     for dependency in $(lfs_source_package "$1"; echo ${package_fetch_dependencies:-}); do
         dependency_source_dir=$(lfs_fetch_package $dependency)
         eval "$(printf %s "$dependency" | tr -c '[:alnum:]' _)_source_dir=\$dependency_source_dir"
+    done
+}
+
+# Discards the source of the package, for `fetch` to unpack it afresh, and its build directories with
+# it: make would take what they hold for current, as the pristine files are older.
+lfs_discard_source() {
+    rm -rf "${package_source_dir:?}" "${package_work_dir:?}/build"
+}
+
+# Discards the source of the package if the file of a patch applied to it differs from what was
+# applied, or is missing: patch(1) applies a patch to the pristine source.
+lfs_discard_outdated_source() {
+    local stamp
+    for stamp in $package_source_dir/.patched-*; do
+        # A pattern that matches nothing stays as it is.
+        [ -f $stamp ] || continue
+        sha256sum --check --status $stamp 2> /dev/null || {
+            echo "$package_product: discarding $package_source_dir, whose patches are outdated"
+            lfs_discard_source
+            return 0
+        }
     done
 }
 
@@ -180,17 +202,18 @@ lfs_source_package() {
     }
 
     # Applies a patch kept in the package's files directory. A recipe changes a source file with a
-    # patch, never by editing the file.
+    # patch, never by editing the file. The source's stamp of the patch holds the digest and the
+    # path of its file.
     apply_patch() {
         local file=${1##*/}
         local stamp=$package_source_dir/.patched-$file
         ! [ -f $stamp ] || return 0
         ( cd $package_source_dir && patch -N -p 1 -i $1 ) || {
             # Discard half-patched source so that the next run re-extracts the pristine source.
-            rm -rf "${package_source_dir:?}"
+            lfs_discard_source
             bail "Failed to apply $file; discarded $package_source_dir"
         }
-        touch $stamp
+        sha256sum $1 > $stamp
     }
 
     fetch_patch() {
