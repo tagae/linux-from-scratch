@@ -6,8 +6,8 @@
 .Nd air-gapped system for private work on OpenPGP keys and USB storage
 .Sh DESCRIPTION
 The SD card of this Raspberry Pi Zero is read-only: whatever is not written to
-a USB device or a security key is in memory, which never swaps, and gone when
-the Pi powers off.
+a USB device or a security key is in memory, which never swaps, and is gone
+when the Pi powers off.
 .Ss Finding a USB device
 USB sticks and drives are sda, sdb and so on, in the order the Pi finds them,
 and mmcblk0 is the SD card, which is root's.
@@ -17,23 +17,22 @@ fdisk -l
 blkid
 .Ed
 .Pp
-The regular account writes to them: check the name before any command here that
-erases one.
+The regular account can write to every USB stick and drive, so check the name
+before any command here that erases one.
 .Ss FAT file systems
 systemd mounts a FAT file system labelled KEYS on
 .Pa /mnt/keys ,
-and one of those with other labels on
+and one of the others, labelled or not, on
 .Pa /mnt/usb-storage ,
-when something reads the directory, and unmounts it after 10 seconds of disuse:
-wait that long before pulling the device out, partitioning it or making a file
-system on it.
+when something reads the directory, and unmounts it after about 10 seconds of
+disuse: wait 15 seconds before pulling the device out, partitioning it or making
+a file system on it.
 .Ss Partitioning
-.Ic cfdisk ,
-which has a menu,
-.Ic fdisk
-and
+.Ic fdisk ,
 .Ic sfdisk
-write partition tables.
+and
+.Ic cfdisk ,
+which has a menu, write partition tables.
 This erases /dev/sda, and gives it a partition for each of FAT, ext4 and BTRFS,
 the last taking the rest:
 .Bd -literal -offset indent
@@ -46,21 +45,24 @@ END
 .Ed
 .Pp
 sfdisk and fdisk tell the regular account that re-reading the partition table
-failed: udev has the kernel read it as the device is closed.
+failed, which does no harm: udev has the kernel read it when they close the
+device.
 .Ss Making and checking file systems
-These erase what the partition holds, and label the new file system:
+These erase what each partition holds, and label its new file system:
 .Bd -literal -offset indent
 mkfs.fat -F 32 -n PHOTOS /dev/sda1
 mkfs.ext4 -L archive /dev/sda2
 mkfs.btrfs -L backup /dev/sda3
 .Ed
 .Pp
-Where there is a file system, mkfs.ext4 asks before it erases it, and
-mkfs.btrfs wants
-.Fl f .
+Where there is a file system, mkfs.ext4 asks before it erases it, mkfs.btrfs
+refuses to without
+.Fl f ,
+and mkfs.fat erases it without asking.
 mkfs.btrfs warns the regular account that it could not register the device,
-which udev does.
-These check them while they are not mounted:
+which does no harm: udev registers it.
+.Pp
+These check the file systems, which must not be mounted:
 .Bd -literal -offset indent
 fsck.fat -n /dev/sda1
 fsck.ext4 -f /dev/sda2
@@ -70,16 +72,18 @@ btrfs check /dev/sda3
 fsck.ext4 asks before it repairs what it finds; the other two change nothing.
 .Ss Moving files
 The regular account reads and writes the FAT file systems that systemd mounts.
-root mounts ext4 and BTRFS, and any further device, and unmounts them before
-the device is pulled out:
+Only root can mount the rest, ext4 and BTRFS file systems among them.
+Unmount each before you pull its device out.
+As root, these copy a directory from a FAT stick to the file system on
+/dev/sdb2:
 .Bd -literal -offset indent
 mount --mkdir -o nosuid,nodev,noexec /dev/sdb2 /tmp/archive
 cp -r /mnt/usb-storage/photos /tmp/archive
 umount /tmp/archive
 .Ed
 .Pp
-Mounting a file system has the kernel read whatever it holds: after a device
-that you do not trust, power off before you work on secrets.
+The kernel reads what you plug in, and any file system that is mounted: after a
+device that you do not trust, power off before you work on secrets.
 .Ss Copying devices
 .Ic dd
 copies a device or a partition to another, or to a file, block by block.
@@ -90,14 +94,24 @@ dd if=/dev/sda of=/dev/sdb bs=4M conv=fsync status=progress
 .Pp
 dd overwrites what
 .Cm of=
-names without asking, mounted or not.
+names without asking.
+The kernel protects a mounted device or partition from it, but not a whole
+device whose partitions are mounted: see that none is before you start.
 Writing over flash storage does not erase it for certain, as it keeps blocks
 that no write reaches.
+.Ss Formatting a stick for the keys
+This erases the stick, here /dev/sda:
+.Bd -literal -offset indent
+mkfs.fat -I -F 32 -n KEYS /dev/sda
+.Ed
 .Ss Making an OpenPGP key
-The key is made for a security key such as a YubiKey: a primary key that only
-certifies, and subkeys to sign, to encrypt and to authenticate, none of which
-expires.
-Log in as the regular account, and put your own name and address in the commands.
+For a security key such as a YubiKey, these steps make an OpenPGP key: a
+primary key that only certifies, and subkeys to sign, to encrypt and to
+authenticate.
+None of them expires.
+Log in as the regular account,
+and put your own name and address in the commands.
+For RSA keys, also give rsa4096 in place of ed25519 and of cv25519.
 .Bl -enum -width 2n
 .It
 Plug in the YubiKey and a USB stick with a FAT file system labelled KEYS.
@@ -106,8 +120,8 @@ This lists what the stick holds, and fails without one:
 ls /mnt/keys
 .Ed
 .It
-Set the clock, which starts each boot at the time the image was made, as keys
-record when they are made:
+Set the clock, because keys record when they are made, and the clock starts each
+boot at the time the image was made:
 .Bd -literal
 timedatectl set-time 'YYYY-MM-DD HH:MM:SS UTC'
 .Ed
@@ -127,12 +141,12 @@ The second command prints OK if the YubiKey answered.
 ERR means that none did: the keys then rest on the Pi's generator alone, and
 there is nothing to wait for.
 The kernel takes the randomness in within a minute, and the agent, which makes
-the keys, has to start after that.
+the keys, has to start after that: hence the last two commands.
 .It
 Make the primary key.
 gpg asks twice for a new passphrase, which protects the secret key and which the
 next two steps ask for again.
-It then prints the key's fingerprint, 40 hexadecimal digits:
+gpg then prints the key's fingerprint, 40 hexadecimal digits:
 .Bd -literal
 gpg --quick-generate-key 'Your Name <you@example.org>' ed25519 cert 0
 .Ed
@@ -144,8 +158,6 @@ gpg --quick-add-key $fpr ed25519 sign 0
 gpg --quick-add-key $fpr cv25519 encr 0
 gpg --quick-add-key $fpr ed25519 auth 0
 .Ed
-.Pp
-For RSA keys, give rsa4096 in place of ed25519 and of cv25519.
 .It
 Write the secret key, the public key and the revocation certificate to the
 stick:
@@ -162,18 +174,14 @@ Have the agent forget the passphrase, which it keeps for ten minutes:
 gpgconf --kill gpg-agent
 .Ed
 .El
-.Ss Formatting a stick for the keys
-This erases the stick, here /dev/sda:
-.Bd -literal -offset indent
-mkfs.fat -I -F 32 -n KEYS /dev/sda
-.Ed
 .Ss Moving the subkeys to the YubiKey
 Use
 .Ic gpg\ --edit-key
 and its
 .Ic keytocard
 command.
-These show what the keys and the YubiKey hold:
+These show GnuPG's secret keys, the keys on the YubiKey, and the YubiKey's
+model and applications:
 .Bd -literal -offset indent
 gpg --list-secret-keys
 gpg --card-status
