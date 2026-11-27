@@ -16,14 +16,12 @@ prompt +22-23 s. `systemd-analyze`: 2.2 s kernel + 11.2-11.8 s userspace; the sl
 (`dev-mmcblk0p2.device` 7.3 s, `systemd-remount-fs` 4.9 s). After login: `is-system-running` = `running`,
 `--failed` empty, `/proc/sys/kernel/tainted` 0, no `oe:` in `/proc/tty/driver/ttyAMA`, ~435 MB RAM with 23 MB
 used, 46 tasks, services only `init`, `systemd-journald`, `systemd-udevd`, `serial-getty`. The card runs at 50 MHz,
-4-bit, SD high speed (`/sys/kernel/debug/mmc0/ios`); an 8 MiB fsynced write is 4.7 MB/s, a cold read 9.5 MB/s;
-btrfs error counters (`/sys/fs/btrfs/*/devinfo/1/error_stats/*`) are 0.
+4-bit, SD high speed (`/sys/kernel/debug/mmc0/ios`); btrfs error counters
+(`/sys/fs/btrfs/*/devinfo/1/error_stats/*`) are 0.
 
 ## Messages that are expected
 
 - `OF: reserved mem: node linux,cma compatible matching fail`: the vendor devicetree's CMA node.
-- `sdhost-bcm2835 ...: unable to initialise DMA channel. Falling back to PIO` and `loaded - DMA disabled`: deliberate;
-  costs SD speed.
 - `check access for rdinit=/init failed: -2, ignoring`: no initramfs.
 - `tmp.mount: x-systemd.graceful-option=usrquota ... suppressing`; `Kernel Trace File System`, `Huge Pages File System`
   and `configfs` skipped.

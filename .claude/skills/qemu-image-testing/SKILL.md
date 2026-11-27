@@ -47,10 +47,10 @@ $Q/check-baseline [--save] KEY ["EXTRA ARGS"]      # the same, diffed against ba
 the check reads the kernel's warnings from the journal.
 
 Known noise. pi0 under QEMU: `initcall_blacklist requires CONFIG_KALLSYMS` (QEMU-only), two `dwc2_check_params:
-Invalid parameter max_packet_count/max_transfer_size` (QEMU's registers; unconfirmed on silicon), `sdhost ...
-Falling back to PIO` and `check access for rdinit=/init failed` (real). virt: none (`highmem-mmio=off` in the
-platform's QEMU machine spares the `pci-host-generic ... Memory resource size exceeds max for 32 bits` of the
-512 GiB PCI window). An attached stick adds `sd 0:0:0:0: Power-on or device reset occurred`.
+Invalid parameter max_packet_count/max_transfer_size` (QEMU's registers; unconfirmed on silicon) and `check access
+for rdinit=/init failed` (real). virt: none (`highmem-mmio=off` in the platform's QEMU machine spares the
+`pci-host-generic ... Memory resource size exceeds max for 32 bits` of the 512 GiB PCI window). An attached stick
+adds `sd 0:0:0:0: Power-on or device reset occurred`.
 
 ## Platforms
 
@@ -144,5 +144,5 @@ it with `EXPECT_SCRIPT=`, print `QEMU_CHECK_BEGIN` and `QEMU_CHECK_END` around t
 ## What QEMU cannot tell
 
 The real firmware's answer to the USB power-domain request, OTG adapter and ID-pin host mode, current draw, SD
-speed and DMA, real timing (TCG is not an ARM1176; an accelerated guest is not a slow board), and every PIN or
-touch path. Say which of these a result leaves open.
+speed, whether DMA and the caches agree, real timing (TCG is not an ARM1176; an accelerated guest is not a slow
+board), and every PIN or touch path. Say which of these a result leaves open.
